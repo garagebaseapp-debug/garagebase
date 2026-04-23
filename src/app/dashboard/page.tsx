@@ -21,36 +21,41 @@ export default function Dashboard() {
 
       if (avtiData && avtiData.length > 0) {
         setAvti(avtiData)
-        setAktivniAvto(avtiData[0])
-        await naloziPodatke(avtiData[0].id)
+
+        const params = new URLSearchParams(window.location.search)
+        const carIdFromUrl = params.get('car')
+        const izbrani = carIdFromUrl
+          ? avtiData.find((a: any) => a.id === carIdFromUrl) || avtiData[0]
+          : avtiData[0]
+
+        setAktivniAvto(izbrani)
+        await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0)
       }
       setLoading(false)
     }
     init()
   }, [])
 
-  const naloziPodatke = async (carId: string) => {
-    // Opomniki
+  const naloziPodatke = async (carId: string, avtoKmStart: number = 0) => {
     const { data: opData } = await supabase
       .from('reminders').select('*').eq('car_id', carId)
       .order('datum', { ascending: true })
     setOpomniki(opData || [])
 
-    // Poraba — sortirano po km
     const { data: gorivoData } = await supabase
       .from('fuel_logs').select('*').eq('car_id', carId)
       .order('km', { ascending: true })
 
-    if (gorivoData && gorivoData.length >= 2) {
+    if (gorivoData && gorivoData.length >= 1) {
       const skupajLitrov = gorivoData.reduce((s: number, v: any) => s + (v.litri || 0), 0)
-      const prviKm = gorivoData[0].km
       const zadnjiKm = gorivoData[gorivoData.length - 1].km
-      const skupajKm = zadnjiKm - prviKm
+      const skupajKm = zadnjiKm - avtoKmStart
       const skupajPoraba = skupajKm > 0 ? (skupajLitrov / skupajKm) * 100 : null
 
       const zadnje = gorivoData[gorivoData.length - 1]
-      const predZadnje = gorivoData[gorivoData.length - 2]
-      const kmRazlika = zadnje.km - predZadnje.km
+      const predZadnje = gorivoData.length >= 2 ? gorivoData[gorivoData.length - 2] : null
+      const prejsnjiKm = predZadnje ? predZadnje.km : avtoKmStart
+      const kmRazlika = zadnje.km - prejsnjiKm
       const zadnjaPoraba = kmRazlika > 0 ? (zadnje.litri / kmRazlika) * 100 : null
 
       setPoraba({ skupaj: skupajPoraba, zadnja: zadnjaPoraba })
@@ -61,7 +66,7 @@ export default function Dashboard() {
 
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
-    await naloziPodatke(avto.id)
+    await naloziPodatke(avto.id, avto.km_trenutni || 0)
   }
 
   const handleLogout = async () => {
@@ -93,7 +98,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-28">
 
-      {/* Header */}
       <div className="flex justify-between items-center mb-5">
         <h1 className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
@@ -104,7 +108,6 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Prazno stanje */}
       {avti.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-8 text-center">
           <p className="text-5xl mb-4">🚗</p>
@@ -117,7 +120,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Zavihki */}
           <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
             {avti.map((avto) => (
               <button key={avto.id} onClick={() => preklopAvto(avto)}
@@ -137,10 +139,16 @@ export default function Dashboard() {
 
           {aktivniAvto && (
             <>
-              {/* Avto kartica */}
               <div className="bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
-                {/* Ime + tablica */}
+                {aktivniAvto.slika_url && (
+                  <div className="relative h-36 overflow-hidden">
+                    <img src={aktivniAvto.slika_url} alt="Avto"
+                      className="w-full h-full object-cover object-center" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
+                  </div>
+                )}
+
                 <div className="p-5 pb-4">
                   <div className="flex justify-between items-start">
                     <div>
@@ -152,8 +160,6 @@ export default function Dashboard() {
                         {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.barva].filter(Boolean).join(' · ')}
                       </p>
                     </div>
-
-                    {/* Slovenska tablica */}
                     {aktivniAvto.tablica && (
                       <div className="flex flex-col items-center">
                         <div className="bg-[#003399] rounded-t-md px-1.5 py-0.5 flex items-center gap-1 w-full justify-center">
@@ -170,7 +176,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* KM */}
                 {aktivniAvto.km_trenutni && (
                   <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
                     <div className="flex justify-between items-center">
@@ -190,7 +195,6 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Poraba */}
                 {(poraba.skupaj !== null || poraba.zadnja !== null) && (
                   <div className="mx-5 mb-4 grid grid-cols-2 gap-3">
                     {poraba.skupaj !== null && (
@@ -208,27 +212,26 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {/* Gumbi */}
-                <div className="px-5 pb-5 grid grid-cols-3 gap-2">
+                <div className="px-5 pb-5 grid grid-cols-4 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>⛽</span>
-                    <span className="text-xs">Gorivo</span>
+                    <span>⛽</span><span className="text-xs">Gorivo</span>
                   </button>
                   <button onClick={() => window.location.href = `/zgodovina-servisa?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
-                    <span>🔧</span>
-                    <span className="text-xs">Servis</span>
+                    <span>🔧</span><span className="text-xs">Servis</span>
                   </button>
                   <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex flex-col items-center gap-1">
-                    <span>🔔</span>
-                    <span className="text-xs">Opomniki</span>
+                    <span>🔔</span><span className="text-xs">Opomniki</span>
+                  </button>
+                  <button onClick={() => window.location.href = `/nastavitve-avta?car=${aktivniAvto.id}`}
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex flex-col items-center gap-1">
+                    <span>⚙️</span><span className="text-xs">Nastavitve</span>
                   </button>
                 </div>
               </div>
 
-              {/* Opomniki */}
               {opomniki.length > 0 && (
                 <div className="mb-4">
                   <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Opomniki</p>
@@ -237,20 +240,13 @@ export default function Dashboard() {
                       const dni = dniDo(op.datum)
                       const b = barvaDni(dni)
                       return (
-                        <div key={op.id}
-                          className={`${b.bg} border ${b.border} rounded-xl p-3.5 flex justify-between items-center`}>
+                        <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3.5 flex justify-between items-center`}>
                           <div className="flex items-center gap-3">
                             <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
                             <div>
                               <p className="text-white text-sm font-semibold">{tipNaziv[op.tip] || op.tip}</p>
-                              {op.datum && (
-                                <p className="text-[#5a5a80] text-xs">
-                                  {new Date(op.datum).toLocaleDateString('sl-SI')}
-                                </p>
-                              )}
-                              {op.km_opomnik && (
-                                <p className="text-[#5a5a80] text-xs">pri {op.km_opomnik.toLocaleString()} km</p>
-                              )}
+                              {op.datum && <p className="text-[#5a5a80] text-xs">{new Date(op.datum).toLocaleDateString('sl-SI')}</p>}
+                              {op.km_opomnik && <p className="text-[#5a5a80] text-xs">pri {op.km_opomnik.toLocaleString()} km</p>}
                             </div>
                           </div>
                           {dni !== null && (
@@ -270,25 +266,20 @@ export default function Dashboard() {
         </>
       )}
 
-      {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-around py-3 px-4">
-        <button onClick={() => window.location.href = '/dashboard'}
-          className="flex flex-col items-center gap-1">
+        <button onClick={() => window.location.href = '/garaza'} className="flex flex-col items-center gap-1">
           <span className="text-xl">🏠</span>
           <span className="text-[9px] uppercase tracking-wider text-[#6c63ff] font-bold">Domov</span>
         </button>
-        <button onClick={() => window.location.href = '/vnos-goriva'}
-          className="flex flex-col items-center gap-1">
+        <button onClick={() => window.location.href = '/vnos-goriva'} className="flex flex-col items-center gap-1">
           <span className="text-xl">⛽</span>
           <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Gorivo</span>
         </button>
-        <button onClick={() => window.location.href = '/vnos-servisa'}
-          className="flex flex-col items-center gap-1">
+        <button onClick={() => window.location.href = '/vnos-servisa'} className="flex flex-col items-center gap-1">
           <span className="text-xl">🔧</span>
           <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Servis</span>
         </button>
-        <button onClick={() => window.location.href = '/stroski'}
-          className="flex flex-col items-center gap-1">
+        <button onClick={() => window.location.href = '/stroski'} className="flex flex-col items-center gap-1">
           <span className="text-xl">📊</span>
           <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Stroški</span>
         </button>
