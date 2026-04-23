@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { HomeButton, BackButton } from '@/lib/nav'
 
 export default function Opomniki() {
   const [avto, setAvto] = useState<any>(null)
@@ -19,34 +20,23 @@ export default function Opomniki() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
-      if (!carId) { window.location.href = '/dashboard'; return }
-
-      const { data: avtoData } = await supabase
-        .from('cars').select('*').eq('id', carId).single()
+      if (!carId) { window.location.href = '/garaza'; return }
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(avtoData)
-
-      const { data: opData } = await supabase
-        .from('reminders').select('*').eq('car_id', carId)
-        .order('datum', { ascending: true })
+      const { data: opData } = await supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setOpomniki(opData || [])
       setLoading(false)
     }
     init()
   }, [])
 
-  // Izračun dni do datuma
   const dniDo = (datum: string) => {
     if (!datum) return null
-    const danes = new Date()
-    const cilj = new Date(datum)
-    const diff = Math.ceil((cilj.getTime() - danes.getTime()) / (1000 * 60 * 60 * 24))
-    return diff
+    return Math.ceil((new Date(datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  // Barva glede na dni
   const barva = (dni: number | null) => {
     if (dni === null) return { text: 'text-[#5a5a80]', bg: 'bg-[#13131f]', border: 'border-[#1e1e32]' }
     if (dni <= 7) return { text: 'text-[#ef4444]', bg: 'bg-[#ef444411]', border: 'border-[#ef444433]' }
@@ -54,73 +44,38 @@ export default function Opomniki() {
     return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
   }
 
-  const tipIkona: any = {
-    registracija: '📋',
-    vinjeta: '🛣️',
-    tehnicni: '🔍',
-    servis: '🔧',
-    zavarovanje: '🛡️',
-  }
-
-  const tipNaziv: any = {
-    registracija: 'Registracija',
-    vinjeta: 'Vinjeta',
-    tehnicni: 'Tehnični pregled',
-    servis: 'Servis',
-    zavarovanje: 'Zavarovanje',
-  }
+  const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️' }
+  const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje' }
 
   const shrani = async () => {
-    if (!datum && !kmOpomnik) {
-      setMessage('Vnesi datum ali km!')
-      return
-    }
+    if (!datum && !kmOpomnik) { setMessage('Vnesi datum ali km!'); return }
     setSaving(true)
-    setMessage('')
-
     const { error } = await supabase.from('reminders').insert({
-      car_id: avto.id,
-      tip,
-      datum: datum || null,
+      car_id: avto.id, tip, datum: datum || null,
       km_opomnik: kmOpomnik ? parseInt(kmOpomnik) : null,
       opozorilo_dni_prej: parseInt(opozoriloDni),
     })
-
-    if (error) {
-      setMessage('Napaka: ' + error.message)
-    } else {
-      // Osveži seznam
-      const { data } = await supabase
-        .from('reminders').select('*').eq('car_id', avto.id)
-        .order('datum', { ascending: true })
+    if (error) { setMessage('Napaka: ' + error.message) }
+    else {
+      const { data } = await supabase.from('reminders').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
       setOpomniki(data || [])
-      setShowForm(false)
-      setDatum('')
-      setKmOpomnik('')
-      setMessage('')
+      setShowForm(false); setDatum(''); setKmOpomnik(''); setMessage('')
     }
     setSaving(false)
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje...</p>
-    </div>
-  )
+  if (loading) return <div className="min-h-screen bg-[#080810] flex items-center justify-center"><p className="text-[#5a5a80]">Nalaganje...</p></div>
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-24">
-
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => window.location.href = '/dashboard'}
-          className="text-[#5a5a80] hover:text-white text-lg">←</button>
+        <BackButton />
         <div>
           <h1 className="text-xl font-bold text-white">🔔 Opomniki</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
         </div>
       </div>
 
-      {/* Opomniki seznam */}
       {opomniki.length === 0 && !showForm ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center mb-4">
           <p className="text-4xl mb-3">🔔</p>
@@ -138,7 +93,7 @@ export default function Opomniki() {
                   <span className="text-2xl">{tipIkona[op.tip] || '🔔'}</span>
                   <div>
                     <p className="text-white font-semibold">{tipNaziv[op.tip] || op.tip}</p>
-                    {op.datum && <p className="text-[#5a5a80] text-xs mt-1">{op.datum}</p>}
+                    {op.datum && <p className="text-[#5a5a80] text-xs mt-1">{new Date(op.datum).toLocaleDateString('sl-SI')}</p>}
                     {op.km_opomnik && <p className="text-[#5a5a80] text-xs">pri {op.km_opomnik.toLocaleString()} km</p>}
                   </div>
                 </div>
@@ -154,11 +109,9 @@ export default function Opomniki() {
         </div>
       )}
 
-      {/* Forma za dodajanje */}
       {showForm && (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4 flex flex-col gap-4">
           <h2 className="text-white font-semibold">Dodaj opomnik</h2>
-
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Tip</label>
             <select value={tip} onChange={e => setTip(e.target.value)}
@@ -170,20 +123,16 @@ export default function Opomniki() {
               <option value="zavarovanje">🛡️ Zavarovanje</option>
             </select>
           </div>
-
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Datum poteka</label>
             <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
           </div>
-
           <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Ali pri km (za servis)</label>
-            <input type="number" value={kmOpomnik} onChange={e => setKmOpomnik(e.target.value)}
-              placeholder="npr. 60000"
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Ali pri km</label>
+            <input type="number" value={kmOpomnik} onChange={e => setKmOpomnik(e.target.value)} placeholder="npr. 60000"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
           </div>
-
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opozori X dni prej</label>
             <select value={opozoriloDni} onChange={e => setOpozoriloDni(e.target.value)}
@@ -194,27 +143,16 @@ export default function Opomniki() {
               <option value="60">60 dni prej</option>
             </select>
           </div>
-
-          {message && (
-            <div className="p-3 rounded-xl text-sm border bg-[#ef444422] border-[#ef444444] text-[#fca5a5]">
-              {message}
-            </div>
-          )}
-
+          {message && <div className="p-3 rounded-xl text-sm border bg-[#ef444422] border-[#ef444444] text-[#fca5a5]">{message}</div>}
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setShowForm(false)}
-              className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-3 rounded-xl text-sm">
-              Prekliči
-            </button>
-            <button onClick={shrani} disabled={saving}
-              className="bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 text-sm">
+            <button onClick={() => setShowForm(false)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-3 rounded-xl text-sm">Prekliči</button>
+            <button onClick={shrani} disabled={saving} className="bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 text-sm">
               {saving ? 'Shranjujem...' : 'Shrani'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Dodaj gumb */}
       {!showForm && (
         <button onClick={() => setShowForm(true)}
           className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
@@ -222,6 +160,7 @@ export default function Opomniki() {
         </button>
       )}
 
+      <HomeButton />
     </div>
   )
 }

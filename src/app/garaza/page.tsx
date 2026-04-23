@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import { BottomNav } from '@/lib/nav'
 
 export default function Garaza() {
   const [avti, setAvti] = useState<any[]>([])
@@ -17,7 +18,7 @@ export default function Garaza() {
 
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
 
       setAvti(data || [])
       setLoading(false)
@@ -30,10 +31,7 @@ export default function Garaza() {
     window.location.href = '/'
   }
 
-  // Drag & Drop handlers
-  const onDragStart = (index: number) => {
-    setDragIndex(index)
-  }
+  const onDragStart = (index: number) => setDragIndex(index)
 
   const onDragEnter = (index: number) => {
     dragOver.current = index
@@ -48,7 +46,6 @@ export default function Garaza() {
   const onDragEnd = async () => {
     setDragIndex(null)
     dragOver.current = null
-    // Shrani nov vrstni red v bazo
     for (let i = 0; i < avti.length; i++) {
       await supabase.from('cars').update({ vrstni_red: i }).eq('id', avti[i].id)
     }
@@ -61,7 +58,7 @@ export default function Garaza() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen bg-[#080810] flex flex-col max-w-2xl mx-auto pb-20">
 
       {/* Header */}
       <div className="flex justify-between items-center px-5 py-5 flex-shrink-0">
@@ -98,7 +95,6 @@ export default function Garaza() {
         </p>
       )}
 
-      {/* Avti seznam */}
       {avti.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-5">
           <div className="text-center">
@@ -127,13 +123,9 @@ export default function Garaza() {
               } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
               style={{ height: '20vh', minHeight: '130px', maxHeight: '180px' }}
             >
-              {/* Slika ali gradient */}
               {avto.slika_url ? (
-                <img
-                  src={avto.slika_url}
-                  alt={`${avto.znamka} ${avto.model}`}
-                  className="absolute inset-0 w-full h-full object-cover object-center"
-                />
+                <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                  className="absolute inset-0 w-full h-full object-cover object-center" />
               ) : (
                 <div className={`absolute inset-0 ${
                   index % 2 === 0
@@ -141,19 +133,9 @@ export default function Garaza() {
                     : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'
                 }`} />
               )}
-
-              {/* Overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-
-              {/* Leva črta */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 ${urejanje ? 'bg-[#3ecfcf]' : 'bg-[#6c63ff]'}`} />
-
-              {/* Drag ikona */}
-              {urejanje && (
-                <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>
-              )}
-
-              {/* Podatki */}
+              <div className={`absolute left-0 top-0 bottom-0 w-0.5 ${urejanje ? 'bg-[#3ecfcf]' : 'bg-[#2a2a40]'}`} />
+              {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
               <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
                 <div>
                   <h2 className="text-white font-bold text-lg leading-tight drop-shadow-lg">
@@ -165,7 +147,6 @@ export default function Garaza() {
                     {avto.km_trenutni && ` · ${avto.km_trenutni.toLocaleString()} km`}
                   </p>
                 </div>
-
                 {avto.tablica && (
                   <div className="flex flex-col items-center mb-0.5">
                     <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
@@ -180,12 +161,10 @@ export default function Garaza() {
                   </div>
                 )}
               </div>
-
               <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2a2a40]" />
             </div>
           ))}
 
-          {/* Dodaj avto */}
           {!urejanje && (
             <div
               onClick={() => window.location.href = '/dodaj-avto'}
@@ -201,6 +180,8 @@ export default function Garaza() {
           )}
         </div>
       )}
+
+      <BottomNav aktivna="garaza" />
     </div>
   )
 }

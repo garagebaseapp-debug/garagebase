@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { HomeButton, BackButton } from '@/lib/nav'
 
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
@@ -21,13 +22,11 @@ export default function Dashboard() {
 
       if (avtiData && avtiData.length > 0) {
         setAvti(avtiData)
-
         const params = new URLSearchParams(window.location.search)
         const carIdFromUrl = params.get('car')
         const izbrani = carIdFromUrl
           ? avtiData.find((a: any) => a.id === carIdFromUrl) || avtiData[0]
           : avtiData[0]
-
         setAktivniAvto(izbrani)
         await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0)
       }
@@ -51,13 +50,11 @@ export default function Dashboard() {
       const zadnjiKm = gorivoData[gorivoData.length - 1].km
       const skupajKm = zadnjiKm - avtoKmStart
       const skupajPoraba = skupajKm > 0 ? (skupajLitrov / skupajKm) * 100 : null
-
       const zadnje = gorivoData[gorivoData.length - 1]
       const predZadnje = gorivoData.length >= 2 ? gorivoData[gorivoData.length - 2] : null
       const prejsnjiKm = predZadnje ? predZadnje.km : avtoKmStart
       const kmRazlika = zadnje.km - prejsnjiKm
       const zadnjaPoraba = kmRazlika > 0 ? (zadnje.litri / kmRazlika) * 100 : null
-
       setPoraba({ skupaj: skupajPoraba, zadnja: zadnjaPoraba })
     } else {
       setPoraba({ skupaj: null, zadnja: null })
@@ -67,11 +64,6 @@ export default function Dashboard() {
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
     await naloziPodatke(avto.id, avto.km_trenutni || 0)
-  }
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/'
   }
 
   const dniDo = (datum: string) => {
@@ -96,16 +88,14 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-28">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-24">
 
-      <div className="flex justify-between items-center mb-5">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-5">
+        <BackButton href="/garaza" />
         <h1 className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
         </h1>
-        <button onClick={handleLogout}
-          className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-xs px-3 py-2 rounded-xl hover:text-white transition-colors">
-          Odjava
-        </button>
       </div>
 
       {avti.length === 0 ? (
@@ -212,22 +202,26 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                <div className="px-5 pb-5 grid grid-cols-4 gap-2">
+                <div className="px-5 pb-5 grid grid-cols-5 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>⛽</span><span className="text-xs">Gorivo</span>
+                    <span>⛽</span><span className="text-[10px]">Gorivo</span>
                   </button>
                   <button onClick={() => window.location.href = `/zgodovina-servisa?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
-                    <span>🔧</span><span className="text-xs">Servis</span>
+                    <span>🔧</span><span className="text-[10px]">Servis</span>
                   </button>
                   <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex flex-col items-center gap-1">
-                    <span>🔔</span><span className="text-xs">Opomniki</span>
+                    <span>🔔</span><span className="text-[10px]">Opomniki</span>
+                  </button>
+                  <button onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`}
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
+                    <span>📊</span><span className="text-[10px]">Stroški</span>
                   </button>
                   <button onClick={() => window.location.href = `/nastavitve-avta?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex flex-col items-center gap-1">
-                    <span>⚙️</span><span className="text-xs">Nastavitve</span>
+                    <span>⚙️</span><span className="text-[10px]">Nastavitve</span>
                   </button>
                 </div>
               </div>
@@ -266,29 +260,7 @@ export default function Dashboard() {
         </>
       )}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-around py-3 px-4">
-        <button onClick={() => window.location.href = '/garaza'} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#6c63ff] font-bold">Domov</span>
-        </button>
-        <button onClick={() => window.location.href = '/vnos-goriva'} className="flex flex-col items-center gap-1">
-          <span className="text-xl">⛽</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Gorivo</span>
-        </button>
-        <button onClick={() => window.location.href = '/vnos-servisa'} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🔧</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Servis</span>
-        </button>
-        <button onClick={() => window.location.href = '/stroski'} className="flex flex-col items-center gap-1">
-          <span className="text-xl">📊</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Stroški</span>
-        </button>
-        <button className="flex flex-col items-center gap-1">
-          <span className="text-xl">⚙️</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Več</span>
-        </button>
-      </div>
-
+      <HomeButton />
     </div>
   )
 }
