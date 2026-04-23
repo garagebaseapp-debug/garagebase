@@ -37,7 +37,7 @@ export default function Stroski() {
   if (loading) return <div className="min-h-screen bg-[#080810] flex items-center justify-center"><p className="text-[#5a5a80]">Nalaganje...</p></div>
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
       <div className="flex items-center gap-3 mb-6">
         <BackButton href="/stroski-garaza" />
         <div>

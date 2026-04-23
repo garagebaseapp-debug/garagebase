@@ -40,7 +40,7 @@ export default function VnosServisa() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
         <h1 className="text-xl font-bold text-white">🔧 Vnos servisa</h1>

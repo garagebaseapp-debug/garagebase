@@ -88,7 +88,7 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 max-w-md mx-auto pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
       {/* Header */}
       <div className="flex items-center gap-3 mb-5">
@@ -110,19 +110,21 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
+          {/* Zavihki — subtilni */}
+          <div className="flex gap-2 mb-5 overflow-x-auto pb-1"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {avti.map((avto) => (
               <button key={avto.id} onClick={() => preklopAvto(avto)}
-                className={`flex-shrink-0 px-4 py-2 rounded-2xl text-sm font-semibold transition-all ${
+                className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
                   aktivniAvto?.id === avto.id
-                    ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
-                    : 'bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] hover:text-white'
+                    ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
+                    : 'bg-transparent border-[#1e1e32] text-[#3a3a5a] hover:text-[#5a5a80]'
                 }`}>
                 {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)} {avto.model.toUpperCase()}
               </button>
             ))}
             <button onClick={() => window.location.href = '/dodaj-avto'}
-              className="flex-shrink-0 px-4 py-2 rounded-2xl text-sm font-semibold bg-transparent border border-dashed border-[#2a2a40] text-[#6c63ff] hover:border-[#6c63ff] transition-all">
+              className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold bg-transparent border border-dashed border-[#1e1e32] text-[#3a3a5a] hover:text-[#5a5a80] transition-all">
               + Dodaj
             </button>
           </div>
