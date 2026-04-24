@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 
@@ -12,8 +12,19 @@ export default function VnosServisa() {
   const [cena, setCena] = useState('')
   const [carId, setCarId] = useState('')
   const [avti, setAvti] = useState<any[]>([])
+  const [zadnjiKm, setZadnjiKm] = useState(0)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [slike, setSlike] = useState<File[]>([])
+  const [slikePreview, setSlikePreview] = useState<string[]>([])
+  const [uploadProgress, setUploadProgress] = useState(false)
+  const [servisHistory, setServisHistory] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [filteredServis, setFilteredServis] = useState<string[]>([])
+  const servisRef = useRef<HTMLDivElement>(null)
+
+  const danes = new Date().toISOString().split('T')[0]
+  const jeNaknaden = datum < danes
 
   useEffect(() => {
     const init = async () => {
@@ -21,76 +32,263 @@ export default function VnosServisa() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
-      const { data } = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)
-      if (data && data.length > 0) { setAvti(data); setCarId(carParam || data[0].id) }
+      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni').eq('user_id', user.id)
+      if (data && data.length > 0) {
+        setAvti(data)
+        const izbrani = data.find((a: any) => a.id === carParam) || data[0]
+        setCarId(izbrani.id)
+        await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
+        await naloziServisHistory()
+      }
     }
     init()
+
+    const handleClick = (e: MouseEvent) => {
+      if (servisRef.current && !servisRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  const naloziZadnjiKm = async (id: string, kmAvta: number) => {
+    const { data: servisData } = await supabase
+      .from('service_logs').select('km').eq('car_id', id)
+      .order('km', { ascending: false }).limit(1)
+    const { data: gorivoData } = await supabase
+      .from('fuel_logs').select('km').eq('car_id', id)
+      .order('km', { ascending: false }).limit(1)
+    const maxServis = servisData?.[0]?.km || 0
+    const maxGorivo = gorivoData?.[0]?.km || 0
+    setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
+  }
+
+  const naloziServisHistory = async () => {
+    const { data } = await supabase
+      .from('service_logs')
+      .select('servis')
+      .not('servis', 'is', null)
+    if (data) {
+      const unikatni = [...new Set(data.map((v: any) => v.servis).filter(Boolean))]
+      setServisHistory(unikatni)
+    }
+  }
+
+  const menjavaAvta = async (noviId: string) => {
+    setCarId(noviId)
+    const avto = avti.find((a: any) => a.id === noviId)
+    if (avto) await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
+  }
+
+  const handleServisChange = (value: string) => {
+    setServis(value)
+    if (value.length > 0) {
+      const filtered = servisHistory.filter(s =>
+        s.toLowerCase().includes(value.toLowerCase())
+      )
+      setFilteredServis(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } else {
+      setShowSuggestions(false)
+    }
+  }
+
+  const dodajSliko = (e: any) => {
+    const files = Array.from(e.target.files) as File[]
+    if (slike.length + files.length > 3) { setMessage('Največ 3 slike na servis!'); return }
+    const noveSlike = [...slike, ...files].slice(0, 3)
+    setSlike(noveSlike)
+    setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
+    setMessage('')
+  }
+
+  const odstraniSliko = (index: number) => {
+    const noveSlike = slike.filter((_, i) => i !== index)
+    setSlike(noveSlike)
+    setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
+  }
 
   const shrani = async () => {
     if (!km || !opis) { setMessage('Km in opis sta obvezna!'); return }
+
+    const vneseniKm = parseInt(km)
+    if (vneseniKm <= zadnjiKm) {
+      setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`)
+      return
+    }
+
     setLoading(true)
-    const { error } = await supabase.from('service_logs').insert({
-      car_id: carId, datum, km: parseInt(km), opis,
-      servis: servis || null, cena: cena ? parseFloat(cena) : null,
-    })
-    if (error) setMessage('Napaka: ' + error.message)
-    else { setMessage('✅ Servis uspešno shranjen!'); setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1000) }
+    setMessage('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+
+    const { data: servisData, error } = await supabase.from('service_logs').insert({
+      car_id: carId,
+      datum,
+      km: vneseniKm,
+      opis: jeNaknaden ? `${opis} [Naknadno vnešeno: ${danes}]` : opis,
+      servis: servis || null,
+      cena: cena ? parseFloat(cena) : null,
+    }).select().single()
+
+    if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
+
+    // Posodobi km avta
+    await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+
+    if (slike.length > 0) {
+      setUploadProgress(true)
+      const slikeUrls: string[] = []
+
+      for (let i = 0; i < slike.length; i++) {
+        const file = slike[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${user.id}/${servisData.id}_${i}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage
+          .from('service-documents')
+          .upload(fileName, file, { upsert: true })
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('service-documents')
+            .getPublicUrl(fileName)
+          slikeUrls.push(urlData.publicUrl)
+        }
+      }
+
+      if (slikeUrls.length > 0) {
+        await supabase.from('service_logs')
+          .update({ foto_url: slikeUrls.join(',') })
+          .eq('id', servisData.id)
+      }
+      setUploadProgress(false)
+    }
+
+    setMessage('✅ Servis uspešno shranjen!')
+    setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1500)
     setLoading(false)
   }
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
         <h1 className="text-xl font-bold text-white">🔧 Vnos servisa</h1>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
+
         {avti.length > 1 && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Avto</label>
-            <select value={carId} onChange={e => setCarId(e.target.value)}
+            <select value={carId} onChange={e => menjavaAvta(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors">
-              {avti.map(a => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
+              {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
         )}
+
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Datum</label>
           <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${jeNaknaden ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+          {jeNaknaden && (
+            <div className="mt-2 p-2 rounded-lg bg-[#f59e0b22] border border-[#f59e0b44]">
+              <p className="text-[#f59e0b] text-xs">⚠️ Naknadno vnešen servis — zabeležen datum vnosa ({danes})</p>
+            </div>
+          )}
         </div>
+
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Kilometri *</label>
-          <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="npr. 54200"
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
+            Kilometri * <span className="text-[#3a3a5a] normal-case">(zadnji: {zadnjiKm.toLocaleString()} km)</span>
+          </label>
+          <input type="number" value={km} onChange={e => setKm(e.target.value)}
+            placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
+            className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+          {km && parseInt(km) <= zadnjiKm && (
+            <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
+              <p className="text-[#ef4444] text-xs">⛔ Km morajo biti večji od {zadnjiKm.toLocaleString()} km!</p>
+            </div>
+          )}
         </div>
+
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opis dela *</label>
-          <textarea value={opis} onChange={e => setOpis(e.target.value)} placeholder="npr. Menjava olja + filter" rows={3}
+          <textarea value={opis} onChange={e => setOpis(e.target.value)}
+            placeholder="npr. Menjava olja + filter" rows={3}
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors resize-none" />
         </div>
-        <div>
+
+        {/* Ime servisa z autocomplete */}
+        <div ref={servisRef} className="relative">
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Ime servisa (po želji)</label>
-          <input type="text" value={servis} onChange={e => setServis(e.target.value)} placeholder="npr. Volvo Center Ljubljana"
+          <input type="text" value={servis}
+            onChange={e => handleServisChange(e.target.value)}
+            onFocus={() => servis.length > 0 && filteredServis.length > 0 && setShowSuggestions(true)}
+            placeholder="npr. Volvo Center Ljubljana"
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a2e] border border-[#2a2a40] rounded-xl overflow-hidden z-10">
+              {filteredServis.map((s, i) => (
+                <button key={i} onClick={() => { setServis(s); setShowSuggestions(false) }}
+                  className="w-full text-left px-4 py-2.5 text-white text-sm hover:bg-[#f59e0b22] transition-colors border-b border-[#2a2a40] last:border-0">
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
+
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena (€)</label>
           <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder="npr. 320"
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
         </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
+            Slike računov <span className="text-[#3a3a5a] normal-case">(največ 3, max 2MB vsaka)</span>
+          </label>
+          {slikePreview.length > 0 && (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {slikePreview.map((preview, index) => (
+                <div key={index} className="relative rounded-xl overflow-hidden aspect-square">
+                  <img src={preview} alt={`Račun ${index + 1}`} className="w-full h-full object-cover" />
+                  <button onClick={() => odstraniSliko(index)}
+                    className="absolute top-1 right-1 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-500 transition-colors">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          {slike.length < 3 && (
+            <label className="flex items-center gap-3 bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl px-4 py-3 cursor-pointer hover:border-[#f59e0b] transition-colors">
+              <span className="text-2xl">📷</span>
+              <div>
+                <p className="text-[#5a5a80] text-sm font-semibold">Dodaj sliko računa</p>
+                <p className="text-[#3a3a5a] text-xs">{slike.length}/3 slik</p>
+              </div>
+              <input type="file" accept="image/*" multiple onChange={dodajSliko} className="hidden" />
+            </label>
+          )}
+        </div>
+
         {message && (
-          <div className={`p-3 rounded-xl text-sm border ${
-            message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
-          }`}>{message}</div>
+          <div className={`p-3 rounded-xl text-sm border ${message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'}`}>
+            {message}
+          </div>
         )}
-        <button onClick={shrani} disabled={loading}
+
+        <button onClick={shrani} disabled={loading || uploadProgress}
           className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2">
-          {loading ? 'Shranjevanje...' : 'Shrani servis →'}
+          {uploadProgress ? 'Nalaganje slik...' : loading ? 'Shranjevanje...' : 'Shrani servis →'}
         </button>
       </div>
+
       <HomeButton />
     </div>
   )

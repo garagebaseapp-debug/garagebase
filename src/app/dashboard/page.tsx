@@ -15,11 +15,9 @@ export default function Dashboard() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-
       const { data: avtiData } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
         .order('created_at', { ascending: false })
-
       if (avtiData && avtiData.length > 0) {
         setAvti(avtiData)
         const params = new URLSearchParams(window.location.search)
@@ -40,11 +38,9 @@ export default function Dashboard() {
       .from('reminders').select('*').eq('car_id', carId)
       .order('datum', { ascending: true })
     setOpomniki(opData || [])
-
     const { data: gorivoData } = await supabase
       .from('fuel_logs').select('*').eq('car_id', carId)
       .order('km', { ascending: true })
-
     if (gorivoData && gorivoData.length >= 1) {
       const skupajLitrov = gorivoData.reduce((s: number, v: any) => s + (v.litri || 0), 0)
       const zadnjiKm = gorivoData[gorivoData.length - 1].km
@@ -90,7 +86,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
-      {/* Header */}
       <div className="flex items-center gap-3 mb-5">
         <BackButton href="/garaza" />
         <h1 className="text-2xl font-bold text-white">
@@ -110,7 +105,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Zavihki — subtilni */}
           <div className="flex gap-2 mb-5 overflow-x-auto pb-1"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {avti.map((avto) => (
@@ -175,13 +169,8 @@ export default function Dashboard() {
                         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Trenutni km</p>
                         <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni.toLocaleString()} km</p>
                       </div>
-                      <div className="w-12 h-12 rounded-xl bg-[#1a1a2e] border border-[#2a2a40] flex items-center justify-center">
-                        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
-                          <path d="M4 22 L14 6 L24 22" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round"/>
-                          <path d="M8 22 L14 12 L20 22" stroke="#3ecfcf" strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
-                          <circle cx="14" cy="22" r="2" fill="#6c63ff"/>
-                          <line x1="2" y1="22" x2="26" y2="22" stroke="#2a2a40" strokeWidth="1.5"/>
-                        </svg>
+                      <div className="w-12 h-12 rounded-xl bg-[#1a1a2e] border border-[#2a2a40] flex items-center justify-center text-2xl">
+                        🛣️
                       </div>
                     </div>
                   </div>

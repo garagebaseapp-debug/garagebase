@@ -69,21 +69,45 @@ export default function ZgodovinaServisa() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {vnosi.map((vnos) => (
-            <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
-                  <p className="text-[#5a5a80] text-xs mt-0.5">{vnos.km?.toLocaleString()} km{vnos.servis && ` · ${vnos.servis}`}</p>
+          {vnosi.map((vnos) => {
+            const imaSlike = vnos.foto_url && vnos.foto_url.length > 0
+            const jeNaknaden = vnos.opis?.includes('[Naknadno vnešeno:')
+            const opisBrezOznake = vnos.opis?.replace(/\s*\[Naknadno vnešeno:.*?\]/, '') || ''
+
+            return (
+              <div key={vnos.id}
+                onClick={() => window.location.href = `/servis-detajl?id=${vnos.id}&car=${avto?.id}`}
+                className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 cursor-pointer hover:border-[#f59e0b33] transition-colors active:scale-[0.99]">
+
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-semibold">
+                        {new Date(vnos.datum).toLocaleDateString('sl-SI')}
+                      </p>
+                      {jeNaknaden && (
+                        <span className="text-[#f59e0b] text-xs bg-[#f59e0b22] px-1.5 py-0.5 rounded-md">⚠️ naknadno</span>
+                      )}
+                    </div>
+                    <p className="text-[#5a5a80] text-xs mt-0.5">
+                      {vnos.km?.toLocaleString()} km{vnos.servis && ` · ${vnos.servis}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {imaSlike && <span className="text-[#5a5a80] text-sm">📎</span>}
+                    {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
+                  </div>
                 </div>
-                {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
+
+                <div className="bg-[#13131f] rounded-xl p-3 mt-2">
+                  <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Opravljeno delo</p>
+                  <p className="text-white text-sm">{opisBrezOznake}</p>
+                </div>
+
+                <p className="text-[#3a3a5a] text-xs mt-2 text-right">Tapni za detajle →</p>
               </div>
-              <div className="bg-[#13131f] rounded-xl p-3 mt-2">
-                <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Opravljeno delo</p>
-                <p className="text-white text-sm">{vnos.opis}</p>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

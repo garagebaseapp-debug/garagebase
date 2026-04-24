@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 
@@ -12,8 +12,14 @@ export default function VnosGoriva() {
   const [postaja, setPostaja] = useState('')
   const [carId, setCarId] = useState('')
   const [avti, setAvti] = useState<any[]>([])
+  const [zadnjiKm, setZadnjiKm] = useState(0)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [postajeHistory, setPostajeHistory] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [filteredPostaje, setFilteredPostaje] = useState<string[]>([])
+  const [poslusam, setPoslusam] = useState<string | null>(null)
+  const postajRef = useRef<HTMLDivElement>(null)
 
   const cenaSkupaj = litri && cenaNaLiter
     ? (parseFloat(litri) * parseFloat(cenaNaLiter)).toFixed(2)
@@ -25,25 +31,154 @@ export default function VnosGoriva() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
-      const { data } = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)
-      if (data && data.length > 0) { setAvti(data); setCarId(carParam || data[0].id) }
+      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni').eq('user_id', user.id)
+      if (data && data.length > 0) {
+        setAvti(data)
+        const izbrani = data.find((a: any) => a.id === carParam) || data[0]
+        setCarId(izbrani.id)
+        await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
+        await naloziPostaje()
+      }
     }
     init()
+    const handleClick = (e: MouseEvent) => {
+      if (postajRef.current && !postajRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  const naloziZadnjiKm = async (id: string, kmAvta: number) => {
+    const { data: servisData } = await supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
+    const { data: gorivoData } = await supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
+    const maxServis = servisData?.[0]?.km || 0
+    const maxGorivo = gorivoData?.[0]?.km || 0
+    setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
+  }
+
+  const naloziPostaje = async () => {
+    const { data } = await supabase.from('fuel_logs').select('postaja').not('postaja', 'is', null)
+    if (data) {
+      const unikatne = [...new Set(data.map((v: any) => v.postaja).filter(Boolean))] as string[]
+      setPostajeHistory(unikatne)
+    }
+  }
+
+  const menjavaAvta = async (noviId: string) => {
+    setCarId(noviId)
+    const avto = avti.find((a: any) => a.id === noviId)
+    if (avto) await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
+  }
+
+  const handlePostajaChange = (value: string) => {
+    setPostaja(value)
+    if (value.length > 0) {
+      const filtered = postajeHistory.filter(p => p.toLowerCase().startsWith(value.toLowerCase()))
+      setFilteredPostaje(filtered)
+      setShowSuggestions(filtered.length > 0)
+    } else {
+      setFilteredPostaje([])
+      setShowSuggestions(false)
+    }
+  }
+
+  const pretвориVStevilko = (tekst: string): number | null => {
+    // Direktno število
+    const direktno = parseFloat(tekst.replace(',', '.').replace(/\s/g, ''))
+    if (!isNaN(direktno)) return direktno
+
+    // Zamenjaj slovenske besede
+    let rezultat = tekst
+      .replace(/sto\s*šestdeset\s*dve?\s*tisoč/gi, '162000')
+      .replace(/sto\s*sedemdeset\s*dve?\s*tisoč/gi, '172000')
+      .replace(/sto\s*osemdeset\s*dve?\s*tisoč/gi, '182000')
+      .replace(/sto\s*devetdeset\s*dve?\s*tisoč/gi, '192000')
+      .replace(/(\d+)\s*tisoč\s*(\d+)/gi, (_, a, b) => String(parseInt(a) * 1000 + parseInt(b)))
+      .replace(/(\d+)\s*tisoč/gi, (_, a) => String(parseInt(a) * 1000))
+      .replace(/tisoč/gi, '1000')
+      .replace(/sto/gi, '100')
+      .replace(/nič/gi, '0').replace(/ena|eno/gi, '1').replace(/dva|dve/gi, '2')
+      .replace(/tri\b/gi, '3').replace(/štiri/gi, '4').replace(/pet\b/gi, '5')
+      .replace(/šest\b/gi, '6').replace(/sedem\b/gi, '7').replace(/osem\b/gi, '8')
+      .replace(/devet\b/gi, '9').replace(/deset\b/gi, '10')
+      .replace(/dvajset/gi, '20').replace(/trideset/gi, '30')
+      .replace(/štirideset/gi, '40').replace(/petdeset/gi, '50')
+      .replace(/šestdeset/gi, '60').replace(/sedemdeset/gi, '70')
+      .replace(/osemdeset/gi, '80').replace(/devetdeset/gi, '90')
+      .replace(/\s+/g, '')
+
+    const stevilka = parseFloat(rezultat)
+    if (!isNaN(stevilka)) return stevilka
+
+    return null
+  }
+
+  const glasovniVnos = (polje: string) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) { setMessage('Glasovni vnos ni podprt v tem brskalniku.'); return }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'sl-SI'
+    recognition.continuous = false
+    recognition.interimResults = false
+    setPoslusam(polje)
+
+    recognition.onresult = (event: any) => {
+      const tekst = event.results[0][0].transcript.toLowerCase().trim()
+      console.log('Slišano:', tekst)
+
+      if (polje === 'postaja') {
+        setPostaja(tekst)
+      } else {
+        const stevilka = pretвориVStevilko(tekst)
+        if (stevilka !== null) {
+          if (polje === 'km') setKm(stevilka.toString())
+          if (polje === 'litri') setLitri(stevilka.toString())
+          if (polje === 'cena') setCenaNaLiter(stevilka.toString())
+        } else {
+          setMessage(`Nisem razumel: "${tekst}". Poskusi znova.`)
+        }
+      }
+      setPoslusam(null)
+    }
+
+    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu. Poskusi znova.'); setPoslusam(null) }
+    recognition.onend = () => setPoslusam(null)
+    recognition.start()
+  }
+
+  const MicButton = ({ polje }: { polje: string }) => (
+    <button type="button" onClick={() => glasovniVnos(polje)}
+      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+        poslusam === polje
+          ? 'bg-[#ef4444] text-white animate-pulse'
+          : 'bg-[#13131f] border border-[#2a2a40] text-[#5a5a80] hover:border-[#6c63ff] hover:text-[#6c63ff]'
+      }`}>
+      🎤
+    </button>
+  )
 
   const shrani = async () => {
     if (!km || !litri) { setMessage('Km in litri sta obvezna!'); return }
+    const vneseniKm = parseInt(km)
+    if (vneseniKm <= zadnjiKm) { setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`); return }
     setLoading(true)
     setMessage('')
+
     const { error } = await supabase.from('fuel_logs').insert({
-      car_id: carId, datum, km: parseInt(km),
+      car_id: carId, datum, km: vneseniKm,
       litri: parseFloat(litri),
       cena_na_liter: cenaNaLiter ? parseFloat(cenaNaLiter) : null,
       cena_skupaj: cenaSkupaj ? parseFloat(cenaSkupaj) : null,
       postaja: postaja || null,
     })
-    if (error) setMessage('Napaka: ' + error.message)
-    else { setMessage('✅ Tankanje uspešno shranjeno!'); setTimeout(() => window.location.href = `/zgodovina-goriva?car=${carId}`, 1000) }
+
+    if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
+    await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    setMessage('✅ Tankanje uspešno shranjeno!')
+    setTimeout(() => window.location.href = `/zgodovina-goriva?car=${carId}`, 1000)
     setLoading(false)
   }
 
@@ -55,14 +190,21 @@ export default function VnosGoriva() {
         <h1 className="text-xl font-bold text-white">⛽ Vnos goriva</h1>
       </div>
 
+      {poslusam && (
+        <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
+          <span className="text-xl animate-pulse">🎤</span>
+          <p className="text-[#ef4444] text-sm font-semibold">Poslušam... govori zdaj</p>
+        </div>
+      )}
+
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
 
         {avti.length > 1 && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Avto</label>
-            <select value={carId} onChange={e => setCarId(e.target.value)}
+            <select value={carId} onChange={e => menjavaAvta(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors">
-              {avti.map(a => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
+              {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
         )}
@@ -74,21 +216,39 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Kilometri ob tankanju *</label>
-          <input type="number" value={km} onChange={e => setKm(e.target.value)} placeholder="npr. 54200"
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
+            Kilometri * <span className="text-[#3a3a5a] normal-case">(zadnji: {zadnjiKm.toLocaleString()} km)</span>
+          </label>
+          <div className="flex gap-2">
+            <input type="number" value={km} onChange={e => setKm(e.target.value)}
+              placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
+              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
+                km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
+              }`} />
+            <MicButton polje="km" />
+          </div>
+          {km && parseInt(km) <= zadnjiKm && (
+            <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
+              <p className="text-[#ef4444] text-xs">⛔ Km morajo biti večji od {zadnjiKm.toLocaleString()} km!</p>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Litri *</label>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Litri *</label>
+          <div className="flex gap-2">
             <input type="number" step="0.01" value={litri} onChange={e => setLitri(e.target.value)} placeholder="npr. 52.4"
-              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            <MicButton polje="litri" />
           </div>
-          <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena/L (€)</label>
+        </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena/L (€)</label>
+          <div className="flex gap-2">
             <input type="number" step="0.001" value={cenaNaLiter} onChange={e => setCenaNaLiter(e.target.value)} placeholder="npr. 1.489"
-              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            <MicButton polje="cena" />
           </div>
         </div>
 
@@ -99,10 +259,32 @@ export default function VnosGoriva() {
           </div>
         )}
 
-        <div>
+        <div ref={postajRef} className="relative">
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Postaja (po želji)</label>
-          <input type="text" value={postaja} onChange={e => setPostaja(e.target.value)} placeholder="npr. OMV Ljubljana"
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          <div className="flex gap-2">
+            <input type="text" value={postaja}
+              onChange={e => handlePostajaChange(e.target.value)}
+              onFocus={() => {
+                if (postaja.length > 0) {
+                  const filtered = postajeHistory.filter(p => p.toLowerCase().startsWith(postaja.toLowerCase()))
+                  setFilteredPostaje(filtered)
+                  setShowSuggestions(filtered.length > 0)
+                }
+              }}
+              placeholder="npr. OMV Ljubljana"
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            <MicButton polje="postaja" />
+          </div>
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a2e] border border-[#2a2a40] rounded-xl overflow-hidden z-10">
+              {filteredPostaje.map((p, i) => (
+                <button key={i} onClick={() => { setPostaja(p); setShowSuggestions(false) }}
+                  className="w-full text-left px-4 py-2.5 text-white text-sm hover:bg-[#6c63ff22] transition-colors border-b border-[#2a2a40] last:border-0">
+                  {p}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {message && (
