@@ -1,0 +1,22 @@
+{
+  "name": "GarageBase",
+  "short_name": "GarageBase",
+  "description": "Tvoja avto evidenca — vse na enem mestu",
+  "start_url": "/garaza",
+  "display": "standalone",
+  "background_color": "#080810",
+  "theme_color": "#6c63ff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
