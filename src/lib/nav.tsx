@@ -24,9 +24,10 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
         <span className="text-xl">📊</span>
         <span className={`text-[9px] uppercase tracking-wider ${aktivna === 'stroski' ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>Stroški</span>
       </button>
-      <button className="flex flex-col items-center gap-1">
+      <button onClick={() => window.location.href = '/nastavitve'}
+        className="flex flex-col items-center gap-1">
         <span className="text-xl">⚙️</span>
-        <span className="text-[9px] uppercase tracking-wider text-[#3a3a5a]">Več</span>
+        <span className={`text-[9px] uppercase tracking-wider ${aktivna === 'nastavitve' ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>Več</span>
       </button>
     </div>
   )
