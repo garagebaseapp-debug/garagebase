@@ -2,86 +2,74 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BackButton } from '@/lib/nav'
-import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { BackButton, HomeButton } from '@/lib/nav'
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
-// PDF Styles
 const styles = StyleSheet.create({
-  page: {
-    backgroundColor: '#ffffff',
-    padding: 40,
-    fontFamily: 'Helvetica',
-  },
+  page: { backgroundColor: '#ffffff', padding: 40, fontFamily: 'Helvetica' },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 30,
-    paddingBottom: 20,
-    borderBottomWidth: 2,
-    borderBottomColor: '#6c63ff',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+    marginBottom: 30, paddingBottom: 20, borderBottomWidth: 2, borderBottomColor: '#6c63ff',
   },
   headerLeft: { flex: 1 },
   appName: { fontSize: 24, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   appSubtitle: { fontSize: 10, color: '#888888', marginTop: 4 },
-  reportDate: { fontSize: 9, color: '#888888', textAlign: 'right', marginTop: 4 },
-  carTitle: { fontSize: 20, fontFamily: 'Helvetica-Bold', color: '#111111', marginBottom: 4 },
-  carInfo: { fontSize: 10, color: '#555555', marginBottom: 2 },
-  section: { marginBottom: 20 },
-  sectionTitle: {
-    fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#6c63ff',
-    marginBottom: 8, paddingBottom: 4,
-    borderBottomWidth: 1, borderBottomColor: '#e0e0e0',
-  },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  statBox: {
-    flex: 1, backgroundColor: '#f8f8ff', borderRadius: 6,
-    padding: 10, borderWidth: 1, borderColor: '#e0e0e0',
-  },
-  statLabel: { fontSize: 8, color: '#888888', marginBottom: 2 },
-  statValue: { fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#111111' },
-  tableHeader: {
-    flexDirection: 'row', backgroundColor: '#f0f0ff',
-    padding: 6, borderRadius: 4, marginBottom: 4,
-  },
-  tableRow: {
-    flexDirection: 'row', padding: 6,
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
-  },
-  tableRowAlt: {
-    flexDirection: 'row', padding: 6,
-    backgroundColor: '#fafafa',
-    borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
-  },
-  colDate: { width: '18%', fontSize: 9, color: '#333333' },
-  colKm: { width: '18%', fontSize: 9, color: '#333333' },
-  colOpis: { width: '44%', fontSize: 9, color: '#333333' },
-  colCena: { width: '20%', fontSize: 9, color: '#333333', textAlign: 'right' },
-  colDateH: { width: '18%', fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  colKmH: { width: '18%', fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  colOpisH: { width: '44%', fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  colCenaH: { width: '20%', fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
-  footer: {
-    position: 'absolute', bottom: 30, left: 40, right: 40,
-    flexDirection: 'row', justifyContent: 'space-between',
-    borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 10,
-  },
-  footerText: { fontSize: 8, color: '#aaaaaa' },
-  badge: {
-    backgroundColor: '#6c63ff', borderRadius: 4,
-    paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start',
-  },
+  carTitle: { fontSize: 18, fontFamily: 'Helvetica-Bold', color: '#111111', marginBottom: 4 },
+  carInfo: { fontSize: 9, color: '#555555', marginBottom: 2 },
+  reportDate: { fontSize: 8, color: '#888888', marginTop: 4 },
+  badge: { backgroundColor: '#6c63ff', borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 6 },
   badgeText: { fontSize: 8, color: '#ffffff', fontFamily: 'Helvetica-Bold' },
+  section: { marginBottom: 18 },
+  sectionTitle: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#6c63ff', marginBottom: 6, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  statBox: { flex: 1, backgroundColor: '#f8f8ff', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  statLabel: { fontSize: 7, color: '#888888', marginBottom: 2 },
+  statValue: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#111111' },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#ebebff', padding: 6, borderRadius: 4, marginBottom: 2 },
+  tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  tableRowAlt: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 6, backgroundColor: '#fafafa', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  // Servisna knjiga stolpci
+  sDate: { width: '13%', fontSize: 8, color: '#333333' },
+  sKm: { width: '13%', fontSize: 8, color: '#333333' },
+  sOpis: { width: '44%', fontSize: 8, color: '#333333' },
+  sCena: { width: '15%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  sRacun: { width: '15%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  sDateH: { width: '13%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  sKmH: { width: '13%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  sOpisH: { width: '44%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  sCenaH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  sRacunH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  // Gorivo stolpci
+  gDate: { width: '15%', fontSize: 8, color: '#333333' },
+  gKm: { width: '15%', fontSize: 8, color: '#333333' },
+  gOpis: { width: '50%', fontSize: 8, color: '#333333' },
+  gCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  gDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gKmH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gOpisH: { width: '50%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  // Expenses stolpci
+  eDate: { width: '15%', fontSize: 8, color: '#333333' },
+  eKat: { width: '20%', fontSize: 8, color: '#333333' },
+  eOpis: { width: '45%', fontSize: 8, color: '#333333' },
+  eCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  eDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  eKatH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  eOpisH: { width: '45%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  eCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  opomba: { fontSize: 8, color: '#5555cc', marginTop: 8, padding: 8, backgroundColor: '#f0f0ff', borderRadius: 4, borderLeftWidth: 3, borderLeftColor: '#6c63ff' },
+  footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 8 },
+  footerText: { fontSize: 8, color: '#aaaaaa' },
 })
 
-// PDF Document komponenta
-const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const skupajLitrov = gorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString('sl-SI')
+  const imaPrivonke = servisi.some((s: any) => s.foto_url)
 
   return (
     <Document>
@@ -92,10 +80,8 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
           <View style={styles.headerLeft}>
             <Text style={styles.appName}>GarageBase</Text>
             <Text style={styles.appSubtitle}>Servisna knjiga in evidenca vozila</Text>
-            <View style={{ marginTop: 8 }}>
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>VERIFICIRAN REPORT</Text>
-              </View>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>VERIFICIRAN REPORT</Text>
             </View>
           </View>
           <View>
@@ -113,23 +99,23 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
 
         {/* Statistike */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Pregled stroškov</Text>
+          <Text style={styles.sectionTitle}>Pregled stroskov</Text>
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SKUPAJ STROŠKI</Text>
-              <Text style={styles.statValue}>{skupajVse.toFixed(2)} €</Text>
+              <Text style={styles.statLabel}>SKUPAJ STROSKI</Text>
+              <Text style={styles.statValue}>{skupajVse.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>GORIVO</Text>
-              <Text style={styles.statValue}>{skupajGorivo.toFixed(2)} €</Text>
+              <Text style={styles.statValue}>{skupajGorivo.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>SERVISI</Text>
-              <Text style={styles.statValue}>{skupajServis.toFixed(2)} €</Text>
+              <Text style={styles.statValue}>{skupajServis.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>OSTALO</Text>
-              <Text style={styles.statValue}>{skupajExpenses.toFixed(2)} €</Text>
+              <Text style={styles.statValue}>{skupajExpenses.toFixed(2)} EUR</Text>
             </View>
           </View>
           <View style={styles.statsRow}>
@@ -138,16 +124,16 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
               <Text style={styles.statValue}>{skupajLitrov.toFixed(0)} L</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SERVISOV</Text>
+              <Text style={styles.statLabel}>ST. SERVISOV</Text>
               <Text style={styles.statValue}>{servisi.length}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>TANKANIJ</Text>
+              <Text style={styles.statLabel}>ST. TANKANIJ</Text>
               <Text style={styles.statValue}>{gorivo.length}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>KM</Text>
-              <Text style={styles.statValue}>{avto.km_trenutni?.toLocaleString() || '—'}</Text>
+              <Text style={styles.statLabel}>TRENUTNI KM</Text>
+              <Text style={styles.statValue}>{avto.km_trenutni?.toLocaleString() || '-'}</Text>
             </View>
           </View>
         </View>
@@ -155,61 +141,68 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
         {/* Servisna knjiga */}
         {servisi.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔧 Servisna knjiga</Text>
+            <Text style={styles.sectionTitle}>Servisna knjiga</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.colDateH}>Datum</Text>
-              <Text style={styles.colKmH}>Km</Text>
-              <Text style={styles.colOpisH}>Opis</Text>
-              <Text style={styles.colCenaH}>Cena</Text>
+              <Text style={styles.sDateH}>Datum</Text>
+              <Text style={styles.sKmH}>Km</Text>
+              <Text style={styles.sOpisH}>Opis dela</Text>
+              <Text style={styles.sCenaH}>Cena</Text>
+              <Text style={styles.sRacunH}>Racun</Text>
             </View>
             {servisi.map((s: any, i: number) => (
               <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.colDate}>{new Date(s.datum).toLocaleDateString('sl-SI')}</Text>
-                <Text style={styles.colKm}>{s.km?.toLocaleString()}</Text>
-                <Text style={styles.colOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 60)}{s.servis ? ` (${s.servis})` : ''}</Text>
-                <Text style={styles.colCena}>{s.cena ? `${s.cena.toFixed(2)} €` : '—'}</Text>
+                <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.sKm}>{s.km?.toLocaleString()}</Text>
+                <Text style={styles.sOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 55)}{s.servis ? ` (${s.servis})` : ''}</Text>
+                <Text style={styles.sCena}>{s.cena ? `${s.cena.toFixed(2)} EUR` : '-'}</Text>
+                <Text style={styles.sRacun}>{s.foto_url ? '[ DA ]' : '-'}</Text>
               </View>
             ))}
+            {imaPrivonke && (
+              <Text style={styles.opomba}>
+                [ DA ] = Slike racunov so pritozene v GarageBase aplikaciji. Za ogled originalnih racunov zahtevajte dostop pri prodajalcu vozila ali obisite getgaragebase.com
+              </Text>
+            )}
           </View>
         )}
 
         {/* Gorivo */}
         {gorivo.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>⛽ Evidenca goriva</Text>
+            <Text style={styles.sectionTitle}>Evidenca goriva</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.colDateH}>Datum</Text>
-              <Text style={styles.colKmH}>Km</Text>
-              <Text style={styles.colOpisH}>Litri · Postaja</Text>
-              <Text style={styles.colCenaH}>Cena</Text>
+              <Text style={styles.gDateH}>Datum</Text>
+              <Text style={styles.gKmH}>Km</Text>
+              <Text style={styles.gOpisH}>Litri - Postaja</Text>
+              <Text style={styles.gCenaH}>Cena</Text>
             </View>
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.colDate}>{new Date(g.datum).toLocaleDateString('sl-SI')}</Text>
-                <Text style={styles.colKm}>{g.km?.toLocaleString()}</Text>
-                <Text style={styles.colOpis}>{g.litri} L{g.postaja ? ` · ${g.postaja}` : ''}</Text>
-                <Text style={styles.colCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} €` : '—'}</Text>
+                <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.gKm}>{g.km?.toLocaleString()}</Text>
+                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
+                <Text style={styles.gCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} EUR` : '-'}</Text>
               </View>
             ))}
           </View>
         )}
 
-        {/* Dodatni stroški */}
+        {/* Dodatni stroski */}
         {expenses.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>💰 Dodatni stroški</Text>
+            <Text style={styles.sectionTitle}>Dodatni stroski</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.colDateH}>Datum</Text>
-              <Text style={styles.colKmH}>Kategorija</Text>
-              <Text style={styles.colOpisH}>Opis</Text>
-              <Text style={styles.colCenaH}>Znesek</Text>
+              <Text style={styles.eDateH}>Datum</Text>
+              <Text style={styles.eKatH}>Kategorija</Text>
+              <Text style={styles.eOpisH}>Opis</Text>
+              <Text style={styles.eCenaH}>Znesek</Text>
             </View>
             {expenses.map((e: any, i: number) => (
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.colDate}>{new Date(e.datum).toLocaleDateString('sl-SI')}</Text>
-                <Text style={styles.colKm}>{e.kategorija}</Text>
-                <Text style={styles.colOpis}>{e.opis || '—'}</Text>
-                <Text style={styles.colCena}>{e.znesek?.toFixed(2)} €</Text>
+                <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.eKat}>{e.kategorija}</Text>
+                <Text style={styles.eOpis}>{e.opis || '-'}</Text>
+                <Text style={styles.eCena}>{e.znesek?.toFixed(2)} EUR</Text>
               </View>
             ))}
           </View>
@@ -217,7 +210,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, opomniki }: any) => {
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>GarageBase — getgaragebase.com</Text>
+          <Text style={styles.footerText}>GarageBase - getgaragebase.com</Text>
           <Text style={styles.footerText}>Generirano: {danes}</Text>
         </View>
 
@@ -231,7 +224,6 @@ export default function Report() {
   const [servisi, setServisi] = useState<any[]>([])
   const [gorivo, setGorivo] = useState<any[]>([])
   const [expenses, setExpenses] = useState<any[]>([])
-  const [opomniki, setOpomniki] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
 
@@ -239,25 +231,18 @@ export default function Report() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/garaza'; return }
 
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(avtoData)
-
       const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setServisi(servisData || [])
-
       const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setGorivo(gorivoData || [])
-
       const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setExpenses((expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
-
-      const { data: opomData } = await supabase.from('reminders').select('*').eq('car_id', carId)
-      setOpomniki(opomData || [])
 
       setLoading(false)
       setTimeout(() => setReady(true), 500)
@@ -282,7 +267,6 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Pregled */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Vsebina reporta</p>
         <div className="flex flex-col gap-2">
@@ -298,6 +282,10 @@ export default function Report() {
             <span className="text-white text-sm">💰 Dodatnih stroškov</span>
             <span className="text-[#6c63ff] font-bold">{expenses.length}</span>
           </div>
+          <div className="flex justify-between items-center">
+            <span className="text-white text-sm">📎 Prilog računov</span>
+            <span className="text-[#6c63ff] font-bold">{servisi.filter(s => s.foto_url).length}</span>
+          </div>
           <div className="flex justify-between items-center border-t border-[#1e1e32] pt-2 mt-1">
             <span className="text-white text-sm font-semibold">Skupaj stroški</span>
             <span className="text-[#3ecfcf] font-bold text-lg">
@@ -309,14 +297,21 @@ export default function Report() {
         </div>
       </div>
 
-      {/* Download gumb */}
+      {servisi.some(s => s.foto_url) && (
+        <div className="bg-[#6c63ff11] border border-[#6c63ff33] rounded-xl p-4 mb-4">
+          <p className="text-[#a09aff] text-xs">
+            To vozilo ima priložene slike računov. V PDF reportu so označene z [ DA ] — za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com
+          </p>
+        </div>
+      )}
+
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} opomniki={opomniki} />}
+          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
-              {pdfLoading ? '⏳ Generiranje...' : '📥 Prenesi PDF Report'}
+              {pdfLoading ? 'Generiranje...' : 'Prenesi PDF Report'}
             </button>
           )}
         </PDFDownloadLink>
@@ -324,10 +319,11 @@ export default function Report() {
 
       <div className="mt-4 bg-[#f59e0b11] border border-[#f59e0b33] rounded-xl p-4">
         <p className="text-[#f59e0b] text-xs">
-          💡 PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroške — idealno za prodajo vozila.
+          PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroške — idealno za prodajo vozila.
         </p>
       </div>
 
+      <HomeButton />
     </div>
   )
 }
