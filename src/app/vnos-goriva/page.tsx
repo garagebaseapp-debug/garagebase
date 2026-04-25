@@ -10,6 +10,7 @@ export default function VnosGoriva() {
   const [litri, setLitri] = useState('')
   const [cenaNaLiter, setCenaNaLiter] = useState('')
   const [postaja, setPostaja] = useState('')
+  const [tipGoriva, setTipGoriva] = useState('')
   const [carId, setCarId] = useState('')
   const [avti, setAvti] = useState<any[]>([])
   const [zadnjiKm, setZadnjiKm] = useState(0)
@@ -21,6 +22,12 @@ export default function VnosGoriva() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const postajRef = useRef<HTMLDivElement>(null)
 
+  const tipiGoriva = [
+    { vrednost: '95', naziv: '95', barva: 'bg-[#16a34a]', barvaText: 'text-[#16a34a]', barvaBorder: 'border-[#16a34a]', opis: 'Bencin 95' },
+    { vrednost: '100', naziv: '100', barva: 'bg-[#2563eb]', barvaText: 'text-[#2563eb]', barvaBorder: 'border-[#2563eb]', opis: 'Bencin 100' },
+    { vrednost: 'diesel', naziv: 'D', barva: 'bg-[#1a1a1a]', barvaText: 'text-[#888888]', barvaBorder: 'border-[#888888]', opis: 'Dizel' },
+  ]
+
   const cenaSkupaj = litri && cenaNaLiter
     ? (parseFloat(litri) * parseFloat(cenaNaLiter)).toFixed(2)
     : ''
@@ -31,13 +38,16 @@ export default function VnosGoriva() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
-      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni').eq('user_id', user.id)
+      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo').eq('user_id', user.id)
       if (data && data.length > 0) {
         setAvti(data)
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]
         setCarId(izbrani.id)
         await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
         await naloziPostaje()
+        // Nastavi privzeti tip goriva glede na avto
+        if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
+        else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
       }
     }
     init()
@@ -69,7 +79,11 @@ export default function VnosGoriva() {
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
     const avto = avti.find((a: any) => a.id === noviId)
-    if (avto) await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
+    if (avto) {
+      await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
+      if (avto.gorivo === 'Diesel') setTipGoriva('diesel')
+      else if (avto.gorivo === 'Bencin') setTipGoriva('95')
+    }
   }
 
   const handlePostajaChange = (value: string) => {
@@ -85,20 +99,12 @@ export default function VnosGoriva() {
   }
 
   const pretвориVStevilko = (tekst: string): number | null => {
-    // Direktno število
     const direktno = parseFloat(tekst.replace(',', '.').replace(/\s/g, ''))
     if (!isNaN(direktno)) return direktno
-
-    // Zamenjaj slovenske besede
     let rezultat = tekst
-      .replace(/sto\s*šestdeset\s*dve?\s*tisoč/gi, '162000')
-      .replace(/sto\s*sedemdeset\s*dve?\s*tisoč/gi, '172000')
-      .replace(/sto\s*osemdeset\s*dve?\s*tisoč/gi, '182000')
-      .replace(/sto\s*devetdeset\s*dve?\s*tisoč/gi, '192000')
       .replace(/(\d+)\s*tisoč\s*(\d+)/gi, (_, a, b) => String(parseInt(a) * 1000 + parseInt(b)))
       .replace(/(\d+)\s*tisoč/gi, (_, a) => String(parseInt(a) * 1000))
-      .replace(/tisoč/gi, '1000')
-      .replace(/sto/gi, '100')
+      .replace(/tisoč/gi, '1000').replace(/sto/gi, '100')
       .replace(/nič/gi, '0').replace(/ena|eno/gi, '1').replace(/dva|dve/gi, '2')
       .replace(/tri\b/gi, '3').replace(/štiri/gi, '4').replace(/pet\b/gi, '5')
       .replace(/šest\b/gi, '6').replace(/sedem\b/gi, '7').replace(/osem\b/gi, '8')
@@ -108,27 +114,21 @@ export default function VnosGoriva() {
       .replace(/šestdeset/gi, '60').replace(/sedemdeset/gi, '70')
       .replace(/osemdeset/gi, '80').replace(/devetdeset/gi, '90')
       .replace(/\s+/g, '')
-
     const stevilka = parseFloat(rezultat)
     if (!isNaN(stevilka)) return stevilka
-
     return null
   }
 
   const glasovniVnos = (polje: string) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) { setMessage('Glasovni vnos ni podprt v tem brskalniku.'); return }
-
     const recognition = new SpeechRecognition()
     recognition.lang = 'sl-SI'
     recognition.continuous = false
     recognition.interimResults = false
     setPoslusam(polje)
-
     recognition.onresult = (event: any) => {
       const tekst = event.results[0][0].transcript.toLowerCase().trim()
-      console.log('Slišano:', tekst)
-
       if (polje === 'postaja') {
         setPostaja(tekst)
       } else {
@@ -143,8 +143,7 @@ export default function VnosGoriva() {
       }
       setPoslusam(null)
     }
-
-    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu. Poskusi znova.'); setPoslusam(null) }
+    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu.'); setPoslusam(null) }
     recognition.onend = () => setPoslusam(null)
     recognition.start()
   }
@@ -163,7 +162,10 @@ export default function VnosGoriva() {
   const shrani = async () => {
     if (!km || !litri) { setMessage('Km in litri sta obvezna!'); return }
     const vneseniKm = parseInt(km)
-    if (vneseniKm <= zadnjiKm) { setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`); return }
+    if (vneseniKm <= zadnjiKm) {
+      setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`)
+      return
+    }
     setLoading(true)
     setMessage('')
 
@@ -173,6 +175,7 @@ export default function VnosGoriva() {
       cena_na_liter: cenaNaLiter ? parseFloat(cenaNaLiter) : null,
       cena_skupaj: cenaSkupaj ? parseFloat(cenaSkupaj) : null,
       postaja: postaja || null,
+      tip_goriva: tipGoriva || null,
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
@@ -208,6 +211,30 @@ export default function VnosGoriva() {
             </select>
           </div>
         )}
+
+        {/* Tip goriva */}
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">Tip goriva</label>
+          <div className="grid grid-cols-3 gap-3">
+            {tipiGoriva.map((tip) => (
+              <button key={tip.vrednost} type="button"
+                onClick={() => setTipGoriva(tipGoriva === tip.vrednost ? '' : tip.vrednost)}
+                className={`relative py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                  tipGoriva === tip.vrednost
+                    ? `${tip.barvaBorder} bg-opacity-20`
+                    : 'border-[#1e1e32] bg-[#13131f]'
+                }`}
+                style={tipGoriva === tip.vrednost ? { backgroundColor: tip.vrednost === 'diesel' ? '#1a1a1a' : tip.vrednost === '95' ? '#16a34a15' : '#2563eb15' } : {}}>
+                <div className={`w-8 h-8 rounded-lg ${tip.barva} flex items-center justify-center`}>
+                  <span className="text-white font-bold text-sm">{tip.naziv}</span>
+                </div>
+                <span className={`text-xs font-semibold mt-1 ${tipGoriva === tip.vrednost ? tip.barvaText : 'text-[#5a5a80]'}`}>
+                  {tip.opis}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Datum</label>

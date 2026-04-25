@@ -180,7 +180,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString('sl-SI')}</Text>
                 <Text style={styles.gKm}>{g.km?.toLocaleString()}</Text>
-                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
+                <Text style={styles.gOpis}>{g.litri} L{g.tip_goriva ? ` (${g.tip_goriva === 'diesel' ? 'Dizel' : `Bencin ${g.tip_goriva}`})` : ''}{g.postaja ? ` - ${g.postaja}` : ''}</Text>
                 <Text style={styles.gCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} EUR` : '-'}</Text>
               </View>
             ))}

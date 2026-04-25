@@ -35,10 +35,19 @@ export default function ZgodovinaGoriva() {
 
   const skupajLitrov = vnosi.reduce((sum, v) => sum + (v.litri || 0), 0)
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena_skupaj || 0), 0)
-  const skupajKm = avto?.km_trenutni && vnosi.length > 0 ? vnosi[vnosi.length - 1].km - avto.km_trenutni : 0
-  const povprecnaPoraba = skupajKm > 0 ? (skupajLitrov / skupajKm) * 100 : null
 
-  if (loading) return <div className="min-h-screen bg-[#080810] flex items-center justify-center"><p className="text-[#5a5a80]">Nalaganje...</p></div>
+  const tipGorivaIkona = (tip: string) => {
+    if (tip === '95') return { label: '95', bg: 'bg-[#16a34a]', text: 'text-white' }
+    if (tip === '100') return { label: '100', bg: 'bg-[#2563eb]', text: 'text-white' }
+    if (tip === 'diesel') return { label: 'D', bg: 'bg-[#333333]', text: 'text-[#aaaaaa]' }
+    return null
+  }
+
+  if (loading) return (
+    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
+      <p className="text-[#5a5a80]">Nalaganje...</p>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -53,16 +62,16 @@ export default function ZgodovinaGoriva() {
       {vnosi.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">⌀ Poraba</p>
-            <p className="text-white font-bold text-lg">{povprecnaPoraba ? povprecnaPoraba.toFixed(1) : '—'}<span className="text-[#5a5a80] text-xs font-normal"> L/100</span></p>
-          </div>
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Litrov</p>
             <p className="text-white font-bold text-lg">{skupajLitrov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> L</span></p>
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj</p>
             <p className="text-white font-bold text-lg">{skupajEurov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> €</span></p>
+          </div>
+          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Tankanij</p>
+            <p className="text-white font-bold text-lg">{vnosi.length}</p>
           </div>
         </div>
       )}
@@ -82,12 +91,21 @@ export default function ZgodovinaGoriva() {
           {[...vnosi].reverse().map((vnos, reversedIndex) => {
             const index = vnosi.length - 1 - reversedIndex
             const poraba = izracunajPorabo(index)
+            const tipIkona = tipGorivaIkona(vnos.tip_goriva)
             return (
               <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
                 <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
-                    <p className="text-[#5a5a80] text-xs mt-0.5">{vnos.km?.toLocaleString()} km{vnos.postaja && ` · ${vnos.postaja}`}</p>
+                  <div className="flex items-center gap-2">
+                    {/* Tip goriva badge */}
+                    {tipIkona && (
+                      <div className={`w-8 h-8 rounded-lg ${tipIkona.bg} flex items-center justify-center flex-shrink-0`}>
+                        <span className={`${tipIkona.text} font-bold text-xs`}>{tipIkona.label}</span>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
+                      <p className="text-[#5a5a80] text-xs mt-0.5">{vnos.km?.toLocaleString()} km{vnos.postaja && ` · ${vnos.postaja}`}</p>
+                    </div>
                   </div>
                   {vnos.cena_skupaj && <span className="text-[#3ecfcf] font-bold">{vnos.cena_skupaj.toFixed(2)} €</span>}
                 </div>
