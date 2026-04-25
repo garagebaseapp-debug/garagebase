@@ -9,22 +9,35 @@ export default function Garaza() {
   const [loading, setLoading] = useState(true)
   const [urejanje, setUrejanje] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
   const dragOver = useRef<number | null>(null)
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
         .order('created_at', { ascending: false })
-
       setAvti(data || [])
       setLoading(false)
     }
     init()
+
+    const handler = (e: any) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
+
+  const handleInstall = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    const result = await installPrompt.userChoice
+    if (result.outcome === 'accepted') setInstallPrompt(null)
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -58,28 +71,30 @@ export default function Garaza() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] flex flex-col max-w-2xl mx-auto pb-20">
+    <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
 
       {/* Header */}
       <div className="flex justify-between items-center px-5 py-5 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
         </h1>
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 items-center flex-wrap justify-end">
+          {installPrompt && (
+            <button onClick={handleInstall}
+              className="bg-[#3ecfcf22] border border-[#3ecfcf44] text-[#3ecfcf] text-xs font-semibold px-3 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors flex items-center gap-1.5">
+              📲 Namesti
+            </button>
+          )}
           {avti.length > 1 && (
-            <button
-              onClick={() => setUrejanje(!urejanje)}
-              className={`text-sm font-semibold px-4 py-2 rounded-xl transition-colors ${
-                urejanje
-                  ? 'bg-[#3ecfcf] text-black'
-                  : 'bg-[#13131f] border border-[#1e1e32] text-[#5a5a80]'
+            <button onClick={() => setUrejanje(!urejanje)}
+              className={`text-sm font-semibold px-3 py-2 rounded-xl transition-colors ${
+                urejanje ? 'bg-[#3ecfcf] text-black' : 'bg-[#13131f] border border-[#1e1e32] text-[#5a5a80]'
               }`}>
               {urejanje ? '✓ Končaj' : '⇅ Uredi'}
             </button>
           )}
-          <button
-            onClick={() => window.location.href = '/dodaj-avto'}
-            className="bg-[#6c63ff] text-white text-sm font-semibold px-4 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
+          <button onClick={() => window.location.href = '/dodaj-avto'}
+            className="bg-[#6c63ff] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
             + Avto
           </button>
           <button onClick={handleLogout}
