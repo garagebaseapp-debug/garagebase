@@ -6,6 +6,7 @@ import { BottomNav, BackButton } from '@/lib/nav'
 
 export default function DodajAvto() {
   const [tipVozila, setTipVozila] = useState('avto')
+  const [tipVozilaCustom, setTipVozilaCustom] = useState('')
   const [oblika, setOblika] = useState('')
   const [znamka, setZnamka] = useState('')
   const [model, setModel] = useState('')
@@ -27,7 +28,7 @@ export default function DodajAvto() {
     { vrednost: 'kombi', ikona: '🚐', naziv: 'Kombi' },
     { vrednost: 'tovornjak', ikona: '🚛', naziv: 'Tovornjak' },
     { vrednost: 'plovilo', ikona: '⛵', naziv: 'Plovilo' },
-    { vrednost: 'drugo', ikona: '🚙', naziv: 'Drugo' },
+    { vrednost: 'drugo', ikona: '⚙️', naziv: 'Drugo' },
   ]
 
   const oblikeAvta: { [key: string]: string[] } = {
@@ -36,18 +37,20 @@ export default function DodajAvto() {
     tovornjak: ['Poltovornjak', 'Tovornjak', 'Vlačilec', 'Prikolica'],
     motor: ['Naked', 'Sport', 'Touring', 'Enduro', 'Scooter', 'Chopper'],
     plovilo: ['Čoln', 'Jahta', 'Jadrnica', 'Gumenjak'],
-    drugo: ['Traktor', 'Quad', 'Skuter', 'Drugo'],
+    drugo: ['Traktor', 'Quad', 'ATV', 'Skuter', 'Drugo'],
   }
 
   const shrani = async () => {
     if (!znamka || !model) { setMessage('Znamka in model sta obvezna!'); return }
+    if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage('Vnesi tip vozila!'); return }
     setLoading(true)
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
+    const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
     const { error } = await supabase.from('cars').insert({
       user_id: user.id,
-      tip_vozila: tipVozila,
+      tip_vozila: finalniTip,
       oblika: oblika || null,
       znamka, model,
       letnik: letnik ? parseInt(letnik) : null,
@@ -80,7 +83,7 @@ export default function DodajAvto() {
           <div className="grid grid-cols-3 gap-2">
             {tipiVozil.map((tip) => (
               <button key={tip.vrednost} type="button"
-                onClick={() => { setTipVozila(tip.vrednost); setOblika('') }}
+                onClick={() => { setTipVozila(tip.vrednost); setOblika(''); setTipVozilaCustom('') }}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                   tipVozila === tip.vrednost
                     ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
@@ -91,6 +94,16 @@ export default function DodajAvto() {
               </button>
             ))}
           </div>
+
+          {/* Custom tip */}
+          {tipVozila === 'drugo' && (
+            <div className="mt-3">
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Natančen tip vozila *</label>
+              <input value={tipVozilaCustom} onChange={e => setTipVozilaCustom(e.target.value)}
+                placeholder="npr. Štirikoles, Traktor, Quad..."
+                className="w-full bg-[#13131f] border border-[#6c63ff44] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            </div>
+          )}
         </div>
 
         {/* Osnovno */}
@@ -152,7 +165,6 @@ export default function DodajAvto() {
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4">
           <h2 className="text-white font-semibold">Napredni podatki <span className="text-[#5a5a80] text-xs font-normal">(po želji)</span></h2>
 
-          {/* Oblika */}
           {oblikeAvta[tipVozila] && (
             <div>
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Oblika</label>
@@ -171,7 +183,6 @@ export default function DodajAvto() {
             </div>
           )}
 
-          {/* Motor */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Kubikаža (ccm)</label>
@@ -185,11 +196,10 @@ export default function DodajAvto() {
             </div>
           </div>
 
-          {/* Menjalnik */}
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Menjalnik</label>
             <div className="grid grid-cols-3 gap-2">
-              {['Ročni', 'Avtomatski', 'Polsamomat'].map((m) => (
+              {['Ročni', 'Avtomatski', 'Polavtomatski'].map((m) => (
                 <button key={m} type="button" onClick={() => setMenjalnik(menjalnik === m ? '' : m)}
                   className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
                     menjalnik === m
@@ -202,7 +212,6 @@ export default function DodajAvto() {
             </div>
           </div>
 
-          {/* Pogon */}
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Pogon</label>
             <div className="grid grid-cols-3 gap-2">
@@ -230,8 +239,8 @@ export default function DodajAvto() {
           className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50">
           {loading ? 'Shranjevanje...' : 'Shrani vozilo →'}
         </button>
-
       </div>
+
       <BottomNav />
     </div>
   )
