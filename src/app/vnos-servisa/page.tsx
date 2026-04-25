@@ -21,6 +21,7 @@ export default function VnosServisa() {
   const [servisHistory, setServisHistory] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [filteredServis, setFilteredServis] = useState<string[]>([])
+  const [poslusam, setPoslusam] = useState<string | null>(null)
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -53,24 +54,17 @@ export default function VnosServisa() {
   }, [])
 
   const naloziZadnjiKm = async (id: string, kmAvta: number) => {
-    const { data: servisData } = await supabase
-      .from('service_logs').select('km').eq('car_id', id)
-      .order('km', { ascending: false }).limit(1)
-    const { data: gorivoData } = await supabase
-      .from('fuel_logs').select('km').eq('car_id', id)
-      .order('km', { ascending: false }).limit(1)
+    const { data: servisData } = await supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
+    const { data: gorivoData } = await supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
     const maxServis = servisData?.[0]?.km || 0
     const maxGorivo = gorivoData?.[0]?.km || 0
     setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
   }
 
   const naloziServisHistory = async () => {
-    const { data } = await supabase
-      .from('service_logs')
-      .select('servis')
-      .not('servis', 'is', null)
+    const { data } = await supabase.from('service_logs').select('servis').not('servis', 'is', null)
     if (data) {
-      const unikatni = [...new Set(data.map((v: any) => v.servis).filter(Boolean))]
+      const unikatni = [...new Set(data.map((v: any) => v.servis).filter(Boolean))] as string[]
       setServisHistory(unikatni)
     }
   }
@@ -84,9 +78,7 @@ export default function VnosServisa() {
   const handleServisChange = (value: string) => {
     setServis(value)
     if (value.length > 0) {
-      const filtered = servisHistory.filter(s =>
-        s.toLowerCase().includes(value.toLowerCase())
-      )
+      const filtered = servisHistory.filter(s => s.toLowerCase().startsWith(value.toLowerCase()))
       setFilteredServis(filtered)
       setShowSuggestions(filtered.length > 0)
     } else {
@@ -109,15 +101,80 @@ export default function VnosServisa() {
     setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
   }
 
+  const pretвориVStevilko = (tekst: string): number | null => {
+    const direktno = parseFloat(tekst.replace(',', '.').replace(/\s/g, ''))
+    if (!isNaN(direktno)) return direktno
+
+    let rezultat = tekst
+      .replace(/(\d+)\s*tisoč\s*(\d+)/gi, (_, a, b) => String(parseInt(a) * 1000 + parseInt(b)))
+      .replace(/(\d+)\s*tisoč/gi, (_, a) => String(parseInt(a) * 1000))
+      .replace(/tisoč/gi, '1000')
+      .replace(/sto/gi, '100')
+      .replace(/nič/gi, '0').replace(/ena|eno/gi, '1').replace(/dva|dve/gi, '2')
+      .replace(/tri\b/gi, '3').replace(/štiri/gi, '4').replace(/pet\b/gi, '5')
+      .replace(/šest\b/gi, '6').replace(/sedem\b/gi, '7').replace(/osem\b/gi, '8')
+      .replace(/devet\b/gi, '9').replace(/deset\b/gi, '10')
+      .replace(/dvajset/gi, '20').replace(/trideset/gi, '30')
+      .replace(/štirideset/gi, '40').replace(/petdeset/gi, '50')
+      .replace(/šestdeset/gi, '60').replace(/sedemdeset/gi, '70')
+      .replace(/osemdeset/gi, '80').replace(/devetdeset/gi, '90')
+      .replace(/\s+/g, '')
+
+    const stevilka = parseFloat(rezultat)
+    if (!isNaN(stevilka)) return stevilka
+    return null
+  }
+
+  const glasovniVnos = (polje: string) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) { setMessage('Glasovni vnos ni podprt v tem brskalniku.'); return }
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'sl-SI'
+    recognition.continuous = false
+    recognition.interimResults = false
+    setPoslusam(polje)
+
+    recognition.onresult = (event: any) => {
+      const tekst = event.results[0][0].transcript.toLowerCase().trim()
+      if (polje === 'opis' || polje === 'servis') {
+        if (polje === 'opis') setOpis(tekst)
+        if (polje === 'servis') setServis(tekst)
+      } else {
+        const stevilka = pretвориVStevilko(tekst)
+        if (stevilka !== null) {
+          if (polje === 'km') setKm(stevilka.toString())
+          if (polje === 'cena') setCena(stevilka.toString())
+        } else {
+          setMessage(`Nisem razumel: "${tekst}". Poskusi znova.`)
+        }
+      }
+      setPoslusam(null)
+    }
+
+    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu.'); setPoslusam(null) }
+    recognition.onend = () => setPoslusam(null)
+    recognition.start()
+  }
+
+  const MicButton = ({ polje }: { polje: string }) => (
+    <button type="button" onClick={() => glasovniVnos(polje)}
+      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+        poslusam === polje
+          ? 'bg-[#ef4444] text-white animate-pulse'
+          : 'bg-[#13131f] border border-[#2a2a40] text-[#5a5a80] hover:border-[#f59e0b] hover:text-[#f59e0b]'
+      }`}>
+      🎤
+    </button>
+  )
+
   const shrani = async () => {
     if (!km || !opis) { setMessage('Km in opis sta obvezna!'); return }
-
     const vneseniKm = parseInt(km)
     if (vneseniKm <= zadnjiKm) {
       setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`)
       return
     }
-
     setLoading(true)
     setMessage('')
 
@@ -125,9 +182,7 @@ export default function VnosServisa() {
     if (!user) { window.location.href = '/'; return }
 
     const { data: servisData, error } = await supabase.from('service_logs').insert({
-      car_id: carId,
-      datum,
-      km: vneseniKm,
+      car_id: carId, datum, km: vneseniKm,
       opis: jeNaknaden ? `${opis} [Naknadno vnešeno: ${danes}]` : opis,
       servis: servis || null,
       cena: cena ? parseFloat(cena) : null,
@@ -135,34 +190,23 @@ export default function VnosServisa() {
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
 
-    // Posodobi km avta
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
 
     if (slike.length > 0) {
       setUploadProgress(true)
       const slikeUrls: string[] = []
-
       for (let i = 0; i < slike.length; i++) {
         const file = slike[i]
         const fileExt = file.name.split('.').pop()
         const fileName = `${user.id}/${servisData.id}_${i}.${fileExt}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('service-documents')
-          .upload(fileName, file, { upsert: true })
-
+        const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, file, { upsert: true })
         if (!uploadError) {
-          const { data: urlData } = supabase.storage
-            .from('service-documents')
-            .getPublicUrl(fileName)
+          const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
           slikeUrls.push(urlData.publicUrl)
         }
       }
-
       if (slikeUrls.length > 0) {
-        await supabase.from('service_logs')
-          .update({ foto_url: slikeUrls.join(',') })
-          .eq('id', servisData.id)
+        await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', servisData.id)
       }
       setUploadProgress(false)
     }
@@ -179,6 +223,13 @@ export default function VnosServisa() {
         <BackButton />
         <h1 className="text-xl font-bold text-white">🔧 Vnos servisa</h1>
       </div>
+
+      {poslusam && (
+        <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
+          <span className="text-xl animate-pulse">🎤</span>
+          <p className="text-[#ef4444] text-sm font-semibold">Poslušam... govori zdaj</p>
+        </div>
+      )}
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
 
@@ -207,9 +258,12 @@ export default function VnosServisa() {
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
             Kilometri * <span className="text-[#3a3a5a] normal-case">(zadnji: {zadnjiKm.toLocaleString()} km)</span>
           </label>
-          <input type="number" value={km} onChange={e => setKm(e.target.value)}
-            placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
-            className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+          <div className="flex gap-2">
+            <input type="number" value={km} onChange={e => setKm(e.target.value)}
+              placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
+              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+            <MicButton polje="km" />
+          </div>
           {km && parseInt(km) <= zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
               <p className="text-[#ef4444] text-xs">⛔ Km morajo biti večji od {zadnjiKm.toLocaleString()} km!</p>
@@ -219,19 +273,30 @@ export default function VnosServisa() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opis dela *</label>
-          <textarea value={opis} onChange={e => setOpis(e.target.value)}
-            placeholder="npr. Menjava olja + filter" rows={3}
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors resize-none" />
+          <div className="flex gap-2">
+            <textarea value={opis} onChange={e => setOpis(e.target.value)}
+              placeholder="npr. Menjava olja + filter" rows={3}
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors resize-none" />
+            <MicButton polje="opis" />
+          </div>
         </div>
 
-        {/* Ime servisa z autocomplete */}
         <div ref={servisRef} className="relative">
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Ime servisa (po želji)</label>
-          <input type="text" value={servis}
-            onChange={e => handleServisChange(e.target.value)}
-            onFocus={() => servis.length > 0 && filteredServis.length > 0 && setShowSuggestions(true)}
-            placeholder="npr. Volvo Center Ljubljana"
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+          <div className="flex gap-2">
+            <input type="text" value={servis}
+              onChange={e => handleServisChange(e.target.value)}
+              onFocus={() => {
+                if (servis.length > 0) {
+                  const filtered = servisHistory.filter(s => s.toLowerCase().startsWith(servis.toLowerCase()))
+                  setFilteredServis(filtered)
+                  setShowSuggestions(filtered.length > 0)
+                }
+              }}
+              placeholder="npr. Volvo Center Ljubljana"
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            <MicButton polje="servis" />
+          </div>
           {showSuggestions && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a2e] border border-[#2a2a40] rounded-xl overflow-hidden z-10">
               {filteredServis.map((s, i) => (
@@ -246,8 +311,11 @@ export default function VnosServisa() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena (€)</label>
-          <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder="npr. 320"
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+          <div className="flex gap-2">
+            <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder="npr. 320"
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            <MicButton polje="cena" />
+          </div>
         </div>
 
         <div>
