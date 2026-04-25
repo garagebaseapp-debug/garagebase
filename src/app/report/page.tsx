@@ -42,7 +42,12 @@ const styles = StyleSheet.create({
   // Gorivo stolpci
   gDate: { width: '15%', fontSize: 8, color: '#333333' },
   gKm: { width: '15%', fontSize: 8, color: '#333333' },
-  gOpis: { width: '50%', fontSize: 8, color: '#333333' },
+  gOpis: { width: '40%', fontSize: 8, color: '#333333' },
+gTip95: { width: '10%', fontSize: 8, color: '#16a34a', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTip100: { width: '10%', fontSize: 8, color: '#2563eb', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTipD: { width: '10%', fontSize: 8, color: '#888888', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTipH: { width: '10%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
   gDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gKmH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
@@ -173,14 +178,18 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
             <View style={styles.tableHeader}>
               <Text style={styles.gDateH}>Datum</Text>
               <Text style={styles.gKmH}>Km</Text>
-              <Text style={styles.gOpisH}>Litri - Postaja</Text>
+              <Text style={styles.gTipH}>Tip</Text>
+<Text style={styles.gOpisH}>Litri - Postaja</Text>
               <Text style={styles.gCenaH}>Cena</Text>
             </View>
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString('sl-SI')}</Text>
                 <Text style={styles.gKm}>{g.km?.toLocaleString()}</Text>
-                <Text style={styles.gOpis}>{g.litri} L{g.tip_goriva ? ` (${g.tip_goriva === 'diesel' ? 'Dizel' : `Bencin ${g.tip_goriva}`})` : ''}{g.postaja ? ` - ${g.postaja}` : ''}</Text>
+                <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
+  {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
+</Text>
+<Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
                 <Text style={styles.gCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} EUR` : '-'}</Text>
               </View>
             ))}
