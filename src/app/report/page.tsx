@@ -51,7 +51,6 @@ gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   gCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
   gDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gKmH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  gOpisH: { width: '50%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
   // Expenses stolpci
   eDate: { width: '15%', fontSize: 8, color: '#333333' },
