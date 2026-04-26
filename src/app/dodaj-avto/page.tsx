@@ -58,6 +58,7 @@ export default function DodajAvto() {
       barva: barva || null,
       tablica: tablica || null,
       km_trenutni: km ? parseInt(km) : null,
+      km_ob_vnosu: km ? parseInt(km) : null,
       kubikaza: kubikaza ? parseInt(kubikaza) : null,
       kw: kw ? parseInt(kw) : null,
       menjalnik: menjalnik || null,

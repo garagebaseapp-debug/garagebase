@@ -9,6 +9,7 @@ export default function Dashboard() {
   const [aktivniAvto, setAktivniAvto] = useState<any>(null)
   const [opomniki, setOpomniki] = useState<any[]>([])
   const [poraba, setPoraba] = useState<{ skupaj: number | null, zadnja: number | null }>({ skupaj: null, zadnja: null })
+  const [stroski, setStroski] = useState<{ skupaj: number, naKm: number | null }>({ skupaj: 0, naKm: null })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,18 +27,21 @@ export default function Dashboard() {
           ? avtiData.find((a: any) => a.id === carIdFromUrl) || avtiData[0]
           : avtiData[0]
         setAktivniAvto(izbrani)
-        await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0)
+        await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
       setLoading(false)
     }
     init()
   }, [])
 
-  const naloziPodatke = async (carId: string, avtoKmStart: number = 0) => {
+  const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
+    // Opomniki
     const { data: opData } = await supabase
       .from('reminders').select('*').eq('car_id', carId)
       .order('datum', { ascending: true })
     setOpomniki(opData || [])
+
+    // Poraba goriva
     const { data: gorivoData } = await supabase
       .from('fuel_logs').select('*').eq('car_id', carId)
       .order('km', { ascending: true })
@@ -55,11 +59,23 @@ export default function Dashboard() {
     } else {
       setPoraba({ skupaj: null, zadnja: null })
     }
+
+    // Kalkulator stroškov €/km — upošteva km_ob_vnosu kot izhodišče
+    const { data: servisStroški } = await supabase.from('service_logs').select('cena').eq('car_id', carId)
+    const { data: expensesData } = await supabase.from('expenses').select('znesek').eq('car_id', carId)
+    const { data: gorivoStroški } = await supabase.from('fuel_logs').select('cena_skupaj').eq('car_id', carId)
+    const skupajGorivo = (gorivoStroški || []).reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
+    const skupajServis = (servisStroški || []).reduce((s: number, v: any) => s + (v.cena || 0), 0)
+    const skupajExpenses = (expensesData || []).reduce((s: number, v: any) => s + (v.znesek || 0), 0)
+    const skupajVse = skupajGorivo + skupajServis + skupajExpenses
+    const kmPrevozeni = avtoKmStart - kmObVnosu
+    const naKm = kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null
+    setStroski({ skupaj: skupajVse, naKm })
   }
 
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
-    await naloziPodatke(avto.id, avto.km_trenutni || 0)
+    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {
@@ -190,6 +206,25 @@ export default function Dashboard() {
                         <p className="text-white font-bold text-lg">{poraba.zadnja.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Kalkulator stroškov €/km */}
+                {stroski.skupaj > 0 && (
+                  <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
+                    <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">💰 Stroški vozila</p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[#5a5a80] text-xs mb-0.5">Skupaj</p>
+                        <p className="text-white font-bold text-xl">{stroski.skupaj.toFixed(2)} €</p>
+                      </div>
+                      {stroski.naKm !== null && (
+                        <div className="text-right">
+                          <p className="text-[#5a5a80] text-xs mb-0.5">Cena na km</p>
+                          <p className="text-[#6c63ff] font-bold text-xl">{stroski.naKm.toFixed(3)} €/km</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
