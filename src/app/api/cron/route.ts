@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+// @ts-ignore
+// @ts-ignore
 import webpush from 'web-push'
 
 // Supabase admin klient
