@@ -15,6 +15,9 @@ export default function Garaza() {
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false
   })
+  const [listaNastavitve, setListaNastavitve] = useState({
+    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true
+  })
   const dragOver = useRef<number | null>(null)
 
   useEffect(() => {
@@ -43,6 +46,7 @@ export default function Garaza() {
         const n = JSON.parse(shranjene)
         setPrikaz(n.prikazGaraze || 'srednje')
         if (n.gridNastavitve) setGridNastavitve(n.gridNastavitve)
+        if (n.listaNastavitve) setListaNastavitve(n.listaNastavitve)
       }
 
       setLoading(false)
@@ -96,7 +100,7 @@ export default function Garaza() {
     return minDni === Infinity ? null : minDni
   }
 
-  const barvаOpomnika = (carId: string) => {
+  const barvaOpomnika = (carId: string) => {
     const dni = miniDniOpomnika(carId)
     if (dni === null) return null
     if (dni <= 7) return 'rdeča'
@@ -182,10 +186,11 @@ export default function Garaza() {
           </div>
         </div>
       ) : prikaz === 'grid' ? (
+        /* GRID VIEW */
         <div className="flex-1 overflow-y-auto px-3 pt-2">
           <div className="grid grid-cols-3 gap-2">
             {avti.map((avto) => {
-              const barva = barvаOpomnika(avto.id)
+              const barva = barvaOpomnika(avto.id)
               const dni = miniDniOpomnika(avto.id)
               return (
                 <div key={avto.id}
@@ -199,7 +204,6 @@ export default function Garaza() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                  {/* Opomnik badge z dnevi */}
                   {gridNastavitve.opomnik && barva && dni !== null && (
                     <div className={`absolute top-1 right-1 rounded-md px-1.5 py-0.5 ${barvaPika(barva)} shadow-lg`}>
                       <span className="text-white font-bold text-[9px]">{dni}d</span>
@@ -241,9 +245,11 @@ export default function Garaza() {
           </div>
         </div>
       ) : (
+        /* LISTA VIEW */
         <div className="flex-1 overflow-y-auto">
           {avti.map((avto, index) => {
-            const barva = barvаOpomnika(avto.id)
+            const barva = barvaOpomnika(avto.id)
+            const dni = miniDniOpomnika(avto.id)
             return (
               <div key={avto.id}
                 draggable={urejanje}
@@ -268,39 +274,45 @@ export default function Garaza() {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                  barva === 'rdeča' ? 'bg-[#ef4444]' :
-                  barva === 'rumena' ? 'bg-[#f59e0b]' :
-                  barva === 'zelena' ? 'bg-[#16a34a]' :
-                  urejanje ? 'bg-[#3ecfcf]' : 'bg-[#2a2a40]'
-                }`} />
-
+                {urejanje && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />
+                )}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
                 <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
                   <div>
-                    <h2 className="text-white font-bold text-lg leading-tight drop-shadow-lg">
+                    <h2 className="text-white font-bold text-lg leading-tight" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)' }}>
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
                     <p className="text-white/55 text-xs drop-shadow">
-                      {[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}
-                      {avto.km_trenutni && ` · ${avto.km_trenutni.toLocaleString()} km`}
+                      {[
+                        listaNastavitve.letnik && avto.letnik,
+                        listaNastavitve.gorivo && avto.gorivo,
+                        listaNastavitve.km && avto.km_trenutni && `${avto.km_trenutni.toLocaleString()} km`
+                      ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  {avto.tablica && (
-                    <div className="flex flex-col items-center mb-0.5">
-                      <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
-                        <span className="text-yellow-300 text-[6px]">★</span>
-                        <span className="text-white text-[6px] font-bold">SI</span>
+                  <div className="flex flex-col items-end gap-1 mb-0.5">
+                    {listaNastavitve.opomnik && barva && dni !== null && (
+                      <div className={`rounded-md px-1.5 py-0.5 ${barvaPika(barva)} shadow-lg`}>
+                        <span className="text-white font-bold text-[9px]">{dni}d</span>
                       </div>
-                      <div className="bg-white rounded-b-sm px-2 py-0.5 border border-[#003399] border-t-0">
-                        <span className="text-black font-bold text-xs tracking-widest font-mono">
-                          {avto.tablica.toUpperCase()}
-                        </span>
+                    )}
+                    {listaNastavitve.tablica && avto.tablica && (
+                      <div className="flex flex-col items-center">
+                        <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
+                          <span className="text-yellow-300 text-[6px]">★</span>
+                          <span className="text-white text-[6px] font-bold">SI</span>
+                        </div>
+                        <div className="bg-white rounded-b-sm px-2 py-0.5 border border-[#003399] border-t-0">
+                          <span className="text-black font-bold text-xs tracking-widest font-mono">
+                            {avto.tablica.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2a2a40]" />
               </div>

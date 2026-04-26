@@ -16,6 +16,9 @@ export default function Nastavitve() {
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false
   })
+  const [listaNastavitve, setListaNastavitve] = useState({
+    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true
+  })
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -34,6 +37,7 @@ export default function Nastavitve() {
         setAvtocomplete(n.avtocomplete !== false)
         setTema(n.tema || 'temna')
         if (n.gridNastavitve) setGridNastavitve(n.gridNastavitve)
+        if (n.listaNastavitve) setListaNastavitve(n.listaNastavitve)
         if (n.tema === 'svetla') {
           document.documentElement.classList.add('light-mode')
         } else {
@@ -46,7 +50,7 @@ export default function Nastavitve() {
   }, [])
 
   const shrani = () => {
-    const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete, tema, gridNastavitve }
+    const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
@@ -210,7 +214,7 @@ export default function Nastavitve() {
               {[
                 { key: 'tablica', naziv: 'Registrska tablica' },
                 { key: 'km', naziv: 'Kilometri' },
-                { key: 'opomnik', naziv: 'Opomnik indikator' },
+                { key: 'opomnik', naziv: 'Opomnik (dni do izteka)' },
                 { key: 'letnik', naziv: 'Letnik' },
                 { key: 'gorivo', naziv: 'Tip goriva' },
               ].map((item) => (
@@ -223,6 +227,35 @@ export default function Nastavitve() {
                     }`}>
                     <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${
                       gridNastavitve[item.key as keyof typeof gridNastavitve] ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lista nastavitve */}
+        {prikazGaraze !== 'grid' && (
+          <div className="mt-4 pt-4 border-t border-[#1e1e32]">
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži na kartici</p>
+            <div className="flex flex-col gap-3">
+              {[
+                { key: 'letnik', naziv: 'Letnik' },
+                { key: 'gorivo', naziv: 'Gorivo' },
+                { key: 'km', naziv: 'Kilometri' },
+                { key: 'tablica', naziv: 'Registrska tablica' },
+                { key: 'opomnik', naziv: 'Opomnik (dni do izteka)' },
+              ].map((item) => (
+                <div key={item.key} className="flex justify-between items-center">
+                  <p className="text-white text-sm">{item.naziv}</p>
+                  <button
+                    onClick={() => setListaNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    className={`w-10 h-5 rounded-full transition-all relative ${
+                      listaNastavitve[item.key as keyof typeof listaNastavitve] ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
+                    }`}>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${
+                      listaNastavitve[item.key as keyof typeof listaNastavitve] ? 'left-5' : 'left-0.5'
                     }`} />
                   </button>
                 </div>
