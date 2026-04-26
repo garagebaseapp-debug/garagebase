@@ -16,17 +16,10 @@ export const metadata: Metadata = {
   title: "GarageBase",
   description: "Tvoja avto evidenca — vse na enem mestu",
   manifest: "/manifest.json",
-  themeColor: "#6c63ff",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "GarageBase",
-  },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
   },
 };
 
@@ -46,8 +39,28 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#6c63ff" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <div id="offline-banner" className="hidden fixed top-0 left-0 right-0 bg-[#ef4444] text-white text-center text-xs py-2 z-[100]">
+          ⚠️ Ni internetne povezave — vnosi niso mogoči
+        </div>
+        <script dangerouslySetInnerHTML={{__html: `
+          // Offline detekcija
+          window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
+          window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
+          
+          // Dark/Light mode
+          const nastavitve = localStorage.getItem('garagebase_nastavitve');
+          if (nastavitve) {
+            const n = JSON.parse(nastavitve);
+            if (n.tema === 'svetla') {
+              document.documentElement.classList.add('light-mode');
+            }
+          }
+        `}} />
+      </body>
     </html>
   );
 }

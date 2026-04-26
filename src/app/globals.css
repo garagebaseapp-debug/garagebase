@@ -32,3 +32,18 @@ body {
     min-height: 100vh;
   }
 }
+
+/* Light mode */
+.light-mode .bg-\[\#080810\] { background-color: #f0f0ff !important; }
+.light-mode .bg-\[\#0f0f1a\] { background-color: #ffffff !important; }
+.light-mode .bg-\[\#13131f\] { background-color: #f5f5ff !important; }
+.light-mode .bg-\[\#0a0a12\] { background-color: #ffffff !important; }
+.light-mode .bg-\[\#1a1630\] { background-color: #eeeeff !important; }
+.light-mode .bg-\[\#1a1a2e\] { background-color: #f0f0ff !important; }
+.light-mode .border-\[\#1e1e32\] { border-color: #e0e0f0 !important; }
+.light-mode .border-\[\#1a1a28\] { border-color: #e0e0f0 !important; }
+.light-mode .border-\[\#2a2a40\] { border-color: #d0d0e8 !important; }
+.light-mode .text-white { color: #111111 !important; }
+.light-mode .text-\[\#5a5a80\] { color: #666688 !important; }
+.light-mode .text-\[\#3a3a5a\] { color: #888899 !important; }
+.light-mode body { background-color: #f0f0ff !important; }

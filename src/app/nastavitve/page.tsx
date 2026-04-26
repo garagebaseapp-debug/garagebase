@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BottomNav, BackButton } from '@/lib/nav'
+import { BottomNav } from '@/lib/nav'
 
 export default function Nastavitve() {
   const [user, setUser] = useState<any>(null)
@@ -12,6 +12,10 @@ export default function Nastavitve() {
   const [pisava, setPisava] = useState('normalna')
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [avtocomplete, setAvtocomplete] = useState(true)
+  const [tema, setTema] = useState('temna')
+  const [gridNastavitve, setGridNastavitve] = useState({
+    tablica: true, km: true, opomnik: true, letnik: false, gorivo: false
+  })
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -20,7 +24,6 @@ export default function Nastavitve() {
       if (!user) { window.location.href = '/'; return }
       setUser(user)
 
-      // Naloži nastavitve iz localStorage
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
       if (shranjeneNastavitve) {
         const n = JSON.parse(shranjeneNastavitve)
@@ -29,6 +32,13 @@ export default function Nastavitve() {
         setPisava(n.pisava || 'normalna')
         setPrikazGaraze(n.prikazGaraze || 'srednje')
         setAvtocomplete(n.avtocomplete !== false)
+        setTema(n.tema || 'temna')
+        if (n.gridNastavitve) setGridNastavitve(n.gridNastavitve)
+        if (n.tema === 'svetla') {
+          document.documentElement.classList.add('light-mode')
+        } else {
+          document.documentElement.classList.remove('light-mode')
+        }
       }
       setLoading(false)
     }
@@ -36,10 +46,20 @@ export default function Nastavitve() {
   }, [])
 
   const shrani = () => {
-    const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete }
+    const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete, tema, gridNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
+  }
+
+  const preklopiTemo = () => {
+    const novaTema = tema === 'temna' ? 'svetla' : 'temna'
+    setTema(novaTema)
+    if (novaTema === 'svetla') {
+      document.documentElement.classList.add('light-mode')
+    } else {
+      document.documentElement.classList.remove('light-mode')
+    }
   }
 
   const handleLogout = async () => {
@@ -76,6 +96,26 @@ export default function Nastavitve() {
         </div>
       </div>
 
+      {/* Tema */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="text-white font-semibold text-sm">
+              {tema === 'temna' ? '🌙 Temni način' : '☀️ Svetli način'}
+            </p>
+            <p className="text-[#5a5a80] text-xs mt-0.5">Preklopi med temnim in svetlim</p>
+          </div>
+          <button onClick={preklopiTemo}
+            className={`w-12 h-6 rounded-full transition-all relative ${
+              tema === 'svetla' ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
+            }`}>
+            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
+              tema === 'svetla' ? 'left-6' : 'left-0.5'
+            }`} />
+          </button>
+        </div>
+      </div>
+
       {/* Način uporabe */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
@@ -83,21 +123,17 @@ export default function Nastavitve() {
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setNacin('lite')}
             className={`p-4 rounded-xl border transition-all text-left ${
-              nacin === 'lite'
-                ? 'bg-[#3ecfcf22] border-[#3ecfcf66]'
-                : 'bg-[#13131f] border-[#1e1e32]'
+              nacin === 'lite' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
-            <p className={`text-lg mb-1`}>🟢</p>
+            <p className="text-lg mb-1">🟢</p>
             <p className={`font-bold text-sm ${nacin === 'lite' ? 'text-[#3ecfcf]' : 'text-white'}`}>Lite</p>
             <p className="text-[#5a5a80] text-xs mt-1">Samo osnove, brez kompleksnih nastavitev</p>
           </button>
           <button onClick={() => setNacin('full')}
             className={`p-4 rounded-xl border transition-all text-left ${
-              nacin === 'full'
-                ? 'bg-[#6c63ff22] border-[#6c63ff66]'
-                : 'bg-[#13131f] border-[#1e1e32]'
+              nacin === 'full' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
-            <p className={`text-lg mb-1`}>🔵</p>
+            <p className="text-lg mb-1">🔵</p>
             <p className={`font-bold text-sm ${nacin === 'full' ? 'text-[#a09aff]' : 'text-white'}`}>Full</p>
             <p className="text-[#5a5a80] text-xs mt-1">Vse funkcije in napredne nastavitve</p>
           </button>
@@ -149,23 +185,51 @@ export default function Nastavitve() {
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prikaz garaže</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           {[
             { vrednost: 'malo', naziv: 'Malo', opis: 'Več avtov' },
             { vrednost: 'srednje', naziv: 'Srednje', opis: 'Privzeto' },
             { vrednost: 'veliko', naziv: 'Veliko', opis: 'Večje slike' },
+            { vrednost: 'grid', naziv: '⊞ Grid', opis: '3x kompaktno' },
           ].map((p) => (
             <button key={p.vrednost} onClick={() => setPrikazGaraze(p.vrednost)}
               className={`py-3 px-2 rounded-xl border transition-all text-center ${
-                prikazGaraze === p.vrednost
-                  ? 'bg-[#6c63ff22] border-[#6c63ff66]'
-                  : 'bg-[#13131f] border-[#1e1e32]'
+                prikazGaraze === p.vrednost ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'
               }`}>
               <p className={`text-sm font-semibold ${prikazGaraze === p.vrednost ? 'text-[#a09aff]' : 'text-white'}`}>{p.naziv}</p>
               <p className="text-[#5a5a80] text-xs mt-0.5">{p.opis}</p>
             </button>
           ))}
         </div>
+
+        {/* Grid nastavitve */}
+        {prikazGaraze === 'grid' && (
+          <div className="mt-4 pt-4 border-t border-[#1e1e32]">
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži v grid kockici</p>
+            <div className="flex flex-col gap-3">
+              {[
+                { key: 'tablica', naziv: 'Registrska tablica' },
+                { key: 'km', naziv: 'Kilometri' },
+                { key: 'opomnik', naziv: 'Opomnik indikator' },
+                { key: 'letnik', naziv: 'Letnik' },
+                { key: 'gorivo', naziv: 'Tip goriva' },
+              ].map((item) => (
+                <div key={item.key} className="flex justify-between items-center">
+                  <p className="text-white text-sm">{item.naziv}</p>
+                  <button
+                    onClick={() => setGridNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    className={`w-10 h-5 rounded-full transition-all relative ${
+                      gridNastavitve[item.key as keyof typeof gridNastavitve] ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
+                    }`}>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-all ${
+                      gridNastavitve[item.key as keyof typeof gridNastavitve] ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Autocomplete */}
@@ -211,7 +275,6 @@ export default function Nastavitve() {
         </div>
       )}
 
-      {/* Gumbi */}
       <button onClick={shrani}
         className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors mb-3">
         Shrani nastavitve
