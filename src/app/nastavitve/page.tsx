@@ -53,6 +53,9 @@ export default function Nastavitve() {
   const shrani = () => {
     const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
+    // Apliciramo velikost pisave takoj
+    const velikosti: any = { mala: '13px', normalna: '16px', velika: '19px' }
+    document.documentElement.style.fontSize = velikosti[pisava]
     setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
   }

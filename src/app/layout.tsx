@@ -51,12 +51,16 @@ export default function RootLayout({
           window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
           window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
           
-          // Dark/Light mode
+          // Dark/Light mode + Velikost pisave
           const nastavitve = localStorage.getItem('garagebase_nastavitve');
           if (nastavitve) {
             const n = JSON.parse(nastavitve);
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
+            }
+            const velikosti = { mala: '13px', normalna: '16px', velika: '19px' };
+            if (n.pisava && velikosti[n.pisava]) {
+              document.documentElement.style.fontSize = velikosti[n.pisava];
             }
           }
         `}} />
