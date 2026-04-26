@@ -13,6 +13,8 @@ export default function Nastavitve() {
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [avtocomplete, setAvtocomplete] = useState(true)
   const [tema, setTema] = useState('temna')
+  const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
+  const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
@@ -45,15 +47,59 @@ export default function Nastavitve() {
           document.documentElement.classList.remove('light-mode')
         }
       }
+      // Preveri status notifikacij
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') setNotifikacije('dovoljeno')
+        else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
+        else setNotifikacije('neznano')
+      }
       setLoading(false)
     }
     init()
   }, [])
 
+  const vklopiNotifikacije = async () => {
+    setNotifikacijeLoading(true)
+    try {
+      // Vpraša uporabnika za dovoljenje
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        setNotifikacije('zavrnjeno')
+        setMessage('❌ Obvestila so zavrnjena. Dovoli jih v nastavitvah brskalnika.')
+        setNotifikacijeLoading(false)
+        return
+      }
+      setNotifikacije('dovoljeno')
+
+      // Registrira service worker
+      const registration = await navigator.serviceWorker.register('/sw.js')
+      await navigator.serviceWorker.ready
+
+      // Pridobi subscription
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      })
+
+      // Shrani v Supabase
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('push_subscriptions').upsert({
+        user_id: user?.id,
+        subscription: subscription.toJSON()
+      })
+
+      setMessage('✅ Obvestila so vklopljena!')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Napaka:', error)
+      setMessage('❌ Napaka pri vklopu obvestil.')
+    }
+    setNotifikacijeLoading(false)
+  }
+
   const shrani = () => {
     const nastavitve = { nacin, jezik, pisava, prikazGaraze, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
-    // Apliciramo velikost pisave takoj
     const velikosti: any = { mala: '13px', normalna: '16px', velika: '19px' }
     document.documentElement.style.fontSize = velikosti[pisava]
     setMessage('✅ Nastavitve shranjene!')
@@ -148,6 +194,34 @@ export default function Nastavitve() {
         </div>
       </div>
 
+      {/* Obvestila */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Obvestila</p>
+        <p className="text-[#3a3a5a] text-xs mb-3">Opomniki za registracijo, servis in vinjeto</p>
+        {notifikacije === 'dovoljeno' ? (
+          <div className="flex items-center gap-3 bg-[#16a34a22] border border-[#16a34a44] rounded-xl p-3">
+            <span className="text-xl">🔔</span>
+            <div>
+              <p className="text-[#4ade80] text-sm font-semibold">Obvestila so vklopljena</p>
+              <p className="text-[#5a5a80] text-xs">Prejeli boste opomnike ob 8:00</p>
+            </div>
+          </div>
+        ) : notifikacije === 'zavrnjeno' ? (
+          <div className="flex items-center gap-3 bg-[#ef444422] border border-[#ef444444] rounded-xl p-3">
+            <span className="text-xl">🔕</span>
+            <div>
+              <p className="text-[#fca5a5] text-sm font-semibold">Obvestila so zavrnjena</p>
+              <p className="text-[#5a5a80] text-xs">Dovoli jih v nastavitvah brskalnika</p>
+            </div>
+          </div>
+        ) : (
+          <button onClick={vklopiNotifikacije} disabled={notifikacijeLoading}
+            className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
+            {notifikacijeLoading ? 'Vklapljam...' : '🔔 Vklopi obvestila'}
+          </button>
+        )}
+      </div>
+
       {/* Način uporabe */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
@@ -202,10 +276,10 @@ export default function Nastavitve() {
             { vrednost: 'velika', naziv: 'Velika' },
           ].map((p) => (
             <button key={p.vrednost} onClick={() => {
-  setPisava(p.vrednost)
-  const velikosti: any = { mala: '13px', normalna: '16px', velika: '19px' }
-  document.documentElement.style.fontSize = velikosti[p.vrednost]
-}}
+              setPisava(p.vrednost)
+              const velikosti: any = { mala: '13px', normalna: '16px', velika: '19px' }
+              document.documentElement.style.fontSize = velikosti[p.vrednost]
+            }}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
                 pisava === p.vrednost
                   ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
@@ -341,7 +415,9 @@ export default function Nastavitve() {
       </div>
 
       {message && (
-        <div className="p-3 rounded-xl text-sm border bg-[#16a34a22] border-[#16a34a44] text-[#4ade80] mb-4">
+        <div className={`p-3 rounded-xl text-sm border mb-4 ${
+          message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
+        }`}>
           {message}
         </div>
       )}
