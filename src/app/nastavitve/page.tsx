@@ -201,7 +201,11 @@ export default function Nastavitve() {
             { vrednost: 'normalna', naziv: 'Normalna' },
             { vrednost: 'velika', naziv: 'Velika' },
           ].map((p) => (
-            <button key={p.vrednost} onClick={() => setPisava(p.vrednost)}
+            <button key={p.vrednost} onClick={() => {
+  setPisava(p.vrednost)
+  const velikosti: any = { mala: '13px', normalna: '16px', velika: '19px' }
+  document.documentElement.style.fontSize = velikosti[p.vrednost]
+}}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
                 pisava === p.vrednost
                   ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
