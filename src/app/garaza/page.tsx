@@ -4,6 +4,8 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 
+const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
+
 export default function Garaza() {
   const [avti, setAvti] = useState<any[]>([])
   const [opomniki, setOpomniki] = useState<{ [key: string]: any[] }>({})
@@ -13,10 +15,12 @@ export default function Garaza() {
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [prikaz, setPrikaz] = useState('srednje')
   const [gridNastavitve, setGridNastavitve] = useState({
-    tablica: true, km: true, opomnik: true, letnik: false, gorivo: false
+    tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
   })
   const [listaNastavitve, setListaNastavitve] = useState({
-    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true
+    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true,
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
   })
   const dragOver = useRef<number | null>(null)
 
@@ -45,8 +49,8 @@ export default function Garaza() {
       if (shranjene) {
         const n = JSON.parse(shranjene)
         setPrikaz(n.prikazGaraze || 'srednje')
-        if (n.gridNastavitve) setGridNastavitve(n.gridNastavitve)
-        if (n.listaNastavitve) setListaNastavitve(n.listaNastavitve)
+        if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
+        if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
       }
 
       setLoading(false)
@@ -88,23 +92,17 @@ export default function Garaza() {
     }
   }
 
-  const miniDniOpomnika = (carId: string): number | null => {
+  const barvaOpomnika = (carId: string) => {
     const ops = opomniki[carId] || []
-    if (ops.length === 0) return null
     let minDni = Infinity
     for (const op of ops) {
       if (!op.datum) continue
       const dni = Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
       if (dni < minDni) minDni = dni
     }
-    return minDni === Infinity ? null : minDni
-  }
-
-  const barvaOpomnika = (carId: string) => {
-    const dni = miniDniOpomnika(carId)
-    if (dni === null) return null
-    if (dni <= 7) return 'rdeča'
-    if (dni <= 30) return 'rumena'
+    if (minDni === Infinity) return null
+    if (minDni <= 7) return 'rdeča'
+    if (minDni <= 30) return 'rumena'
     return 'zelena'
   }
 
@@ -115,17 +113,46 @@ export default function Garaza() {
     return 'border-[#2a2a40]'
   }
 
-  const barvaPika = (barva: string | null) => {
-    if (barva === 'rdeča') return 'bg-[#ef4444]'
-    if (barva === 'rumena') return 'bg-[#f59e0b]'
-    if (barva === 'zelena') return 'bg-[#16a34a]'
-    return 'bg-[#3a3a5a]'
+  const dniBgBarva = (dni: number) => {
+    if (dni <= 7) return 'bg-[#ef4444]'
+    if (dni <= 30) return 'bg-[#f59e0b]'
+    return 'bg-[#16a34a]'
   }
 
   const karticaVisina = () => {
     if (prikaz === 'malo') return { height: '14vh', minHeight: '100px', maxHeight: '140px' }
     if (prikaz === 'veliko') return { height: '28vh', minHeight: '180px', maxHeight: '240px' }
     return { height: '20vh', minHeight: '130px', maxHeight: '180px' }
+  }
+
+  const OpomnikiBadgi = ({ carId, max, nastavitve }: { carId: string, max: number, nastavitve: any }) => {
+    const ops = opomniki[carId] || []
+    const filtrirani = ops
+      .filter((op: any) => op.datum)
+      .map((op: any) => ({
+        ...op,
+        dni: Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      }))
+      .filter((op: any) => {
+        if (op.dni <= 7) return nastavitve.opomnikRdeci !== false
+        if (op.dni <= 30) return nastavitve.opomnikRumeni !== false
+        return nastavitve.opomnikZeleni === true
+      })
+      .sort((a: any, b: any) => a.dni - b.dni)
+      .slice(0, max)
+
+    if (filtrirani.length === 0) return null
+
+    return (
+      <>
+        {filtrirani.map((op: any) => (
+          <div key={op.id} className={`rounded-md px-1 py-0.5 ${dniBgBarva(op.dni)} flex items-center gap-0.5`}>
+            <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
+            <span className="text-white font-bold text-[8px]">{op.dni}d</span>
+          </div>
+        ))}
+      </>
+    )
   }
 
   if (loading) return (
@@ -186,12 +213,10 @@ export default function Garaza() {
           </div>
         </div>
       ) : prikaz === 'grid' ? (
-        /* GRID VIEW */
         <div className="flex-1 overflow-y-auto px-3 pt-2">
           <div className="grid grid-cols-3 gap-2">
             {avti.map((avto) => {
               const barva = barvaOpomnika(avto.id)
-              const dni = miniDniOpomnika(avto.id)
               return (
                 <div key={avto.id}
                   onClick={() => window.location.href = `/dashboard?car=${avto.id}`}
@@ -204,9 +229,9 @@ export default function Garaza() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                  {gridNastavitve.opomnik && barva && dni !== null && (
-                    <div className={`absolute top-1 right-1 rounded-md px-1.5 py-0.5 ${barvaPika(barva)} shadow-lg`}>
-                      <span className="text-white font-bold text-[9px]">{dni}d</span>
+                  {gridNastavitve.opomnik && (
+                    <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
+                      <OpomnikiBadgi carId={avto.id} max={3} nastavitve={gridNastavitve} />
                     </div>
                   )}
 
@@ -245,11 +270,9 @@ export default function Garaza() {
           </div>
         </div>
       ) : (
-        /* LISTA VIEW */
         <div className="flex-1 overflow-y-auto">
           {avti.map((avto, index) => {
             const barva = barvaOpomnika(avto.id)
-            const dni = miniDniOpomnika(avto.id)
             return (
               <div key={avto.id}
                 draggable={urejanje}
@@ -274,14 +297,13 @@ export default function Garaza() {
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
 
-                {urejanje && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />
-                )}
+                {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
                 <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
                   <div>
-                    <h2 className="text-white font-bold text-lg leading-tight" style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)' }}>
+                    <h2 className="text-white font-bold text-lg leading-tight"
+                      style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)' }}>
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
@@ -294,9 +316,9 @@ export default function Garaza() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1 mb-0.5">
-                    {listaNastavitve.opomnik && barva && dni !== null && (
-                      <div className={`rounded-md px-1.5 py-0.5 ${barvaPika(barva)} shadow-lg`}>
-                        <span className="text-white font-bold text-[9px]">{dni}d</span>
+                    {listaNastavitve.opomnik && (
+                      <div className="flex flex-wrap gap-1 justify-end max-w-[130px]">
+                        <OpomnikiBadgi carId={avto.id} max={4} nastavitve={listaNastavitve} />
                       </div>
                     )}
                     {listaNastavitve.tablica && avto.tablica && (

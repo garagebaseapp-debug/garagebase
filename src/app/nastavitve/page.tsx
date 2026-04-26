@@ -14,10 +14,12 @@ export default function Nastavitve() {
   const [avtocomplete, setAvtocomplete] = useState(true)
   const [tema, setTema] = useState('temna')
   const [gridNastavitve, setGridNastavitve] = useState({
-    tablica: true, km: true, opomnik: true, letnik: false, gorivo: false
+    tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
   })
   const [listaNastavitve, setListaNastavitve] = useState({
-    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true
+    letnik: true, gorivo: true, km: true, opomnik: true, tablica: true,
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
   })
   const [message, setMessage] = useState('')
 
@@ -26,7 +28,6 @@ export default function Nastavitve() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       setUser(user)
-
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
       if (shranjeneNastavitve) {
         const n = JSON.parse(shranjeneNastavitve)
@@ -36,8 +37,8 @@ export default function Nastavitve() {
         setPrikazGaraze(n.prikazGaraze || 'srednje')
         setAvtocomplete(n.avtocomplete !== false)
         setTema(n.tema || 'temna')
-        if (n.gridNastavitve) setGridNastavitve(n.gridNastavitve)
-        if (n.listaNastavitve) setListaNastavitve(n.listaNastavitve)
+        if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
+        if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
         if (n.tema === 'svetla') {
           document.documentElement.classList.add('light-mode')
         } else {
@@ -70,6 +71,30 @@ export default function Nastavitve() {
     await supabase.auth.signOut()
     window.location.href = '/'
   }
+
+  const OpomnikFilter = ({ nastavitve, setNastavitve }: { nastavitve: any, setNastavitve: any }) => (
+    <div className="mt-3 pt-3 border-t border-[#1e1e32]">
+      <p className="text-[#5a5a80] text-xs mb-2">Prikaži opomnike:</p>
+      <div className="flex gap-2">
+        {[
+          { key: 'opomnikRdeci', naziv: '🔴 Nujni', opis: '<7 dni' },
+          { key: 'opomnikRumeni', naziv: '🟡 Kmalu', opis: '<30 dni' },
+          { key: 'opomnikZeleni', naziv: '🟢 Vsi', opis: '>30 dni' },
+        ].map((item) => (
+          <button key={item.key}
+            onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+            className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
+              nastavitve[item.key]
+                ? 'bg-[#6c63ff22] border-[#6c63ff66]'
+                : 'bg-[#13131f] border-[#1e1e32]'
+            }`}>
+            <p className="text-xs">{item.naziv}</p>
+            <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -214,7 +239,7 @@ export default function Nastavitve() {
               {[
                 { key: 'tablica', naziv: 'Registrska tablica' },
                 { key: 'km', naziv: 'Kilometri' },
-                { key: 'opomnik', naziv: 'Opomnik (dni do izteka)' },
+                { key: 'opomnik', naziv: 'Opomniki na kartici' },
                 { key: 'letnik', naziv: 'Letnik' },
                 { key: 'gorivo', naziv: 'Tip goriva' },
               ].map((item) => (
@@ -232,6 +257,9 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
+            {gridNastavitve.opomnik && (
+              <OpomnikFilter nastavitve={gridNastavitve} setNastavitve={setGridNastavitve} />
+            )}
           </div>
         )}
 
@@ -245,7 +273,7 @@ export default function Nastavitve() {
                 { key: 'gorivo', naziv: 'Gorivo' },
                 { key: 'km', naziv: 'Kilometri' },
                 { key: 'tablica', naziv: 'Registrska tablica' },
-                { key: 'opomnik', naziv: 'Opomnik (dni do izteka)' },
+                { key: 'opomnik', naziv: 'Opomniki na kartici' },
               ].map((item) => (
                 <div key={item.key} className="flex justify-between items-center">
                   <p className="text-white text-sm">{item.naziv}</p>
@@ -261,6 +289,9 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
+            {listaNastavitve.opomnik && (
+              <OpomnikFilter nastavitve={listaNastavitve} setNastavitve={setListaNastavitve} />
+            )}
           </div>
         )}
       </div>
