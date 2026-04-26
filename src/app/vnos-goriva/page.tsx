@@ -22,6 +22,9 @@ export default function VnosGoriva() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const postajRef = useRef<HTMLDivElement>(null)
 
+  const danes = new Date().toISOString().split('T')[0]
+  const jeNaknaden = datum < danes
+
   const tipiGoriva = [
     { vrednost: '95', naziv: '95', barva: 'bg-[#16a34a]', barvaText: 'text-[#16a34a]', barvaBorder: 'border-[#16a34a]', opis: 'Bencin 95' },
     { vrednost: '100', naziv: '100', barva: 'bg-[#2563eb]', barvaText: 'text-[#2563eb]', barvaBorder: 'border-[#2563eb]', opis: 'Bencin 100' },
@@ -45,7 +48,6 @@ export default function VnosGoriva() {
         setCarId(izbrani.id)
         await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
         await naloziPostaje()
-        // Nastavi privzeti tip goriva glede na avto
         if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
         else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
       }
@@ -169,12 +171,20 @@ export default function VnosGoriva() {
     setLoading(true)
     setMessage('')
 
+    const datumVnosa = new Date().toLocaleDateString('sl-SI')
+    const opombaNaknaden = jeNaknaden ? ` [Naknadno vneseno: ${datumVnosa}]` : ''
+    const postajaZOpombo = postaja
+      ? postaja + opombaNaknaden
+      : jeNaknaden ? opombaNaknaden.trim() : null
+
     const { error } = await supabase.from('fuel_logs').insert({
-      car_id: carId, datum, km: vneseniKm,
+      car_id: carId,
+      datum,
+      km: vneseniKm,
       litri: parseFloat(litri),
       cena_na_liter: cenaNaLiter ? parseFloat(cenaNaLiter) : null,
       cena_skupaj: cenaSkupaj ? parseFloat(cenaSkupaj) : null,
-      postaja: postaja || null,
+      postaja: postajaZOpombo,
       tip_goriva: tipGoriva || null,
     })
 
@@ -224,7 +234,9 @@ export default function VnosGoriva() {
                     ? `${tip.barvaBorder} bg-opacity-20`
                     : 'border-[#1e1e32] bg-[#13131f]'
                 }`}
-                style={tipGoriva === tip.vrednost ? { backgroundColor: tip.vrednost === 'diesel' ? '#1a1a1a' : tip.vrednost === '95' ? '#16a34a15' : '#2563eb15' } : {}}>
+                style={tipGoriva === tip.vrednost ? {
+                  backgroundColor: tip.vrednost === 'diesel' ? '#1a1a1a' : tip.vrednost === '95' ? '#16a34a15' : '#2563eb15'
+                } : {}}>
                 <div className={`w-8 h-8 rounded-lg ${tip.barva} flex items-center justify-center`}>
                   <span className="text-white font-bold text-sm">{tip.naziv}</span>
                 </div>
@@ -236,12 +248,21 @@ export default function VnosGoriva() {
           </div>
         </div>
 
+        {/* Datum */}
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Datum</label>
           <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
-            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
+              jeNaknaden ? 'border-[#6c63ff]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
+            }`} />
+          {jeNaknaden && (
+            <div className="mt-2 p-2 rounded-lg bg-[#6c63ff22] border border-[#6c63ff44]">
+              <p className="text-[#a5b4fc] text-xs">⚠️ Naknaden vnos — zabeleženo bo kdaj je bilo dejansko vneseno</p>
+            </div>
+          )}
         </div>
 
+        {/* Kilometri */}
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
             Kilometri * <span className="text-[#3a3a5a] normal-case">(zadnji: {zadnjiKm.toLocaleString()} km)</span>
@@ -261,6 +282,7 @@ export default function VnosGoriva() {
           )}
         </div>
 
+        {/* Litri */}
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Litri *</label>
           <div className="flex gap-2">
@@ -270,6 +292,7 @@ export default function VnosGoriva() {
           </div>
         </div>
 
+        {/* Cena na liter */}
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena/L (€)</label>
           <div className="flex gap-2">
@@ -279,6 +302,7 @@ export default function VnosGoriva() {
           </div>
         </div>
 
+        {/* Skupna cena */}
         {cenaSkupaj && (
           <div className="bg-[#6c63ff22] border border-[#6c63ff44] rounded-xl px-4 py-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupna cena</p>
@@ -286,6 +310,7 @@ export default function VnosGoriva() {
           </div>
         )}
 
+        {/* Postaja */}
         <div ref={postajRef} className="relative">
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Postaja (po želji)</label>
           <div className="flex gap-2">
