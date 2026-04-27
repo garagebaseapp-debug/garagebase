@@ -45,35 +45,13 @@ export default function LandingPage() {
       {/* Hero sekcija z garažnim ozadjem */}
       <section className="relative min-h-screen flex items-center justify-center px-6 pt-20 overflow-hidden">
 
-        {/* Garažno ozadje — CSS only, brez slik */}
+        {/* Garažno ozadje — slika */}
         <div className="absolute inset-0">
-          {/* Tla garaže */}
-          <div className="absolute bottom-0 left-0 right-0 h-1/3"
-            style={{
-              background: 'linear-gradient(to top, #0a0a14 0%, transparent 100%)',
-            }} />
-          {/* Stranski neonski paneli */}
-          <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#3ecfcf] opacity-60 blur-sm" />
-          <div className="absolute right-0 top-0 bottom-0 w-2 bg-[#6c63ff] opacity-60 blur-sm" />
-          {/* Horizontalne linije kot garažna vrata */}
-          {[20, 35, 50, 65, 80].map((top, i) => (
-            <div key={i} className="absolute left-0 right-0 h-px opacity-5"
-              style={{ top: `${top}%`, background: 'linear-gradient(to right, transparent, #6c63ff, #3ecfcf, #6c63ff, transparent)' }} />
-          ))}
-          {/* Glavni gradient */}
+          <img src="/garaza.png" alt="Garaža"
+            className="w-full h-full object-cover object-center opacity-40" />
+          {/* Temni overlay da je tekst čitljiv */}
           <div className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(ellipse at 50% 40%, #6c63ff18 0%, #080810 70%)',
-            }} />
-          {/* Turkizni accent spodaj levo */}
-          <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-[#3ecfcf] opacity-5 rounded-full blur-[80px]" />
-          {/* Vijolični accent zgoraj desno */}
-          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-[#6c63ff] opacity-8 rounded-full blur-[100px]" />
-          {/* Vertikalne linije kot garažni stebri */}
-          <div className="absolute left-1/4 top-0 bottom-0 w-px opacity-5"
-            style={{ background: 'linear-gradient(to bottom, transparent, #3ecfcf, transparent)' }} />
-          <div className="absolute right-1/4 top-0 bottom-0 w-px opacity-5"
-            style={{ background: 'linear-gradient(to bottom, transparent, #6c63ff, transparent)' }} />
+            style={{ background: 'linear-gradient(to bottom, #080810aa 0%, #08081066 40%, #080810cc 80%, #080810 100%)' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
