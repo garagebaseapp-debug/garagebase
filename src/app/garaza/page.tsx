@@ -16,11 +16,13 @@ export default function Garaza() {
   const [prikaz, setPrikaz] = useState('srednje')
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
-    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
+    opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
   const [listaNastavitve, setListaNastavitve] = useState({
     letnik: true, gorivo: true, km: true, opomnik: true, tablica: true,
-    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
+    opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
   const dragOver = useRef<number | null>(null)
 
@@ -92,18 +94,30 @@ export default function Garaza() {
     }
   }
 
-  const barvaOpomnika = (carId: string) => {
+  const barvaOpomnika = (carId: string, avtoKm: number) => {
     const ops = opomniki[carId] || []
     let minDni = Infinity
+    let minKm = Infinity
+
     for (const op of ops) {
-      if (!op.datum) continue
-      const dni = Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-      if (dni < minDni) minDni = dni
+      if (op.datum) {
+        const dni = Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        if (dni < minDni) minDni = dni
+      }
+      if (op.km_opomnik && avtoKm) {
+        const preostalo = op.km_opomnik - avtoKm
+        if (preostalo < minKm) minKm = preostalo
+      }
     }
-    if (minDni === Infinity) return null
-    if (minDni <= 7) return 'rdeča'
-    if (minDni <= 30) return 'rumena'
-    return 'zelena'
+
+    // Vzamemo slabšo barvo med datumom in km
+    const rdeca = (minDni !== Infinity && minDni <= 7) || (minKm !== Infinity && minKm <= 500)
+    const rumena = (minDni !== Infinity && minDni <= 30) || (minKm !== Infinity && minKm <= 1500)
+
+    if (rdeca) return 'rdeča'
+    if (rumena) return 'rumena'
+    if (minDni !== Infinity || minKm !== Infinity) return 'zelena'
+    return null
   }
 
   const barvaBorder = (barva: string | null) => {
@@ -119,37 +133,70 @@ export default function Garaza() {
     return 'bg-[#16a34a]'
   }
 
+  const kmBgBarva = (preostalo: number) => {
+    if (preostalo <= 500) return 'bg-[#ef4444]'
+    if (preostalo <= 1500) return 'bg-[#f59e0b]'
+    return 'bg-[#16a34a]'
+  }
+
   const karticaVisina = () => {
     if (prikaz === 'malo') return { height: '14vh', minHeight: '100px', maxHeight: '140px' }
     if (prikaz === 'veliko') return { height: '28vh', minHeight: '180px', maxHeight: '240px' }
     return { height: '20vh', minHeight: '130px', maxHeight: '180px' }
   }
 
-  const OpomnikiBadgi = ({ carId, max, nastavitve }: { carId: string, max: number, nastavitve: any }) => {
+  const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: any }) => {
     const ops = opomniki[carId] || []
-    const filtrirani = ops
+    const badgi: any[] = []
+
+    // Datumski opomniki
+    ops
       .filter((op: any) => op.datum)
       .map((op: any) => ({
         ...op,
-        dni: Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        dni: Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+        tip_prikaza: 'datum'
       }))
       .filter((op: any) => {
         if (op.dni <= 7) return nastavitve.opomnikRdeci !== false
         if (op.dni <= 30) return nastavitve.opomnikRumeni !== false
         return nastavitve.opomnikZeleni === true
       })
-      .sort((a: any, b: any) => a.dni - b.dni)
-      .slice(0, max)
+      .forEach((op: any) => badgi.push(op))
 
-    if (filtrirani.length === 0) return null
+    // Km opomniki
+    ops
+      .filter((op: any) => op.km_opomnik && avtoKm)
+      .map((op: any) => ({
+        ...op,
+        preostaloKm: op.km_opomnik - avtoKm,
+        tip_prikaza: 'km'
+      }))
+      .filter((op: any) => {
+        if (op.preostaloKm <= 500) return nastavitve.opomnikKmRdeci !== false
+        if (op.preostaloKm <= 1500) return nastavitve.opomnikKmRumeni !== false
+        return nastavitve.opomnikKmZeleni === true
+      })
+      .forEach((op: any) => badgi.push(op))
+
+    if (badgi.length === 0) return null
 
     return (
       <>
-        {filtrirani.map((op: any) => (
-          <div key={op.id} className={`rounded-md px-1 py-0.5 ${dniBgBarva(op.dni)} flex items-center gap-0.5`}>
-            <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
-            <span className="text-white font-bold text-[8px]">{op.dni}d</span>
-          </div>
+        {badgi.slice(0, max).map((op: any) => (
+          op.tip_prikaza === 'datum' ? (
+            <div key={`d-${op.id}`} className={`rounded-md px-1 py-0.5 ${dniBgBarva(op.dni)} flex items-center gap-0.5`}>
+              <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
+              <span className="text-white font-bold text-[8px]">{op.dni}d</span>
+            </div>
+          ) : (
+            <div key={`k-${op.id}`} className={`rounded-md px-1 py-0.5 ${kmBgBarva(op.preostaloKm)} flex items-center gap-0.5`}>
+              <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
+              <span className="text-white font-bold text-[8px]">
+                {op.preostaloKm <= 0 ? `+${Math.abs(op.preostaloKm)}` : op.preostaloKm}km
+              </span>
+            </div>
+          )
         ))}
       </>
     )
@@ -175,7 +222,6 @@ export default function Garaza() {
               📲 Namesti
             </button>
           )}
-          {/* Gumb uredi — prikaže se za vse načine prikaza če je več kot 1 avto */}
           {avti.length > 1 && (
             <button onClick={() => setUrejanje(!urejanje)}
               className={`text-sm font-semibold px-3 py-2 rounded-xl transition-colors ${
@@ -217,7 +263,7 @@ export default function Garaza() {
         <div className="flex-1 overflow-y-auto px-3 pt-2">
           <div className="grid grid-cols-3 gap-2">
             {avti.map((avto, index) => {
-              const barva = barvaOpomnika(avto.id)
+              const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
               return (
                 <div key={avto.id}
                   draggable={urejanje}
@@ -237,7 +283,6 @@ export default function Garaza() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                  {/* Urejanje indikator v gridu */}
                   {urejanje && (
                     <div className="absolute top-1 left-1 bg-black/60 rounded-md px-1 py-0.5">
                       <span className="text-white text-[10px]">⠿</span>
@@ -246,7 +291,7 @@ export default function Garaza() {
 
                   {gridNastavitve.opomnik && !urejanje && (
                     <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
-                      <OpomnikiBadgi carId={avto.id} max={3} nastavitve={gridNastavitve} />
+                      <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={gridNastavitve} />
                     </div>
                   )}
 
@@ -289,7 +334,7 @@ export default function Garaza() {
       ) : (
         <div className="flex-1 overflow-y-auto">
           {avti.map((avto, index) => {
-            const barva = barvaOpomnika(avto.id)
+            const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
             return (
               <div key={avto.id}
                 draggable={urejanje}
@@ -335,7 +380,7 @@ export default function Garaza() {
                   <div className="flex flex-col items-end gap-1 mb-0.5">
                     {listaNastavitve.opomnik && (
                       <div className="flex flex-wrap gap-1 justify-end max-w-[130px]">
-                        <OpomnikiBadgi carId={avto.id} max={4} nastavitve={listaNastavitve} />
+                        <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={4} nastavitve={listaNastavitve} />
                       </div>
                     )}
                     {listaNastavitve.tablica && avto.tablica && (
