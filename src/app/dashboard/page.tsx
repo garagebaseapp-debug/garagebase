@@ -18,7 +18,7 @@ export default function Dashboard() {
       if (!user) { window.location.href = '/'; return }
       const { data: avtiData } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('vrstni_red', { ascending: true })
       if (avtiData && avtiData.length > 0) {
         setAvti(avtiData)
         const params = new URLSearchParams(window.location.search)
@@ -60,7 +60,7 @@ export default function Dashboard() {
       setPoraba({ skupaj: null, zadnja: null })
     }
 
-    // Kalkulator stroškov €/km — upošteva km_ob_vnosu kot izhodišče
+    // Kalkulator stroškov €/km
     const { data: servisStroški } = await supabase.from('service_logs').select('cena').eq('car_id', carId)
     const { data: expensesData } = await supabase.from('expenses').select('znesek').eq('car_id', carId)
     const { data: gorivoStroški } = await supabase.from('fuel_logs').select('cena_skupaj').eq('car_id', carId)
@@ -83,15 +83,40 @@ export default function Dashboard() {
     return Math.ceil((new Date(datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const barvaDni = (dni: number | null) => {
+  const kmDo = (kmOpomnik: number) => {
+    if (!aktivniAvto?.km_trenutni) return null
+    return kmOpomnik - aktivniAvto.km_trenutni
+  }
+
+  // Barva glede na dni
+  const barvaZaDni = (dni: number | null) => {
     if (dni === null) return { text: 'text-[#5a5a80]', bg: 'bg-[#13131f]', border: 'border-[#1e1e32]' }
     if (dni <= 7) return { text: 'text-[#ef4444]', bg: 'bg-[#ef444411]', border: 'border-[#ef444433]' }
     if (dni <= 30) return { text: 'text-[#f59e0b]', bg: 'bg-[#f59e0b11]', border: 'border-[#f59e0b33]' }
     return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
   }
 
-  const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️' }
-  const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje' }
+  // Barva glede na km
+  const barvaZaKm = (preostaloKm: number | null) => {
+    if (preostaloKm === null) return { text: 'text-[#5a5a80]', bg: 'bg-[#13131f]', border: 'border-[#1e1e32]' }
+    if (preostaloKm <= 500) return { text: 'text-[#ef4444]', bg: 'bg-[#ef444411]', border: 'border-[#ef444433]' }
+    if (preostaloKm <= 1500) return { text: 'text-[#f59e0b]', bg: 'bg-[#f59e0b11]', border: 'border-[#f59e0b33]' }
+    return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
+  }
+
+  // Skupna barva — vzame slabšo
+  const skupnaBarva = (dni: number | null, preostaloKm: number | null) => {
+    const bdni = barvaZaDni(dni)
+    const bkm = barvaZaKm(preostaloKm)
+    if (bdni.text === 'text-[#ef4444]' || bkm.text === 'text-[#ef4444]')
+      return { text: 'text-[#ef4444]', bg: 'bg-[#ef444411]', border: 'border-[#ef444433]' }
+    if (bdni.text === 'text-[#f59e0b]' || bkm.text === 'text-[#f59e0b]')
+      return { text: 'text-[#f59e0b]', bg: 'bg-[#f59e0b11]', border: 'border-[#f59e0b33]' }
+    return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
+  }
+
+  const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
+  const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje', gume: 'Gume' }
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -256,27 +281,63 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {/* Opomniki z dni in km prikazom */}
               {opomniki.length > 0 && (
                 <div className="mb-4">
                   <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Opomniki</p>
                   <div className="flex flex-col gap-2">
                     {opomniki.map((op) => {
                       const dni = dniDo(op.datum)
-                      const b = barvaDni(dni)
+                      const preostaloKm = op.km_opomnik ? kmDo(op.km_opomnik) : null
+                      const b = skupnaBarva(dni, preostaloKm)
                       return (
-                        <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3.5 flex justify-between items-center`}>
-                          <div className="flex items-center gap-3">
-                            <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
-                            <div>
+                        <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3.5`}>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
                               <p className="text-white text-sm font-semibold">{tipNaziv[op.tip] || op.tip}</p>
-                              {op.datum && <p className="text-[#5a5a80] text-xs">{new Date(op.datum).toLocaleDateString('sl-SI')}</p>}
-                              {op.km_opomnik && <p className="text-[#5a5a80] text-xs">pri {op.km_opomnik.toLocaleString()} km</p>}
                             </div>
                           </div>
-                          {dni !== null && (
-                            <div className="text-right">
-                              <p className={`${b.text} font-bold text-2xl leading-none`}>{dni}</p>
-                              <p className="text-[#5a5a80] text-xs mt-0.5">dni</p>
+
+                          {/* Datum vrstica */}
+                          {op.datum && (
+                            <div className="flex justify-between items-center mt-2">
+                              <p className="text-[#5a5a80] text-xs">
+                                📅 {new Date(op.datum).toLocaleDateString('sl-SI')}
+                              </p>
+                              {dni !== null && (
+                                <div className="text-right">
+                                  {dni >= 0 ? (
+                                    <p className={`${barvaZaDni(dni).text} font-bold text-lg leading-none`}>
+                                      {dni} <span className="text-xs font-normal">dni</span>
+                                    </p>
+                                  ) : (
+                                    <p className="text-[#ef4444] font-bold text-lg leading-none">
+                                      +{Math.abs(dni)} <span className="text-xs font-normal">dni zamude</span>
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Km vrstica */}
+                          {op.km_opomnik && preostaloKm !== null && (
+                            <div className="flex justify-between items-center mt-1">
+                              <p className="text-[#5a5a80] text-xs">
+                                🛣️ pri {op.km_opomnik.toLocaleString()} km
+                              </p>
+                              <div className="text-right">
+                                {preostaloKm >= 0 ? (
+                                  <p className={`${barvaZaKm(preostaloKm).text} font-bold text-lg leading-none`}>
+                                    {preostaloKm.toLocaleString()} <span className="text-xs font-normal">km še</span>
+                                  </p>
+                                ) : (
+                                  <p className="text-[#ef4444] font-bold text-lg leading-none">
+                                    +{Math.abs(preostaloKm).toLocaleString()} <span className="text-xs font-normal">km prekoračeno</span>
+                                  </p>
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
