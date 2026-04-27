@@ -3,13 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 // @ts-ignore
 import webpush from 'web-push'
 
-// Supabase admin klient
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// VAPID nastavitve
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
@@ -17,18 +15,17 @@ webpush.setVapidDetails(
 )
 
 export async function GET(req: Request) {
-  // Varnostni ključ — debug vrstica da vidimo kaj se dogaja
+  // Vercel cron pošlje header user-agent z 'vercel-cron'
   const authHeader = req.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  console.log('Auth header:', authHeader)
-  console.log('CRON_SECRET:', cronSecret)
+  const userAgent = req.headers.get('user-agent') || ''
+  const isVercelCron = userAgent.includes('vercel-cron')
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized', debug: { authHeader, cronSecret } }, { status: 401 })
+  // Sprejmi če je Vercel cron ALI če je pravilen Bearer token
+  if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
-    // Vzemi vse opomnike
     const { data: opomniki } = await supabase
       .from('reminders')
       .select('*, cars(znamka, model, user_id)')
@@ -44,7 +41,6 @@ export async function GET(req: Request) {
         (new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
       )
 
-      // Pošlji notifikacijo če je 30, 14, 7 ali 1 dan pred potekom
       if (![30, 14, 7, 1].includes(dniDo)) continue
 
       const tipNaziv: any = {
@@ -58,7 +54,6 @@ export async function GET(req: Request) {
       const avtoNaziv = `${op.cars?.znamka} ${op.cars?.model}`
       const naziv = tipNaziv[op.tip] || op.tip
 
-      // Vzemi subscription tega uporabnika
       const { data: subs } = await supabase
         .from('push_subscriptions')
         .select('subscription')
