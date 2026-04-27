@@ -175,7 +175,8 @@ export default function Garaza() {
               📲 Namesti
             </button>
           )}
-          {avti.length > 1 && prikaz !== 'grid' && (
+          {/* Gumb uredi — prikaže se za vse načine prikaza če je več kot 1 avto */}
+          {avti.length > 1 && (
             <button onClick={() => setUrejanje(!urejanje)}
               className={`text-sm font-semibold px-3 py-2 rounded-xl transition-colors ${
                 urejanje ? 'bg-[#3ecfcf] text-black' : 'bg-[#13131f] border border-[#1e1e32] text-[#5a5a80]'
@@ -194,7 +195,7 @@ export default function Garaza() {
         </div>
       </div>
 
-      {urejanje && prikaz !== 'grid' && (
+      {urejanje && (
         <p className="text-center text-[#5a5a80] text-xs mb-2 px-5">
           Povleci avte da spreminjaš vrstni red
         </p>
@@ -215,12 +216,19 @@ export default function Garaza() {
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2">
           <div className="grid grid-cols-3 gap-2">
-            {avti.map((avto) => {
+            {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id)
               return (
                 <div key={avto.id}
-                  onClick={() => window.location.href = `/dashboard?car=${avto.id}`}
-                  className={`relative rounded-xl overflow-hidden cursor-pointer border-2 ${barvaBorder(barva)} aspect-square`}>
+                  draggable={urejanje}
+                  onDragStart={() => onDragStart(index)}
+                  onDragEnter={() => onDragEnter(index)}
+                  onDragEnd={onDragEnd}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                  className={`relative rounded-xl overflow-hidden border-2 ${barvaBorder(barva)} aspect-square transition-all ${
+                    urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                  } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
                   {avto.slika_url ? (
                     <img src={avto.slika_url} alt={avto.znamka}
                       className="absolute inset-0 w-full h-full object-cover" />
@@ -229,7 +237,14 @@ export default function Garaza() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                  {gridNastavitve.opomnik && (
+                  {/* Urejanje indikator v gridu */}
+                  {urejanje && (
+                    <div className="absolute top-1 left-1 bg-black/60 rounded-md px-1 py-0.5">
+                      <span className="text-white text-[10px]">⠿</span>
+                    </div>
+                  )}
+
+                  {gridNastavitve.opomnik && !urejanje && (
                     <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
                       <OpomnikiBadgi carId={avto.id} max={3} nastavitve={gridNastavitve} />
                     </div>
@@ -260,13 +275,15 @@ export default function Garaza() {
               )
             })}
 
-            <div onClick={() => window.location.href = '/dodaj-avto'}
-              className="aspect-square rounded-xl border-2 border-dashed border-[#2a2a40] flex items-center justify-center cursor-pointer hover:border-[#6c63ff] transition-colors">
-              <div className="text-center">
-                <p className="text-[#3a3a5a] text-2xl">+</p>
-                <p className="text-[#3a3a5a] text-[9px]">Dodaj</p>
+            {!urejanje && (
+              <div onClick={() => window.location.href = '/dodaj-avto'}
+                className="aspect-square rounded-xl border-2 border-dashed border-[#2a2a40] flex items-center justify-center cursor-pointer hover:border-[#6c63ff] transition-colors">
+                <div className="text-center">
+                  <p className="text-[#3a3a5a] text-2xl">+</p>
+                  <p className="text-[#3a3a5a] text-[9px]">Dodaj</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       ) : (
