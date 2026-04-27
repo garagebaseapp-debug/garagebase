@@ -32,24 +32,48 @@ export default function LandingPage() {
             <a href="#kontakt" className="text-[#5a5a80] hover:text-white transition-colors text-sm">Kontakt</a>
           </div>
           <div className="flex gap-3">
-            <a href="/login"
-              className="text-[#5a5a80] hover:text-white transition-colors text-sm px-4 py-2">
+            <a href="/login" className="text-[#5a5a80] hover:text-white transition-colors text-sm px-4 py-2">
               Prijava
             </a>
-            <a href="/login"
-              className="bg-[#6c63ff] hover:bg-[#5a52e0] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+            <a href="/login" className="bg-[#6c63ff] hover:bg-[#5a52e0] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
               Začni brezplačno
             </a>
           </div>
         </div>
       </nav>
 
-      {/* Hero sekcija */}
-      <section className="relative min-h-screen flex items-center justify-center px-6 pt-20">
-        {/* Ozadje gradient */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#6c63ff] opacity-10 rounded-full blur-[120px]" />
-          <div className="absolute top-1/3 left-1/4 w-[300px] h-[300px] bg-[#3ecfcf] opacity-8 rounded-full blur-[100px]" />
+      {/* Hero sekcija z garažnim ozadjem */}
+      <section className="relative min-h-screen flex items-center justify-center px-6 pt-20 overflow-hidden">
+
+        {/* Garažno ozadje — CSS only, brez slik */}
+        <div className="absolute inset-0">
+          {/* Tla garaže */}
+          <div className="absolute bottom-0 left-0 right-0 h-1/3"
+            style={{
+              background: 'linear-gradient(to top, #0a0a14 0%, transparent 100%)',
+            }} />
+          {/* Stranski neonski paneli */}
+          <div className="absolute left-0 top-0 bottom-0 w-2 bg-[#3ecfcf] opacity-60 blur-sm" />
+          <div className="absolute right-0 top-0 bottom-0 w-2 bg-[#6c63ff] opacity-60 blur-sm" />
+          {/* Horizontalne linije kot garažna vrata */}
+          {[20, 35, 50, 65, 80].map((top, i) => (
+            <div key={i} className="absolute left-0 right-0 h-px opacity-5"
+              style={{ top: `${top}%`, background: 'linear-gradient(to right, transparent, #6c63ff, #3ecfcf, #6c63ff, transparent)' }} />
+          ))}
+          {/* Glavni gradient */}
+          <div className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at 50% 40%, #6c63ff18 0%, #080810 70%)',
+            }} />
+          {/* Turkizni accent spodaj levo */}
+          <div className="absolute bottom-1/4 left-1/4 w-64 h-64 bg-[#3ecfcf] opacity-5 rounded-full blur-[80px]" />
+          {/* Vijolični accent zgoraj desno */}
+          <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-[#6c63ff] opacity-8 rounded-full blur-[100px]" />
+          {/* Vertikalne linije kot garažni stebri */}
+          <div className="absolute left-1/4 top-0 bottom-0 w-px opacity-5"
+            style={{ background: 'linear-gradient(to bottom, transparent, #3ecfcf, transparent)' }} />
+          <div className="absolute right-1/4 top-0 bottom-0 w-px opacity-5"
+            style={{ background: 'linear-gradient(to bottom, transparent, #6c63ff, transparent)' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
@@ -85,15 +109,15 @@ export default function LandingPage() {
 
           {/* Statistike */}
           <div className="grid grid-cols-3 gap-6 mt-16 max-w-lg mx-auto">
-            <div>
+            <div className="bg-[#0f0f1a80] border border-[#1e1e32] rounded-2xl p-4 backdrop-blur-sm">
               <p className="text-3xl font-bold text-white">100%</p>
               <p className="text-[#5a5a80] text-xs mt-1">Brezplačen začetek</p>
             </div>
-            <div>
+            <div className="bg-[#0f0f1a80] border border-[#6c63ff33] rounded-2xl p-4 backdrop-blur-sm">
               <p className="text-3xl font-bold text-[#6c63ff]">PWA</p>
               <p className="text-[#5a5a80] text-xs mt-1">Dela kot app</p>
             </div>
-            <div>
+            <div className="bg-[#0f0f1a80] border border-[#3ecfcf33] rounded-2xl p-4 backdrop-blur-sm">
               <p className="text-3xl font-bold text-[#3ecfcf]">PDF</p>
               <p className="text-[#5a5a80] text-xs mt-1">Prodajni report</p>
             </div>
@@ -111,45 +135,14 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              {
-                ikona: '⛽',
-                naziv: 'Sledenje gorivu',
-                opis: 'Vnašaj tankanja, izračunaj porabo L/100km in primerjaj stroške med postajami.',
-                barva: '#3ecfcf'
-              },
-              {
-                ikona: '🔧',
-                naziv: 'Servisna knjiga',
-                opis: 'Digitalna servisna knjiga z slikami računov. Nikoli več izgubljen papir.',
-                barva: '#f59e0b'
-              },
-              {
-                ikona: '🔔',
-                naziv: 'Pametni opomniki',
-                opis: 'Opomniki za registracijo, vinjeto, servis in zavarovanje. Datum in km opomniki z barvnimi conami.',
-                barva: '#6c63ff'
-              },
-              {
-                ikona: '📊',
-                naziv: 'Pregled stroškov',
-                opis: 'Grafi stroškov po mesecih. Koliko te avto stane na kilometer?',
-                barva: '#6c63ff'
-              },
-              {
-                ikona: '📄',
-                naziv: 'PDF prodajni report',
-                opis: 'Verificiran report celotne zgodovine vozila. Kupec vidi vse — servisna knjiga, gorivo, stroški.',
-                barva: '#3ecfcf'
-              },
-              {
-                ikona: '🚗',
-                naziv: 'Več vozil',
-                opis: 'Upravljaj celo garažo. Vsak avto svoja evidenca, opomniki in history.',
-                barva: '#f59e0b'
-              },
+              { ikona: '⛽', naziv: 'Sledenje gorivu', opis: 'Vnašaj tankanja, izračunaj porabo L/100km in primerjaj stroške med postajami.', barva: '#3ecfcf' },
+              { ikona: '🔧', naziv: 'Servisna knjiga', opis: 'Digitalna servisna knjiga z slikami računov. Nikoli več izgubljen papir.', barva: '#f59e0b' },
+              { ikona: '🔔', naziv: 'Pametni opomniki', opis: 'Opomniki za registracijo, vinjeto, servis in zavarovanje. Datum in km opomniki z barvnimi conami.', barva: '#6c63ff' },
+              { ikona: '📊', naziv: 'Pregled stroškov', opis: 'Grafi stroškov po mesecih. Koliko te avto stane na kilometer?', barva: '#6c63ff' },
+              { ikona: '📄', naziv: 'PDF prodajni report', opis: 'Verificiran report celotne zgodovine vozila. Kupec vidi vse — servisna knjiga, gorivo, stroški.', barva: '#3ecfcf' },
+              { ikona: '🚗', naziv: 'Več vozil', opis: 'Upravljaj celo garažo. Vsak avto svoja evidenca, opomniki in historia.', barva: '#f59e0b' },
             ].map((f, i) => (
-              <div key={i}
-                className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 hover:border-[#2a2a50] transition-all group">
+              <div key={i} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 hover:border-[#2a2a50] transition-all">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl mb-4"
                   style={{ backgroundColor: `${f.barva}15`, border: `1px solid ${f.barva}30` }}>
                   {f.ikona}
@@ -171,15 +164,14 @@ export default function LandingPage() {
               <h2 className="text-3xl md:text-4xl font-bold mb-6">Namesto papirnih računov in pozabljenih rokov</h2>
               <div className="flex flex-col gap-4">
                 {[
-                  { ikona: '✅', tekst: 'Vse evidence na enem mestu — gorivo, servis, stroški' },
-                  { ikona: '✅', tekst: 'Opomniki ki te res opozorijo — push notifikacije' },
-                  { ikona: '✅', tekst: 'Verificiran PDF za prodajo avta — kupec zaupa' },
-                  { ikona: '✅', tekst: 'Deluje kot app — namesti na domači zaslon' },
-                  { ikona: '✅', tekst: 'Glasovni vnos — vneseš tankanje med vožnjo' },
+                  '✅ Vse evidence na enem mestu — gorivo, servis, stroški',
+                  '✅ Opomniki ki te res opozorijo — push notifikacije',
+                  '✅ Verificiran PDF za prodajo avta — kupec zaupa',
+                  '✅ Deluje kot app — namesti na domači zaslon',
+                  '✅ Glasovni vnos — vneseš tankanje med vožnjo',
                 ].map((t, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <span className="text-[#3ecfcf] text-lg flex-shrink-0">{t.ikona}</span>
-                    <p className="text-[#5a5a80] text-sm leading-relaxed">{t.tekst}</p>
+                    <p className="text-[#5a5a80] text-sm leading-relaxed">{t}</p>
                   </div>
                 ))}
               </div>
@@ -242,71 +234,29 @@ export default function LandingPage() {
             <p className="text-[#5a5a80]">Nadgradi kadarkoli. Brez vezave.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
             {[
               {
-                naziv: 'Free',
-                cena: '0',
-                opis: 'Za začetek',
-                barva: '#3ecfcf',
-                vozila: '1 vozilo',
-                funkcije: [
-                  '✅ Vnos goriva in servisov',
-                  '✅ Opomniki',
-                  '✅ Slika vozila',
-                  '✅ 50MB storage',
-                  '❌ Grafi stroškov',
-                  '❌ PDF report',
-                  '❌ Glasovni vnos',
-                ],
-                gumb: 'Začni brezplačno',
-                poudarjen: false
+                naziv: 'Free', cena: '0', opis: 'Za začetek', barva: '#3ecfcf', vozila: '1 vozilo',
+                funkcije: ['✅ Vnos goriva in servisov', '✅ Opomniki', '✅ Slika vozila', '✅ 50MB storage', '❌ Grafi stroškov', '❌ PDF report', '❌ Glasovni vnos'],
+                gumb: 'Začni brezplačno', poudarjen: false
               },
               {
-                naziv: 'Basic',
-                cena: '3',
-                opis: 'Za navadne uporabnike',
-                barva: '#6c63ff',
-                vozila: '2 vozili',
-                funkcije: [
-                  '✅ Vse od Free',
-                  '✅ Grafi stroškov',
-                  '✅ Glasovni vnos',
-                  '✅ PDF report',
-                  '✅ 200MB storage',
-                  '✅ Push notifikacije',
-                  '❌ QR prenos zgodovine',
-                ],
-                gumb: 'Izberi Basic',
-                poudarjen: false
+                naziv: 'Basic', cena: '3', opis: 'Za navadne uporabnike', barva: '#6c63ff', vozila: '2 vozili',
+                funkcije: ['✅ Vse od Free', '✅ Grafi stroškov', '✅ Glasovni vnos', '✅ PDF report', '✅ 200MB storage', '✅ Push notifikacije', '❌ QR prenos zgodovine'],
+                gumb: 'Izberi Basic', poudarjen: false
               },
               {
-                naziv: 'Pro',
-                cena: '7',
-                opis: 'Za resne uporabnike',
-                barva: '#6c63ff',
-                vozila: '5 vozil',
-                funkcije: [
-                  '✅ Vse od Basic',
-                  '✅ QR prenos zgodovine',
-                  '✅ Km opomniki',
-                  '✅ Uvoz zgodovine CSV',
-                  '✅ 1GB storage',
-                  '✅ Prioritetna podpora',
-                  '✅ Vse funkcije',
-                ],
-                gumb: 'Izberi Pro',
-                poudarjen: true
+                naziv: 'Pro', cena: '7', opis: 'Za resne uporabnike', barva: '#6c63ff', vozila: '5 vozil',
+                funkcije: ['✅ Vse od Basic', '✅ QR prenos zgodovine', '✅ Km opomniki', '✅ Uvoz zgodovine CSV', '✅ 1GB storage', '✅ Prioritetna podpora', '✅ Vse funkcije'],
+                gumb: 'Izberi Pro', poudarjen: true
               },
             ].map((p, i) => (
-              <div key={i}
-                className={`rounded-2xl p-6 border transition-all relative ${
-                  p.poudarjen
-                    ? 'bg-[#6c63ff15] border-[#6c63ff66] scale-105'
-                    : 'bg-[#0f0f1a] border-[#1e1e32]'
-                }`}>
+              <div key={i} className={`rounded-2xl p-6 border transition-all relative ${
+                p.poudarjen ? 'bg-[#6c63ff15] border-[#6c63ff66] md:-mt-4' : 'bg-[#0f0f1a] border-[#1e1e32]'
+              }`}>
                 {p.poudarjen && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6c63ff] text-white text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#6c63ff] text-white text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
                     Najbolj popularno
                   </div>
                 )}
@@ -322,18 +272,14 @@ export default function LandingPage() {
                     <p key={j} className="text-sm" style={{ color: f.startsWith('✅') ? '#a0a0c0' : '#3a3a5a' }}>{f}</p>
                   ))}
                 </div>
-                <a href="/login"
-                  className={`block text-center font-semibold py-3 rounded-xl transition-colors ${
-                    p.poudarjen
-                      ? 'bg-[#6c63ff] hover:bg-[#5a52e0] text-white'
-                      : 'bg-[#13131f] border border-[#1e1e32] hover:border-[#6c63ff44] text-white'
-                  }`}>
+                <a href="/login" className={`block text-center font-semibold py-3 rounded-xl transition-colors ${
+                  p.poudarjen ? 'bg-[#6c63ff] hover:bg-[#5a52e0] text-white' : 'bg-[#13131f] border border-[#1e1e32] hover:border-[#6c63ff44] text-white'
+                }`}>
                   {p.gumb}
                 </a>
               </div>
             ))}
           </div>
-
           <p className="text-center text-[#3a3a5a] text-sm mt-8">
             Letna naročnina — prihranite 20% · PDF report za Free uporabnike 20€ enkratno
           </p>
@@ -341,8 +287,15 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6 bg-[#0a0a14]">
-        <div className="max-w-2xl mx-auto text-center">
+      <section className="py-24 px-6 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-[#0a0a14]" />
+          <div className="absolute left-0 right-0 top-0 h-px"
+            style={{ background: 'linear-gradient(to right, transparent, #6c63ff, #3ecfcf, #6c63ff, transparent)' }} />
+          <div className="absolute left-0 right-0 bottom-0 h-px"
+            style={{ background: 'linear-gradient(to right, transparent, #6c63ff, #3ecfcf, #6c63ff, transparent)' }} />
+        </div>
+        <div className="relative max-w-2xl mx-auto text-center">
           <h2 className="text-3xl md:text-5xl font-bold mb-6">
             Začni danes.
             <br />

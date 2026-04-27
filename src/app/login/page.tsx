@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
@@ -10,10 +10,15 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [isRegister, setIsRegister] = useState(false)
 
+  // Dodamo landing class da je stran široka kot spletna stran
+  useEffect(() => {
+    document.body.classList.add('landing')
+    return () => document.body.classList.remove('landing')
+  }, [])
+
   const handleAuth = async () => {
     setLoading(true)
     setMessage('')
-
     if (isRegister) {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setMessage(error.message)
@@ -27,8 +32,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#080810] flex items-center justify-center px-4 relative overflow-hidden">
+
+      {/* Ozadje gradient */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#6c63ff] opacity-10 rounded-full blur-[120px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-[300px] h-[300px] bg-[#3ecfcf] opacity-5 rounded-full blur-[100px]" />
+      </div>
+
+      <div className="relative w-full max-w-md">
+        {/* Nazaj na landing */}
+        <a href="/" className="flex items-center gap-2 text-[#5a5a80] hover:text-white transition-colors text-sm mb-8">
+          ← Nazaj
+        </a>
 
         <div className="text-center mb-10">
           <h1 className="text-4xl font-bold text-white">
@@ -40,7 +56,6 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-8">
-
           <h2 className="text-white font-semibold text-xl mb-6">
             {isRegister ? 'Ustvari račun' : 'Prijava'}
           </h2>
@@ -81,7 +96,6 @@ export default function LoginPage() {
               {isRegister ? 'Prijava' : 'Registracija'}
             </span>
           </p>
-
         </div>
       </div>
     </div>
