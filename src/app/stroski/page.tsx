@@ -11,6 +11,7 @@ export default function Stroski() {
   const [expenses, setExpenses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'vse' | 'gorivo' | 'servis' | 'ostalo'>('vse')
+  const [grafTip, setGrafTip] = useState<'stolpci' | 'crta' | 'kolac'>('stolpci')
 
   useEffect(() => {
     const init = async () => {
@@ -21,11 +22,11 @@ export default function Stroski() {
       if (!carId) { window.location.href = '/stroski-garaza'; return }
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(avtoData)
-      const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: false })
+      const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setGorivo(gorivoData || [])
-      const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: false })
+      const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setServisi(servisData || [])
-      const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: false })
+      const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setExpenses((expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
       setLoading(false)
     }
@@ -44,7 +45,180 @@ export default function Stroski() {
     tehnicni: '🔍', izredno: '🔨', lizing: '🏦'
   }
 
-  // Združeni vnosi za filter
+  // Zadnjih 6 mesecev podatki
+  const grafMeseci = () => {
+    const meseci: { kljuc: string, label: string, gorivo: number, servis: number, ostalo: number }[] = []
+    const danes = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(danes.getFullYear(), danes.getMonth() - i, 1)
+      const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      meseci.push({
+        kljuc,
+        label: d.toLocaleDateString('sl-SI', { month: 'short' }),
+        gorivo: 0, servis: 0, ostalo: 0
+      })
+    }
+    gorivo.forEach(v => {
+      if (!v.datum || !v.cena_skupaj) return
+      const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7))
+      if (m) m.gorivo += v.cena_skupaj
+    })
+    servisi.forEach(v => {
+      if (!v.datum || !v.cena) return
+      const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7))
+      if (m) m.servis += v.cena
+    })
+    expenses.forEach(v => {
+      if (!v.datum || !v.znesek) return
+      const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7))
+      if (m) m.ostalo += v.znesek
+    })
+    return meseci
+  }
+
+  const meseci = grafMeseci()
+  const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
+
+  // Stolpčni graf
+  const GrafStolpci = () => (
+    <div className="flex items-end justify-between gap-1.5 h-36 px-1">
+      {meseci.map((m, i) => {
+        const skupaj = m.gorivo + m.servis + m.ostalo
+        const visina = skupaj > 0 ? (skupaj / maxVrednost) * 100 : 0
+        const gorivoH = skupaj > 0 ? (m.gorivo / skupaj) * visina : 0
+        const servisH = skupaj > 0 ? (m.servis / skupaj) * visina : 0
+        const ostaloH = skupaj > 0 ? (m.ostalo / skupaj) * visina : 0
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div className="w-full flex flex-col justify-end rounded-lg overflow-hidden" style={{ height: '110px' }}>
+              {skupaj === 0 ? (
+                <div className="w-full bg-[#1e1e32] rounded-lg" style={{ height: '4px' }} />
+              ) : (
+                <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+                  <div style={{ height: `${ostaloH}%` }} className="bg-[#6c63ff] w-full" />
+                  <div style={{ height: `${servisH}%` }} className="bg-[#f59e0b] w-full" />
+                  <div style={{ height: `${gorivoH}%` }} className="bg-[#3ecfcf] w-full rounded-t-sm" />
+                </div>
+              )}
+            </div>
+            <p className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
+            {skupaj > 0 && <p className="text-white text-[8px] font-bold">{skupaj.toFixed(0)}€</p>}
+          </div>
+        )
+      })}
+    </div>
+  )
+
+  // Črtni graf
+  const GrafCrta = () => {
+    const w = 300
+    const h = 110
+    const pad = 10
+
+    const tocke = meseci.map((m, i) => {
+      const skupaj = m.gorivo + m.servis + m.ostalo
+      const x = pad + (i / (meseci.length - 1)) * (w - pad * 2)
+      const y = h - pad - (skupaj / maxVrednost) * (h - pad * 2)
+      return { x, y, skupaj, label: m.label }
+    })
+
+    const path = tocke.map((t, i) => `${i === 0 ? 'M' : 'L'} ${t.x} ${t.y}`).join(' ')
+    const fill = `${path} L ${tocke[tocke.length - 1].x} ${h} L ${tocke[0].x} ${h} Z`
+
+    return (
+      <div className="w-full">
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '110px' }}>
+          <defs>
+            <linearGradient id="gradCrta" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6c63ff" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#6c63ff" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path d={fill} fill="url(#gradCrta)" />
+          <path d={path} fill="none" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          {tocke.map((t, i) => (
+            <g key={i}>
+              <circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />
+              {t.skupaj > 0 && (
+                <text x={t.x} y={t.y - 8} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">
+                  {t.skupaj.toFixed(0)}€
+                </text>
+              )}
+            </g>
+          ))}
+        </svg>
+        <div className="flex justify-between px-2 mt-1">
+          {meseci.map((m, i) => (
+            <p key={i} className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Kolač graf
+  const GrafKolac = () => {
+    if (skupajVse === 0) return (
+      <div className="flex items-center justify-center h-36">
+        <p className="text-[#5a5a80] text-sm">Ni podatkov</p>
+      </div>
+    )
+
+    const r = 45
+    const cx = 60
+    const cy = 60
+    const segments = [
+      { vrednost: skupajGorivo, barva: '#3ecfcf', naziv: 'Gorivo' },
+      { vrednost: skupajServis, barva: '#f59e0b', naziv: 'Servis' },
+      { vrednost: skupajExpenses, barva: '#6c63ff', naziv: 'Ostalo' },
+    ].filter(s => s.vrednost > 0)
+
+    let kot = -90
+    const poti = segments.map(s => {
+      const delež = s.vrednost / skupajVse
+      const kotKonec = kot + delež * 360
+      const x1 = cx + r * Math.cos((kot * Math.PI) / 180)
+      const y1 = cy + r * Math.sin((kot * Math.PI) / 180)
+      const x2 = cx + r * Math.cos((kotKonec * Math.PI) / 180)
+      const y2 = cy + r * Math.sin((kotKonec * Math.PI) / 180)
+      const largeArc = delež > 0.5 ? 1 : 0
+      const pot = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`
+      kot = kotKonec
+      return { ...s, pot, delež }
+    })
+
+    return (
+      <div className="flex items-center gap-4">
+        <svg viewBox="0 0 120 120" style={{ width: '120px', height: '120px', flexShrink: 0 }}>
+          {poti.map((p, i) => (
+            <path key={i} d={p.pot} fill={p.barva} stroke="#080810" strokeWidth="2" />
+          ))}
+          <circle cx={cx} cy={cy} r="22" fill="#0f0f1a" />
+          <text x={cx} y={cy - 4} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">
+            {skupajVse.toFixed(0)}
+          </text>
+          <text x={cx} y={cy + 7} textAnchor="middle" fill="#5a5a80" fontSize="6">
+            EUR
+          </text>
+        </svg>
+        <div className="flex flex-col gap-2 flex-1">
+          {poti.map((p, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.barva }} />
+                <p className="text-[#5a5a80] text-xs">{p.naziv}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-white text-xs font-bold">{p.vrednost.toFixed(0)} €</p>
+                <p className="text-[#5a5a80] text-[9px]">{(p.delež * 100).toFixed(0)}%</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const vsiVnosi = [
     ...gorivo.map(v => ({ ...v, _tip: 'gorivo' })),
     ...servisi.map(v => ({ ...v, _tip: 'servis' })),
@@ -75,6 +249,60 @@ export default function Stroski() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Skupni stroški</p>
         <p className="text-white font-bold text-4xl mb-1">{skupajVse.toFixed(2)} €</p>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} €/km · {kmPrevozeni.toLocaleString()} km skupaj</p>}
+      </div>
+
+      {/* Graf */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
+        {/* Glava grafa */}
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-[#5a5a80] text-xs uppercase tracking-wider">
+            {grafTip === 'kolac' ? 'Razmerje stroškov' : 'Zadnjih 6 mesecev'}
+          </p>
+          {/* Gumbi za preklop tipa grafa */}
+          <div className="flex gap-1 bg-[#13131f] rounded-xl p-1">
+            <button onClick={() => setGrafTip('stolpci')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                grafTip === 'stolpci' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'
+              }`}>
+              ▌▌▌
+            </button>
+            <button onClick={() => setGrafTip('crta')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                grafTip === 'crta' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'
+              }`}>
+              ╱╱
+            </button>
+            <button onClick={() => setGrafTip('kolac')}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                grafTip === 'kolac' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'
+              }`}>
+              ◉
+            </button>
+          </div>
+        </div>
+
+        {/* Graf prikaz */}
+        {grafTip === 'stolpci' && <GrafStolpci />}
+        {grafTip === 'crta' && <GrafCrta />}
+        {grafTip === 'kolac' && <GrafKolac />}
+
+        {/* Legenda za stolpce in črto */}
+        {grafTip !== 'kolac' && (
+          <div className="flex gap-4 mt-3 pt-3 border-t border-[#1e1e32]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#3ecfcf]" />
+              <p className="text-[#5a5a80] text-[10px]">Gorivo</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
+              <p className="text-[#5a5a80] text-[10px]">Servis</p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#6c63ff]" />
+              <p className="text-[#5a5a80] text-[10px]">Ostalo</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Razčlenitev — klikabilna */}
