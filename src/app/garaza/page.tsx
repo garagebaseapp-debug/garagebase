@@ -31,7 +31,7 @@ export default function Garaza() {
 
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('vrstni_red', { ascending: true })
       setAvti(data || [])
 
       if (data && data.length > 0) {
