@@ -17,11 +17,13 @@ export default function Nastavitve() {
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
-    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
+    opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
   const [listaNastavitve, setListaNastavitve] = useState({
     letnik: true, gorivo: true, km: true, opomnik: true, tablica: true,
-    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false
+    opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
+    opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
   const [message, setMessage] = useState('')
 
@@ -47,7 +49,6 @@ export default function Nastavitve() {
           document.documentElement.classList.remove('light-mode')
         }
       }
-      // Preveri status notifikacij
       if ('Notification' in window) {
         if (Notification.permission === 'granted') setNotifikacije('dovoljeno')
         else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
@@ -61,7 +62,6 @@ export default function Nastavitve() {
   const vklopiNotifikacije = async () => {
     setNotifikacijeLoading(true)
     try {
-      // Vpraša uporabnika za dovoljenje
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setNotifikacije('zavrnjeno')
@@ -70,24 +70,17 @@ export default function Nastavitve() {
         return
       }
       setNotifikacije('dovoljeno')
-
-      // Registrira service worker
       const registration = await navigator.serviceWorker.register('/sw.js')
       await navigator.serviceWorker.ready
-
-      // Pridobi subscription
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       })
-
-      // Shrani v Supabase
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('push_subscriptions').upsert({
         user_id: user?.id,
         subscription: subscription.toJSON()
       })
-
       setMessage('✅ Obvestila so vklopljena!')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
@@ -121,26 +114,54 @@ export default function Nastavitve() {
     window.location.href = '/'
   }
 
+  // Filter za datumske in km opomnike
   const OpomnikFilter = ({ nastavitve, setNastavitve }: { nastavitve: any, setNastavitve: any }) => (
-    <div className="mt-3 pt-3 border-t border-[#1e1e32]">
-      <p className="text-[#5a5a80] text-xs mb-2">Prikaži opomnike:</p>
-      <div className="flex gap-2">
-        {[
-          { key: 'opomnikRdeci', naziv: '🔴 Nujni', opis: '<7 dni' },
-          { key: 'opomnikRumeni', naziv: '🟡 Kmalu', opis: '<30 dni' },
-          { key: 'opomnikZeleni', naziv: '🟢 Vsi', opis: '>30 dni' },
-        ].map((item) => (
-          <button key={item.key}
-            onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
-            className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
-              nastavitve[item.key]
-                ? 'bg-[#6c63ff22] border-[#6c63ff66]'
-                : 'bg-[#13131f] border-[#1e1e32]'
-            }`}>
-            <p className="text-xs">{item.naziv}</p>
-            <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
-          </button>
-        ))}
+    <div className="mt-3 pt-3 border-t border-[#1e1e32] flex flex-col gap-3">
+
+      {/* Datumski opomniki */}
+      <div>
+        <p className="text-[#5a5a80] text-xs mb-2">📅 Prikaži datumske opomnike:</p>
+        <div className="flex gap-2">
+          {[
+            { key: 'opomnikRdeci', naziv: '🔴 Nujni', opis: '<7 dni' },
+            { key: 'opomnikRumeni', naziv: '🟡 Kmalu', opis: '<30 dni' },
+            { key: 'opomnikZeleni', naziv: '🟢 Vsi', opis: '>30 dni' },
+          ].map((item) => (
+            <button key={item.key}
+              onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+              className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
+                nastavitve[item.key]
+                  ? 'bg-[#6c63ff22] border-[#6c63ff66]'
+                  : 'bg-[#13131f] border-[#1e1e32]'
+              }`}>
+              <p className="text-xs">{item.naziv}</p>
+              <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Km opomniki */}
+      <div>
+        <p className="text-[#5a5a80] text-xs mb-2">🛣️ Prikaži km opomnike:</p>
+        <div className="flex gap-2">
+          {[
+            { key: 'opomnikKmRdeci', naziv: '🔴 Nujni', opis: '<500 km' },
+            { key: 'opomnikKmRumeni', naziv: '🟡 Kmalu', opis: '<1500 km' },
+            { key: 'opomnikKmZeleni', naziv: '🟢 Vsi', opis: '>1500 km' },
+          ].map((item) => (
+            <button key={item.key}
+              onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+              className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
+                nastavitve[item.key]
+                  ? 'bg-[#6c63ff22] border-[#6c63ff66]'
+                  : 'bg-[#13131f] border-[#1e1e32]'
+              }`}>
+              <p className="text-xs">{item.naziv}</p>
+              <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
