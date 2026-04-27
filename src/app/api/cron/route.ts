@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 // @ts-ignore
-// @ts-ignore
 import webpush from 'web-push'
 
 // Supabase admin klient
@@ -18,10 +17,14 @@ webpush.setVapidDetails(
 )
 
 export async function GET(req: Request) {
-  // Varnostni ključ da ne more nihče drug prožiti cron
+  // Varnostni ključ — debug vrstica da vidimo kaj se dogaja
   const authHeader = req.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const cronSecret = process.env.CRON_SECRET
+  console.log('Auth header:', authHeader)
+  console.log('CRON_SECRET:', cronSecret)
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized', debug: { authHeader, cronSecret } }, { status: 401 })
   }
 
   try {
