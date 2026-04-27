@@ -6,9 +6,13 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
+    document.body.classList.add('landing')
     const handleScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      document.body.classList.remove('landing')
+      window.removeEventListener('scroll', handleScroll)
+    }
   }, [])
 
   return (
