@@ -1,26 +1,19 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
+import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
-
-function encodePayload(data: any) {
-  return btoa(unescape(encodeURIComponent(JSON.stringify(data))))
-}
-
-function decodePayload(value: string) {
-  return JSON.parse(decodeURIComponent(escape(atob(value.trim()))))
-}
-
-function cleanRows(rows: any[], carId: string) {
-  return rows.map(({ id, created_at, updated_at, car_id, ...rest }) => ({ ...rest, car_id: carId }))
-}
+import { cleanTransferRows, createTransferToken, maskVin, scanUrl, type TransferMode } from '@/lib/transfer'
 
 export default function PrenosZgodovine() {
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
-  const [transferCode, setTransferCode] = useState('')
+  const [mode, setMode] = useState<TransferMode>('verify')
+  const [qrUrl, setQrUrl] = useState('')
+  const [scanLink, setScanLink] = useState('')
+  const [manualToken, setManualToken] = useState('')
   const [importCode, setImportCode] = useState('')
 
   useEffect(() => {
@@ -37,59 +30,99 @@ export default function PrenosZgodovine() {
     init()
   }, [])
 
-  const pripraviIzvoz = async () => {
-    if (!avto?.prenos_soglasje) {
-      setMessage('Lastnik mora v nastavitvah vozila najprej dovoliti prenos zgodovine.')
-      return
-    }
-
+  const pripraviPayload = async (izbranMode: TransferMode) => {
     const [servisi, gorivo, stroski] = await Promise.all([
       supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
       supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
       supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
     ])
 
-    const payload = {
+    const summary = {
+      znamka: avto.znamka,
+      model: avto.model,
+      letnik: avto.letnik,
+      gorivo: avto.gorivo,
+      vin_masked: maskVin(avto.vin),
+      km_trenutni: avto.km_trenutni,
+      st_lastnikov: avto.st_lastnikov,
+      lastnik_mesto: avto.lastnik_mesto,
+      lastnik_starost: avto.lastnik_starost,
+      servisi: servisi.data?.length || 0,
+      tankanja: gorivo.data?.length || 0,
+      stroski: (stroski.data || []).filter((e: any) => e.kategorija !== 'km_sprememba').length,
+    }
+
+    if (izbranMode === 'verify') {
+      return {
+        type: 'garagebase-transfer-v1',
+        mode: izbranMode,
+        exportedAt: new Date().toISOString(),
+        consent: true,
+        car: summary,
+      }
+    }
+
+    return {
       type: 'garagebase-transfer-v1',
+      mode: izbranMode,
       exportedAt: new Date().toISOString(),
       consent: true,
-      car: {
-        znamka: avto.znamka,
-        model: avto.model,
-        letnik: avto.letnik,
-        gorivo: avto.gorivo,
-        vin_masked: avto.vin ? `${avto.vin.substring(0, 6)}****${avto.vin.substring(Math.max(0, avto.vin.length - 4))}` : null,
-        st_lastnikov: avto.st_lastnikov,
-        lastnik_mesto: avto.lastnik_mesto,
-        lastnik_starost: avto.lastnik_starost,
-      },
+      car: summary,
       service_logs: servisi.data || [],
       fuel_logs: gorivo.data || [],
       expenses: (stroski.data || []).filter((e: any) => e.kategorija !== 'km_sprememba'),
     }
-
-    setTransferCode(encodePayload(payload))
-    setMessage('Prenosna koda je pripravljena. Shrani jo ali jo uporabi za QR vsebino.')
   }
 
-  const uvozi = async () => {
+  const pripraviQR = async () => {
+    if (!avto?.prenos_soglasje) {
+      setMessage('Lastnik mora v nastavitvah vozila najprej dovoliti prenos zgodovine.')
+      return
+    }
+
+    setMessage('')
+    setQrUrl('')
+    setScanLink('')
+    setManualToken('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+
+    const token = createTransferToken()
+    const payload = await pripraviPayload(mode)
+    const { error } = await supabase.from('vehicle_transfers').insert({
+      token,
+      car_id: avto.id,
+      created_by: user.id,
+      mode,
+      consent: true,
+      payload,
+    })
+
+    if (error) {
+      setMessage(error.message.includes('vehicle_transfers') ? 'Najprej v Supabase zaženi SUPABASE_MIGRACIJA_QR_PRENOS.sql.' : 'Napaka: ' + error.message)
+      return
+    }
+
+    const link = scanUrl(token)
+    setScanLink(link)
+    setManualToken(token)
+    setQrUrl(await QRCode.toDataURL(link, { width: 320, margin: 2 }))
+    setMessage(mode === 'verify' ? 'QR je pripravljen za preverjanje reporta.' : 'QR je pripravljen za uvoz zgodovine.')
+  }
+
+  const uvoziStaroKodo = async () => {
     try {
       if (!avto?.id) return
-      const payload = decodePayload(importCode)
+      const payload = JSON.parse(decodeURIComponent(escape(atob(importCode.trim()))))
       if (payload.type !== 'garagebase-transfer-v1' || !payload.consent) {
         setMessage('Koda ni veljavna ali nima soglasja za prenos.')
         return
       }
 
-      const serviceRows = cleanRows(payload.service_logs || [], avto.id).map((row: any) => ({
-        ...row,
-        opis: `[Preneseno] ${row.opis || ''}`.trim()
-      }))
-      const fuelRows = cleanRows(payload.fuel_logs || [], avto.id)
-      const expenseRows = cleanRows(payload.expenses || [], avto.id).map((row: any) => ({
-        ...row,
-        opis: `[Preneseno] ${row.opis || ''}`.trim()
-      }))
+      const serviceRows = cleanTransferRows(payload.service_logs || [], avto.id).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
+      const fuelRows = cleanTransferRows(payload.fuel_logs || [], avto.id)
+      const expenseRows = cleanTransferRows(payload.expenses || [], avto.id).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
 
       if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
       if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
@@ -119,24 +152,40 @@ export default function PrenosZgodovine() {
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Izvoz za novega lastnika</p>
-        <p className="text-white text-sm mb-4">Izvoz deluje samo, če je v nastavitvah vozila vklopljeno soglasje za prenos.</p>
-        <button onClick={pripraviIzvoz} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
-          Pripravi prenosno kodo
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Način QR kode</p>
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button onClick={() => setMode('verify')} className={`rounded-xl border p-4 text-left ${mode === 'verify' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">Samo za branje</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Kupec preveri podatke, brez uvoza.</p>
+          </button>
+          <button onClick={() => setMode('import')} className={`rounded-xl border p-4 text-left ${mode === 'import' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">Uvoz</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Kupec lahko uvozi zgodovino v svoj avto.</p>
+          </button>
+        </div>
+        <button onClick={pripraviQR} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
+          Pripravi QR kodo
         </button>
-        {transferCode && (
-          <textarea readOnly value={transferCode} rows={6}
-            className="w-full mt-3 bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-3 text-[#a09aff] text-xs outline-none font-mono" />
+        {qrUrl && (
+          <div className="mt-4 bg-white rounded-2xl p-4 flex flex-col items-center gap-3">
+            <img src={qrUrl} alt="QR koda za prenos" className="w-64 h-64" />
+            <p className="text-black text-xs text-center break-all">{manualToken}</p>
+          </div>
+        )}
+        {scanLink && (
+          <button onClick={() => window.location.href = scanLink} className="w-full mt-3 bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl">
+            Odpri Scan
+          </button>
         )}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Uvoz zgodovine</p>
-        <p className="text-white text-sm mb-4">Prilepi prenosno kodo. Uvoženi zapisi bodo označeni z [Preneseno].</p>
-        <textarea value={importCode} onChange={(e) => setImportCode(e.target.value)} rows={6}
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Stara prenosna koda</p>
+        <p className="text-white text-sm mb-4">Če imaš še staro tekstovno kodo, jo lahko še vedno prilepiš tukaj.</p>
+        <textarea value={importCode} onChange={(e) => setImportCode(e.target.value)} rows={5}
           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-3 text-white text-xs outline-none focus:border-[#6c63ff] font-mono" />
-        <button onClick={uvozi} disabled={!importCode.trim()} className="w-full mt-3 bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl disabled:opacity-50">
-          Uvozi v to vozilo
+        <button onClick={uvoziStaroKodo} disabled={!importCode.trim()} className="w-full mt-3 bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl disabled:opacity-50">
+          Uvozi staro kodo v to vozilo
         </button>
       </div>
 

@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
-import { PDFDownloadLink, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { createTransferToken, scanUrl } from '@/lib/transfer'
+import QRCode from 'qrcode'
+import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
 const styles = StyleSheet.create({
   page: { backgroundColor: '#ffffff', padding: 40, fontFamily: 'Helvetica' },
@@ -62,6 +64,9 @@ gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   eOpisH: { width: '45%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   eCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
   opomba: { fontSize: 8, color: '#5555cc', marginTop: 8, padding: 8, backgroundColor: '#f0f0ff', borderRadius: 4, borderLeftWidth: 3, borderLeftColor: '#6c63ff' },
+  qrBox: { marginTop: 10, padding: 8, borderWidth: 1, borderColor: '#e0e0ff', borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  qrImage: { width: 72, height: 72 },
+  qrText: { flex: 1, fontSize: 8, color: '#555555', lineHeight: 1.4 },
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 8 },
   footerText: { fontSize: 8, color: '#aaaaaa' },
 })
@@ -72,7 +77,7 @@ const maskVin = (vin?: string) => {
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
@@ -264,6 +269,7 @@ export default function Report() {
   const [expenses, setExpenses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
+  const [verifyQr, setVerifyQr] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -280,7 +286,36 @@ export default function Report() {
       const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setGorivo(gorivoData || [])
       const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setExpenses((expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
+      const filteredExpenses = (expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      setExpenses(filteredExpenses)
+
+      try {
+        const token = createTransferToken()
+        const payload = {
+          type: 'garagebase-transfer-v1',
+          mode: 'verify',
+          exportedAt: new Date().toISOString(),
+          consent: true,
+          car: {
+            znamka: avtoData?.znamka,
+            model: avtoData?.model,
+            letnik: avtoData?.letnik,
+            gorivo: avtoData?.gorivo,
+            vin_masked: maskVin(avtoData?.vin),
+            km_trenutni: avtoData?.km_trenutni,
+            st_lastnikov: avtoData?.st_lastnikov,
+            lastnik_mesto: avtoData?.lastnik_mesto,
+            lastnik_starost: avtoData?.lastnik_starost,
+            servisi: servisData?.length || 0,
+            tankanja: gorivoData?.length || 0,
+            stroski: filteredExpenses.length,
+          },
+        }
+        await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: user.id, mode: 'verify', consent: true, payload })
+        setVerifyQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
+      } catch {
+        setVerifyQr('')
+      }
 
       setLoading(false)
       setTimeout(() => setReady(true), 500)
@@ -345,7 +380,7 @@ export default function Report() {
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} />}
+          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">

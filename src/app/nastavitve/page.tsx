@@ -404,6 +404,16 @@ export default function Nastavitve() {
         )}
         {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}
       </div>
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prenos</p>
+        <p className="text-white font-semibold text-sm">Skeniranje QR</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">Preveri report ali uvozi zgodovino vozila od prejsnjega lastnika.</p>
+        <button onClick={() => window.location.href = '/scan'}
+          className="w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
+          Odpri Scan
+        </button>
+      </div>
+
       {/* Način uporabe */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
