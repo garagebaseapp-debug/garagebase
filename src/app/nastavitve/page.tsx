@@ -155,8 +155,10 @@ export default function Nastavitve() {
   const shrani = () => {
     const nastavitve = { nacin, jezik, pisava, prikazGaraze, desktopStolpci, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
-    const velikosti: any = { mala: '16px', normalna: '19px', velika: '22px' }
-    document.documentElement.style.fontSize = velikosti[pisava]
+    const velikosti: any = { mala: '22px', normalna: '25px', velika: '28px' }
+    const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
+    if (jeApp) document.documentElement.style.fontSize = velikosti[pisava]
+    else document.documentElement.style.removeProperty('font-size')
     setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
   }
@@ -366,8 +368,10 @@ export default function Nastavitve() {
           ].map((p) => (
             <button key={p.vrednost} onClick={() => {
               setPisava(p.vrednost)
-              const velikosti: any = { mala: '16px', normalna: '19px', velika: '22px' }
-              document.documentElement.style.fontSize = velikosti[p.vrednost]
+              const velikosti: any = { mala: '22px', normalna: '25px', velika: '28px' }
+              const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
+              if (jeApp) document.documentElement.style.fontSize = velikosti[p.vrednost]
+              else document.documentElement.style.removeProperty('font-size')
             }}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
                 pisava === p.vrednost
