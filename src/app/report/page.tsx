@@ -66,6 +66,12 @@ gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   footerText: { fontSize: 8, color: '#aaaaaa' },
 })
 
+const maskVin = (vin?: string) => {
+  if (!vin) return ''
+  if (vin.length <= 8) return vin.substring(0, 3) + '****'
+  return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
+}
+
 const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
@@ -94,7 +100,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
             </Text>
             {avto.letnik && <Text style={styles.carInfo}>Letnik: {avto.letnik}</Text>}
             {avto.tablica && <Text style={styles.carInfo}>Tablica: {avto.tablica.toUpperCase()}</Text>}
-            {avto.vin && <Text style={styles.carInfo}>VIN: {avto.vin.substring(0, 9)}{'*'.repeat(avto.vin.length - 9)}</Text>}
+            {avto.vin && <Text style={styles.carInfo}>VIN: {maskVin(avto.vin)}</Text>}
             {avto.gorivo && <Text style={styles.carInfo}>Gorivo: {avto.gorivo}</Text>}
             {avto.km_trenutni && <Text style={styles.carInfo}>Trenutni km: {avto.km_trenutni.toLocaleString()} km</Text>}
             <Text style={styles.reportDate}>Generirano: {danes}</Text>
@@ -142,6 +148,30 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
           </View>
         </View>
 
+
+        {/* Lastnistvo */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lastnistvo in prenos</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>ST. LASTNIKOV</Text>
+              <Text style={styles.statValue}>{avto.st_lastnikov || '-'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>MESTO LASTNIKA</Text>
+              <Text style={styles.statValue}>{avto.lastnik_mesto || '-'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>STAROST LASTNIKA</Text>
+              <Text style={styles.statValue}>{avto.lastnik_starost || '-'}</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>SOGLASJE PRENOSA</Text>
+              <Text style={styles.statValue}>{avto.prenos_soglasje ? 'DA' : 'NE'}</Text>
+            </View>
+          </View>
+          {avto.prenos_opomba && <Text style={styles.opomba}>{avto.prenos_opomba}</Text>}
+        </View>
         {/* Servisna knjiga */}
         {servisi.length > 0 && (
           <View style={styles.section}>

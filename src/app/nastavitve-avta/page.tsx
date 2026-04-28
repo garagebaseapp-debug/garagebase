@@ -26,6 +26,11 @@ export default function NastavitveAvta() {
   const [pogon, setPogon] = useState('')
   const [kmNovo, setKmNovo] = useState('')
   const [kmOpomba, setKmOpomba] = useState('')
+  const [stLastnikov, setStLastnikov] = useState('')
+  const [lastnikMesto, setLastnikMesto] = useState('')
+  const [lastnikStarost, setLastnikStarost] = useState('')
+  const [prenosSoglasje, setPrenosSoglasje] = useState(false)
+  const [prenosOpomba, setPrenosOpomba] = useState('')
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },
@@ -77,6 +82,11 @@ export default function NastavitveAvta() {
         setMenjalnik(data.menjalnik || '')
         setPogon(data.pogon || '')
         setKmNovo(data.km_trenutni?.toString() || '')
+        setStLastnikov(data.st_lastnikov?.toString() || '')
+        setLastnikMesto(data.lastnik_mesto || '')
+        setLastnikStarost(data.lastnik_starost?.toString() || '')
+        setPrenosSoglasje(data.prenos_soglasje === true)
+        setPrenosOpomba(data.prenos_opomba || '')
       }
       setLoading(false)
     }
@@ -130,8 +140,13 @@ export default function NastavitveAvta() {
       menjalnik: menjalnik || null,
       pogon: pogon || null,
       km_trenutni: noviKm,
+      st_lastnikov: stLastnikov ? parseInt(stLastnikov) : null,
+      lastnik_mesto: lastnikMesto || null,
+      lastnik_starost: lastnikStarost ? parseInt(lastnikStarost) : null,
+      prenos_soglasje: prenosSoglasje,
+      prenos_opomba: prenosOpomba || null,
     }).eq('id', avto.id)
-    if (error) setMessage('Napaka: ' + error.message)
+    if (error) setMessage(error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
     else { setMessage('✅ Nastavitve shranjene!'); setAvto({ ...avto, km_trenutni: noviKm }) }
     setSaving(false)
   }
@@ -316,6 +331,43 @@ export default function NastavitveAvta() {
         </div>
       </div>
 
+
+      {/* Lastništvo in prenos */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">
+        <h2 className="text-white font-semibold">Lastništvo in prenos</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Št. lastnikov</label>
+            <input value={stLastnikov} onChange={e => setStLastnikov(e.target.value)} type="number" min="0"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Mesto</label>
+            <input value={lastnikMesto} onChange={e => setLastnikMesto(e.target.value)} placeholder="npr. Ljubljana"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Starost</label>
+            <input value={lastnikStarost} onChange={e => setLastnikStarost(e.target.value)} type="number" min="0"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+        </div>
+        <div className="flex justify-between items-center gap-4 bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+          <div>
+            <p className="text-white text-sm font-semibold">Dovolim prenos zgodovine</p>
+            <p className="text-[#5a5a80] text-xs mt-0.5">Uporabi se za QR prenos in report za naslednjega lastnika.</p>
+          </div>
+          <button onClick={() => setPrenosSoglasje(!prenosSoglasje)} type="button"
+            className={`w-12 h-6 rounded-full transition-all relative ${prenosSoglasje ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'}`}>
+            <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${prenosSoglasje ? 'left-6' : 'left-0.5'}`} />
+          </button>
+        </div>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opomba pri prenosu</label>
+          <textarea value={prenosOpomba} onChange={e => setPrenosOpomba(e.target.value)} rows={3} placeholder="npr. Vozilo redno servisirano, računi priloženi..."
+            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors resize-none" />
+        </div>
+      </div>
       {/* KM varovalka */}
       <div className="bg-[#0f0f1a] border border-[#f59e0b33] rounded-2xl p-5 flex flex-col gap-4 mb-4">
         <div className="flex items-center gap-2">
