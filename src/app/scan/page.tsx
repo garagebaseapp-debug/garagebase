@@ -5,14 +5,147 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { cleanTransferRows, getTokenFromScanValue } from '@/lib/transfer'
 
+const fmtDate = (value?: string) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('sl-SI')
+}
+
+const fmtMoney = (value?: number) => typeof value === 'number' ? `${value.toFixed(2)} EUR` : '-'
+const fmtKm = (value?: number) => typeof value === 'number' ? `${value.toLocaleString('sl-SI')} km` : '-'
+const stripPrevious = (value?: string) => String(value || '-').replace('[Prejsnji lastnik]', '').trim() || '-'
+
+function StatBox({ label, value }: { label: string, value: any }) {
+  return (
+    <div className="bg-[#13131f] rounded-xl p-3 border border-[#1e1e32]">
+      <p className="text-[#7b7ba6] text-[11px] uppercase tracking-wide">{label}</p>
+      <p className="text-white font-bold text-sm mt-1 break-words">{value || '-'}</p>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string, children: React.ReactNode }) {
+  return (
+    <section className="border-t border-[#1e1e32] pt-4 mt-4">
+      <h2 className="text-[#a09aff] text-sm font-bold uppercase tracking-wide mb-3">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function EmptyRows({ text }: { text: string }) {
+  return <p className="text-[#7b7ba6] text-sm bg-[#13131f] rounded-xl p-4 border border-[#1e1e32]">{text}</p>
+}
+
+function DigitalReport({ payload }: { payload: any }) {
+  const car = payload?.car || {}
+  const carFull = payload?.car_full || {}
+  const servisi = payload?.service_logs || []
+  const gorivo = payload?.fuel_logs || []
+  const expenses = payload?.expenses || []
+  const skupajServis = servisi.reduce((sum: number, row: any) => sum + (row.cena || 0), 0)
+  const skupajGorivo = gorivo.reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0)
+  const skupajStroski = expenses.reduce((sum: number, row: any) => sum + (row.znesek || 0), 0)
+  const skupajVse = skupajServis + skupajGorivo + skupajStroski
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#080810] rounded-2xl p-4 border border-[#252542]">
+        <p className="text-[#3ecfcf] text-sm font-semibold mb-1">Digitalni report iz GarageBase baze</p>
+        <p className="text-[#7b7ba6] text-xs leading-relaxed">
+          Ta prikaz je nalozen direktno iz QR zapisa v bazi. Primerjaj ga s PDF reportom, ki ga je poslal lastnik.
+        </p>
+      </div>
+
+      <Section title="Vozilo">
+        <div className="grid grid-cols-2 gap-3">
+          <StatBox label="Vozilo" value={`${car.znamka || carFull.znamka || ''} ${car.model || carFull.model || ''}`.trim()} />
+          <StatBox label="Letnik" value={car.letnik || carFull.letnik} />
+          <StatBox label="Gorivo" value={car.gorivo || carFull.gorivo} />
+          <StatBox label="Trenutni km" value={fmtKm(car.km_trenutni || carFull.km_trenutni)} />
+          <StatBox label="Tablica" value={carFull.tablica?.toUpperCase?.()} />
+          <StatBox label="VIN" value={car.vin_masked || '-'} />
+        </div>
+      </Section>
+
+      <Section title="Lastnistvo">
+        <div className="grid grid-cols-3 gap-3">
+          <StatBox label="St. lastnikov" value={car.st_lastnikov || carFull.st_lastnikov} />
+          <StatBox label="Mesto" value={car.lastnik_mesto || carFull.lastnik_mesto} />
+          <StatBox label="Starost" value={car.lastnik_starost || carFull.lastnik_starost} />
+        </div>
+      </Section>
+
+      <Section title="Pregled stroskov">
+        <div className="grid grid-cols-2 gap-3">
+          <StatBox label="Skupaj" value={fmtMoney(skupajVse)} />
+          <StatBox label="Servisi" value={fmtMoney(skupajServis)} />
+          <StatBox label="Gorivo" value={fmtMoney(skupajGorivo)} />
+          <StatBox label="Ostalo" value={fmtMoney(skupajStroski)} />
+        </div>
+      </Section>
+
+      <Section title="Servisna knjiga">
+        {servisi.length === 0 ? <EmptyRows text="Ni vnesenih servisov." /> : (
+          <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
+            {servisi.map((row: any, index: number) => (
+              <div key={row.id || index} className="grid grid-cols-[82px_86px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
+                <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
+                <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{stripPrevious(row.opis)}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{row.servis || '-'} · {fmtMoney(row.cena)}{row.foto_url ? ' · racun prilozen' : ''}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Evidenca goriva">
+        {gorivo.length === 0 ? <EmptyRows text="Ni vnesenih tankanj." /> : (
+          <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
+            {gorivo.map((row: any, index: number) => (
+              <div key={row.id || index} className="grid grid-cols-[82px_86px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
+                <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
+                <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{row.litri || '-'} L · {row.tip_goriva || '-'}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{stripPrevious(row.postaja)} · {fmtMoney(row.cena_skupaj)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Dodatni stroski">
+        {expenses.length === 0 ? <EmptyRows text="Ni dodatnih stroskov." /> : (
+          <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
+            {expenses.map((row: any, index: number) => (
+              <div key={row.id || index} className="grid grid-cols-[82px_100px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
+                <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
+                <div className="text-[#a09aff] text-xs font-semibold">{row.kategorija || '-'}</div>
+                <div>
+                  <p className="text-white text-sm font-semibold">{stripPrevious(row.opis)}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{fmtMoney(row.znesek)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
+    </div>
+  )
+}
+
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [tokenInput, setTokenInput] = useState('')
   const [transfer, setTransfer] = useState<any>(null)
   const [payload, setPayload] = useState<any>(null)
-  const [cars, setCars] = useState<any[]>([])
-  const [targetCar, setTargetCar] = useState('')
   const [message, setMessage] = useState('')
   const [cameraOn, setCameraOn] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -21,9 +154,6 @@ export default function ScanPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni').eq('user_id', user.id).order('created_at', { ascending: true })
-      setCars(data || [])
-      setTargetCar(data?.[0]?.id || '')
 
       const params = new URLSearchParams(window.location.search)
       const token = params.get('t')
@@ -44,7 +174,7 @@ export default function ScanPage() {
 
     const { data, error } = await supabase.from('vehicle_transfers').select('*').eq('token', token).single()
     if (error || !data) {
-      setMessage(error?.message?.includes('vehicle_transfers') ? 'Najprej v Supabase zaženi SUPABASE_MIGRACIJA_QR_PRENOS.sql.' : 'QR koda ni najdena ali je potekla.')
+      setMessage(error?.message?.includes('vehicle_transfers') ? 'Najprej v Supabase zazeni SUPABASE_MIGRACIJA_QR_PRENOS.sql.' : 'QR koda ni najdena ali je potekla.')
       setLoading(false)
       return
     }
@@ -84,7 +214,7 @@ export default function ScanPage() {
         }
       }, 700)
     } catch (error: any) {
-      setMessage('Kamere ni bilo možno odpreti: ' + error.message)
+      setMessage('Kamere ni bilo mozno odpreti: ' + error.message)
     }
   }
 
@@ -157,22 +287,22 @@ export default function ScanPage() {
         <BackButton />
         <div>
           <h1 className="text-xl font-bold text-white">Scan</h1>
-          <p className="text-[#5a5a80] text-xs">Preveri report ali uvozi zgodovino</p>
+          <p className="text-[#7b7ba6] text-xs">Preveri report ali uvozi zgodovino</p>
         </div>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button onClick={zacniKamero} disabled={cameraOn} className="bg-[#6c63ff] text-white font-semibold py-3 rounded-xl disabled:opacity-50">Kamera</button>
-          <button onClick={ustaviKamero} disabled={!cameraOn} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] font-semibold py-3 rounded-xl disabled:opacity-50">Ustavi</button>
+          <button onClick={ustaviKamero} disabled={!cameraOn} className="bg-[#13131f] border border-[#1e1e32] text-[#7b7ba6] font-semibold py-3 rounded-xl disabled:opacity-50">Ustavi</button>
         </div>
         {cameraOn && (
           <div className="mb-4">
             <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-xl bg-black aspect-video object-cover" />
-            <p className="text-[#5a5a80] text-xs mt-2">Ce kamera ostane crna, zapri Scan in ga odpri znova ali prilepi token/link spodaj.</p>
+            <p className="text-[#7b7ba6] text-xs mt-2">Ce kamera ostane crna, zapri Scan in ga odpri znova ali prilepi token/link spodaj.</p>
           </div>
         )}
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Token ali link</p>
+        <p className="text-[#7b7ba6] text-xs uppercase tracking-wider mb-2">Token ali link</p>
         <textarea value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} rows={3}
           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-3 text-white text-xs outline-none focus:border-[#6c63ff] font-mono" />
         <button onClick={() => naloziToken(tokenInput)} disabled={!tokenInput.trim() || loading} className="w-full mt-3 bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl disabled:opacity-50">
@@ -185,33 +315,26 @@ export default function ScanPage() {
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
               <p className="text-white font-bold text-lg">{payload.car?.znamka} {payload.car?.model}</p>
-              <p className="text-[#5a5a80] text-xs">{payload.car?.letnik || '-'} · VIN {payload.car?.vin_masked || '-'}</p>
+              <p className="text-[#7b7ba6] text-xs">{payload.car?.letnik || '-'} · VIN {payload.car?.vin_masked || '-'}</p>
             </div>
             <span className={`text-xs font-bold px-3 py-1 rounded-full ${transfer?.mode === 'import' ? 'bg-[#3ecfcf22] text-[#3ecfcf]' : 'bg-[#6c63ff22] text-[#a09aff]'}`}>
-              {transfer?.mode === 'import' ? 'UVOZ' : 'PREVERJANJE'}
+              {transfer?.mode === 'import' ? 'UVOZ' : 'BRANJE'}
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Servisi</p><p className="text-white font-bold">{payload.car?.servisi || 0}</p></div>
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Tankanja</p><p className="text-white font-bold">{payload.car?.tankanja || 0}</p></div>
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Stroški</p><p className="text-white font-bold">{payload.car?.stroski || 0}</p></div>
-          </div>
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Lastniki</p><p className="text-white font-bold">{payload.car?.st_lastnikov || '-'}</p></div>
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Mesto</p><p className="text-white font-bold text-sm">{payload.car?.lastnik_mesto || '-'}</p></div>
-            <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Starost</p><p className="text-white font-bold">{payload.car?.lastnik_starost || '-'}</p></div>
-          </div>
+
+          <DigitalReport payload={payload} />
 
           {transfer?.mode === 'import' ? (
-            <div className="border-t border-[#1e1e32] pt-4">
+            <div className="border-t border-[#1e1e32] pt-4 mt-5">
+              <p className="text-[#f59e0b] text-xs mb-3">Po uvozu bodo vsi obstojeci zapisi oznaceni kot zgodovina prejsnjega lastnika. Novi lastnik potem nadaljuje svojo evidenco od tega trenutka naprej.</p>
               <button onClick={uvozi} disabled={loading} className="w-full bg-[#3ecfcf] text-black font-bold py-3 rounded-xl disabled:opacity-50">
                 Uvozi vozilo {payload.car?.znamka} {payload.car?.model}
               </button>
             </div>
           ) : (
-            <div className="border-t border-[#1e1e32] pt-4">
-              <p className="text-[#3ecfcf] text-sm font-semibold mb-2">Digitalni report je najden v GarageBase bazi.</p>
-              <p className="text-[#5a5a80] text-xs">Primerjaj te podatke s PDF dokumentom. Ce se stevilo servisov, tankanj, stroskov, VIN in kilometri ujemajo, PDF ni bil spremenjen.</p>
+            <div className="border-t border-[#1e1e32] pt-4 mt-5">
+              <p className="text-[#3ecfcf] text-sm font-semibold mb-2">Report je najden v GarageBase bazi.</p>
+              <p className="text-[#7b7ba6] text-xs">Ce se ti podatki ujemajo s PDF reportom, dokument ni bil naknadno spremenjen.</p>
             </div>
           )}
         </div>

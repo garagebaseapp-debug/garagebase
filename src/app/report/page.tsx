@@ -326,9 +326,17 @@ export default function Report() {
       lastnik_mesto: avtoData?.lastnik_mesto,
       lastnik_starost: avtoData?.lastnik_starost,
     }
-    const makePayload = (mode: 'verify' | 'import') => mode === 'verify'
-      ? { type: 'garagebase-transfer-v1', mode, exportedAt: new Date().toISOString(), consent: true, car: carSummary, car_full: carFull }
-      : { type: 'garagebase-transfer-v1', mode, exportedAt: new Date().toISOString(), consent: true, car: carSummary, car_full: carFull, service_logs: servisData || [], fuel_logs: gorivoData || [], expenses: filteredExpenses }
+    const makePayload = (mode: 'verify' | 'import') => ({
+      type: 'garagebase-transfer-v1',
+      mode,
+      exportedAt: new Date().toISOString(),
+      consent: true,
+      car: carSummary,
+      car_full: carFull,
+      service_logs: servisData || [],
+      fuel_logs: gorivoData || [],
+      expenses: filteredExpenses || [],
+    })
 
     setVerifyQr('')
     setImportQr('')
