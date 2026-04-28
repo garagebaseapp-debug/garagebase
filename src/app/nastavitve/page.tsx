@@ -28,6 +28,7 @@ export default function Nastavitve() {
   const [tema, setTema] = useState('temna')
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
+  const [testLoading, setTestLoading] = useState(false)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -112,6 +113,41 @@ export default function Nastavitve() {
       setMessage('❌ Napaka pri vklopu obvestil.')
     }
     setNotifikacijeLoading(false)
+  }
+
+  const posljiTestnoObvestilo = async () => {
+    setTestLoading(true)
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/sw.js')
+      const subscription = await registration?.pushManager.getSubscription()
+
+      if (!subscription) {
+        setNotifikacije('neznano')
+        setMessage('Obvestila niso povezana s tem telefonom. Klikni Vklopi obvestila.')
+        setTestLoading(false)
+        return
+      }
+
+      const response = await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscription: subscription.toJSON(),
+          title: 'GarageBase test',
+          body: 'Če vidiš to obvestilo, push deluje.',
+          url: '/nastavitve'
+        })
+      })
+
+      if (!response.ok) throw new Error('Testno obvestilo ni bilo poslano.')
+
+      setMessage('Testno obvestilo poslano.')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Test obvestila:', error)
+      setMessage('Test obvestila ni uspel.')
+    }
+    setTestLoading(false)
   }
 
   const shrani = () => {
@@ -244,12 +280,18 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Obvestila</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Opomniki za registracijo, servis in vinjeto</p>
         {notifikacije === 'dovoljeno' ? (
-          <div className="flex items-center gap-3 bg-[#16a34a22] border border-[#16a34a44] rounded-xl p-3">
-            <span className="text-xl">🔔</span>
-            <div>
-              <p className="text-[#4ade80] text-sm font-semibold">Obvestila so vklopljena</p>
-              <p className="text-[#5a5a80] text-xs">Prejeli boste opomnike ob 8:00</p>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3 bg-[#16a34a22] border border-[#16a34a44] rounded-xl p-3">
+              <span className="text-xl">🔔</span>
+              <div>
+                <p className="text-[#4ade80] text-sm font-semibold">Obvestila so vklopljena</p>
+                <p className="text-[#5a5a80] text-xs">Prejeli boste opomnike ob 8:00</p>
+              </div>
             </div>
+            <button onClick={posljiTestnoObvestilo} disabled={testLoading}
+              className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
+              {testLoading ? 'Pošiljam test...' : 'Pošlji test'}
+            </button>
           </div>
         ) : notifikacije === 'zavrnjeno' ? (
           <div className="flex items-center gap-3 bg-[#ef444422] border border-[#ef444444] rounded-xl p-3">
