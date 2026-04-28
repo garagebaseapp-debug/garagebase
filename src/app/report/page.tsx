@@ -94,7 +94,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses }: any) => {
             </Text>
             {avto.letnik && <Text style={styles.carInfo}>Letnik: {avto.letnik}</Text>}
             {avto.tablica && <Text style={styles.carInfo}>Tablica: {avto.tablica.toUpperCase()}</Text>}
-            {avto.vin && <Text style={styles.carInfo}>VIN: {avto.vin}</Text>}
+            {avto.vin && <Text style={styles.carInfo}>VIN: {avto.vin.substring(0, 9)}{'*'.repeat(avto.vin.length - 9)}</Text>}
             {avto.gorivo && <Text style={styles.carInfo}>Gorivo: {avto.gorivo}</Text>}
             {avto.km_trenutni && <Text style={styles.carInfo}>Trenutni km: {avto.km_trenutni.toLocaleString()} km</Text>}
             <Text style={styles.reportDate}>Generirano: {danes}</Text>
