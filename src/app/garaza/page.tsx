@@ -129,16 +129,12 @@ export default function Garaza() {
     return 'border-[#2a2a40]'
   }
 
-  const dniBgBarva = (dni: number) => {
-    if (dni <= 7) return 'bg-[#ef4444]'
-    if (dni <= 30) return 'bg-[#f59e0b]'
-    return 'bg-[#16a34a]'
-  }
-
-  const kmBgBarva = (preostalo: number) => {
-    if (preostalo <= 500) return 'bg-[#ef4444]'
-    if (preostalo <= 1500) return 'bg-[#f59e0b]'
-    return 'bg-[#16a34a]'
+  const opomnikBarva = (vrednost: number, tip: 'dni' | 'km') => {
+    const rdecaMeja = tip === 'dni' ? 7 : 500
+    const rumenaMeja = tip === 'dni' ? 30 : 1500
+    if (vrednost <= rdecaMeja) return { text: 'text-[#ef4444]', border: 'border-[#ef444455]' }
+    if (vrednost <= rumenaMeja) return { text: 'text-[#f59e0b]', border: 'border-[#f59e0b55]' }
+    return { text: 'text-[#16a34a]', border: 'border-[#16a34a55]' }
   }
 
   const karticaVisina = () => {
@@ -185,25 +181,24 @@ export default function Garaza() {
 
     return (
       <>
-        {badgi.slice(0, max).map((op: any) => (
-          op.tip_prikaza === 'datum' ? (
-            <div key={`d-${op.id}`} className={`rounded-lg px-2 py-1 ${dniBgBarva(op.dni)} flex items-center gap-1 shadow-sm`}>
-              <span className="text-[11px]">{tipIkona[op.tip] || '🔔'}</span>
-              <span className="text-white font-bold text-[11px] leading-none">{op.dni}d</span>
-            </div>
-          ) : (
-            <div key={`k-${op.id}`} className={`rounded-lg px-2 py-1 ${kmBgBarva(op.preostaloKm)} flex items-center gap-1 shadow-sm`}>
-              <span className="text-[11px]">{tipIkona[op.tip] || '🔔'}</span>
-              <span className="text-white font-bold text-[11px] leading-none">
-                {op.preostaloKm <= 0 ? `+${Math.abs(op.preostaloKm)}` : op.preostaloKm}km
-              </span>
+        {badgi.slice(0, max).map((op: any) => {
+          const isDatum = op.tip_prikaza === 'datum'
+          const vrednost = isDatum ? op.dni : op.preostaloKm
+          const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km')
+          const tekst = isDatum
+            ? `${op.dni} d`
+            : `${op.preostaloKm <= 0 ? '+' + Math.abs(op.preostaloKm) : op.preostaloKm} km`
+
+          return (
+            <div key={`${isDatum ? 'd' : 'k'}-${op.id}`} className={`bg-white/75 border ${barva.border} rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-sm max-w-full`}>
+              <span className="text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
+              <span className={`${barva.text} font-black text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
             </div>
           )
-        ))}
+        })}
       </>
     )
   }
-
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">Nalaganje...</p>
@@ -367,7 +362,7 @@ export default function Garaza() {
                 {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
-                <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0">
+                <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0 overflow-hidden">
                   <div>
                     <h2 className="text-white font-bold text-base leading-tight line-clamp-2">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
@@ -381,23 +376,17 @@ export default function Garaza() {
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap gap-1.5 min-h-[30px] content-start">
+                  <div className="flex flex-col gap-2 min-w-0">
+                    <div className="flex flex-wrap gap-1.5 min-h-[32px] content-start overflow-hidden">
                       {listaNastavitve.opomnik && (
                         <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
                       )}
                     </div>
                     {listaNastavitve.tablica && avto.tablica && (
-                      <div className="flex flex-col items-stretch w-full max-w-[138px] self-end">
-                        <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
-                          <span className="text-yellow-300 text-[6px]">★</span>
-                          <span className="text-white text-[6px] font-bold">SI</span>
-                        </div>
-                        <div className="bg-white rounded-b-sm px-2 py-0.5 border border-[#003399] border-t-0">
-                          <span className="text-black font-bold text-[11px] tracking-[0.14em] font-mono whitespace-nowrap">
-                            {avto.tablica.toUpperCase()}
-                          </span>
-                        </div>
+                      <div className="w-full bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm overflow-hidden">
+                        <p className="text-[#111827] font-black text-[12px] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                          {avto.tablica.toUpperCase()}
+                        </p>
                       </div>
                     )}
                   </div>
