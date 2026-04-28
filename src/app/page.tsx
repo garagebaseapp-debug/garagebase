@@ -48,10 +48,13 @@ export default function LandingPage() {
         {/* Garažno ozadje — slika */}
         <div className="absolute inset-0">
           <img src="/garaza.png" alt="Garaža"
-            className="w-full h-full object-cover object-bottom opacity-70" />
+            className="w-full h-full object-cover object-center opacity-85" />
           {/* Overlay za čitljivost teksta */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, #080810bb 0%, #08081088 30%, #08081066 60%, #080810dd 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, #080810bb 0%, #08081066 30%, #08081033 60%, #080810cc 100%)' }} />
+          {/* Osvetlitev naprav desno spodaj */}
+          <div className="absolute inset-0"
+            style={{ background: 'radial-gradient(ellipse at 80% 75%, rgba(108,99,255,0.4) 0%, rgba(62,207,207,0.2) 25%, transparent 55%)' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
