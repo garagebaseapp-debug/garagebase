@@ -30,6 +30,10 @@ export default function Nastavitve() {
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [biometricSupported, setBiometricSupported] = useState(false)
+  const [appLockEnabled, setAppLockEnabled] = useState(false)
+  const [appLockLoading, setAppLockLoading] = useState(false)
+  const [appLockMessage, setAppLockMessage] = useState('')
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -73,6 +77,8 @@ export default function Nastavitve() {
         } else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
         else setNotifikacije('neznano')
       }
+      setBiometricSupported('PublicKeyCredential' in window && window.isSecureContext)
+      setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
       setLoading(false)
     }
     init()
@@ -173,6 +179,62 @@ export default function Nastavitve() {
     }
   }
 
+
+  const bufferToBase64Url = (buffer: ArrayBuffer) => {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+    return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
+  }
+
+  const vklopiAppLock = async () => {
+    setAppLockLoading(true)
+    setAppLockMessage('')
+    try {
+      if (!('PublicKeyCredential' in window) || !window.isSecureContext) {
+        setAppLockMessage('Ta naprava ali brskalnik ne podpira varnega biometričnega odklepa.')
+        setAppLockLoading(false)
+        return
+      }
+
+      const userId = new TextEncoder().encode(user?.id || user?.email || 'garagebase-user')
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge: crypto.getRandomValues(new Uint8Array(32)),
+          rp: { name: 'GarageBase' },
+          user: {
+            id: userId,
+            name: user?.email || 'GarageBase uporabnik',
+            displayName: user?.email || 'GarageBase uporabnik'
+          },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+          authenticatorSelection: {
+            userVerification: 'required',
+            residentKey: 'preferred'
+          },
+          timeout: 60000,
+          attestation: 'none'
+        }
+      }) as PublicKeyCredential | null
+
+      if (!credential) throw new Error('Credential ni bil ustvarjen.')
+      localStorage.setItem('garagebase_app_lock_credential', bufferToBase64Url(credential.rawId))
+      localStorage.setItem('garagebase_app_lock_enabled', 'true')
+      setAppLockEnabled(true)
+      setAppLockMessage('Odklep aplikacije je vklopljen.')
+    } catch (error) {
+      console.error('App lock:', error)
+      setAppLockMessage('Odklepa ni bilo mogoče vklopiti. Poskusi na telefonu v nameščeni aplikaciji.')
+    }
+    setAppLockLoading(false)
+  }
+
+  const izklopiAppLock = () => {
+    localStorage.removeItem('garagebase_app_lock_enabled')
+    localStorage.removeItem('garagebase_app_lock_credential')
+    setAppLockEnabled(false)
+    setAppLockMessage('Odklep aplikacije je izklopljen.')
+  }
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
@@ -313,6 +375,29 @@ export default function Nastavitve() {
         )}
       </div>
 
+
+      {/* App lock */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Varnost</p>
+        <p className="text-white font-semibold text-sm">Odklep z biometrijo</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">Zakleni app z odtisom, obrazom ali PIN-om naprave.</p>
+        {!biometricSupported ? (
+          <div className="bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
+            Ta brskalnik trenutno ne podpira varnega odklepa. Poskusi v nameščeni aplikaciji na telefonu.
+          </div>
+        ) : appLockEnabled ? (
+          <button onClick={izklopiAppLock}
+            className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
+            Izklopi odklep
+          </button>
+        ) : (
+          <button onClick={vklopiAppLock} disabled={appLockLoading}
+            className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
+            {appLockLoading ? 'Pripravljam...' : 'Vklopi odklep'}
+          </button>
+        )}
+        {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}
+      </div>
       {/* Način uporabe */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
