@@ -23,8 +23,8 @@ export default function LandingPage() {
         scrolled ? 'bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]' : 'bg-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold drop-shadow-lg" style={{ textShadow: '0 0 20px rgba(0,0,0,0.8)' }}>
-            <span className="text-white">Garage</span><span className="text-[#6c63ff]">Base</span>
+          <h1 className="text-xl font-bold">
+            <span className="text-white drop-shadow-[0_0_10px_rgba(0,0,0,1)]">Garage</span><span className="text-[#6c63ff]">Base</span>
           </h1>
           <div className="hidden md:flex items-center gap-8">
             <a href="#funkcije" className="text-[#5a5a80] hover:text-white transition-colors text-sm">Funkcije</a>
@@ -48,10 +48,10 @@ export default function LandingPage() {
         {/* Garažno ozadje — slika */}
         <div className="absolute inset-0">
           <img src="/garaza.png" alt="Garaža"
-            className="w-full h-full object-cover object-bottom opacity-95" />
+            className="w-full h-full object-cover object-bottom opacity-70" />
           {/* Overlay za čitljivost teksta */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, #080810cc 0%, #08081077 25%, #08081055 60%, #080810ee 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, #080810bb 0%, #08081088 30%, #08081066 60%, #080810dd 100%)' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
