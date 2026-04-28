@@ -48,10 +48,10 @@ export default function LandingPage() {
         {/* Garažno ozadje — slika */}
         <div className="absolute inset-0">
           <img src="/garaza.png" alt="Garaža"
-            className="w-full h-full object-cover object-center opacity-90" />
-          {/* Lahek overlay samo na vrhu in dnu */}
+            className="w-full h-full object-cover object-bottom opacity-95" />
+          {/* Overlay za čitljivost teksta */}
           <div className="absolute inset-0"
-            style={{ background: 'linear-gradient(to bottom, #08081088 0%, transparent 30%, transparent 60%, #080810 100%)' }} />
+            style={{ background: 'linear-gradient(to bottom, #080810cc 0%, #08081077 25%, #08081055 60%, #080810ee 100%)' }} />
         </div>
 
         <div className="relative max-w-4xl mx-auto text-center">
@@ -61,7 +61,7 @@ export default function LandingPage() {
             <span className="text-[#a09aff] text-xs font-semibold uppercase tracking-wider">Nova aplikacija za vozila</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight drop-shadow-lg">
             Tvoja garaža.
             <br />
             <span className="text-[#6c63ff]">Vse na enem</span>
