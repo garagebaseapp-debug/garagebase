@@ -94,6 +94,11 @@ export default function Opomniki() {
     if (!datum && !kmOpomnik) { setMessage('Vnesi datum ali km!'); return }
     if (tip === 'custom' && !tipCustom) { setMessage('Vnesi naziv opomnika!'); return }
     if (opozoriloDni === 'custom' && !opozoriloDniCustom) { setMessage('Vnesi število dni!'); return }
+    const vneseniKmOpomnik = kmOpomnik ? parseInt(kmOpomnik) : null
+    if (vneseniKmOpomnik !== null && avto?.km_trenutni && vneseniKmOpomnik < avto.km_trenutni) {
+      setMessage(`Km opomnik ne sme biti nižji od trenutnih ${avto.km_trenutni.toLocaleString()} km.`)
+      return
+    }
 
     setSaving(true)
     const finalniTip = tip === 'custom' ? tipCustom : tip
@@ -103,7 +108,7 @@ export default function Opomniki() {
       car_id: avto.id,
       tip: finalniTip,
       datum: datum || null,
-      km_opomnik: kmOpomnik ? parseInt(kmOpomnik) : null,
+      km_opomnik: vneseniKmOpomnik,
       opozorilo_dni_prej: finalniDni,
     })
 

@@ -24,8 +24,6 @@ export default function NastavitveAvta() {
   const [kw, setKw] = useState('')
   const [menjalnik, setMenjalnik] = useState('')
   const [pogon, setPogon] = useState('')
-  const [kmNovo, setKmNovo] = useState('')
-  const [kmOpomba, setKmOpomba] = useState('')
   const [stLastnikov, setStLastnikov] = useState('')
   const [lastnikMesto, setLastnikMesto] = useState('')
   const [lastnikStarost, setLastnikStarost] = useState('')
@@ -81,7 +79,6 @@ export default function NastavitveAvta() {
         setKw(data.kw?.toString() || '')
         setMenjalnik(data.menjalnik || '')
         setPogon(data.pogon || '')
-        setKmNovo(data.km_trenutni?.toString() || '')
         setStLastnikov(data.st_lastnikov?.toString() || '')
         setLastnikMesto(data.lastnik_mesto || '')
         setLastnikStarost(data.lastnik_starost?.toString() || '')
@@ -115,17 +112,6 @@ export default function NastavitveAvta() {
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage('Vnesi tip vozila!'); return }
     setSaving(true)
     setMessage('')
-    const stariKm = avto.km_trenutni || 0
-    const noviKm = parseInt(kmNovo) || stariKm
-    if (noviKm !== stariKm) {
-      await supabase.from('expenses').insert({
-        car_id: avto.id,
-        datum: new Date().toISOString().split('T')[0],
-        kategorija: 'km_sprememba',
-        opis: `Km: ${stariKm.toLocaleString()} → ${noviKm.toLocaleString()} km. Razlog: ${kmOpomba || 'Ni naveden'}`,
-        znesek: 0,
-      })
-    }
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
     const { error } = await supabase.from('cars').update({
       tip_vozila: finalniTip,
@@ -139,7 +125,6 @@ export default function NastavitveAvta() {
       kw: kw ? parseInt(kw) : null,
       menjalnik: menjalnik || null,
       pogon: pogon || null,
-      km_trenutni: noviKm,
       st_lastnikov: stLastnikov ? parseInt(stLastnikov) : null,
       lastnik_mesto: lastnikMesto || null,
       lastnik_starost: lastnikStarost ? parseInt(lastnikStarost) : null,
@@ -147,7 +132,7 @@ export default function NastavitveAvta() {
       prenos_opomba: prenosOpomba || null,
     }).eq('id', avto.id)
     if (error) setMessage(error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
-    else { setMessage('✅ Nastavitve shranjene!'); setAvto({ ...avto, km_trenutni: noviKm }) }
+    else { setMessage('✅ Nastavitve shranjene!'); setAvto({ ...avto }) }
     setSaving(false)
   }
 
@@ -368,29 +353,6 @@ export default function NastavitveAvta() {
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors resize-none" />
         </div>
       </div>
-      {/* KM varovalka */}
-      <div className="bg-[#0f0f1a] border border-[#f59e0b33] rounded-2xl p-5 flex flex-col gap-4 mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">⚠️</span>
-          <h2 className="text-white font-semibold">Kilometri</h2>
-        </div>
-        <p className="text-[#5a5a80] text-xs">Vsaka sprememba km se zabeleži z datumom in razlogom.</p>
-        <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            Trenutni km <span className="text-[#5a5a80] normal-case">(trenutno: {avto?.km_trenutni?.toLocaleString()})</span>
-          </label>
-          <input value={kmNovo} onChange={e => setKmNovo(e.target.value)} type="number"
-            className="w-full bg-[#13131f] border border-[#f59e0b44] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
-        </div>
-        {kmNovo && parseInt(kmNovo) !== avto?.km_trenutni && (
-          <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Razlog spremembe <span className="text-[#f59e0b]">*</span></label>
-            <input value={kmOpomba} onChange={e => setKmOpomba(e.target.value)} placeholder="npr. Napaka pri vnosu..."
-              className="w-full bg-[#13131f] border border-[#f59e0b44] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
-          </div>
-        )}
-      </div>
-
       {message && (
         <div className={`p-3 rounded-xl text-sm border mb-4 ${
           message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'

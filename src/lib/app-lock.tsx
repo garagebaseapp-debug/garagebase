@@ -1,9 +1,10 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 
 const enabledKey = 'garagebase_app_lock_enabled'
 const credentialKey = 'garagebase_app_lock_credential'
+const sessionUnlockedKey = 'garagebase_app_lock_session_unlocked'
 
 function base64UrlToBuffer(value: string) {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -23,7 +24,8 @@ export function AppLock() {
     const skip = path === '/' || path === '/login'
     const enabled = localStorage.getItem(enabledKey) === 'true'
     const credentialId = localStorage.getItem(credentialKey)
-    if (!skip && enabled && credentialId && 'PublicKeyCredential' in window) {
+    const sessionUnlocked = sessionStorage.getItem(sessionUnlockedKey) === 'true'
+    if (!skip && enabled && credentialId && !sessionUnlocked && 'PublicKeyCredential' in window) {
       setLocked(true)
     }
   }, [])
@@ -41,6 +43,7 @@ export function AppLock() {
           timeout: 60000
         }
       })
+      sessionStorage.setItem(sessionUnlockedKey, 'true')
       setLocked(false)
       setMessage('')
     } catch (error) {

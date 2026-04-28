@@ -22,6 +22,8 @@ export default function VnosServisa() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [filteredServis, setFilteredServis] = useState<string[]>([])
   const [poslusam, setPoslusam] = useState<string | null>(null)
+  const [intervalKm, setIntervalKm] = useState('')
+  const [intervalDni, setIntervalDni] = useState('')
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -168,11 +170,31 @@ export default function VnosServisa() {
     </button>
   )
 
+
+  const datumPlusDni = (base: string, dni: number) => {
+    const d = new Date(base)
+    d.setDate(d.getDate() + dni)
+    return d.toISOString().split('T')[0]
+  }
+
+  const ustvariServisniOpomnik = async (vneseniKm: number) => {
+    const kmNaslednji = intervalKm ? vneseniKm + parseInt(intervalKm) : null
+    const datumNaslednji = intervalDni ? datumPlusDni(datum, parseInt(intervalDni)) : null
+    if (!kmNaslednji && !datumNaslednji) return
+
+    await supabase.from('reminders').insert({
+      car_id: carId,
+      tip: 'servis',
+      datum: datumNaslednji,
+      km_opomnik: kmNaslednji,
+      opozorilo_dni_prej: 30,
+    })
+  }
   const shrani = async () => {
     if (!km || !opis) { setMessage('Km in opis sta obvezna!'); return }
     const vneseniKm = parseInt(km)
-    if (vneseniKm <= zadnjiKm) {
-      setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`)
+    if (vneseniKm < zadnjiKm) {
+      setMessage(`⚠️ Km ne smejo biti nižji od ${zadnjiKm.toLocaleString()} km!`)
       return
     }
     setLoading(true)
@@ -191,6 +213,7 @@ export default function VnosServisa() {
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
 
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    await ustvariServisniOpomnik(vneseniKm)
 
     if (slike.length > 0) {
       setUploadProgress(true)
@@ -260,13 +283,13 @@ export default function VnosServisa() {
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
-              placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
-              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+              placeholder={`najmanj ${zadnjiKm.toLocaleString()}`}
+              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
             <MicButton polje="km" />
           </div>
-          {km && parseInt(km) <= zadnjiKm && (
+          {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ Km morajo biti večji od {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">⛔ Km ne smejo biti nižji od {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
         </div>
@@ -345,6 +368,25 @@ export default function VnosServisa() {
           )}
         </div>
 
+
+        <div className="bg-[#f59e0b11] border border-[#f59e0b33] rounded-xl p-4 flex flex-col gap-3">
+          <div>
+            <p className="text-white text-sm font-semibold">Naslednji servis</p>
+            <p className="text-[#5a5a80] text-xs mt-0.5">Če vneseš interval, aplikacija sama ustvari opomnik.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Čez km</label>
+              <input type="number" value={intervalKm} onChange={e => setIntervalKm(e.target.value)} placeholder="15000"
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            </div>
+            <div>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Čez dni</label>
+              <input type="number" value={intervalDni} onChange={e => setIntervalDni(e.target.value)} placeholder="365"
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            </div>
+          </div>
+        </div>
         {message && (
           <div className={`p-3 rounded-xl text-sm border ${message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'}`}>
             {message}

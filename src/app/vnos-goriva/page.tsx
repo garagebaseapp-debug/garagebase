@@ -164,8 +164,8 @@ export default function VnosGoriva() {
   const shrani = async () => {
     if (!km || !litri) { setMessage('Km in litri sta obvezna!'); return }
     const vneseniKm = parseInt(km)
-    if (vneseniKm <= zadnjiKm) {
-      setMessage(`⚠️ Km morajo biti večji od ${zadnjiKm.toLocaleString()} km!`)
+    if (vneseniKm < zadnjiKm) {
+      setMessage(`⚠️ Km ne smejo biti nižji od ${zadnjiKm.toLocaleString()} km!`)
       return
     }
     setLoading(true)
@@ -269,15 +269,15 @@ export default function VnosGoriva() {
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
-              placeholder={`večje od ${zadnjiKm.toLocaleString()}`}
+              placeholder={`najmanj ${zadnjiKm.toLocaleString()}`}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
-                km && parseInt(km) <= zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
+                km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
               }`} />
             <MicButton polje="km" />
           </div>
-          {km && parseInt(km) <= zadnjiKm && (
+          {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ Km morajo biti večji od {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">⛔ Km ne smejo biti nižji od {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
         </div>
