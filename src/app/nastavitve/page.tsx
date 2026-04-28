@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
+import { saveStoredLanguage, type Language } from '@/lib/i18n'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -235,6 +236,11 @@ export default function Nastavitve() {
     setAppLockEnabled(false)
     setAppLockMessage('Odklep aplikacije je izklopljen.')
   }
+  const spremeniJezik = (novJezik: Language) => {
+    setJezik(novJezik)
+    saveStoredLanguage(novJezik)
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
@@ -430,7 +436,7 @@ export default function Nastavitve() {
             { vrednost: 'sl', naziv: '🇸🇮 Slovenščina' },
             { vrednost: 'en', naziv: '🇬🇧 English' },
           ].map((j) => (
-            <button key={j.vrednost} onClick={() => setJezik(j.vrednost)}
+            <button key={j.vrednost} onClick={() => spremeniJezik(j.vrednost as Language)}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
                 jezik === j.vrednost
                   ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
