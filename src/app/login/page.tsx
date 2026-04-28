@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { hasAppLockCredential, unlockWithAppLock } from '@/lib/app-lock'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -9,13 +10,33 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [isRegister, setIsRegister] = useState(false)
+  const [biometricReady, setBiometricReady] = useState(false)
 
   // Dodamo landing class da je stran široka kot spletna stran
   useEffect(() => {
     document.body.classList.add('landing')
+    setBiometricReady(hasAppLockCredential())
     return () => document.body.classList.remove('landing')
   }, [])
 
+
+  const handleBiometricLogin = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data } = await supabase.auth.getSession()
+      if (!data.session) {
+        setMessage('Za biometrijo mora biti seja se aktivna. Najprej se enkrat prijavi z geslom.')
+        setLoading(false)
+        return
+      }
+      await unlockWithAppLock()
+      window.location.href = '/garaza'
+    } catch (error) {
+      setMessage('Biometricna prijava ni uspela. Poskusi znova ali uporabi geslo.')
+    }
+    setLoading(false)
+  }
   const handleAuth = async () => {
     setLoading(true)
     setMessage('')
@@ -89,6 +110,13 @@ export default function LoginPage() {
             {loading ? 'Prosim počakaj...' : isRegister ? 'Ustvari račun' : 'Prijava'}
           </button>
 
+
+          {!isRegister && biometricReady && (
+            <button onClick={handleBiometricLogin} disabled={loading}
+              className="w-full mt-3 bg-[#13131f] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl transition-colors disabled:opacity-50">
+              Prijava z biometrijo
+            </button>
+          )}
           <p className="text-center text-[#5a5a80] text-sm mt-4">
             {isRegister ? 'Že imaš račun?' : 'Nimaš računa?'}{' '}
             <span onClick={() => setIsRegister(!isRegister)}

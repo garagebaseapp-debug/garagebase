@@ -15,6 +15,26 @@ function base64UrlToBuffer(value: string) {
   return bytes.buffer
 }
 
+
+export function hasAppLockCredential() {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(enabledKey) === 'true' && !!localStorage.getItem(credentialKey) && 'PublicKeyCredential' in window
+}
+
+export async function unlockWithAppLock() {
+  const credentialId = localStorage.getItem(credentialKey)
+  if (!credentialId) throw new Error('Biometrija ni nastavljena.')
+  const challenge = crypto.getRandomValues(new Uint8Array(32))
+  await navigator.credentials.get({
+    publicKey: {
+      challenge,
+      allowCredentials: [{ id: base64UrlToBuffer(credentialId), type: 'public-key' }],
+      userVerification: 'required',
+      timeout: 60000
+    }
+  })
+  sessionStorage.setItem(sessionUnlockedKey, 'true')
+}
 export function AppLock() {
   const [locked, setLocked] = useState(false)
   const [message, setMessage] = useState('')
@@ -32,18 +52,7 @@ export function AppLock() {
 
   const unlock = async () => {
     try {
-      const credentialId = localStorage.getItem(credentialKey)
-      if (!credentialId) return
-      const challenge = crypto.getRandomValues(new Uint8Array(32))
-      await navigator.credentials.get({
-        publicKey: {
-          challenge,
-          allowCredentials: [{ id: base64UrlToBuffer(credentialId), type: 'public-key' }],
-          userVerification: 'required',
-          timeout: 60000
-        }
-      })
-      sessionStorage.setItem(sessionUnlockedKey, 'true')
+      await unlockWithAppLock()
       setLocked(false)
       setMessage('')
     } catch (error) {
