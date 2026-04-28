@@ -176,6 +176,12 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
             </View>
           </View>
           {avto.prenos_opomba && <Text style={styles.opomba}>{avto.prenos_opomba}</Text>}
+          {verifyQr && (
+            <View style={styles.qrBox}>
+              <Image src={verifyQr} style={styles.qrImage} />
+              <Text style={styles.qrText}>SCAN QR: preveri report v GarageBase bazi. QR prikaze originalne podatke, s katerimi lahko kupec primerja PDF.</Text>
+            </View>
+          )}
         </View>
         {/* Servisna knjiga */}
         {servisi.length > 0 && (
@@ -382,11 +388,11 @@ export default function Report() {
       <div className="grid grid-cols-2 gap-3 mb-4">
         <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=verify`}
           className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl transition-colors">
-          QR branje
+          QR branje za PDF
         </button>
         <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=import`}
           className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl transition-colors">
-          Izvoz zgodovine
+          QR izvoz zgodovine
         </button>
       </div>
 

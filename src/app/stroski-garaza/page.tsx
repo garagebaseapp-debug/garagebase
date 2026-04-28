@@ -13,7 +13,7 @@ export default function StroškiGaraza() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const { data: avtiData } = await supabase.from('cars').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+      const { data: avtiData } = await supabase.from('cars').select('*').eq('user_id', user.id).order('vrstni_red', { ascending: true })
       if (avtiData && avtiData.length > 0) {
         setAvti(avtiData)
         const stroskoviMap: { [key: string]: number } = {}
@@ -59,15 +59,15 @@ export default function StroškiGaraza() {
               )}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0f0f1a]/25" />
             </div>
-            <div className="w-1/2 h-full p-4 flex flex-col justify-between border-l border-[#1e1e32]">
+            <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0">
               <div>
-                <h2 className="text-white font-bold text-lg leading-tight">
+                <h2 className="text-white font-bold text-base leading-tight line-clamp-2">
                   {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}{avto.model.toUpperCase()}
                 </h2>
                 <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="text-right">
-                <p className="text-[#3ecfcf] font-bold text-2xl">{(stroski[avto.id] || 0).toFixed(0)} €</p>
+                <p className="text-[#3ecfcf] font-bold text-xl">{(stroski[avto.id] || 0).toFixed(0)} €</p>
                 <p className="text-[#5a5a80] text-xs">skupaj</p>
               </div>
             </div>

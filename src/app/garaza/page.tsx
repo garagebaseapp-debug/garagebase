@@ -187,14 +187,14 @@ export default function Garaza() {
       <>
         {badgi.slice(0, max).map((op: any) => (
           op.tip_prikaza === 'datum' ? (
-            <div key={`d-${op.id}`} className={`rounded-md px-1 py-0.5 ${dniBgBarva(op.dni)} flex items-center gap-0.5`}>
-              <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
-              <span className="text-white font-bold text-[8px]">{op.dni}d</span>
+            <div key={`d-${op.id}`} className={`rounded-lg px-2 py-1 ${dniBgBarva(op.dni)} flex items-center gap-1 shadow-sm`}>
+              <span className="text-[11px]">{tipIkona[op.tip] || '🔔'}</span>
+              <span className="text-white font-bold text-[11px] leading-none">{op.dni}d</span>
             </div>
           ) : (
-            <div key={`k-${op.id}`} className={`rounded-md px-1 py-0.5 ${kmBgBarva(op.preostaloKm)} flex items-center gap-0.5`}>
-              <span className="text-[8px]">{tipIkona[op.tip] || '🔔'}</span>
-              <span className="text-white font-bold text-[8px]">
+            <div key={`k-${op.id}`} className={`rounded-lg px-2 py-1 ${kmBgBarva(op.preostaloKm)} flex items-center gap-1 shadow-sm`}>
+              <span className="text-[11px]">{tipIkona[op.tip] || '🔔'}</span>
+              <span className="text-white font-bold text-[11px] leading-none">
                 {op.preostaloKm <= 0 ? `+${Math.abs(op.preostaloKm)}` : op.preostaloKm}km
               </span>
             </div>
@@ -367,9 +367,9 @@ export default function Garaza() {
                 {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
-                <div className="w-1/2 h-full p-4 flex flex-col justify-between border-l border-[#1e1e32]">
+                <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0">
                   <div>
-                    <h2 className="text-white font-bold text-lg leading-tight">
+                    <h2 className="text-white font-bold text-base leading-tight line-clamp-2">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
@@ -381,20 +381,20 @@ export default function Garaza() {
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex items-end justify-between gap-2">
-                    <div className="flex flex-wrap gap-1 max-w-[58%]">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-1.5 min-h-[30px] content-start">
                       {listaNastavitve.opomnik && (
-                        <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={4} nastavitve={listaNastavitve} />
+                        <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
                       )}
                     </div>
                     {listaNastavitve.tablica && avto.tablica && (
-                      <div className="flex flex-col items-center flex-shrink-0">
+                      <div className="flex flex-col items-stretch w-full max-w-[138px] self-end">
                         <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
                           <span className="text-yellow-300 text-[6px]">★</span>
                           <span className="text-white text-[6px] font-bold">SI</span>
                         </div>
                         <div className="bg-white rounded-b-sm px-2 py-0.5 border border-[#003399] border-t-0">
-                          <span className="text-black font-bold text-xs tracking-widest font-mono">
+                          <span className="text-black font-bold text-[11px] tracking-[0.14em] font-mono whitespace-nowrap">
                             {avto.tablica.toUpperCase()}
                           </span>
                         </div>

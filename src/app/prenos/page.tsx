@@ -156,11 +156,11 @@ export default function PrenosZgodovine() {
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Način QR kode</p>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <button onClick={() => setMode('verify')} className={`rounded-xl border p-4 text-left ${mode === 'verify' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+          <button onClick={() => { setMode('verify'); localStorage.setItem('garagebase_transfer_mode', 'verify') }} className={`rounded-xl border p-4 text-left ${mode === 'verify' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
             <p className="text-white text-sm font-semibold">Samo za branje</p>
             <p className="text-[#5a5a80] text-xs mt-1">Kupec preveri podatke, brez uvoza.</p>
           </button>
-          <button onClick={() => setMode('import')} className={`rounded-xl border p-4 text-left ${mode === 'import' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+          <button onClick={() => { setMode('import'); localStorage.setItem('garagebase_transfer_mode', 'import') }} className={`rounded-xl border p-4 text-left ${mode === 'import' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
             <p className="text-white text-sm font-semibold">Uvoz</p>
             <p className="text-[#5a5a80] text-xs mt-1">Kupec lahko uvozi zgodovino v svoj avto.</p>
           </button>
