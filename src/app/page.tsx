@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useState } from 'react'
 
@@ -47,14 +47,14 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_24%,rgba(139,92,246,0.2),transparent_34%),radial-gradient(circle_at_18%_82%,rgba(62,207,207,0.12),transparent_32%),#080810]" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#080810] to-transparent" />
 
-        <div className="relative max-w-6xl mx-auto w-full grid lg:grid-cols-[0.88fr_1.12fr] gap-10 items-center">
+        <div className="relative max-w-6xl mx-auto w-full grid lg:grid-cols-[0.9fr_1.1fr] gap-12 items-center">
           <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 bg-white/7 border border-white/12 rounded-full px-4 py-2 mb-8">
               <span className="w-2 h-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
               <span className="text-[#d8d3ff] text-xs font-bold uppercase tracking-[0.18em]">Web + mobilna aplikacija</span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[0.98] tracking-tight mb-7">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.02] tracking-tight mb-7">
               Tvoja garaža. Vse na enem mestu.
             </h1>
             <p className="text-white/72 text-lg sm:text-xl leading-relaxed max-w-xl mb-9">
@@ -73,10 +73,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative min-h-[360px] sm:min-h-[430px] lg:min-h-[540px]">
             <div className="absolute -inset-5 rounded-[32px] bg-[#8b5cf6]/20 blur-3xl" />
-            <div className="relative rounded-[28px] border border-white/14 bg-[#11111d] p-3 shadow-[0_34px_90px_rgba(0,0,0,0.52)]">
-              <img src="/landing-garagebase.jpg" alt="GarageBase prikaz na računalniku in telefonu" className="w-full rounded-[20px] object-cover object-center" />
+            <div className="relative h-[360px] sm:h-[430px] lg:h-[540px] overflow-hidden rounded-[28px] border border-white/14 bg-[#11111d] shadow-[0_34px_90px_rgba(0,0,0,0.52)]">
+              <img src="/landing-garagebase.jpg" alt="GarageBase prikaz na računalniku in telefonu" className="absolute inset-y-0 right-0 h-full w-auto max-w-none object-contain" />
+              <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#11111d] to-transparent" />
             </div>
           </div>
         </div>
