@@ -23,8 +23,8 @@ export default function LandingPage() {
         scrolled ? 'bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]' : 'bg-transparent'
       }`}>
         <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">
-            Garage<span className="text-[#6c63ff]">Base</span>
+          <h1 className="text-xl font-bold drop-shadow-lg" style={{ textShadow: '0 0 20px rgba(0,0,0,0.8)' }}>
+            <span className="text-white">Garage</span><span className="text-[#6c63ff]">Base</span>
           </h1>
           <div className="hidden md:flex items-center gap-8">
             <a href="#funkcije" className="text-[#5a5a80] hover:text-white transition-colors text-sm">Funkcije</a>
@@ -61,7 +61,7 @@ export default function LandingPage() {
             <span className="text-[#a09aff] text-xs font-semibold uppercase tracking-wider">Nova aplikacija za vozila</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight drop-shadow-lg">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight text-white" style={{ textShadow: '0 2px 20px rgba(0,0,0,0.9), 0 0 40px rgba(0,0,0,0.8)' }}>
             Tvoja garaža.
             <br />
             <span className="text-[#6c63ff]">Vse na enem</span>
