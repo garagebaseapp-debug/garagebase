@@ -155,7 +155,7 @@ export default function Nastavitve() {
   const shrani = () => {
     const nastavitve = { nacin, jezik, pisava, prikazGaraze, desktopStolpci, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
-    const velikosti: any = { mala: '22px', normalna: '28px', velika: '32px' }
+    const velikosti: any = { mala: '22px', normalna: '32px', velika: '45px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
     if (jeApp) document.documentElement.style.fontSize = velikosti[pisava]
     else document.documentElement.style.removeProperty('font-size')
@@ -368,7 +368,7 @@ export default function Nastavitve() {
           ].map((p) => (
             <button key={p.vrednost} onClick={() => {
               setPisava(p.vrednost)
-              const velikosti: any = { mala: '22px', normalna: '28px', velika: '32px' }
+              const velikosti: any = { mala: '22px', normalna: '32px', velika: '45px' }
               const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
               if (jeApp) document.documentElement.style.fontSize = velikosti[p.vrednost]
               else document.documentElement.style.removeProperty('font-size')

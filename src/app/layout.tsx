@@ -58,7 +58,7 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            const velikosti = { mala: '22px', normalna: '28px', velika: '32px' };
+            const velikosti = { mala: '22px', normalna: '32px', velika: '45px' };
             const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024;
             if (jeApp && n.pisava && velikosti[n.pisava]) {
               document.documentElement.style.fontSize = velikosti[n.pisava];
