@@ -64,6 +64,8 @@ gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   eOpisH: { width: '45%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   eCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
   opomba: { fontSize: 8, color: '#5555cc', marginTop: 8, padding: 8, backgroundColor: '#f0f0ff', borderRadius: 4, borderLeftWidth: 3, borderLeftColor: '#6c63ff' },
+  ownerDivider: { marginVertical: 7, paddingVertical: 5, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#6c63ff', backgroundColor: '#f8f8ff' },
+  ownerDividerText: { fontSize: 8, color: '#6c63ff', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
   qrBox: { marginTop: 10, padding: 8, borderWidth: 1, borderColor: '#e0e0ff', borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
   qrImage: { width: 72, height: 72 },
   qrText: { flex: 1, fontSize: 8, color: '#555555', lineHeight: 1.4 },
@@ -77,7 +79,7 @@ const maskVin = (vin?: string) => {
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr }: any) => {
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
@@ -85,6 +87,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
   const skupajLitrov = gorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString('sl-SI')
   const imaPrivonke = servisi.some((s: any) => s.foto_url)
+  const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
 
   return (
     <Document>
@@ -176,10 +179,17 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
             </View>
           </View>
           {avto.prenos_opomba && <Text style={styles.opomba}>{avto.prenos_opomba}</Text>}
+          {imaPrenesene && <Text style={styles.opomba}>Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.</Text>}
           {verifyQr && (
             <View style={styles.qrBox}>
               <Image src={verifyQr} style={styles.qrImage} />
-              <Text style={styles.qrText}>SCAN QR: preveri report v GarageBase bazi. QR prikaze originalne podatke, s katerimi lahko kupec primerja PDF.</Text>
+              <Text style={styles.qrText}>QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom.</Text>
+            </View>
+          )}
+          {importQr && (
+            <View style={styles.qrBox}>
+              <Image src={importQr} style={styles.qrImage} />
+              <Text style={styles.qrText}>QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev.</Text>
             </View>
           )}
         </View>
@@ -250,7 +260,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr }: any) => {
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString('sl-SI')}</Text>
                 <Text style={styles.eKat}>{e.kategorija}</Text>
-                <Text style={styles.eOpis}>{e.opis || '-'}</Text>
+                <Text style={styles.eOpis}>{String(e.opis || '-').replace('[Prejsnji lastnik]', '[PREJSNJI]')}</Text>
                 <Text style={styles.eCena}>{e.znesek?.toFixed(2)} EUR</Text>
               </View>
             ))}
@@ -276,7 +286,63 @@ export default function Report() {
   const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
   const [verifyQr, setVerifyQr] = useState('')
+  const [importQr, setImportQr] = useState('')
+  const [includeVerifyQr, setIncludeVerifyQr] = useState(true)
+  const [includeImportQr, setIncludeImportQr] = useState(false)
 
+
+  const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[]) => {
+    const carSummary = {
+      znamka: avtoData?.znamka,
+      model: avtoData?.model,
+      letnik: avtoData?.letnik,
+      gorivo: avtoData?.gorivo,
+      vin_masked: maskVin(avtoData?.vin),
+      km_trenutni: avtoData?.km_trenutni,
+      st_lastnikov: avtoData?.st_lastnikov,
+      lastnik_mesto: avtoData?.lastnik_mesto,
+      lastnik_starost: avtoData?.lastnik_starost,
+      servisi: servisData?.length || 0,
+      tankanja: gorivoData?.length || 0,
+      stroski: filteredExpenses.length,
+    }
+    const carFull = {
+      tip_vozila: avtoData?.tip_vozila,
+      oblika: avtoData?.oblika,
+      znamka: avtoData?.znamka,
+      model: avtoData?.model,
+      letnik: avtoData?.letnik,
+      gorivo: avtoData?.gorivo,
+      barva: avtoData?.barva,
+      tablica: avtoData?.tablica,
+      vin: avtoData?.vin,
+      km_trenutni: avtoData?.km_trenutni,
+      km_ob_vnosu: avtoData?.km_ob_vnosu,
+      kubikaza: avtoData?.kubikaza,
+      kw: avtoData?.kw,
+      menjalnik: avtoData?.menjalnik,
+      pogon: avtoData?.pogon,
+      st_lastnikov: avtoData?.st_lastnikov,
+      lastnik_mesto: avtoData?.lastnik_mesto,
+      lastnik_starost: avtoData?.lastnik_starost,
+    }
+    const makePayload = (mode: 'verify' | 'import') => mode === 'verify'
+      ? { type: 'garagebase-transfer-v1', mode, exportedAt: new Date().toISOString(), consent: true, car: carSummary, car_full: carFull }
+      : { type: 'garagebase-transfer-v1', mode, exportedAt: new Date().toISOString(), consent: true, car: carSummary, car_full: carFull, service_logs: servisData || [], fuel_logs: gorivoData || [], expenses: filteredExpenses }
+
+    setVerifyQr('')
+    setImportQr('')
+    if (includeVerifyQr) {
+      const token = createTransferToken()
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'verify', consent: true, payload: makePayload('verify') })
+      setVerifyQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
+    }
+    if (includeImportQr) {
+      const token = createTransferToken()
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import') })
+      setImportQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
+    }
+  }
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -296,38 +362,17 @@ export default function Report() {
       setExpenses(filteredExpenses)
 
       try {
-        const token = createTransferToken()
-        const payload = {
-          type: 'garagebase-transfer-v1',
-          mode: 'verify',
-          exportedAt: new Date().toISOString(),
-          consent: true,
-          car: {
-            znamka: avtoData?.znamka,
-            model: avtoData?.model,
-            letnik: avtoData?.letnik,
-            gorivo: avtoData?.gorivo,
-            vin_masked: maskVin(avtoData?.vin),
-            km_trenutni: avtoData?.km_trenutni,
-            st_lastnikov: avtoData?.st_lastnikov,
-            lastnik_mesto: avtoData?.lastnik_mesto,
-            lastnik_starost: avtoData?.lastnik_starost,
-            servisi: servisData?.length || 0,
-            tankanja: gorivoData?.length || 0,
-            stroski: filteredExpenses.length,
-          },
-        }
-        await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: user.id, mode: 'verify', consent: true, payload })
-        setVerifyQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
+        await pripraviQrKode(carId, user.id, avtoData, servisData || [], gorivoData || [], filteredExpenses)
       } catch {
         setVerifyQr('')
+        setImportQr('')
       }
 
       setLoading(false)
       setTimeout(() => setReady(true), 500)
     }
     init()
-  }, [])
+  }, [includeVerifyQr, includeImportQr])
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -385,20 +430,25 @@ export default function Report() {
       )}
 
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=verify`}
-          className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl transition-colors">
-          QR branje za PDF
-        </button>
-        <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=import`}
-          className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl transition-colors">
-          QR izvoz zgodovine
-        </button>
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">QR kode v PDF</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => setIncludeVerifyQr(!includeVerifyQr)}
+            className={`rounded-xl border p-4 text-left ${includeVerifyQr ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeVerifyQr ? '☑' : '☐'} Samo za branje</p>
+            <p className="text-[#5a5a80] text-xs mt-1">QR za digitalni report.</p>
+          </button>
+          <button onClick={() => setIncludeImportQr(!includeImportQr)}
+            className={`rounded-xl border p-4 text-left ${includeImportQr ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeImportQr ? '☑' : '☐'} Izvoz zgodovine</p>
+            <p className="text-[#5a5a80] text-xs mt-1">QR za uvoz vozila.</p>
+          </button>
+        </div>
       </div>
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} />}
+          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">

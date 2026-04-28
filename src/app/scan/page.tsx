@@ -95,28 +95,59 @@ export default function ScanPage() {
   }
 
   const uvozi = async () => {
-    if (!payload || !targetCar || transfer?.mode !== 'import') return
+    if (!payload || transfer?.mode !== 'import') return
+    const carName = `${payload.car?.znamka || ''} ${payload.car?.model || ''}`.trim()
+    const potrdi = window.confirm(`Ali zelite uvoziti vozilo ${carName} v svojo garazo?`)
+    if (!potrdi) return
+
     setLoading(true)
     setMessage('')
 
-    const serviceRows = cleanTransferRows(payload.service_logs || [], targetCar).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
-    const fuelRows = cleanTransferRows(payload.fuel_logs || [], targetCar)
-    const expenseRows = cleanTransferRows(payload.expenses || [], targetCar).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+
+    const source = payload.car_full || {}
+    const { data: newCar, error: carError } = await supabase.from('cars').insert({
+      user_id: user.id,
+      tip_vozila: source.tip_vozila || 'avto',
+      oblika: source.oblika || null,
+      znamka: source.znamka || payload.car?.znamka || 'Vozilo',
+      model: source.model || payload.car?.model || 'Uvozeno',
+      letnik: source.letnik || payload.car?.letnik || null,
+      gorivo: source.gorivo || payload.car?.gorivo || null,
+      barva: source.barva || null,
+      tablica: source.tablica || null,
+      vin: source.vin || null,
+      km_trenutni: source.km_trenutni || payload.car?.km_trenutni || null,
+      km_ob_vnosu: source.km_trenutni || payload.car?.km_trenutni || null,
+      kubikaza: source.kubikaza || null,
+      kw: source.kw || null,
+      menjalnik: source.menjalnik || null,
+      pogon: source.pogon || null,
+      st_lastnikov: source.st_lastnikov || payload.car?.st_lastnikov || null,
+      lastnik_mesto: source.lastnik_mesto || payload.car?.lastnik_mesto || null,
+      lastnik_starost: source.lastnik_starost || payload.car?.lastnik_starost || null,
+      prenos_soglasje: false,
+      prenos_opomba: 'Uvozeno iz GarageBase QR prenosa.'
+    }).select().single()
+
+    if (carError || !newCar) {
+      setMessage('Uvoz vozila ni uspel: ' + (carError?.message || 'neznana napaka'))
+      setLoading(false)
+      return
+    }
+
+    const serviceRows = cleanTransferRows(payload.service_logs || [], newCar.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+    const fuelRows = cleanTransferRows(payload.fuel_logs || [], newCar.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
+    const expenseRows = cleanTransferRows(payload.expenses || [], newCar.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
 
     if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
     if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
     if (expenseRows.length) await supabase.from('expenses').insert(expenseRows)
 
-    const maxKm = Math.max(
-      0,
-      ...serviceRows.map((r: any) => r.km || 0),
-      ...fuelRows.map((r: any) => r.km || 0),
-      cars.find((c: any) => c.id === targetCar)?.km_trenutni || 0,
-    )
-    if (maxKm > 0) await supabase.from('cars').update({ km_trenutni: maxKm }).eq('id', targetCar)
     await supabase.from('vehicle_transfers').update({ imported_at: new Date().toISOString() }).eq('id', transfer.id)
-
-    setMessage(`Uvoz končan: ${serviceRows.length} servisov, ${fuelRows.length} tankanj, ${expenseRows.length} stroškov.`)
+    setMessage(`Vozilo ${carName} je uvozeno v tvojo garazo.`)
+    setTimeout(() => window.location.href = `/dashboard?car=${newCar.id}`, 1200)
     setLoading(false)
   }
 
@@ -171,15 +202,16 @@ export default function ScanPage() {
             <div className="bg-[#13131f] rounded-xl p-3"><p className="text-[#5a5a80] text-xs">Starost</p><p className="text-white font-bold">{payload.car?.lastnik_starost || '-'}</p></div>
           </div>
 
-          {transfer?.mode === 'import' && (
+          {transfer?.mode === 'import' ? (
             <div className="border-t border-[#1e1e32] pt-4">
-              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Uvozi v vozilo</label>
-              <select value={targetCar} onChange={(e) => setTargetCar(e.target.value)} className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff]">
-                {cars.map((car: any) => <option key={car.id} value={car.id}>{car.znamka} {car.model}</option>)}
-              </select>
-              <button onClick={uvozi} disabled={!targetCar || loading} className="w-full mt-3 bg-[#3ecfcf] text-black font-bold py-3 rounded-xl disabled:opacity-50">
-                Uvozi zgodovino
+              <button onClick={uvozi} disabled={loading} className="w-full bg-[#3ecfcf] text-black font-bold py-3 rounded-xl disabled:opacity-50">
+                Uvozi vozilo {payload.car?.znamka} {payload.car?.model}
               </button>
+            </div>
+          ) : (
+            <div className="border-t border-[#1e1e32] pt-4">
+              <p className="text-[#3ecfcf] text-sm font-semibold mb-2">Digitalni report je najden v GarageBase bazi.</p>
+              <p className="text-[#5a5a80] text-xs">Primerjaj te podatke s PDF dokumentom. Ce se stevilo servisov, tankanj, stroskov, VIN in kilometri ujemajo, PDF ni bil spremenjen.</p>
             </div>
           )}
         </div>

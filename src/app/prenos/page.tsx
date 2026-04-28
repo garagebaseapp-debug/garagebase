@@ -54,6 +54,27 @@ export default function PrenosZgodovine() {
       stroski: (stroski.data || []).filter((e: any) => e.kategorija !== 'km_sprememba').length,
     }
 
+
+    const carFull = {
+      tip_vozila: avto.tip_vozila,
+      oblika: avto.oblika,
+      znamka: avto.znamka,
+      model: avto.model,
+      letnik: avto.letnik,
+      gorivo: avto.gorivo,
+      barva: avto.barva,
+      tablica: avto.tablica,
+      vin: avto.vin,
+      km_trenutni: avto.km_trenutni,
+      km_ob_vnosu: avto.km_ob_vnosu,
+      kubikaza: avto.kubikaza,
+      kw: avto.kw,
+      menjalnik: avto.menjalnik,
+      pogon: avto.pogon,
+      st_lastnikov: avto.st_lastnikov,
+      lastnik_mesto: avto.lastnik_mesto,
+      lastnik_starost: avto.lastnik_starost,
+    }
     if (izbranMode === 'verify') {
       return {
         type: 'garagebase-transfer-v1',
@@ -122,10 +143,9 @@ export default function PrenosZgodovine() {
         return
       }
 
-      const serviceRows = cleanTransferRows(payload.service_logs || [], avto.id).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
-      const fuelRows = cleanTransferRows(payload.fuel_logs || [], avto.id)
-      const expenseRows = cleanTransferRows(payload.expenses || [], avto.id).map((row: any) => ({ ...row, opis: `[Preneseno] ${row.opis || ''}`.trim() }))
-
+      const serviceRows = cleanTransferRows(payload.service_logs || [], avto.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+      const fuelRows = cleanTransferRows(payload.fuel_logs || [], avto.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
+      const expenseRows = cleanTransferRows(payload.expenses || [], avto.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
       if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
       if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
       if (expenseRows.length) await supabase.from('expenses').insert(expenseRows)
