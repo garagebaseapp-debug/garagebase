@@ -4,6 +4,19 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4)
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
+  const rawData = window.atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+
+  return outputArray
+}
+
 export default function Nastavitve() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -70,11 +83,19 @@ export default function Nastavitve() {
         return
       }
       setNotifikacije('dovoljeno')
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidPublicKey) {
+        setMessage('Push ključi niso nastavljeni.')
+        setNotifikacijeLoading(false)
+        return
+      }
+
       const registration = await navigator.serviceWorker.register('/sw.js')
       await navigator.serviceWorker.ready
-      const subscription = await registration.pushManager.subscribe({
+      const existingSubscription = await registration.pushManager.getSubscription()
+      const subscription = existingSubscription || await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       })
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('push_subscriptions').upsert({
