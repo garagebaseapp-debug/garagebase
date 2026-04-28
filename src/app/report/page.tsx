@@ -378,6 +378,18 @@ export default function Report() {
         </div>
       )}
 
+
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=verify`}
+          className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl transition-colors">
+          QR branje
+        </button>
+        <button onClick={() => window.location.href = `/prenos?car=${avto?.id}&mode=import`}
+          className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl transition-colors">
+          Izvoz zgodovine
+        </button>
+      </div>
+
       {ready && (
         <PDFDownloadLink
           document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} />}

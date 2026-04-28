@@ -142,9 +142,9 @@ export default function Garaza() {
   }
 
   const karticaVisina = () => {
-    if (prikaz === 'malo') return { height: '14vh', minHeight: '100px', maxHeight: '140px' }
-    if (prikaz === 'veliko') return { height: '28vh', minHeight: '180px', maxHeight: '240px' }
-    return { height: '20vh', minHeight: '130px', maxHeight: '180px' }
+    if (prikaz === 'malo') return { height: '28dvh', minHeight: '180px', maxHeight: '240px' }
+    if (prikaz === 'veliko') return { height: '24dvh', minHeight: '165px', maxHeight: '210px' }
+    return { height: '31dvh', minHeight: '205px', maxHeight: '270px' }
   }
 
   const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: any }) => {
@@ -346,11 +346,12 @@ export default function Garaza() {
                 onDragEnd={onDragEnd}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
-                className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] ${
+                className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] flex ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={karticaVisina()}>
-                {avto.slika_url ? (
+                <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
+                  {avto.slika_url ? (
                   <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
                     className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
@@ -359,20 +360,20 @@ export default function Garaza() {
                       ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]'
                       : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'
                   }`} />
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0f0f1a]/25" />
+                </div>
 
                 {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
-                <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
+                <div className="w-1/2 h-full p-4 flex flex-col justify-between border-l border-[#1e1e32]">
                   <div>
-                    <h2 className="text-white font-bold text-lg leading-tight"
-                      style={{ textShadow: '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)' }}>
+                    <h2 className="text-white font-bold text-lg leading-tight">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
-                    <p className="text-white/55 text-xs drop-shadow">
+                    <p className="text-[#5a5a80] text-xs mt-1">
                       {[
                         listaNastavitve.letnik && avto.letnik,
                         listaNastavitve.gorivo && avto.gorivo,
@@ -380,14 +381,14 @@ export default function Garaza() {
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 mb-0.5">
-                    {listaNastavitve.opomnik && (
-                      <div className="flex flex-wrap gap-1 justify-end max-w-[130px]">
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="flex flex-wrap gap-1 max-w-[58%]">
+                      {listaNastavitve.opomnik && (
                         <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={4} nastavitve={listaNastavitve} />
-                      </div>
-                    )}
+                      )}
+                    </div>
                     {listaNastavitve.tablica && avto.tablica && (
-                      <div className="flex flex-col items-center">
+                      <div className="flex flex-col items-center flex-shrink-0">
                         <div className="bg-[#003399] rounded-t-sm px-1 py-0.5 flex items-center gap-0.5 w-full justify-center">
                           <span className="text-yellow-300 text-[6px]">★</span>
                           <span className="text-white text-[6px] font-bold">SI</span>
@@ -401,7 +402,6 @@ export default function Garaza() {
                     )}
                   </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2a2a40]" />
               </div>
             )
           })}

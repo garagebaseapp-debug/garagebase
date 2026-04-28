@@ -22,6 +22,8 @@ export default function PrenosZgodovine() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
+      const modeParam = params.get('mode')
+      if (modeParam === 'import' || modeParam === 'verify') setMode(modeParam)
       if (!carId) { window.location.href = '/garaza'; return }
       const { data } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(data)

@@ -48,29 +48,29 @@ export default function StroškiGaraza() {
       <div className="flex-1 overflow-y-auto">
         {avti.map((avto, index) => (
           <div key={avto.id} onClick={() => window.location.href = `/stroski?car=${avto.id}`}
-            className="relative cursor-pointer overflow-hidden"
-            style={{ height: '20vh', minHeight: '130px', maxHeight: '180px' }}>
-            {avto.slika_url ? (
-              <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
-                className="absolute inset-0 w-full h-full object-cover object-center" />
-            ) : (
-              <div className={`absolute inset-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]' : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'}`} />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#2a2a40]" />
-            <div className="absolute bottom-0 left-0 right-0 p-4 flex justify-between items-end">
+            className="relative cursor-pointer overflow-hidden bg-[#0f0f1a] border-t border-[#1a1a28] flex"
+            style={{ height: '24dvh', minHeight: '165px', maxHeight: '210px' }}>
+            <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
+              {avto.slika_url ? (
+                <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                  className="absolute inset-0 w-full h-full object-cover object-center" />
+              ) : (
+                <div className={`absolute inset-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]' : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'}`} />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0f0f1a]/25" />
+            </div>
+            <div className="w-1/2 h-full p-4 flex flex-col justify-between border-l border-[#1e1e32]">
               <div>
-                <h2 className="text-white font-bold text-lg leading-tight drop-shadow-lg">
+                <h2 className="text-white font-bold text-lg leading-tight">
                   {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}{avto.model.toUpperCase()}
                 </h2>
-                <p className="text-white/55 text-xs drop-shadow">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
+                <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="text-right">
-                <p className="text-[#3ecfcf] font-bold text-xl drop-shadow">{(stroski[avto.id] || 0).toFixed(0)} €</p>
-                <p className="text-white/40 text-xs">skupaj</p>
+                <p className="text-[#3ecfcf] font-bold text-2xl">{(stroski[avto.id] || 0).toFixed(0)} €</p>
+                <p className="text-[#5a5a80] text-xs">skupaj</p>
               </div>
             </div>
-            <div className="absolute bottom-0 left-0 right-0 h-px bg-[#2a2a40]" />
           </div>
         ))}
       </div>

@@ -66,8 +66,12 @@ export default function ScanPage() {
 
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       streamRef.current = stream
-      if (videoRef.current) videoRef.current.srcObject = stream
       setCameraOn(true)
+      await new Promise(requestAnimationFrame)
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
 
       const detector = new Detector({ formats: ['qr_code'] })
       const interval = window.setInterval(async () => {
@@ -131,7 +135,12 @@ export default function ScanPage() {
           <button onClick={zacniKamero} disabled={cameraOn} className="bg-[#6c63ff] text-white font-semibold py-3 rounded-xl disabled:opacity-50">Kamera</button>
           <button onClick={ustaviKamero} disabled={!cameraOn} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] font-semibold py-3 rounded-xl disabled:opacity-50">Ustavi</button>
         </div>
-        {cameraOn && <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-xl bg-black aspect-video object-cover mb-4" />}
+        {cameraOn && (
+          <div className="mb-4">
+            <video ref={videoRef} autoPlay playsInline muted className="w-full rounded-xl bg-black aspect-video object-cover" />
+            <p className="text-[#5a5a80] text-xs mt-2">Ce kamera ostane crna, zapri Scan in ga odpri znova ali prilepi token/link spodaj.</p>
+          </div>
+        )}
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Token ali link</p>
         <textarea value={tokenInput} onChange={(e) => setTokenInput(e.target.value)} rows={3}
           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-3 text-white text-xs outline-none focus:border-[#6c63ff] font-mono" />
