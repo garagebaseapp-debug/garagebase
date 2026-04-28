@@ -8,6 +8,10 @@ export default function ZgodovinaServisa() {
   const [vnosi, setVnosi] = useState<any[]>([])
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [uredi, setUredi] = useState<string | null>(null)
+  const [editData, setEditData] = useState<any>({})
+  const [saving, setSaving] = useState(false)
+  const [cas, setCas] = useState(Date.now())
 
   useEffect(() => {
     const init = async () => {
@@ -23,9 +27,36 @@ export default function ZgodovinaServisa() {
       setLoading(false)
     }
     init()
+    const timer = setInterval(() => setCas(Date.now()), 1000)
+    return () => clearInterval(timer)
   }, [])
 
+  const preostaliCas = (createdAt: string) => {
+    const ustvarjen = new Date(createdAt).getTime()
+    const konec = ustvarjen + 24 * 60 * 60 * 1000
+    const preostalo = konec - cas
+    if (preostalo <= 0) return null
+    const ure = Math.floor(preostalo / (1000 * 60 * 60))
+    const minute = Math.floor((preostalo % (1000 * 60 * 60)) / (1000 * 60))
+    const sekunde = Math.floor((preostalo % (1000 * 60)) / 1000)
+    return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
+  }
+
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena || 0), 0)
+
+  const shraniUredi = async (id: string) => {
+    setSaving(true)
+    await supabase.from('service_logs').update({
+      datum: editData.datum,
+      opis: editData.opis,
+      servis: editData.servis || null,
+      cena: editData.cena ? parseFloat(editData.cena) : null,
+    }).eq('id', id)
+    const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: false })
+    setVnosi(servisi || [])
+    setUredi(null)
+    setSaving(false)
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -73,11 +104,11 @@ export default function ZgodovinaServisa() {
             const imaSlike = vnos.foto_url && vnos.foto_url.length > 0
             const jeNaknaden = vnos.opis?.includes('[Naknadno vnešeno:')
             const opisBrezOznake = vnos.opis?.replace(/\s*\[Naknadno vnešeno:.*?\]/, '') || ''
+            const preostalo = preostaliCas(vnos.created_at)
+            const jeUredi = uredi === vnos.id
 
             return (
-              <div key={vnos.id}
-                onClick={() => window.location.href = `/servis-detajl?id=${vnos.id}&car=${avto?.id}`}
-                className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 cursor-pointer hover:border-[#f59e0b33] transition-colors active:scale-[0.99]">
+              <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
 
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -93,18 +124,84 @@ export default function ZgodovinaServisa() {
                       {vnos.km?.toLocaleString()} km{vnos.servis && ` · ${vnos.servis}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {imaSlike && <span className="text-[#5a5a80] text-sm">📎</span>}
-                    {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      {imaSlike && <span className="text-[#5a5a80] text-sm">📎</span>}
+                      {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
+                    </div>
+                    {/* Gumb uredi z odštevalnikom */}
+                    {preostalo && !jeUredi && (
+                      <button onClick={() => {
+                        setUredi(vnos.id)
+                        setEditData({
+                          datum: vnos.datum,
+                          opis: opisBrezOznake,
+                          servis: vnos.servis || '',
+                          cena: vnos.cena?.toString() || '',
+                        })
+                      }}
+                        className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
+                        ✏️ Uredi · {preostalo}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="bg-[#13131f] rounded-xl p-3 mt-2">
-                  <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Opravljeno delo</p>
-                  <p className="text-white text-sm">{opisBrezOznake}</p>
-                </div>
+                {/* Forma za urejanje */}
+                {jeUredi && (
+                  <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
+                    <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
+                    <div>
+                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Datum</label>
+                      <input type="date" value={editData.datum}
+                        onChange={e => setEditData({ ...editData, datum: e.target.value })}
+                        className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
+                    </div>
+                    <div>
+                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Opis dela</label>
+                      <textarea value={editData.opis}
+                        onChange={e => setEditData({ ...editData, opis: e.target.value })}
+                        rows={3}
+                        className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b] resize-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Servis</label>
+                        <input type="text" value={editData.servis}
+                          onChange={e => setEditData({ ...editData, servis: e.target.value })}
+                          className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
+                      </div>
+                      <div>
+                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Cena (€)</label>
+                        <input type="number" value={editData.cena}
+                          onChange={e => setEditData({ ...editData, cena: e.target.value })}
+                          className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button onClick={() => setUredi(null)}
+                        className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">
+                        Prekliči
+                      </button>
+                      <button onClick={() => shraniUredi(vnos.id)} disabled={saving}
+                        className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">
+                        {saving ? 'Shranjujem...' : 'Shrani'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                <p className="text-[#3a3a5a] text-xs mt-2 text-right">Tapni za detajle →</p>
+                {/* Normalni prikaz */}
+                {!jeUredi && (
+                  <div onClick={() => window.location.href = `/servis-detajl?id=${vnos.id}&car=${avto?.id}`}
+                    className="cursor-pointer">
+                    <div className="bg-[#13131f] rounded-xl p-3 mt-2">
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Opravljeno delo</p>
+                      <p className="text-white text-sm">{opisBrezOznake}</p>
+                    </div>
+                    <p className="text-[#3a3a5a] text-xs mt-2 text-right">Tapni za detajle →</p>
+                  </div>
+                )}
               </div>
             )
           })}
