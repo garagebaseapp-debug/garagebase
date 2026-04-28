@@ -17,6 +17,7 @@ export default function Opomniki() {
   const [opozoriloDniCustom, setOpozoriloDniCustom] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [koledarPrioritete, setKoledarPrioritete] = useState<{ [key: string]: string }>({})
 
   const tipi = [
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
@@ -123,6 +124,61 @@ export default function Opomniki() {
     setOpomniki(opomniki.filter(o => o.id !== id))
   }
 
+  const escapeIcs = (value: string) => String(value || '')
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n')
+
+  const formatIcsDate = (value: string) => value.replace(/-/g, '')
+
+  const prenesiKoledar = (op: any) => {
+    if (!op.datum) {
+      setMessage('Za koledar mora imeti opomnik datum.')
+      return
+    }
+
+    const naziv = tipNaziv[op.tip] || op.tip
+    const avtoNaziv = `${avto?.znamka || ''} ${avto?.model || ''}`.trim()
+    const prioriteta = koledarPrioritete[op.id] || '5'
+    const start = formatIcsDate(op.datum)
+    const uid = `garagebase-${op.id}@getgaragebase.com`
+    const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+    const opis = [
+      `Vozilo: ${avtoNaziv}`,
+      op.km_opomnik ? `Km opomnik: ${op.km_opomnik.toLocaleString()} km` : '',
+      `Opozori ${op.opozorilo_dni_prej || 30} dni prej`,
+      'Ustvarjeno v GarageBase'
+    ].filter(Boolean).join('\\n')
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//GarageBase//Opomniki//SL',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${now}`,
+      `DTSTART;VALUE=DATE:${start}`,
+      `SUMMARY:${escapeIcs(`${naziv} - ${avtoNaziv}`)}`,
+      `DESCRIPTION:${escapeIcs(opis)}`,
+      `PRIORITY:${prioriteta}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n')
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `garagebase-${naziv}-${avtoNaziv}`.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.ics'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">Nalaganje...</p>
@@ -209,6 +265,23 @@ export default function Opomniki() {
                         </>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {op.datum && (
+                  <div className="mt-3 grid grid-cols-[1fr_auto] gap-2 items-center">
+                    <select
+                      value={koledarPrioritete[op.id] || '5'}
+                      onChange={(e) => setKoledarPrioritete(prev => ({ ...prev, [op.id]: e.target.value }))}
+                      className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-xs rounded-xl px-3 py-2 outline-none focus:border-[#6c63ff]">
+                      <option value="9">Nizka prioriteta</option>
+                      <option value="5">Srednja prioriteta</option>
+                      <option value="1">Visoka prioriteta</option>
+                    </select>
+                    <button onClick={() => prenesiKoledar(op)}
+                      className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] text-xs font-semibold px-3 py-2 rounded-xl hover:bg-[#6c63ff33] transition-colors">
+                      Koledar
+                    </button>
                   </div>
                 )}
               </div>
