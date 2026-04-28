@@ -63,8 +63,11 @@ export default function Nastavitve() {
         }
       }
       if ('Notification' in window) {
-        if (Notification.permission === 'granted') setNotifikacije('dovoljeno')
-        else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
+        if (Notification.permission === 'granted') {
+          const registration = await navigator.serviceWorker.getRegistration('/sw.js')
+          const subscription = await registration?.pushManager.getSubscription()
+          setNotifikacije(subscription ? 'dovoljeno' : 'neznano')
+        } else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
         else setNotifikacije('neznano')
       }
       setLoading(false)
@@ -82,7 +85,6 @@ export default function Nastavitve() {
         setNotifikacijeLoading(false)
         return
       }
-      setNotifikacije('dovoljeno')
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       if (!vapidPublicKey) {
         setMessage('Push ključi niso nastavljeni.')
@@ -102,6 +104,7 @@ export default function Nastavitve() {
         user_id: user?.id,
         subscription: subscription.toJSON()
       })
+      setNotifikacije('dovoljeno')
       setMessage('✅ Obvestila so vklopljena!')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
