@@ -49,12 +49,12 @@ export default function LandingPage() {
           alt="GarageBase aplikacija na računalniku, tablici in telefonu"
           className="absolute inset-0 h-full w-full object-cover object-[64%_center] lg:object-center"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
+        <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07070d]/80 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
         <div className="relative z-10 min-h-screen max-w-7xl mx-auto px-5 sm:px-8 pt-32 pb-24 flex items-center">
-          <div className="w-full max-w-[560px] lg:mb-10">
+          <div className="landing-copy w-full max-w-[560px] lg:mb-10">
             <div className="inline-flex items-center gap-2 bg-black/24 border border-white/16 rounded-full px-4 py-2 mb-7 backdrop-blur-sm">
               <span className="w-2 h-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
               <span className="text-[#ddd8ff] text-xs font-bold uppercase tracking-[0.18em]">Web + mobilna aplikacija</span>

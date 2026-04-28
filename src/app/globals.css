@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -88,3 +88,87 @@ body:not(.landing) {
 .light-mode .text-\[\#5a5a80\] { color: #666688 !important; }
 .light-mode .text-\[\#3a3a5a\] { color: #888899 !important; }
 .light-mode body { background-color: #f0f0ff !important; }
+
+/* Refined light mode */
+.light-mode {
+  color-scheme: light;
+  --background: #f4f6ff;
+  --foreground: #141426;
+}
+
+.light-mode body,
+.light-mode body:not(.landing) {
+  background: #f4f6ff !important;
+  color: #141426 !important;
+}
+
+.light-mode body:not(.landing) > div:first-child {
+  background: transparent !important;
+}
+
+.light-mode .bg-\[\#07070d\],
+.light-mode .bg-\[\#080810\],
+.light-mode .bg-\[\#0a0a14\],
+.light-mode .bg-\[\#0a0a12\] {
+  background-color: #f4f6ff !important;
+}
+
+.light-mode .bg-\[\#0f0f1a\],
+.light-mode .bg-\[\#11111d\],
+.light-mode .bg-\[\#13131f\],
+.light-mode .bg-\[\#1a1630\],
+.light-mode .bg-\[\#1a1a2e\] {
+  background-color: #ffffff !important;
+}
+
+.light-mode .border-\[\#1e1e32\],
+.light-mode .border-\[\#1a1a28\],
+.light-mode .border-\[\#2a2a40\] {
+  border-color: #dfe3f4 !important;
+}
+
+.light-mode .text-white {
+  color: #141426 !important;
+}
+
+.light-mode .text-\[\#5a5a80\],
+.light-mode .text-\[\#8a8aa8\] {
+  color: #5d6278 !important;
+}
+
+.light-mode .text-\[\#3a3a5a\] {
+  color: #7a8096 !important;
+}
+
+.light-mode input,
+.light-mode select,
+.light-mode textarea {
+  color: #141426 !important;
+  background-color: #ffffff !important;
+}
+
+.light-mode body.landing {
+  background: #eef2ff !important;
+}
+
+.light-mode .landing-hero-shade {
+  background: linear-gradient(90deg, rgba(244,246,255,0.92) 0%, rgba(244,246,255,0.76) 34%, rgba(244,246,255,0.26) 55%, rgba(244,246,255,0.04) 78%, rgba(244,246,255,0) 100%) !important;
+}
+
+.light-mode .landing-copy {
+  color: #151528;
+}
+
+.light-mode .landing-copy h1,
+.light-mode .landing-copy p {
+  color: #151528 !important;
+  text-shadow: none !important;
+}
+
+.light-mode .landing-copy > p {
+  color: #474d63 !important;
+}
+
+.light-mode .landing-copy a:first-of-type {
+  color: #ffffff !important;
+}
