@@ -350,6 +350,23 @@ export default function NastavitveAvta() {
         {saving ? 'Shranjevanje...' : 'Shrani spremembe →'}
       </button>
 
+      {/* Gumb za brisanje vozila */}
+      <button onClick={async () => {
+        const potrdi = window.confirm(`Ali res želiš izbrisati ${avto?.znamka} ${avto?.model}? Vsi podatki bodo trajno izgubljeni!`)
+        if (!potrdi) return
+        const potrdi2 = window.confirm('Si prepričan? Tega dejanja ni možno razveljaviti!')
+        if (!potrdi2) return
+        await supabase.from('fuel_logs').delete().eq('car_id', avto.id)
+        await supabase.from('service_logs').delete().eq('car_id', avto.id)
+        await supabase.from('expenses').delete().eq('car_id', avto.id)
+        await supabase.from('reminders').delete().eq('car_id', avto.id)
+        await supabase.from('cars').delete().eq('id', avto.id)
+        window.location.href = '/garaza'
+      }}
+        className="w-full mt-3 bg-transparent border border-[#ef444433] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
+        🗑️ Izbriši vozilo
+      </button>
+
       <HomeButton />
     </div>
   )
