@@ -8,11 +8,14 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
+const vapidEmail = process.env.VAPID_EMAIL
+const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
+const pushConfigured = Boolean(vapidEmail && vapidPublicKey && vapidPrivateKey)
+
+if (pushConfigured) {
+  webpush.setVapidDetails(vapidEmail!, vapidPublicKey!, vapidPrivateKey!)
+}
 
 export async function GET(req: Request) {
   // Vercel cron pošlje header user-agent z 'vercel-cron'
@@ -59,7 +62,7 @@ export async function GET(req: Request) {
         .select('subscription')
         .eq('user_id', op.cars?.user_id)
 
-      if (!subs || subs.length === 0) continue
+      if (!pushConfigured || !subs || subs.length === 0) continue
 
       for (const sub of subs) {
         try {

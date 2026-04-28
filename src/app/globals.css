@@ -25,11 +25,48 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-@media (min-width: 768px) {
+body:not(.landing) {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  background: #080810;
+}
+
+@media (min-width: 1024px) {
   body:not(.landing) {
-    max-width: 430px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     min-height: 100vh;
+  }
+
+  body:not(.landing) > div:first-child {
+    width: min(100%, 1200px);
+    margin: 0 auto;
+    padding-top: 88px;
+    padding-left: 32px;
+    padding-right: 32px;
+    padding-bottom: 48px;
+  }
+
+  body:not(.landing) .gb-mobile-nav {
+    display: none;
+  }
+
+  body:not(.landing) .gb-desktop-nav {
+    display: flex;
+  }
+}
+
+@media (max-width: 1023px) {
+  body:not(.landing) > div:first-child {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  body:not(.landing) .gb-desktop-nav {
+    display: none;
   }
 }
 

@@ -260,8 +260,8 @@ export default function Garaza() {
           </div>
         </div>
       ) : prikaz === 'grid' ? (
-        <div className="flex-1 overflow-y-auto px-3 pt-2">
-          <div className="grid grid-cols-3 gap-2">
+        <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
+          <div className="grid grid-cols-3 gap-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-4">
             {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
               return (
@@ -332,7 +332,7 @@ export default function Garaza() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:overflow-visible lg:auto-rows-fr">
           {avti.map((avto, index) => {
             const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
             return (
@@ -343,7 +343,7 @@ export default function Garaza() {
                 onDragEnd={onDragEnd}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
-                className={`relative overflow-hidden transition-all ${
+                className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={karticaVisina()}>
