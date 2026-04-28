@@ -58,7 +58,7 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            const velikosti = { mala: '13px', normalna: '16px', velika: '19px' };
+            const velikosti = { mala: '16px', normalna: '19px', velika: '22px' };
             if (n.pisava && velikosti[n.pisava]) {
               document.documentElement.style.fontSize = velikosti[n.pisava];
             }

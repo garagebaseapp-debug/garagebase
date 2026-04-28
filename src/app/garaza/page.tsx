@@ -14,6 +14,7 @@ export default function Garaza() {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [prikaz, setPrikaz] = useState('srednje')
+  const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -51,6 +52,7 @@ export default function Garaza() {
       if (shranjene) {
         const n = JSON.parse(shranjene)
         setPrikaz(n.prikazGaraze || 'srednje')
+        setDesktopStolpci(n.desktopStolpci || 5)
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
         if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
       }
@@ -261,7 +263,8 @@ export default function Garaza() {
         </div>
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
-          <div className="grid grid-cols-3 gap-2 lg:grid-cols-4 xl:grid-cols-5 lg:gap-4">
+          <div className="gb-car-grid grid grid-cols-3 gap-2 lg:gap-4"
+            style={{ '--gb-desktop-columns': desktopStolpci } as any}>
             {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
               return (

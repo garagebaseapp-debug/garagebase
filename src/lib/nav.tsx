@@ -20,6 +20,13 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
           Garage<span className="text-[#6c63ff]">Base</span>
         </button>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => pojdiNa('/')}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40] transition-all"
+          >
+            <span>↩</span>
+            <span>Domov</span>
+          </button>
           {glavnePovezave.map((item) => (
             <button
               key={item.key}
@@ -40,7 +47,6 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
   )
 }
 
-// Spodnja navigacija za telefon, zgornja navigacija za desktop
 export function BottomNav({ aktivna }: { aktivna?: string }) {
   return (
     <>
@@ -48,8 +54,8 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
       <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-around py-3 px-4 z-50">
         {glavnePovezave.map((item) => (
           <button key={item.key} onClick={() => pojdiNa(item.href)} className="flex flex-col items-center gap-1">
-            <span className="text-xl">{item.icon}</span>
-            <span className={`text-[9px] uppercase tracking-wider ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
+            <span className="text-2xl leading-none">{item.icon}</span>
+            <span className={`text-[10px] uppercase tracking-wider ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
               {item.label}
             </span>
           </button>
@@ -59,22 +65,20 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   )
 }
 
-// Samo garaža gumb za telefon, zgornja navigacija za desktop podstrani
 export function HomeButton() {
   return (
     <>
       <DesktopNav />
       <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-center py-3 px-4 z-50">
         <button onClick={() => pojdiNa('/garaza')} className="flex flex-col items-center gap-1">
-          <span className="text-xl">🏠</span>
-          <span className="text-[9px] uppercase tracking-wider text-[#6c63ff] font-bold">Garaža</span>
+          <span className="text-2xl leading-none">🏠</span>
+          <span className="text-[10px] uppercase tracking-wider text-[#6c63ff] font-bold">Garaža</span>
         </button>
       </div>
     </>
   )
 }
 
-// Puščica nazaj
 export function BackButton({ href, label }: { href?: string, label?: string }) {
   return (
     <button

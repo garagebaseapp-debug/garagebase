@@ -1,4 +1,4 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
   --background: #ffffff;
@@ -41,7 +41,7 @@ body:not(.landing) {
   }
 
   body:not(.landing) > div:first-child {
-    width: min(100%, 1200px);
+    width: min(100%, 1800px);
     margin: 0 auto;
     padding-top: 88px;
     padding-left: 32px;
@@ -55,6 +55,10 @@ body:not(.landing) {
 
   body:not(.landing) .gb-desktop-nav {
     display: flex;
+  }
+
+  .gb-car-grid {
+    grid-template-columns: repeat(var(--gb-desktop-columns, 5), minmax(0, 1fr));
   }
 }
 

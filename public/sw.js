@@ -16,9 +16,10 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/android-chrome-192x192.png',
+    icon: '/android-chrome-512x512.png',
     badge: '/android-chrome-192x192.png',
     vibrate: [200, 100, 200],
+    requireInteraction: false,
     data: {
       url: data.url || '/opomniki'
     },

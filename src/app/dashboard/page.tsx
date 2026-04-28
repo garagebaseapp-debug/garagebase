@@ -166,7 +166,72 @@ export default function Dashboard() {
 
           {aktivniAvto && (
             <>
-              <div className="bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
+              <div className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
+                <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
+                  {aktivniAvto.slika_url ? (
+                    <img src={aktivniAvto.slika_url} alt="Avto"
+                      className="max-w-full max-h-[330px] object-contain rounded-xl" />
+                  ) : (
+                    <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
+                      🚗
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-8 flex flex-col gap-6">
+                  <div className="flex justify-between items-start gap-6">
+                    <div>
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Izbrano vozilo</p>
+                      <h2 className="text-white font-bold text-4xl leading-tight">
+                        {aktivniAvto.znamka.charAt(0).toUpperCase() + aktivniAvto.znamka.slice(1)}{' '}
+                        {aktivniAvto.model.toUpperCase()}
+                      </h2>
+                      <p className="text-[#8080a0] text-base mt-3">
+                        {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.barva].filter(Boolean).join(' · ')}
+                      </p>
+                    </div>
+                    {aktivniAvto.tablica && (
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <div className="bg-[#003399] rounded-t-md px-2 py-1 flex items-center gap-1 w-full justify-center">
+                          <span className="text-yellow-300 text-[8px]">★</span>
+                          <span className="text-white text-[8px] font-bold tracking-wider">SI</span>
+                        </div>
+                        <div className="bg-white rounded-b-md px-4 py-2 border-2 border-[#003399] border-t-0">
+                          <span className="text-black font-bold text-lg tracking-widest font-mono">
+                            {aktivniAvto.tablica.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Kilometri</p>
+                      <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
+                    </div>
+                    <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Poraba</p>
+                      <p className="text-white font-bold text-2xl">{poraba.skupaj !== null ? poraba.skupaj.toFixed(1) : '-'} <span className="text-[#5a5a80] text-sm font-normal">L/100</span></p>
+                    </div>
+                    <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Stroški</p>
+                      <p className="text-white font-bold text-2xl">{stroski.skupaj > 0 ? stroski.skupaj.toFixed(0) : '-'} <span className="text-[#5a5a80] text-sm font-normal">€</span></p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 mt-auto">
+                    <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
+                    <button onClick={() => window.location.href = '/zgodovina-servisa?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
+                    <button onClick={() => window.location.href = '/opomniki?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>Opomniki</button>
+                    <button onClick={() => window.location.href = '/stroski?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>Stroški</button>
+                    <button onClick={() => window.location.href = '/nastavitve-avta?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>Nastavitve</button>
+                    <button onClick={() => window.location.href = '/report?car=' + aktivniAvto.id} className="bg-[#6c63ff22] border border-[#6c63ff55] text-[#a09aff] py-4 rounded-xl hover:border-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📄</span>Report</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
                 {aktivniAvto.slika_url && (
                   <div className="relative h-36 overflow-hidden">
@@ -255,28 +320,28 @@ export default function Dashboard() {
 
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>⛽</span><span className="text-[10px]">Gorivo</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
+                    <span>⛽</span><span className="text-[11px]">Gorivo</span>
                   </button>
                   <button onClick={() => window.location.href = `/zgodovina-servisa?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
-                    <span>🔧</span><span className="text-[10px]">Servis</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
+                    <span>🔧</span><span className="text-[11px]">Servis</span>
                   </button>
                   <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex flex-col items-center gap-1">
-                    <span>🔔</span><span className="text-[10px]">Opomniki</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex flex-col items-center gap-1">
+                    <span>🔔</span><span className="text-[11px]">Opomniki</span>
                   </button>
                   <button onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>📊</span><span className="text-[10px]">Stroški</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
+                    <span>📊</span><span className="text-[11px]">Stroški</span>
                   </button>
                   <button onClick={() => window.location.href = `/nastavitve-avta?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-sm py-2.5 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex flex-col items-center gap-1">
-                    <span>⚙️</span><span className="text-[10px]">Nastavitve</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex flex-col items-center gap-1">
+                    <span>⚙️</span><span className="text-[11px]">Nastavitve</span>
                   </button>
                   <button onClick={() => window.location.href = `/report?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] text-sm py-2.5 rounded-xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1">
-                    <span>📄</span><span className="text-[10px]">Report</span>
+                    className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] text-base py-3 rounded-xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1">
+                    <span>📄</span><span className="text-[11px]">Report</span>
                   </button>
                 </div>
               </div>
