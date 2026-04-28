@@ -68,6 +68,7 @@ gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   ownerDividerText: { fontSize: 8, color: '#6c63ff', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
   qrBox: { marginTop: 10, padding: 8, borderWidth: 1, borderColor: '#e0e0ff', borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
   qrImage: { width: 72, height: 72 },
+  carPhoto: { width: 110, height: 72, objectFit: 'cover', borderRadius: 6, borderWidth: 1, borderColor: '#e0e0ff' },
   qrText: { flex: 1, fontSize: 8, color: '#555555', lineHeight: 1.4 },
   footer: { position: 'absolute', bottom: 30, left: 40, right: 40, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#e0e0e0', paddingTop: 8 },
   footerText: { fontSize: 8, color: '#aaaaaa' },
@@ -79,7 +80,7 @@ const maskVin = (vin?: string) => {
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage }: any) => {
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
@@ -102,8 +103,9 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr }: any)
               <Text style={styles.badgeText}>VERIFICIRAN REPORT</Text>
             </View>
           </View>
-          <View>
-            <Text style={styles.carTitle}>
+          <View style={{ alignItems: 'flex-end' }}>
+            {includeVehicleImage && avto.slika_url && <Image src={avto.slika_url} style={styles.carPhoto} />}
+            <Text style={[styles.carTitle, { marginTop: includeVehicleImage && avto.slika_url ? 8 : 0 }]}>
               {avto.znamka?.charAt(0).toUpperCase() + avto.znamka?.slice(1)} {avto.model?.toUpperCase()}
             </Text>
             {avto.letnik && <Text style={styles.carInfo}>Letnik: {avto.letnik}</Text>}
@@ -289,6 +291,8 @@ export default function Report() {
   const [importQr, setImportQr] = useState('')
   const [includeVerifyQr, setIncludeVerifyQr] = useState(true)
   const [includeImportQr, setIncludeImportQr] = useState(false)
+  const [includeVehicleImage, setIncludeVehicleImage] = useState(true)
+  const [includeReceiptImages, setIncludeReceiptImages] = useState(false)
 
 
   const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[]) => {
@@ -325,7 +329,9 @@ export default function Report() {
       st_lastnikov: avtoData?.st_lastnikov,
       lastnik_mesto: avtoData?.lastnik_mesto,
       lastnik_starost: avtoData?.lastnik_starost,
+      slika_url: includeVehicleImage ? avtoData?.slika_url : null,
     }
+    const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url, ...row }: any) => row)
     const makePayload = (mode: 'verify' | 'import') => ({
       type: 'garagebase-transfer-v1',
       mode,
@@ -333,7 +339,9 @@ export default function Report() {
       consent: true,
       car: carSummary,
       car_full: carFull,
-      service_logs: servisData || [],
+      include_vehicle_image: includeVehicleImage,
+      include_receipt_images: includeReceiptImages,
+      service_logs: servisForTransfer,
       fuel_logs: gorivoData || [],
       expenses: filteredExpenses || [],
     })
@@ -380,7 +388,7 @@ export default function Report() {
       setTimeout(() => setReady(true), 500)
     }
     init()
-  }, [includeVerifyQr, includeImportQr])
+  }, [includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages])
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -443,20 +451,30 @@ export default function Report() {
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setIncludeVerifyQr(!includeVerifyQr)}
             className={`rounded-xl border p-4 text-left ${includeVerifyQr ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeVerifyQr ? '☑' : '☐'} Samo za branje</p>
+            <p className="text-white text-sm font-semibold">{includeVerifyQr ? '[x]' : '[ ]'} Samo za branje</p>
             <p className="text-[#5a5a80] text-xs mt-1">QR za digitalni report.</p>
           </button>
           <button onClick={() => setIncludeImportQr(!includeImportQr)}
             className={`rounded-xl border p-4 text-left ${includeImportQr ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeImportQr ? '☑' : '☐'} Izvoz zgodovine</p>
+            <p className="text-white text-sm font-semibold">{includeImportQr ? '[x]' : '[ ]'} Izvoz zgodovine</p>
             <p className="text-[#5a5a80] text-xs mt-1">QR za uvoz vozila.</p>
+          </button>
+          <button onClick={() => setIncludeVehicleImage(!includeVehicleImage)}
+            className={`rounded-xl border p-4 text-left ${includeVehicleImage ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeVehicleImage ? '[x]' : '[ ]'} Slika vozila</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Slika v PDF in pri uvozu.</p>
+          </button>
+          <button onClick={() => setIncludeReceiptImages(!includeReceiptImages)}
+            className={`rounded-xl border p-4 text-left ${includeReceiptImages ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeReceiptImages ? '[x]' : '[ ]'} Slike racunov</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Prenese slike pri servisih.</p>
           </button>
         </div>
       </div>
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} />}
+          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">

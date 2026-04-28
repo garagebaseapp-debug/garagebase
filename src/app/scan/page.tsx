@@ -58,6 +58,12 @@ function DigitalReport({ payload }: { payload: any }) {
         </p>
       </div>
 
+      {carFull.slika_url && (
+        <div className="rounded-2xl overflow-hidden border border-[#252542] bg-[#080810]">
+          <img src={carFull.slika_url} alt="Vozilo" className="w-full h-44 object-cover" />
+        </div>
+      )}
+
       <Section title="Vozilo">
         <div className="grid grid-cols-2 gap-3">
           <StatBox label="Vozilo" value={`${car.znamka || carFull.znamka || ''} ${car.model || carFull.model || ''}`.trim()} />
@@ -95,7 +101,7 @@ function DigitalReport({ payload }: { payload: any }) {
                 <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
                 <div>
                   <p className="text-white text-sm font-semibold">{stripPrevious(row.opis)}</p>
-                  <p className="text-[#7b7ba6] text-xs mt-1">{row.servis || '-'} · {fmtMoney(row.cena)}{row.foto_url ? ' · racun prilozen' : ''}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{row.servis || '-'} · {fmtMoney(row.cena)}{row.foto_url ? ' · racun prilozen' : ''}</p>{row.foto_url && <a href={String(row.foto_url).split(',')[0]} target="_blank" className="inline-flex mt-2 text-[#3ecfcf] text-xs font-semibold">Odpri racun</a>}
                 </div>
               </div>
             ))}
@@ -246,6 +252,7 @@ export default function ScanPage() {
       letnik: source.letnik || payload.car?.letnik || null,
       gorivo: source.gorivo || payload.car?.gorivo || null,
       barva: source.barva || null,
+      slika_url: source.slika_url || null,
       tablica: source.tablica || null,
       vin: source.vin || null,
       km_trenutni: source.km_trenutni || payload.car?.km_trenutni || null,
