@@ -26,16 +26,16 @@ body {
 }
 
 .landing-report-mockup {
-  right: clamp(250px, 19vw, 390px);
-  bottom: clamp(120px, 15vh, 185px);
-  transform: perspective(900px) rotateY(-9deg) rotateX(3deg);
+  right: clamp(390px, 24vw, 520px);
+  bottom: clamp(250px, 31vh, 340px);
+  transform: perspective(900px) rotateY(-13deg) rotateX(5deg);
   transform-origin: center;
 }
 
 @media (min-width: 1536px) {
   .landing-report-mockup {
-    right: clamp(300px, 22vw, 470px);
-    bottom: clamp(135px, 17vh, 215px);
+    right: clamp(440px, 27vw, 610px);
+    bottom: clamp(270px, 32vh, 370px);
   }
 }
 

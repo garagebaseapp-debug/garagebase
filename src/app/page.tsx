@@ -89,45 +89,42 @@ export default function LandingPage() {
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
         <div className="landing-report-mockup absolute z-10 hidden xl:block">
-          <div className="relative w-[315px] rotate-[-7deg] rounded-[18px] border border-white/28 bg-white p-5 text-[#151527] shadow-[0_28px_80px_rgba(0,0,0,0.55)]">
-            <div className="absolute -right-9 top-20 rounded-full border-2 border-[#3ecfcf] bg-[#071018]/92 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-[#3ecfcf] shadow-[0_0_30px_rgba(62,207,207,0.35)]">
-              QR dokaz
-            </div>
-            <div className="flex items-start justify-between gap-3 border-b border-[#e7e8f6] pb-3">
+          <div className="relative w-[236px] rotate-[-9deg] rounded-[18px] border border-white/24 bg-white/92 p-4 text-[#151527] shadow-[0_24px_70px_rgba(0,0,0,0.48)] backdrop-blur-sm">
+            <div className="flex items-start justify-between gap-3 border-b border-[#e7e8f6] pb-2.5">
               <div>
-                <p className="text-xl font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
+                <p className="text-base font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
                 <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#6c63ff]">Verified report</p>
               </div>
-              <div className="h-11 w-16 rounded-lg bg-gradient-to-br from-[#dbeafe] to-[#eef2ff] border border-[#d8dcf0]" />
+              <div className="h-9 w-12 rounded-lg bg-gradient-to-br from-[#dbeafe] to-[#eef2ff] border border-[#d8dcf0]" />
             </div>
 
-            <div className="mt-4 flex items-start justify-between gap-4">
+            <div className="mt-3 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase text-[#7a8096]">Vozilo</p>
-                <p className="text-lg font-black leading-tight">Volvo XC90</p>
-                <p className="mt-1 text-[10px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
+                <p className="text-[8px] font-bold uppercase text-[#7a8096]">Vozilo</p>
+                <p className="text-sm font-black leading-tight">Volvo XC90</p>
+                <p className="mt-1 text-[8px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
               </div>
               <div className="rounded-md border border-[#dfe3f4] px-2 py-1 text-center">
-                <p className="text-[8px] text-[#7a8096]">LASTNIKI</p>
-                <p className="text-sm font-black">2</p>
+                <p className="text-[7px] text-[#7a8096]">LASTNIKI</p>
+                <p className="text-xs font-black">2</p>
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-1.5">
               {[
                 ['Servisi', '8'],
                 ['Gorivo', '96'],
                 ['Stroski', '12'],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-[#f5f6ff] p-2">
-                  <p className="text-[8px] font-bold uppercase text-[#7a8096]">{label}</p>
-                  <p className="text-base font-black">{value}</p>
+                <div key={label} className="rounded-lg bg-[#f5f6ff] p-1.5">
+                  <p className="text-[7px] font-bold uppercase text-[#7a8096]">{label}</p>
+                  <p className="text-sm font-black">{value}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 flex gap-3 rounded-xl border border-[#8b5cf6]/25 bg-[#f8f7ff] p-3">
-              <div className="relative grid h-[74px] w-[74px] shrink-0 grid-cols-12 gap-[1px] rounded-md border-2 border-[#3ecfcf] bg-white p-1 shadow-[0_0_0_4px_rgba(62,207,207,0.12)]">
+            <div className="mt-3 flex gap-2.5 rounded-xl border border-[#8b5cf6]/25 bg-[#f8f7ff] p-2.5">
+              <div className="relative grid h-[58px] w-[58px] shrink-0 grid-cols-12 gap-[1px] rounded-md border-2 border-[#3ecfcf] bg-white p-1 shadow-[0_0_0_4px_rgba(62,207,207,0.12)]">
                 {qrCells.flatMap((row, rowIndex) =>
                   row.split('').map((cell, colIndex) => (
                     <span
@@ -136,16 +133,17 @@ export default function LandingPage() {
                     />
                   )),
                 )}
+                <span className="absolute -top-3 left-2 rounded-full bg-[#071018] px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-[#3ecfcf] shadow-[0_0_18px_rgba(62,207,207,0.4)]">QR</span>
               </div>
               <div className="pt-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#6c63ff]">Preverjanje</p>
-                <p className="mt-1 text-[11px] font-semibold leading-snug text-[#34344a]">
-                  Kupec skenira QR in v app preveri, ali je PDF enak zapisu v bazi.
+                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-[#6c63ff]">Preverjanje</p>
+                <p className="mt-1 text-[9px] font-semibold leading-snug text-[#34344a]">
+                  Skeniraj QR in preveri, ali je PDF enak zapisu v bazi.
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 space-y-1.5">
+            <div className="mt-3 space-y-1.5 opacity-70">
               {[82, 64, 74, 52].map((width, index) => (
                 <div key={index} className="h-1.5 rounded-full bg-[#e7e8f6]" style={{ width: `${width}%` }} />
               ))}
