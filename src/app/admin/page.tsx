@@ -254,7 +254,7 @@ export default function AdminPage() {
       const settingsQuery = supabase
         .from('app_events')
         .select('id,event_name,created_at,user_id,metadata')
-        .in('event_name', ['settings_saved', 'assistant_page_open'])
+        .in('event_name', ['settings_saved', 'settings_snapshot', 'assistant_page_open'])
         .order('created_at', { ascending: false })
         .limit(5000)
       const filteredSettingsQuery = settingsSince ? settingsQuery.gte('created_at', settingsSince) : settingsQuery
@@ -300,7 +300,7 @@ export default function AdminPage() {
       const cars = carsData.data || []
       const events = eventsData.data || []
       const feedbackItems = feedbackData.data || []
-      const settingsEvents = (settingsData.data || []).filter((event: any) => event.event_name === 'settings_saved')
+      const settingsEvents = (settingsData.data || []).filter((event: any) => event.event_name === 'settings_saved' || event.event_name === 'settings_snapshot')
       const assistantUsers = new Set((settingsData.data || []).filter((event: any) => event.event_name === 'assistant_page_open').map((event: any) => event.user_id).filter(Boolean)).size
       const uniqueUsers = new Set([
         ...cars.map((car: any) => car.user_id).filter(Boolean),

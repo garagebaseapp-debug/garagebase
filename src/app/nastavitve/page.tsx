@@ -51,6 +51,23 @@ export default function Nastavitve() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
 
+  const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
+    trackEvent(eventName, {
+      usageMode: values.nacin || nacin,
+      language: values.jezik || jezik,
+      fontSize: values.pisava || pisava,
+      garageDisplay: values.prikazGaraze || prikazGaraze,
+      theme: values.tema || tema,
+      desktopColumns: values.desktopStolpci || desktopStolpci,
+      mobileGridColumns: values.mobileGridStolpci || mobileGridStolpci,
+      cardFontPercent: values.garazaPisava || garazaPisava,
+      autocomplete: values.avtocomplete !== undefined ? values.avtocomplete : avtocomplete,
+      appLockEnabled: localStorage.getItem('garagebase_app_lock_enabled') === 'true',
+      gridSettings: values.gridNastavitve || gridNastavitve,
+      listSettings: values.listaNastavitve || listaNastavitve,
+    })
+  }
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -63,8 +80,10 @@ export default function Nastavitve() {
         .maybeSingle()
       setIsAdmin(!!adminRow)
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
+      let loadedSettings: any = {}
       if (shranjeneNastavitve) {
         const n = JSON.parse(shranjeneNastavitve)
+        loadedSettings = n
         setNacin(n.nacin || 'full')
         setJezik(n.jezik || 'sl')
         setPisava(n.pisava || 'normalna')
@@ -93,6 +112,7 @@ export default function Nastavitve() {
       setBiometricSupported('PublicKeyCredential' in window && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
       trackEvent('settings_open')
+      trackSettingsSnapshot('settings_snapshot', loadedSettings)
       setLoading(false)
     }
     init()
@@ -177,20 +197,7 @@ export default function Nastavitve() {
     const current = raw ? JSON.parse(raw) : {}
     const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
-    trackEvent('settings_saved', {
-      usageMode: nacin,
-      language: jezik,
-      fontSize: pisava,
-      garageDisplay: prikazGaraze,
-      theme: tema,
-      desktopColumns: desktopStolpci,
-      mobileGridColumns: mobileGridStolpci,
-      cardFontPercent: garazaPisava,
-      autocomplete: avtocomplete,
-      appLockEnabled,
-      gridSettings: gridNastavitve,
-      listSettings: listaNastavitve,
-    })
+    trackSettingsSnapshot('settings_saved', nastavitve)
     const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
     if (jeApp) document.documentElement.style.fontSize = velikosti[pisava]
