@@ -159,8 +159,8 @@ export default function Garaza() {
 
   const karticaVisina = () => {
     if (prikaz === 'malo') return { height: '10.5dvh', minHeight: '78px', maxHeight: '92px' }
-    if (prikaz === 'veliko') return { height: '29dvh', minHeight: '210px', maxHeight: '250px' }
-    return { height: '17dvh', minHeight: '124px', maxHeight: '148px' }
+    if (prikaz === 'veliko') return { height: '58dvh', minHeight: '420px', maxHeight: '520px' }
+    return { height: '34dvh', minHeight: '250px', maxHeight: '310px' }
   }
 
   const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: any }) => {
@@ -211,8 +211,8 @@ export default function Garaza() {
 
           return (
             <div key={`${isDatum ? 'd' : 'k'}-${op.id}`} className={`bg-white/75 border ${barva.border} rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-sm max-w-full`}>
-              <span className="text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
-              <span className={`${barva.text} font-black text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
+              <span className="text-[clamp(12px,calc(30px/var(--gb-mobile-columns,3)),16px)] lg:text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
+              <span className={`${barva.text} font-black text-[clamp(12px,calc(30px/var(--gb-mobile-columns,3)),16px)] lg:text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
             </div>
           )
         })}
@@ -323,21 +323,21 @@ export default function Garaza() {
                   )}
 
                   <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                    <p className="text-white font-bold text-[10px] leading-tight truncate">
+                    <p className="text-white font-bold text-[clamp(10px,calc(28px/var(--gb-mobile-columns,3)),15px)] lg:text-[10px] leading-tight truncate">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)} {avto.model.toUpperCase()}
                     </p>
                     {gridNastavitve.letnik && avto.letnik && (
-                      <p className="text-white/60 text-[8px]">{avto.letnik}</p>
+                      <p className="text-white/60 text-[clamp(8px,calc(22px/var(--gb-mobile-columns,3)),12px)] lg:text-[8px]">{avto.letnik}</p>
                     )}
                     {gridNastavitve.gorivo && avto.gorivo && (
-                      <p className="text-white/60 text-[8px]">{avto.gorivo}</p>
+                      <p className="text-white/60 text-[clamp(8px,calc(22px/var(--gb-mobile-columns,3)),12px)] lg:text-[8px]">{avto.gorivo}</p>
                     )}
                     {gridNastavitve.km && avto.km_trenutni && (
-                      <p className="text-[#3ecfcf] text-[9px] font-semibold">{avto.km_trenutni.toLocaleString()} km</p>
+                      <p className="text-[#3ecfcf] text-[clamp(9px,calc(24px/var(--gb-mobile-columns,3)),13px)] lg:text-[9px] font-semibold">{avto.km_trenutni.toLocaleString()} km</p>
                     )}
                     {gridNastavitve.tablica && avto.tablica && (
                       <div className="mt-0.5 bg-white rounded px-1 inline-block">
-                        <span className="text-black font-bold text-[7px] tracking-wider font-mono">
+                        <span className="text-black font-bold text-[clamp(7px,calc(19px/var(--gb-mobile-columns,3)),11px)] lg:text-[7px] tracking-wider font-mono">
                           {avto.tablica.toUpperCase()}
                         </span>
                       </div>
