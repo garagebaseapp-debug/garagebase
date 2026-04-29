@@ -5,7 +5,7 @@ import webpush from 'web-push'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 const vapidEmail = process.env.VAPID_EMAIL
@@ -18,16 +18,12 @@ if (pushConfigured) {
 }
 
 export async function GET(req: Request) {
-  // Vercel cron pošlje header user-agent z 'vercel-cron'
   const authHeader = req.headers.get('authorization')
-  const userAgent = req.headers.get('user-agent') || ''
-  const isVercelCron = userAgent.includes('vercel-cron')
+  const cronSecret = process.env.CRON_SECRET
 
-  // Sprejmi če je Vercel cron ALI če je pravilen Bearer token
-  if (!isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
   try {
     const { data: opomniki } = await supabase
       .from('reminders')
@@ -88,3 +84,4 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }
+
