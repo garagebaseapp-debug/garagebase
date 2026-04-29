@@ -25,6 +25,20 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.landing-report-mockup {
+  right: clamp(250px, 19vw, 390px);
+  bottom: clamp(120px, 15vh, 185px);
+  transform: perspective(900px) rotateY(-9deg) rotateX(3deg);
+  transform-origin: center;
+}
+
+@media (min-width: 1536px) {
+  .landing-report-mockup {
+    right: clamp(300px, 22vw, 470px);
+    bottom: clamp(135px, 17vh, 215px);
+  }
+}
+
 body:not(.landing) {
   width: 100%;
   max-width: none;
