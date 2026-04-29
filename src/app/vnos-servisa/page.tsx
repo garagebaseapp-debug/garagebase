@@ -265,11 +265,12 @@ export default function VnosServisa() {
     }
 
     const verificationLevel = odometerUrl && slike.length > 0 ? 'strong' : odometerUrl ? 'photo' : 'basic'
+    const zaklepPo24h = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     await supabase.from('service_logs').update({
       odometer_photo_url: odometerUrl,
       verified_document_url: slike.length > 0 ? 'service_receipt_attached' : null,
       verification_level: verificationLevel,
-      locked_at: verificationLevel === 'strong' ? new Date().toISOString() : null,
+      locked_at: zaklepPo24h,
     }).eq('id', servisData.id)
     trackEvent('service_verification_set', { carId, verificationLevel, hasOdometerPhoto: !!odometerUrl, hasReceipt: slike.length > 0 })
 
@@ -441,6 +442,17 @@ export default function VnosServisa() {
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Čez dni</label>
               <input type="number" value={intervalDni} onChange={e => setIntervalDni(e.target.value)} placeholder="365"
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="text-white text-sm font-bold">Preveri kilometre in podatke pred shranjevanjem</p>
+              <p className="mt-1 text-[#f8c873] text-xs leading-relaxed">
+                Servisni zapis lahko popravis samo prvih 24 ur. Po tem se Basic, Photo verified in Strong verified zapis zaklene, zato se enkrat preveri datum, kilometre, opis dela, racun in sliko stevca.
+              </p>
             </div>
           </div>
         </div>

@@ -31,9 +31,15 @@ export default function ZgodovinaServisa() {
     return () => clearInterval(timer)
   }, [])
 
-  const preostaliCas = (createdAt: string) => {
-    const ustvarjen = new Date(createdAt).getTime()
-    const konec = ustvarjen + 24 * 60 * 60 * 1000
+  const casZaklepa = (vnos: any) => {
+    if (vnos.locked_at) return new Date(vnos.locked_at).getTime()
+    return new Date(vnos.created_at).getTime() + 24 * 60 * 60 * 1000
+  }
+
+  const jeZaklenjen = (vnos: any) => cas >= casZaklepa(vnos)
+
+  const preostaliCas = (vnos: any) => {
+    const konec = casZaklepa(vnos)
     const preostalo = konec - cas
     if (preostalo <= 0) return null
     const ure = Math.floor(preostalo / (1000 * 60 * 60))
@@ -51,7 +57,7 @@ export default function ZgodovinaServisa() {
 
   const shraniUredi = async (id: string) => {
     const existing = vnosi.find(v => v.id === id)
-    if (existing?.verification_level === 'strong' || existing?.locked_at) return
+    if (existing && jeZaklenjen(existing)) return
     setSaving(true)
     await supabase.from('service_logs').update({
       datum: editData.datum,
@@ -114,8 +120,8 @@ export default function ZgodovinaServisa() {
             const prejJePrejsnjiLastnik = index > 0 && (!!vnosi[index - 1].source_owner_label || vnosi[index - 1].opis?.includes('[Prejsnji lastnik]'))
             const jeNaknaden = vnos.opis?.includes('[Naknadno vnešeno:')
             const opisBrezOznake = vnos.opis?.replace(/\s*\[Naknadno vnešeno:.*?\]/, '') || ''
-            const preostalo = preostaliCas(vnos.created_at)
-            const isStrong = vnos.verification_level === 'strong' || !!vnos.locked_at
+            const preostalo = preostaliCas(vnos)
+            const isLocked = jeZaklenjen(vnos)
             const jeUredi = uredi === vnos.id
             const badge = trustBadge(vnos)
 
@@ -149,7 +155,7 @@ export default function ZgodovinaServisa() {
                       {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
                     </div>
                     {/* Gumb uredi z odštevalnikom */}
-                    {preostalo && !jeUredi && !isStrong && (
+                    {preostalo && !jeUredi && !isLocked && (
                       <button onClick={() => {
                         setUredi(vnos.id)
                         setEditData({
@@ -163,7 +169,7 @@ export default function ZgodovinaServisa() {
                         ✏️ Uredi · {preostalo}
                       </button>
                     )}
-                    {isStrong && (
+                    {isLocked && (
                       <span className="text-[#4ade80] text-[10px] font-semibold border border-[#16a34a44] bg-[#16a34a18] px-2 py-1 rounded-lg">Zaklenjeno</span>
                     )}
                   </div>
