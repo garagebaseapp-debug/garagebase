@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [isRegister, setIsRegister] = useState(false)
   const [biometricReady, setBiometricReady] = useState(false)
+  const [acceptedLegal, setAcceptedLegal] = useState(false)
 
   // Dodamo landing class da je stran široka kot spletna stran
   useEffect(() => {
@@ -41,6 +42,11 @@ export default function LoginPage() {
     setLoading(true)
     setMessage('')
     if (isRegister) {
+      if (!acceptedLegal) {
+        setMessage('Za registracijo se moras strinjati s pogoji uporabe in politiko zasebnosti.')
+        setLoading(false)
+        return
+      }
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setMessage(error.message)
       else setMessage('Preveri email za potrditev registracije!')
@@ -101,6 +107,22 @@ export default function LoginPage() {
               placeholder="Vsaj 6 znakov"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
           </div>
+
+          {isRegister && (
+            <label className="mb-5 flex items-start gap-3 rounded-xl border border-[#1e1e32] bg-[#13131f] p-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedLegal}
+                onChange={(e) => setAcceptedLegal(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#6c63ff]"
+              />
+              <span className="text-[#8a8aa8] text-xs leading-relaxed">
+                Strinjam se s <a href="/terms" target="_blank" className="text-[#a09aff] underline">Pogoji uporabe</a>,
+                {' '}<a href="/privacy" target="_blank" className="text-[#a09aff] underline">Politiko zasebnosti</a>
+                {' '}in <a href="/promo" target="_blank" className="text-[#a09aff] underline">launch promocijo</a>.
+              </span>
+            </label>
+          )}
 
           {message && (
             <div className={`mb-4 p-3 rounded-xl text-sm border ${

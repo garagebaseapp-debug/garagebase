@@ -124,6 +124,14 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <div className="px-5 py-6 border-t border-[#1e1e32] bg-[#080810]">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#8a8aa8]">
+          <a href="/privacy" className="hover:text-white transition-colors">Zasebnost</a>
+          <a href="/terms" className="hover:text-white transition-colors">Pogoji uporabe</a>
+          <a href="/promo" className="hover:text-white transition-colors">Launch promocija</a>
+        </div>
+      </div>
+
       <footer id="kontakt" className="py-12 px-5 border-t border-[#1e1e32]">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between gap-4 text-sm text-[#8a8aa8]">
           <p><span className="text-white font-bold">Garage</span><span className="text-[#8b5cf6] font-bold">Base</span> © 2026</p>
