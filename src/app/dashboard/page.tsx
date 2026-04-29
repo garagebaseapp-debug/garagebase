@@ -14,38 +14,73 @@ export default function Dashboard() {
 
   useEffect(() => {
     const init = async () => {
+      const params = new URLSearchParams(window.location.search)
+      const carIdFromUrl = params.get('car')
+      const cached = localStorage.getItem('garagebase_garaza_cache')
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed.avti) && parsed.avti.length > 0) {
+            setAvti(parsed.avti)
+            const cachedCar = carIdFromUrl
+              ? parsed.avti.find((a: any) => a.id === carIdFromUrl) || parsed.avti[0]
+              : parsed.avti[0]
+            setAktivniAvto(cachedCar)
+            setLoading(false)
+          }
+        } catch {}
+      }
+
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
+      const started = performance.now()
       const { data: avtiData } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
         .order('vrstni_red', { ascending: true })
-      if (avtiData && avtiData.length > 0) {
-        setAvti(avtiData)
-        const params = new URLSearchParams(window.location.search)
-        const carIdFromUrl = params.get('car')
+      const cars = avtiData || []
+      setAvti(cars)
+      const previousGarageCache = localStorage.getItem('garagebase_garaza_cache')
+      let previousOpomniki = {}
+      try { previousOpomniki = previousGarageCache ? JSON.parse(previousGarageCache).opomniki || {} : {} } catch {}
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: previousOpomniki, savedAt: Date.now() }))
+      if (cars.length > 0) {
         const izbrani = carIdFromUrl
-          ? avtiData.find((a: any) => a.id === carIdFromUrl) || avtiData[0]
-          : avtiData[0]
+          ? cars.find((a: any) => a.id === carIdFromUrl) || cars[0]
+          : cars[0]
         setAktivniAvto(izbrani)
+        setLoading(false)
         await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
+      console.info(`[GarageBase speed] dashboard cars ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()
   }, [])
-
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
-    // Opomniki
-    const { data: opData } = await supabase
-      .from('reminders').select('*').eq('car_id', carId)
-      .order('datum', { ascending: true })
-    setOpomniki(opData || [])
+    const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
+        if (parsed.poraba) setPoraba(parsed.poraba)
+        if (parsed.stroski) setStroski(parsed.stroski)
+      } catch {}
+    }
 
-    // Poraba goriva
-    const { data: gorivoData } = await supabase
-      .from('fuel_logs').select('*').eq('car_id', carId)
-      .order('km', { ascending: true })
-    if (gorivoData && gorivoData.length >= 1) {
+    const started = performance.now()
+    const [opRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
+      supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
+      supabase.from('fuel_logs').select('km,litri,cena_skupaj').eq('car_id', carId).order('km', { ascending: true }),
+      supabase.from('service_logs').select('cena').eq('car_id', carId),
+      supabase.from('expenses').select('znesek').eq('car_id', carId),
+    ])
+
+    const opData = opRes.data || []
+    const gorivoData = gorivoRes.data || []
+    setOpomniki(opData)
+
+    let nextPoraba = { skupaj: null as number | null, zadnja: null as number | null }
+    if (gorivoData.length >= 1) {
       const skupajLitrov = gorivoData.reduce((s: number, v: any) => s + (v.litri || 0), 0)
       const zadnjiKm = gorivoData[gorivoData.length - 1].km
       const skupajKm = zadnjiKm - avtoKmStart
@@ -55,24 +90,20 @@ export default function Dashboard() {
       const prejsnjiKm = predZadnje ? predZadnje.km : avtoKmStart
       const kmRazlika = zadnje.km - prejsnjiKm
       const zadnjaPoraba = kmRazlika > 0 ? (zadnje.litri / kmRazlika) * 100 : null
-      setPoraba({ skupaj: skupajPoraba, zadnja: zadnjaPoraba })
-    } else {
-      setPoraba({ skupaj: null, zadnja: null })
+      nextPoraba = { skupaj: skupajPoraba, zadnja: zadnjaPoraba }
     }
+    setPoraba(nextPoraba)
 
-    // Kalkulator stroškov €/km
-    const { data: servisStroški } = await supabase.from('service_logs').select('cena').eq('car_id', carId)
-    const { data: expensesData } = await supabase.from('expenses').select('znesek').eq('car_id', carId)
-    const { data: gorivoStroški } = await supabase.from('fuel_logs').select('cena_skupaj').eq('car_id', carId)
-    const skupajGorivo = (gorivoStroški || []).reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
-    const skupajServis = (servisStroški || []).reduce((s: number, v: any) => s + (v.cena || 0), 0)
-    const skupajExpenses = (expensesData || []).reduce((s: number, v: any) => s + (v.znesek || 0), 0)
+    const skupajGorivo = gorivoData.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
+    const skupajServis = (servisRes.data || []).reduce((s: number, v: any) => s + (v.cena || 0), 0)
+    const skupajExpenses = (expensesRes.data || []).reduce((s: number, v: any) => s + (v.znesek || 0), 0)
     const skupajVse = skupajGorivo + skupajServis + skupajExpenses
     const kmPrevozeni = avtoKmStart - kmObVnosu
-    const naKm = kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null
-    setStroski({ skupaj: skupajVse, naKm })
+    const nextStroski = { skupaj: skupajVse, naKm: kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null }
+    setStroski(nextStroski)
+    localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
+    console.info(`[GarageBase speed] dashboard data ${Math.round(performance.now() - started)}ms`)
   }
-
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
     await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
@@ -118,12 +149,6 @@ export default function Dashboard() {
   const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
   const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje', gume: 'Gume' }
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje...</p>
-    </div>
-  )
-
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
@@ -134,7 +159,17 @@ export default function Dashboard() {
         </h1>
       </div>
 
-      {avti.length === 0 ? (
+      {loading && avti.length === 0 && (
+        <div className="space-y-4 animate-pulse">
+          <div className="h-9 bg-[#13131f] border border-[#1e1e32] rounded-xl" />
+          <div className="h-[260px] bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl" />
+          <div className="grid grid-cols-3 gap-3">
+            {[0, 1, 2].map(i => <div key={i} className="h-20 bg-[#13131f] rounded-xl" />)}
+          </div>
+        </div>
+      )}
+
+      {!loading && avti.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-8 text-center">
           <p className="text-5xl mb-4">🚗</p>
           <p className="text-white font-semibold text-lg mb-2">Dodaj prvi avto</p>
@@ -170,7 +205,7 @@ export default function Dashboard() {
                 <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
                   {aktivniAvto.slika_url ? (
                     <img src={aktivniAvto.slika_url} alt="Avto"
-                      className="max-w-full max-h-[330px] object-contain rounded-xl" />
+                      loading="eager" decoding="async" className="max-w-full max-h-[330px] object-contain rounded-xl" />
                   ) : (
                     <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
                       🚗
@@ -236,7 +271,7 @@ export default function Dashboard() {
                 {aktivniAvto.slika_url && (
                   <div className="relative h-36 overflow-hidden">
                     <img src={aktivniAvto.slika_url} alt="Avto"
-                      className="w-full h-full object-cover object-center" />
+                      loading="eager" decoding="async" className="w-full h-full object-cover object-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
                   </div>
                 )}

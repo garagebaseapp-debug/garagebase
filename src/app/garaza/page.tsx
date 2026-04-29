@@ -29,25 +29,6 @@ export default function Garaza() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
-
-      const { data } = await supabase
-        .from('cars').select('*').eq('user_id', user.id)
-        .order('vrstni_red', { ascending: true })
-      setAvti(data || [])
-
-      if (data && data.length > 0) {
-        const opomnikMap: { [key: string]: any[] } = {}
-        for (const avto of data) {
-          const { data: opData } = await supabase
-            .from('reminders').select('*').eq('car_id', avto.id)
-            .order('datum', { ascending: true })
-          opomnikMap[avto.id] = opData || []
-        }
-        setOpomniki(opomnikMap)
-      }
-
       const shranjene = localStorage.getItem('garagebase_nastavitve')
       if (shranjene) {
         const n = JSON.parse(shranjene)
@@ -57,6 +38,43 @@ export default function Garaza() {
         if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
       }
 
+      const cached = localStorage.getItem('garagebase_garaza_cache')
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed.avti)) setAvti(parsed.avti)
+          if (parsed.opomniki) setOpomniki(parsed.opomniki)
+        } catch {}
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/'; return }
+
+      const started = performance.now()
+      const { data } = await supabase
+        .from('cars').select('*').eq('user_id', user.id)
+        .order('vrstni_red', { ascending: true })
+      const cars = data || []
+      setAvti(cars)
+
+      let opomnikMap: { [key: string]: any[] } = {}
+      if (cars.length > 0) {
+        const ids = cars.map((avto: any) => avto.id)
+        const { data: opData } = await supabase
+          .from('reminders').select('*').in('car_id', ids)
+          .order('datum', { ascending: true })
+        for (const avto of cars) opomnikMap[avto.id] = []
+        for (const op of opData || []) {
+          if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
+          opomnikMap[op.car_id].push(op)
+        }
+        setOpomniki(opomnikMap)
+      } else {
+        setOpomniki({})
+      }
+
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: opomnikMap, savedAt: Date.now() }))
+      console.info(`[GarageBase speed] garaza load ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()
@@ -199,12 +217,6 @@ export default function Garaza() {
       </>
     )
   }
-  if (loading) return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje...</p>
-    </div>
-  )
-
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
 
@@ -238,13 +250,27 @@ export default function Garaza() {
         </div>
       </div>
 
+      {loading && avti.length === 0 && (
+        <div className="px-5 pb-4 space-y-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="h-[180px] rounded-2xl bg-[#0f0f1a] border border-[#1e1e32] overflow-hidden flex animate-pulse">
+              <div className="w-1/2 bg-[#151527]" />
+              <div className="w-1/2 p-4 space-y-3">
+                <div className="h-5 bg-[#24243a] rounded w-3/4" />
+                <div className="h-4 bg-[#1d1d30] rounded w-1/2" />
+                <div className="h-8 bg-[#1d1d30] rounded mt-8" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {urejanje && (
         <p className="text-center text-[#5a5a80] text-xs mb-2 px-5">
           Povleci avte da spreminjaš vrstni red
         </p>
       )}
 
-      {avti.length === 0 ? (
+      {!loading && avti.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-5">
           <div className="text-center">
             <p className="text-6xl mb-4">🚗</p>
@@ -275,13 +301,14 @@ export default function Garaza() {
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
                   {avto.slika_url ? (
                     <img src={avto.slika_url} alt={avto.znamka}
-                      className="absolute inset-0 w-full h-full object-cover" />
+                      loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1a1630] to-[#080810]" />
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
 
-                  {urejanje && (
+
+      {urejanje && (
                     <div className="absolute top-1 left-1 bg-black/60 rounded-md px-1 py-0.5">
                       <span className="text-white text-[10px]">⠿</span>
                     </div>
@@ -348,7 +375,7 @@ export default function Garaza() {
                 <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
                   {avto.slika_url ? (
                   <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
-                    className="absolute inset-0 w-full h-full object-cover object-center" />
+                    loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0
