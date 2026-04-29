@@ -177,6 +177,9 @@ export default function Nastavitve() {
   const preklopiTemo = () => {
     const novaTema = tema === 'temna' ? 'svetla' : 'temna'
     setTema(novaTema)
+    const raw = localStorage.getItem('garagebase_nastavitve')
+    const current = raw ? JSON.parse(raw) : {}
+    localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: novaTema }))
     if (novaTema === 'svetla') {
       document.documentElement.classList.add('light-mode')
     } else {

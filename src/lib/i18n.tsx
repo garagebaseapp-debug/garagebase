@@ -6,6 +6,11 @@ export type Language = 'sl' | 'en'
 
 type LabelKey = keyof typeof labels
 
+export const supportedLanguages: Array<{ code: Language; label: string }> = [
+  { code: 'sl', label: 'Slovenščina' },
+  { code: 'en', label: 'English' },
+]
+
 const labels = {
   home: { sl: 'Domov', en: 'Home' },
   garage: { sl: 'Garaža', en: 'Garage' },
@@ -109,6 +114,10 @@ function translateCore(value: string, language: Language): string {
   if (eur) return `€${eur[1]}`
 
   return value
+}
+
+export function translateText(value: string, language: Language): string {
+  return translateCore(value, language)
 }
 
 function shouldSkipText(node: Text) {
