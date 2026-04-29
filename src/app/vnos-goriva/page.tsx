@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 
 export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -22,6 +23,9 @@ export default function VnosGoriva() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const [racun, setRacun] = useState<File | null>(null)
   const [racunPreview, setRacunPreview] = useState('')
+  const [ocrText, setOcrText] = useState('')
+  const [ocrMessage, setOcrMessage] = useState('')
+  const [ocrLoading, setOcrLoading] = useState(false)
   const postajRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -172,6 +176,35 @@ export default function VnosGoriva() {
     }
     setRacun(file)
     setRacunPreview(URL.createObjectURL(file))
+    setOcrText('')
+    setOcrMessage('')
+  }
+
+  const uporabiPrebranTekst = (text: string) => {
+    const result = parseReceiptText(text)
+    if (result.date) setDatum(result.date)
+    if (result.liters) setLitri(result.liters)
+    if (result.pricePerLiter) setCenaNaLiter(result.pricePerLiter)
+    if (result.station) setPostaja(result.station)
+    setOcrMessage('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.')
+  }
+
+  const preberiRacun = async () => {
+    if (!racun) {
+      setOcrMessage('Najprej dodaj ali slikaj racun.')
+      return
+    }
+    setOcrLoading(true)
+    setOcrMessage('')
+    try {
+      const text = await readReceiptTextFromImage(racun)
+      setOcrText(text)
+      uporabiPrebranTekst(text)
+    } catch (error: any) {
+      setOcrMessage(`${error.message} Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".`)
+    } finally {
+      setOcrLoading(false)
+    }
   }
 
   const naloziRacun = async () => {
@@ -384,10 +417,30 @@ export default function VnosGoriva() {
             )}
           </label>
           {racunPreview && (
-            <button type="button" onClick={() => { setRacun(null); setRacunPreview('') }}
-              className="text-[#ef4444] text-xs mt-2">
-              Odstrani sliko
-            </button>
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={preberiRacun} disabled={ocrLoading}
+                  className="rounded-xl bg-[#6c63ff] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  {ocrLoading ? 'Berem...' : 'Preberi racun'}
+                </button>
+                <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
+                  className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
+                  Odstrani sliko
+                </button>
+              </div>
+              <textarea
+                value={ocrText}
+                onChange={e => setOcrText(e.target.value)}
+                placeholder="Ce avtomatsko branje ni podprto, prilepi tekst racuna sem..."
+                rows={3}
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-[#6c63ff] transition-colors resize-none"
+              />
+              <button type="button" onClick={() => uporabiPrebranTekst(ocrText)}
+                className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
+                Uporabi tekst
+              </button>
+              {ocrMessage && <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>}
+            </div>
           )}
         </div>
 
