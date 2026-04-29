@@ -88,71 +88,6 @@ export default function LandingPage() {
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07070d]/80 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
-        <div className="landing-report-mockup absolute z-10 hidden xl:block">
-          <div className="landing-report-sheet landing-report-sheet-back" />
-          <div className="landing-report-paper relative w-[265px] overflow-hidden rounded-[8px] border border-white/45 bg-white p-4 text-[#151527] shadow-[0_28px_70px_rgba(0,0,0,0.48)]">
-            <div className="landing-report-curl" />
-            <div className="flex items-start justify-between gap-3 border-b border-[#e7e8f6] pb-2.5">
-              <div>
-                <p className="text-base font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
-                <p className="mt-1 text-[9px] font-bold uppercase tracking-[0.16em] text-[#6c63ff]">Verified report</p>
-              </div>
-              <div className="h-9 w-12 rounded-lg bg-gradient-to-br from-[#dbeafe] to-[#eef2ff] border border-[#d8dcf0]" />
-            </div>
-
-            <div className="mt-3 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[8px] font-bold uppercase text-[#7a8096]">Vozilo</p>
-                <p className="text-sm font-black leading-tight">Volvo XC90</p>
-                <p className="mt-1 text-[8px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
-              </div>
-              <div className="rounded-md border border-[#dfe3f4] px-2 py-1 text-center">
-                <p className="text-[7px] text-[#7a8096]">LASTNIKI</p>
-                <p className="text-xs font-black">2</p>
-              </div>
-            </div>
-
-            <div className="mt-3 grid grid-cols-3 gap-1.5">
-              {[
-                ['Servisi', '8'],
-                ['Gorivo', '96'],
-                ['Stroski', '12'],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-[#f5f6ff] p-1.5">
-                  <p className="text-[7px] font-bold uppercase text-[#7a8096]">{label}</p>
-                  <p className="text-sm font-black">{value}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-3 flex gap-2.5 rounded-xl border border-[#8b5cf6]/25 bg-[#f8f7ff] p-2.5">
-              <div className="relative grid h-[58px] w-[58px] shrink-0 grid-cols-12 gap-[1px] rounded-md border-2 border-[#3ecfcf] bg-white p-1 shadow-[0_0_0_4px_rgba(62,207,207,0.12)]">
-                {qrCells.flatMap((row, rowIndex) =>
-                  row.split('').map((cell, colIndex) => (
-                    <span
-                      key={`${rowIndex}-${colIndex}`}
-                      className={cell === '1' ? 'bg-[#151527]' : 'bg-white'}
-                    />
-                  )),
-                )}
-                <span className="absolute -top-3 left-2 rounded-full bg-[#071018] px-2 py-0.5 text-[7px] font-black uppercase tracking-[0.12em] text-[#3ecfcf] shadow-[0_0_18px_rgba(62,207,207,0.4)]">QR</span>
-              </div>
-              <div className="pt-1">
-                <p className="text-[8px] font-black uppercase tracking-[0.12em] text-[#6c63ff]">Preverjanje</p>
-                <p className="mt-1 text-[9px] font-semibold leading-snug text-[#34344a]">
-                  Skeniraj QR in preveri, ali je PDF enak zapisu v bazi.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-3 space-y-1.5 opacity-70">
-              {[82, 64, 74, 52, 68, 44].map((width, index) => (
-                <div key={index} className="h-1.5 rounded-full bg-[#e7e8f6]" style={{ width: `${width}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
         <div className="relative z-10 min-h-screen max-w-7xl mx-auto px-5 sm:px-8 pt-32 pb-24 flex items-center">
           <div className="landing-copy w-full max-w-[560px] lg:mb-10">
             <div className="inline-flex items-center gap-2 bg-black/24 border border-white/16 rounded-full px-4 py-2 mb-7 backdrop-blur-sm">
@@ -198,6 +133,39 @@ export default function LandingPage() {
               <div key={f.oznaka} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-xl p-6 hover:border-[#8b5cf666] transition-colors">
                 <p className="text-white font-bold text-lg mb-2">{f.oznaka}</p>
                 <p className="text-[#8a8aa8] text-sm leading-relaxed">{f.opis}</p>
+                {f.oznaka.startsWith('Poro') && (
+                  <div className="mt-5 rounded-xl border border-[#6c63ff33] bg-[#080810] p-4">
+                    <div className="relative mx-auto w-[180px]">
+                      <div className="absolute inset-0 translate-x-4 -translate-y-3 rotate-3 rounded-md border border-white/10 bg-white/80 shadow-lg" />
+                      <div className="relative rotate-[-2deg] overflow-hidden rounded-md bg-white p-3 text-[#151527] shadow-[0_18px_38px_rgba(0,0,0,0.35)]">
+                        <div className="flex items-start justify-between border-b border-[#e7e8f6] pb-2">
+                          <div>
+                            <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
+                            <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">Verified report</p>
+                          </div>
+                          <div className="h-7 w-10 rounded bg-[#eef2ff]" />
+                        </div>
+                        <p className="mt-2 text-[9px] font-black">Volvo XC90</p>
+                        <p className="text-[7px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
+                        <div className="mt-2 grid grid-cols-3 gap-1">
+                          {['8', '96', '12'].map((value, index) => (
+                            <div key={index} className="rounded bg-[#f5f6ff] p-1 text-center text-[9px] font-black">{value}</div>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#8b5cf633] bg-[#f8f7ff] p-2">
+                          <div className="grid h-10 w-10 shrink-0 grid-cols-12 gap-[1px] rounded border border-[#3ecfcf] bg-white p-1">
+                            {qrCells.flatMap((row, rowIndex) =>
+                              row.split('').map((cell, colIndex) => (
+                                <span key={`${rowIndex}-${colIndex}`} className={cell === '1' ? 'bg-[#151527]' : 'bg-white'} />
+                              )),
+                            )}
+                          </div>
+                          <p className="text-[7px] font-bold leading-tight text-[#34344a]">QR preveri, ali je PDF enak zapisu v bazi.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
