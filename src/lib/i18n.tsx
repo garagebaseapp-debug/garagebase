@@ -42,6 +42,8 @@ const phrasePairs: Array<[string, string]> = [
   ['Skupaj servisov', 'Total services'], ['Skupaj strošek', 'Total service cost'], ['+ Dodaj servis', '+ Add service'], ['Opravljeno delo', 'Work performed'], ['Tapni za detajle', 'Tap for details'], ['Tapni za detajle →', 'Tap for details →'], ['Ni priloženih računov', 'No receipt photos attached'],
   ['Dodaj opomnik', 'Add reminder'], ['Tip', 'Type'], ['Opozori X dni prej', 'Warn X days before'], ['Shranjujem...', 'Saving...'], ['Dodaj registracijo, vinjeto ali drug opomnik', 'Add registration, vignette or another reminder'], ['Drugo...', 'Other...'],
   ['Slike racunov', 'Receipt photos'], ['Slike računov', 'Receipt photos'], ['To vozilo ima priložene slike računov. V PDF reportu so označene z [ DA ] — za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com', 'This vehicle has attached receipt photos. In the PDF report they are marked with [ YES ] — ask the seller for access in the GarageBase app to view original photos at getgaragebase.com'], ['PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroške — idealno za prodajo vozila.', 'The PDF report contains the full service history, fuel log and expenses — ideal when selling a vehicle.'],
+  ['Ime servisa (po želji)', 'Service name (optional)'], ['Cena (€)', 'Price (€)'], ['Slike računov (največ 3, max 2MB vsaka)', 'Receipt photos (maximum 3, max 2MB each)'], ['Dodaj sliko računa', 'Add receipt photo'], ['Naslednji servis', 'Next service'], ['Če vneseš interval, aplikacija sama ustvari opomnik.', 'If you enter an interval, the app creates a reminder automatically.'], ['Čez km', 'After km'], ['Čez dni', 'After days'], ['Shrani servis', 'Save service'], ['Shrani servis →', 'Save service →'], ['Nalaganje slik...', 'Uploading photos...'],
+  ['Izbriši vozilo', 'Delete vehicle'], ['Ali res želiš izbrisati', 'Do you really want to delete'], ['Vsi podatki bodo trajno izgubljeni!', 'All data will be permanently lost!'], ['Si prepričan? Tega dejanja ni možno razveljaviti!', 'Are you sure? This action cannot be undone!'], ['npr. Vozilo redno servisirano, računi priloženi...', 'e.g. Vehicle regularly serviced, receipts attached...'],
 ]
 
 const slToEn = new Map<string, string>()
@@ -91,6 +93,10 @@ function translateCore(value: string, language: Language): string {
 
   if (clean.startsWith('⚠️ Naknaden vnos')) {
     return '⚠️ Backdated entry — the actual entry time will be recorded'
+  }
+
+  if (clean.startsWith('⚠️ Naknadno vnešen servis')) {
+    return clean.replace('Naknadno vnešen servis', 'Backdated service entry').replace('zabeležen datum vnosa', 'entry date recorded')
   }
 
   const days = clean.match(/^(-?\d+)\s*dni$/i)

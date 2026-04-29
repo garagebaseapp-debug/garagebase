@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { createTransferToken, scanUrl } from '@/lib/transfer'
+import { getStoredLanguage, type Language } from '@/lib/i18n'
 import QRCode from 'qrcode'
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
@@ -80,13 +81,98 @@ const maskVin = (vin?: string) => {
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage }: any) => {
+const pdfCopy = {
+  sl: {
+    subtitle: 'Servisna knjiga in evidenca vozila',
+    badge: 'VERIFICIRAN REPORT',
+    year: 'Letnik',
+    plate: 'Tablica',
+    fuel: 'Gorivo',
+    currentKm: 'Trenutni km',
+    generated: 'Generirano',
+    costOverview: 'Pregled stroskov',
+    totalCosts: 'SKUPAJ STROSKI',
+    services: 'SERVISI',
+    other: 'OSTALO',
+    totalLiters: 'SKUPAJ LITROV',
+    serviceCount: 'ST. SERVISOV',
+    fuelCount: 'ST. TANKANIJ',
+    ownership: 'Lastnistvo in prenos',
+    owners: 'ST. LASTNIKOV',
+    ownerCity: 'MESTO LASTNIKA',
+    ownerAge: 'STAROST LASTNIKA',
+    transferConsent: 'SOGLASJE PRENOSA',
+    yes: 'DA',
+    no: 'NE',
+    transferredNote: 'Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.',
+    qrRead: 'QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom.',
+    qrImport: 'QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev.',
+    serviceBook: 'Servisna knjiga',
+    date: 'Datum',
+    km: 'Km',
+    work: 'Opis dela',
+    price: 'Cena',
+    receipt: 'Racun',
+    receiptsNote: '[ DA ] = Slike racunov so prilozene v GarageBase aplikaciji. Za ogled originalnih racunov zahtevajte dostop pri prodajalcu vozila ali obiscite getgaragebase.com',
+    fuelLog: 'Evidenca goriva',
+    type: 'Tip',
+    litersStation: 'Litri - Postaja',
+    extraCosts: 'Dodatni stroski',
+    category: 'Kategorija',
+    description: 'Opis',
+    amount: 'Znesek',
+  },
+  en: {
+    subtitle: 'Service book and vehicle record',
+    badge: 'VERIFIED REPORT',
+    year: 'Year',
+    plate: 'Plate',
+    fuel: 'Fuel',
+    currentKm: 'Current mileage',
+    generated: 'Generated',
+    costOverview: 'Cost overview',
+    totalCosts: 'TOTAL COSTS',
+    services: 'SERVICES',
+    other: 'OTHER',
+    totalLiters: 'TOTAL LITERS',
+    serviceCount: 'NO. OF SERVICES',
+    fuelCount: 'NO. OF FILL-UPS',
+    ownership: 'Ownership and transfer',
+    owners: 'NO. OF OWNERS',
+    ownerCity: 'OWNER CITY',
+    ownerAge: 'OWNER AGE',
+    transferConsent: 'TRANSFER CONSENT',
+    yes: 'YES',
+    no: 'NO',
+    transferredNote: 'Records marked with [Previous owner] are transferred history. New records from the current owner are not marked.',
+    qrRead: 'QR READ: scan for the digital report from the GarageBase database. Compare the data with the PDF document.',
+    qrImport: 'QR HISTORY IMPORT: scan to import the vehicle and history into a new GarageBase garage. Confirmation is shown before import.',
+    serviceBook: 'Service book',
+    date: 'Date',
+    km: 'Km',
+    work: 'Work performed',
+    price: 'Price',
+    receipt: 'Receipt',
+    receiptsNote: '[ YES ] = Receipt photos are attached in the GarageBase app. Ask the vehicle seller for access to view original receipts or visit getgaragebase.com',
+    fuelLog: 'Fuel log',
+    type: 'Type',
+    litersStation: 'Liters - Station',
+    extraCosts: 'Additional costs',
+    category: 'Category',
+    description: 'Description',
+    amount: 'Amount',
+  },
+} as const
+
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl' }: any) => {
+  const copy = pdfCopy[language as Language] || pdfCopy.sl
+  const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const skupajLitrov = gorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
-  const danes = new Date().toLocaleDateString('sl-SI')
+  const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = servisi.some((s: any) => s.foto_url)
   const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
 
@@ -98,9 +184,9 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.appName}>GarageBase</Text>
-            <Text style={styles.appSubtitle}>Servisna knjiga in evidenca vozila</Text>
+            <Text style={styles.appSubtitle}>{copy.subtitle}</Text>
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>VERIFICIRAN REPORT</Text>
+              <Text style={styles.badgeText}>{copy.badge}</Text>
             </View>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
@@ -108,51 +194,51 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             <Text style={[styles.carTitle, { marginTop: includeVehicleImage && avto.slika_url ? 8 : 0 }]}>
               {avto.znamka?.charAt(0).toUpperCase() + avto.znamka?.slice(1)} {avto.model?.toUpperCase()}
             </Text>
-            {avto.letnik && <Text style={styles.carInfo}>Letnik: {avto.letnik}</Text>}
-            {avto.tablica && <Text style={styles.carInfo}>Tablica: {avto.tablica.toUpperCase()}</Text>}
+            {avto.letnik && <Text style={styles.carInfo}>{copy.year}: {avto.letnik}</Text>}
+            {avto.tablica && <Text style={styles.carInfo}>{copy.plate}: {avto.tablica.toUpperCase()}</Text>}
             {avto.vin && <Text style={styles.carInfo}>VIN: {maskVin(avto.vin)}</Text>}
-            {avto.gorivo && <Text style={styles.carInfo}>Gorivo: {avto.gorivo}</Text>}
-            {avto.km_trenutni && <Text style={styles.carInfo}>Trenutni km: {avto.km_trenutni.toLocaleString()} km</Text>}
-            <Text style={styles.reportDate}>Generirano: {danes}</Text>
+            {avto.gorivo && <Text style={styles.carInfo}>{copy.fuel}: {avto.gorivo}</Text>}
+            {avto.km_trenutni && <Text style={styles.carInfo}>{copy.currentKm}: {avto.km_trenutni.toLocaleString()} km</Text>}
+            <Text style={styles.reportDate}>{copy.generated}: {danes}</Text>
           </View>
         </View>
 
         {/* Statistike */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pregled stroskov</Text>
+          <Text style={styles.sectionTitle}>{copy.costOverview}</Text>
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SKUPAJ STROSKI</Text>
+              <Text style={styles.statLabel}>{copy.totalCosts}</Text>
               <Text style={styles.statValue}>{skupajVse.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>GORIVO</Text>
+              <Text style={styles.statLabel}>{copy.fuel.toUpperCase()}</Text>
               <Text style={styles.statValue}>{skupajGorivo.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SERVISI</Text>
+              <Text style={styles.statLabel}>{copy.services}</Text>
               <Text style={styles.statValue}>{skupajServis.toFixed(2)} EUR</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>OSTALO</Text>
+              <Text style={styles.statLabel}>{copy.other}</Text>
               <Text style={styles.statValue}>{skupajExpenses.toFixed(2)} EUR</Text>
             </View>
           </View>
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SKUPAJ LITROV</Text>
+              <Text style={styles.statLabel}>{copy.totalLiters}</Text>
               <Text style={styles.statValue}>{skupajLitrov.toFixed(0)} L</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>ST. SERVISOV</Text>
+              <Text style={styles.statLabel}>{copy.serviceCount}</Text>
               <Text style={styles.statValue}>{servisi.length}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>ST. TANKANIJ</Text>
+              <Text style={styles.statLabel}>{copy.fuelCount}</Text>
               <Text style={styles.statValue}>{gorivo.length}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>TRENUTNI KM</Text>
+              <Text style={styles.statLabel}>{copy.currentKm.toUpperCase()}</Text>
               <Text style={styles.statValue}>{avto.km_trenutni?.toLocaleString() || '-'}</Text>
             </View>
           </View>
@@ -161,63 +247,63 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
 
         {/* Lastnistvo */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lastnistvo in prenos</Text>
+          <Text style={styles.sectionTitle}>{copy.ownership}</Text>
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>ST. LASTNIKOV</Text>
+              <Text style={styles.statLabel}>{copy.owners}</Text>
               <Text style={styles.statValue}>{avto.st_lastnikov || '-'}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>MESTO LASTNIKA</Text>
+              <Text style={styles.statLabel}>{copy.ownerCity}</Text>
               <Text style={styles.statValue}>{avto.lastnik_mesto || '-'}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>STAROST LASTNIKA</Text>
+              <Text style={styles.statLabel}>{copy.ownerAge}</Text>
               <Text style={styles.statValue}>{avto.lastnik_starost || '-'}</Text>
             </View>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>SOGLASJE PRENOSA</Text>
-              <Text style={styles.statValue}>{avto.prenos_soglasje ? 'DA' : 'NE'}</Text>
+              <Text style={styles.statLabel}>{copy.transferConsent}</Text>
+              <Text style={styles.statValue}>{avto.prenos_soglasje ? copy.yes : copy.no}</Text>
             </View>
           </View>
           {avto.prenos_opomba && <Text style={styles.opomba}>{avto.prenos_opomba}</Text>}
-          {imaPrenesene && <Text style={styles.opomba}>Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.</Text>}
+          {imaPrenesene && <Text style={styles.opomba}>{copy.transferredNote}</Text>}
           {verifyQr && (
             <View style={styles.qrBox}>
               <Image src={verifyQr} style={styles.qrImage} />
-              <Text style={styles.qrText}>QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom.</Text>
+              <Text style={styles.qrText}>{copy.qrRead}</Text>
             </View>
           )}
           {importQr && (
             <View style={styles.qrBox}>
               <Image src={importQr} style={styles.qrImage} />
-              <Text style={styles.qrText}>QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev.</Text>
+              <Text style={styles.qrText}>{copy.qrImport}</Text>
             </View>
           )}
         </View>
         {/* Servisna knjiga */}
         {servisi.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Servisna knjiga</Text>
+            <Text style={styles.sectionTitle}>{copy.serviceBook}</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.sDateH}>Datum</Text>
-              <Text style={styles.sKmH}>Km</Text>
-              <Text style={styles.sOpisH}>Opis dela</Text>
-              <Text style={styles.sCenaH}>Cena</Text>
-              <Text style={styles.sRacunH}>Racun</Text>
+              <Text style={styles.sDateH}>{copy.date}</Text>
+              <Text style={styles.sKmH}>{copy.km}</Text>
+              <Text style={styles.sOpisH}>{copy.work}</Text>
+              <Text style={styles.sCenaH}>{copy.price}</Text>
+              <Text style={styles.sRacunH}>{copy.receipt}</Text>
             </View>
             {servisi.map((s: any, i: number) => (
               <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
                 <Text style={styles.sKm}>{s.km?.toLocaleString()}</Text>
                 <Text style={styles.sOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 55)}{s.servis ? ` (${s.servis})` : ''}</Text>
                 <Text style={styles.sCena}>{s.cena ? `${s.cena.toFixed(2)} EUR` : '-'}</Text>
-                <Text style={styles.sRacun}>{s.foto_url ? '[ DA ]' : '-'}</Text>
+                <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
               </View>
             ))}
             {imaPrivonke && (
               <Text style={styles.opomba}>
-                [ DA ] = Slike racunov so pritozene v GarageBase aplikaciji. Za ogled originalnih racunov zahtevajte dostop pri prodajalcu vozila ali obisite getgaragebase.com
+                {copy.receiptsNote}
               </Text>
             )}
           </View>
@@ -226,17 +312,17 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {/* Gorivo */}
         {gorivo.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Evidenca goriva</Text>
+            <Text style={styles.sectionTitle}>{copy.fuelLog}</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.gDateH}>Datum</Text>
-              <Text style={styles.gKmH}>Km</Text>
-              <Text style={styles.gTipH}>Tip</Text>
-<Text style={styles.gOpisH}>Litri - Postaja</Text>
-              <Text style={styles.gCenaH}>Cena</Text>
+              <Text style={styles.gDateH}>{copy.date}</Text>
+              <Text style={styles.gKmH}>{copy.km}</Text>
+              <Text style={styles.gTipH}>{copy.type}</Text>
+<Text style={styles.gOpisH}>{copy.litersStation}</Text>
+              <Text style={styles.gCenaH}>{copy.price}</Text>
             </View>
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
                 <Text style={styles.gKm}>{g.km?.toLocaleString()}</Text>
                 <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
@@ -251,16 +337,16 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {/* Dodatni stroski */}
         {expenses.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Dodatni stroski</Text>
+            <Text style={styles.sectionTitle}>{copy.extraCosts}</Text>
             <View style={styles.tableHeader}>
-              <Text style={styles.eDateH}>Datum</Text>
-              <Text style={styles.eKatH}>Kategorija</Text>
-              <Text style={styles.eOpisH}>Opis</Text>
-              <Text style={styles.eCenaH}>Znesek</Text>
+              <Text style={styles.eDateH}>{copy.date}</Text>
+              <Text style={styles.eKatH}>{copy.category}</Text>
+              <Text style={styles.eOpisH}>{copy.description}</Text>
+              <Text style={styles.eCenaH}>{copy.amount}</Text>
             </View>
             {expenses.map((e: any, i: number) => (
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString('sl-SI')}</Text>
+                <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString(locale)}</Text>
                 <Text style={styles.eKat}>{e.kategorija}</Text>
                 <Text style={styles.eOpis}>{String(e.opis || '-').replace('[Prejsnji lastnik]', '[PREJSNJI]')}</Text>
                 <Text style={styles.eCena}>{e.znesek?.toFixed(2)} EUR</Text>
@@ -272,7 +358,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {/* Footer */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>GarageBase - getgaragebase.com</Text>
-          <Text style={styles.footerText}>Generirano: {danes}</Text>
+          <Text style={styles.footerText}>{copy.generated}: {danes}</Text>
         </View>
 
       </Page>
@@ -293,9 +379,10 @@ export default function Report() {
   const [includeImportQr, setIncludeImportQr] = useState(false)
   const [includeVehicleImage, setIncludeVehicleImage] = useState(true)
   const [includeReceiptImages, setIncludeReceiptImages] = useState(false)
+  const [language, setLanguage] = useState<Language>('sl')
 
 
-  const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[]) => {
+  const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[], reportLanguage: Language) => {
     const carSummary = {
       znamka: avtoData?.znamka,
       model: avtoData?.model,
@@ -335,6 +422,7 @@ export default function Report() {
     const makePayload = (mode: 'verify' | 'import') => ({
       type: 'garagebase-transfer-v1',
       mode,
+      language: reportLanguage,
       exportedAt: new Date().toISOString(),
       consent: true,
       car: carSummary,
@@ -361,6 +449,8 @@ export default function Report() {
   }
   useEffect(() => {
     const init = async () => {
+      const currentLanguage = getStoredLanguage()
+      setLanguage(currentLanguage)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
@@ -378,7 +468,7 @@ export default function Report() {
       setExpenses(filteredExpenses)
 
       try {
-        await pripraviQrKode(carId, user.id, avtoData, servisData || [], gorivoData || [], filteredExpenses)
+        await pripraviQrKode(carId, user.id, avtoData, servisData || [], gorivoData || [], filteredExpenses, currentLanguage)
       } catch {
         setVerifyQr('')
         setImportQr('')
@@ -474,7 +564,7 @@ export default function Report() {
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} />}
+          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
