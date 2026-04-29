@@ -27,10 +27,12 @@ export default function VnosGoriva() {
   const [ocrText, setOcrText] = useState('')
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrAllowed, setOcrAllowed] = useState(false)
   const postajRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
   const jeNaknaden = datum < danes
+  const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
   const tipiGoriva = [
     { vrednost: '95', naziv: '95', barva: 'bg-[#16a34a]', barvaText: 'text-[#16a34a]', barvaBorder: 'border-[#16a34a]', opis: 'Bencin 95' },
@@ -46,6 +48,13 @@ export default function VnosGoriva() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
+      const email = user.email?.toLowerCase() || ''
+      let isAdmin = adminEmails.includes(email)
+      if (!isAdmin) {
+        const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
+        isAdmin = !!adminRow
+      }
+      setOcrAllowed(isAdmin)
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
       const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo').eq('user_id', user.id)
@@ -201,6 +210,11 @@ export default function VnosGoriva() {
   }
 
   const preberiRacun = async () => {
+    if (!ocrAllowed) {
+      setOcrMessage('AI branje racunov je trenutno v internem testiranju. Javna lansiranje je planirano v letu 2027.')
+      trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
+      return
+    }
     if (!racun) {
       setOcrMessage('Najprej dodaj ali slikaj racun.')
       return
@@ -437,8 +451,8 @@ export default function VnosGoriva() {
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={preberiRacun} disabled={ocrLoading}
-                  className="rounded-xl bg-[#6c63ff] px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
-                  {ocrLoading ? 'Berem...' : 'Preberi racun'}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
+                  {ocrLoading ? 'Berem...' : ocrAllowed ? 'Preberi racun' : 'AI scan - Coming 2027'}
                 </button>
                 <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
                   className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
@@ -456,6 +470,12 @@ export default function VnosGoriva() {
                 className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
                 Uporabi tekst
               </button>
+              {!ocrAllowed && (
+                <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
+                  <p className="text-[#f59e0b] text-xs font-bold">AI/OCR branje racunov je zaklenjeno za beta uporabnike.</p>
+                  <p className="text-[#f8c873] text-xs mt-1">Funkcija je v internem testiranju in je planirana za javni lansiranje v letu 2027. Rocni vnos in shranjevanje slike racuna delujeta normalno.</p>
+                </div>
+              )}
               {ocrMessage && <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>}
             </div>
           )}

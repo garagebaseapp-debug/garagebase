@@ -22,6 +22,8 @@ export default function VnosStroska() {
   const [ocrText, setOcrText] = useState('')
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrAllowed, setOcrAllowed] = useState(false)
+  const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
   const kategorije = [
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
@@ -38,6 +40,13 @@ export default function VnosStroska() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
+      const email = user.email?.toLowerCase() || ''
+      let isAdmin = adminEmails.includes(email)
+      if (!isAdmin) {
+        const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
+        isAdmin = !!adminRow
+      }
+      setOcrAllowed(isAdmin)
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
       const { data } = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)
@@ -143,6 +152,11 @@ export default function VnosStroska() {
   }
 
   const preberiRacun = async () => {
+    if (!ocrAllowed) {
+      setOcrMessage('AI branje racunov je trenutno v internem testiranju. Javna lansiranje je planirano v letu 2027.')
+      trackEvent('receipt_scan_locked_clicked', { carId, type: 'expense' })
+      return
+    }
     if (!racun) {
       setOcrMessage('Najprej dodaj ali slikaj racun.')
       return
@@ -306,8 +320,8 @@ export default function VnosStroska() {
             <div className="mt-3 space-y-3">
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={preberiRacun} disabled={ocrLoading}
-                  className="rounded-xl bg-[#3ecfcf] px-3 py-2 text-sm font-semibold text-black disabled:opacity-50">
-                  {ocrLoading ? 'Berem...' : 'Preberi racun'}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#3ecfcf] text-black' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
+                  {ocrLoading ? 'Berem...' : ocrAllowed ? 'Preberi racun' : 'AI scan - Coming 2027'}
                 </button>
                 <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
                   className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
@@ -325,6 +339,12 @@ export default function VnosStroska() {
                 className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
                 Uporabi tekst
               </button>
+              {!ocrAllowed && (
+                <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
+                  <p className="text-[#f59e0b] text-xs font-bold">AI/OCR branje racunov je zaklenjeno za beta uporabnike.</p>
+                  <p className="text-[#f8c873] text-xs mt-1">Funkcija je v internem testiranju in je planirana za javni lansiranje v letu 2027. Rocni vnos in shranjevanje slike racuna delujeta normalno.</p>
+                </div>
+              )}
               {ocrMessage && <p className="text-[#3ecfcf] text-xs leading-relaxed">{ocrMessage}</p>}
             </div>
           )}

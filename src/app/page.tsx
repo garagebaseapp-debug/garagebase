@@ -24,6 +24,7 @@ export default function LandingPage() {
     { oznaka: 'Poročila', opis: 'Pregleden PDF za prodajo vozila.' },
     { oznaka: 'Mobilna app', opis: 'Namesti na telefon in uporabljaj kot aplikacijo.' },
     { oznaka: 'Več vozil', opis: 'Celotna domača garaža na enem mestu.' },
+    { oznaka: 'AI scan racunov', opis: 'Avtomatsko branje racunov je v testiranju in planirano za 2027.' },
   ]
 
   return (
