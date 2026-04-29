@@ -698,10 +698,6 @@ export default function Nastavitve() {
           className="w-full bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors">
           Odpri predloge
         </button>
-        <button onClick={() => window.location.href = '/admin-feedback'}
-          className="mt-2 w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
-          Admin pregled predlogov
-        </button>
         <button onClick={() => { trackEvent('admin_open'); window.location.href = '/admin' }}
           className="mt-2 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
           Glavni admin panel
