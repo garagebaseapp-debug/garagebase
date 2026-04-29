@@ -48,6 +48,7 @@ export default function Nastavitve() {
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
     opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
+  const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
 
   useEffect(() => {
@@ -55,6 +56,12 @@ export default function Nastavitve() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       setUser(user)
+      const { data: adminRow } = await supabase
+        .from('admin_users')
+        .select('email')
+        .eq('email', user.email)
+        .maybeSingle()
+      setIsAdmin(!!adminRow)
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
       if (shranjeneNastavitve) {
         const n = JSON.parse(shranjeneNastavitve)
@@ -364,9 +371,14 @@ export default function Nastavitve() {
                 ['Prikaz', '#garaza-prikaz'],
                 ['Feedback', '#feedback'],
                 ['Aplikacija', '#aplikacija'],
+                ...(isAdmin ? [['Admin panel', '/admin']] : []),
               ].map(([label, href]) => (
                 <a key={href} href={href}
-                  className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-[#5a5a80] transition-colors hover:bg-[#6c63ff11] hover:text-[#a09aff]">
+                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
+                    href === '/admin'
+                      ? 'mt-3 border border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff] hover:bg-[#6c63ff33]'
+                      : 'text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
+                  }`}>
                   {label}
                   <span className="text-[#3a3a5a]">→</span>
                 </a>
@@ -713,10 +725,6 @@ export default function Nastavitve() {
         <button onClick={() => { trackEvent('feedback_open'); window.location.href = '/feedback' }}
           className="w-full bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors">
           Odpri predloge
-        </button>
-        <button onClick={() => { trackEvent('admin_open'); window.location.href = '/admin' }}
-          className="mt-2 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
-          Glavni admin panel
         </button>
       </div>
 
