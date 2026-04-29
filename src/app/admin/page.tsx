@@ -68,6 +68,88 @@ const eventName = (name: string) => {
 
 const dayKey = (value: string) => new Date(value).toISOString().slice(0, 10)
 
+const rangeLabel: Record<string, string> = {
+  '24h': '24h',
+  '7d': '7 dni',
+  '30d': '30 dni',
+  all: 'Vse',
+}
+
+const rangeStart = (range: string) => {
+  const now = Date.now()
+  if (range === '24h') return new Date(now - 24 * 60 * 60 * 1000).toISOString()
+  if (range === '7d') return new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+  if (range === '30d') return new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+  return null
+}
+
+const settingTitle: Record<string, string> = {
+  usageMode: 'Lite / Full',
+  theme: 'Dark / White',
+  garageDisplay: 'Prikaz garaze',
+  language: 'Jezik',
+  appLockEnabled: 'Biometrija',
+  fontSize: 'Velikost pisave',
+  desktopColumns: 'Avtov v vrstici web',
+  mobileGridColumns: 'Avtov v vrstici app',
+  cardFontPercent: 'Pisava na karticah',
+  autocomplete: 'Predlagane besede',
+  assistantUsage: 'AI pomocnik',
+  dateReminder: 'Datumski opomniki',
+  kmReminder: 'KM opomniki',
+}
+
+const valueLabel = (value: any) => {
+  if (value === true) return 'Da'
+  if (value === false) return 'Ne'
+  if (value === 'temna') return 'Dark'
+  if (value === 'svetla') return 'White'
+  if (value === 'sl') return 'SLO'
+  if (value === 'en') return 'ANG'
+  if (value === 'malo') return 'Malo'
+  if (value === 'srednje') return 'Srednje'
+  if (value === 'veliko') return 'Veliko'
+  if (value === 'normalna') return 'Normalna'
+  if (value === undefined || value === null || value === '') return 'Neznano'
+  return String(value)
+}
+
+const reminderChoice = (settings: any, prefix: 'opomnik' | 'opomnikKm') => {
+  const red = settings?.[`${prefix}Rdeci`]
+  const yellow = settings?.[`${prefix}Rumeni`]
+  const green = settings?.[`${prefix}Zeleni`]
+  if (red && yellow && green) return 'Nujni + kmalu + vsi'
+  if (red && yellow) return 'Nujni + kmalu'
+  if (red) return 'Nujni'
+  if (yellow) return 'Kmalu'
+  if (green) return 'Vsi'
+  return 'Izklopljeno'
+}
+
+const aggregateSetting = (events: any[], key: string, getter: (metadata: any) => any) => {
+  const latestByUser = new Map<string, any>()
+  for (const event of events) {
+    const userKey = event.user_id || event.id || `${event.created_at}-${Math.random()}`
+    const current = latestByUser.get(userKey)
+    if (!current || new Date(event.created_at) > new Date(current.created_at)) latestByUser.set(userKey, event)
+  }
+  const counts = new Map<string, number>()
+  for (const event of latestByUser.values()) {
+    const raw = getter(event.metadata || {})
+    const label = valueLabel(raw)
+    counts.set(label, (counts.get(label) || 0) + 1)
+  }
+  const total = Math.max(1, Array.from(counts.values()).reduce((sum, count) => sum + count, 0))
+  return {
+    key,
+    title: settingTitle[key] || key,
+    total: total === 1 && counts.size === 0 ? 0 : total,
+    values: Array.from(counts.entries())
+      .map(([label, count]) => ({ label, count, percent: Math.round((count / total) * 100) }))
+      .sort((a, b) => b.count - a.count),
+  }
+}
+
 const topSuggestionTerms = (items: any[]) => {
   const stop = new Set(['app', 'aplikacija', 'funkcija', 'garagebase', 'lahko', 'mogoce', 'prosim', 'dodaj', 'dodal', 'uporabno', 'zato', 'ker', 'and', 'the', 'for'])
   const counts = new Map<string, number>()
@@ -121,6 +203,8 @@ export default function AdminPage() {
   const [planName, setPlanName] = useState('max')
   const [planNote, setPlanNote] = useState('')
   const [planSaving, setPlanSaving] = useState(false)
+  const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
+  const [settingsStats, setSettingsStats] = useState<any[]>([])
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -150,7 +234,7 @@ export default function AdminPage() {
       setLoading(false)
     }
     init()
-  }, [])
+  }, [settingsRange])
 
   const countTable = async (table: string) => {
     const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true })
@@ -166,6 +250,14 @@ export default function AdminPage() {
       todayStart.setHours(0, 0, 0, 0)
       const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
       const since7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+      const settingsSince = rangeStart(settingsRange)
+      const settingsQuery = supabase
+        .from('app_events')
+        .select('id,event_name,created_at,user_id,metadata')
+        .in('event_name', ['settings_saved', 'assistant_page_open'])
+        .order('created_at', { ascending: false })
+        .limit(5000)
+      const filteredSettingsQuery = settingsSince ? settingsQuery.gte('created_at', settingsSince) : settingsQuery
 
       const [
         carsCount,
@@ -180,6 +272,7 @@ export default function AdminPage() {
         feedbackData,
         eventsData,
         errorsData,
+        settingsData,
         plansData,
       ] = await Promise.all([
         countTable('cars'),
@@ -194,17 +287,21 @@ export default function AdminPage() {
         supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200),
         supabase.from('app_events').select('event_name,created_at,user_id,page_path,metadata').gte('created_at', since30).order('created_at', { ascending: false }).limit(5000),
         supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
+        filteredSettingsQuery,
         supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
       ])
 
       if (carsData.error) throw carsData.error
       if (feedbackData.error) throw feedbackData.error
       if (eventsData.error) throw eventsData.error
+      if (settingsData.error) throw settingsData.error
       if (plansData.error) throw plansData.error
 
       const cars = carsData.data || []
       const events = eventsData.data || []
       const feedbackItems = feedbackData.data || []
+      const settingsEvents = (settingsData.data || []).filter((event: any) => event.event_name === 'settings_saved')
+      const assistantUsers = new Set((settingsData.data || []).filter((event: any) => event.event_name === 'assistant_page_open').map((event: any) => event.user_id).filter(Boolean)).size
       const uniqueUsers = new Set([
         ...cars.map((car: any) => car.user_id).filter(Boolean),
         ...events.map((event: any) => event.user_id).filter(Boolean),
@@ -281,6 +378,26 @@ export default function AdminPage() {
       setVehicleTypes(types)
       setTopFeedbackTerms(topSuggestionTerms(feedbackItems))
       setRecentErrors(errorsData.error ? [] : (errorsData.data || []))
+      setSettingsStats([
+        aggregateSetting(settingsEvents, 'usageMode', (m) => m.usageMode),
+        aggregateSetting(settingsEvents, 'theme', (m) => m.theme),
+        aggregateSetting(settingsEvents, 'garageDisplay', (m) => m.garageDisplay),
+        aggregateSetting(settingsEvents, 'language', (m) => m.language),
+        aggregateSetting(settingsEvents, 'appLockEnabled', (m) => m.appLockEnabled),
+        aggregateSetting(settingsEvents, 'fontSize', (m) => m.fontSize),
+        aggregateSetting(settingsEvents, 'desktopColumns', (m) => m.desktopColumns),
+        aggregateSetting(settingsEvents, 'mobileGridColumns', (m) => m.mobileGridColumns),
+        aggregateSetting(settingsEvents, 'cardFontPercent', (m) => `${m.cardFontPercent || 100}%`),
+        aggregateSetting(settingsEvents, 'dateReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnik')),
+        aggregateSetting(settingsEvents, 'kmReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnikKm')),
+        aggregateSetting(settingsEvents, 'autocomplete', (m) => m.autocomplete),
+        {
+          key: 'assistantUsage',
+          title: settingTitle.assistantUsage,
+          total: assistantUsers,
+          values: assistantUsers > 0 ? [{ label: 'Odprt', count: assistantUsers, percent: 100 }] : [],
+        },
+      ])
       setPlans(plansData.data || [])
     } catch (error: any) {
       setMessage(tx(
@@ -393,6 +510,66 @@ export default function AdminPage() {
             <p className="mt-1 text-xs text-[#5a5a80]">{card.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+        <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-white font-bold">{tx('Nastavitve uporabnikov', 'User settings')}</h2>
+            <p className="text-[#5a5a80] text-xs">
+              {tx('Pregled Lite/Full, teme, jezika, prikaza, biometrije in ostalih nastavitev.', 'Overview of Lite/Full, theme, language, display, biometrics and other settings.')}
+            </p>
+          </div>
+          <div className="grid grid-cols-4 gap-2 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-1">
+            {(['24h', '7d', '30d', 'all'] as const).map((range) => (
+              <button key={range} onClick={() => setSettingsRange(range)}
+                className={`rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+                  settingsRange === range
+                    ? 'bg-[#6c63ff] text-white'
+                    : 'text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
+                }`}>
+                {rangeLabel[range]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {settingsStats.every((item) => item.values.length === 0) ? (
+          <div className="rounded-2xl border border-[#f59e0b55] bg-[#f59e0b18] p-4">
+            <p className="font-bold text-[#f59e0b]">{tx('Podatki se bodo zaceli zbirati od zdaj naprej.', 'Data will start collecting from now on.')}</p>
+            <p className="mt-1 text-sm text-[#fbbf24]">
+              {tx('Ko uporabnik shrani nastavitve, se v adminu pokazejo stevilke in procenti.', 'When a user saves settings, numbers and percentages will show here.')}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+            {settingsStats.map((item) => (
+              <div key={item.key} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-bold text-white">{item.title}</h3>
+                  <span className="rounded-full bg-[#6c63ff22] px-3 py-1 text-xs font-bold text-[#a09aff]">
+                    {item.total} {tx('up.', 'users')}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-3">
+                  {item.values.length === 0 ? (
+                    <p className="text-xs text-[#5a5a80]">{tx('Ni podatkov.', 'No data.')}</p>
+                  ) : item.values.map((value: any) => (
+                    <div key={value.label}>
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-white">{value.label}</span>
+                        <span className="text-xs font-bold text-[#3ecfcf]">{value.count} / {value.percent}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${value.percent}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] mb-4">

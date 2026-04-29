@@ -170,6 +170,20 @@ export default function Nastavitve() {
     const current = raw ? JSON.parse(raw) : {}
     const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
+    trackEvent('settings_saved', {
+      usageMode: nacin,
+      language: jezik,
+      fontSize: pisava,
+      garageDisplay: prikazGaraze,
+      theme: tema,
+      desktopColumns: desktopStolpci,
+      mobileGridColumns: mobileGridStolpci,
+      cardFontPercent: garazaPisava,
+      autocomplete: avtocomplete,
+      appLockEnabled,
+      gridSettings: gridNastavitve,
+      listSettings: listaNastavitve,
+    })
     const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
     if (jeApp) document.documentElement.style.fontSize = velikosti[pisava]
@@ -233,6 +247,7 @@ export default function Nastavitve() {
       localStorage.setItem('garagebase_app_lock_credential', bufferToBase64Url(credential.rawId))
       localStorage.setItem('garagebase_app_lock_enabled', 'true')
       setAppLockEnabled(true)
+      trackEvent('app_lock_enabled')
       setAppLockMessage('Odklep aplikacije je vklopljen.')
     } catch (error) {
       console.error('App lock:', error)
@@ -245,6 +260,7 @@ export default function Nastavitve() {
     localStorage.removeItem('garagebase_app_lock_enabled')
     localStorage.removeItem('garagebase_app_lock_credential')
     setAppLockEnabled(false)
+    trackEvent('app_lock_disabled')
     setAppLockMessage('Odklep aplikacije je izklopljen.')
   }
   const spremeniJezik = (novJezik: Language) => {
