@@ -527,6 +527,9 @@ export default function Report() {
       await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import', token) })
       setImportQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
+    if (includeImportQr) {
+      await supabase.from('cars').update({ history_exported_at: new Date().toISOString() }).eq('id', carId)
+    }
   }
   useEffect(() => {
     const init = async () => {

@@ -11,6 +11,8 @@ export default function Garaza() {
   const [opomniki, setOpomniki] = useState<{ [key: string]: any[] }>({})
   const [loading, setLoading] = useState(true)
   const [urejanje, setUrejanje] = useState(false)
+  const [arhiv, setArhiv] = useState(false)
+  const [archiveMessage, setArchiveMessage] = useState('')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
@@ -74,8 +76,15 @@ export default function Garaza() {
       const started = performance.now()
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
+        .eq('arhivirano', false)
         .order('vrstni_red', { ascending: true })
-      const cars = data || []
+      let cars = data || []
+      if (!data) {
+        const { data: fallback } = await supabase
+          .from('cars').select('*').eq('user_id', user.id)
+          .order('vrstni_red', { ascending: true })
+        cars = fallback || []
+      }
       setAvti(cars)
 
       let opomnikMap: { [key: string]: any[] } = {}
@@ -105,6 +114,39 @@ export default function Garaza() {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
+  useEffect(() => {
+    const refreshArchive = async () => {
+      if (loading) return
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setArchiveMessage('')
+      const { data, error } = await supabase
+        .from('cars').select('*').eq('user_id', user.id)
+        .eq('arhivirano', arhiv)
+        .order('vrstni_red', { ascending: true })
+      if (error) {
+        setArchiveMessage(error.message.includes('arhivirano') ? 'Za arhiv najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql.' : error.message)
+        return
+      }
+      const cars = data || []
+      setAvti(cars)
+      if (cars.length > 0) {
+        const ids = cars.map((avto: any) => avto.id)
+        const { data: opData } = await supabase.from('reminders').select('*').in('car_id', ids).order('datum', { ascending: true })
+        const opomnikMap: { [key: string]: any[] } = {}
+        for (const avto of cars) opomnikMap[avto.id] = []
+        for (const op of opData || []) {
+          if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
+          opomnikMap[op.car_id].push(op)
+        }
+        setOpomniki(opomnikMap)
+      } else {
+        setOpomniki({})
+      }
+    }
+    refreshArchive()
+  }, [arhiv])
+
   const handleInstall = async () => {
     if (!installPrompt) return
     installPrompt.prompt()
@@ -115,6 +157,20 @@ export default function Garaza() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
+  }
+
+  const prodajniOpomnik = avti.find((avto: any) => {
+    if (!avto.history_exported_at || avto.arhivirano) return false
+    if (avto.archive_reminder_dismissed_until && new Date(avto.archive_reminder_dismissed_until) > new Date()) return false
+    const dnevi = Math.floor((Date.now() - new Date(avto.history_exported_at).getTime()) / (1000 * 60 * 60 * 24))
+    return dnevi >= 30
+  })
+
+  const preskociArhivOpomnik = async (carId: string) => {
+    const until = new Date()
+    until.setDate(until.getDate() + 30)
+    await supabase.from('cars').update({ archive_reminder_dismissed_until: until.toISOString() }).eq('id', carId)
+    setAvti(prev => prev.map(a => a.id === carId ? { ...a, archive_reminder_dismissed_until: until.toISOString() } : a))
   }
 
   const prviAvto = avti[0]
@@ -279,6 +335,36 @@ export default function Garaza() {
           </button>
         </div>
       </div>
+
+      <div className="px-5 pb-3 flex gap-2">
+        <button onClick={() => setArhiv(false)}
+          className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${!arhiv ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8080a0]'}`}>
+          Aktivna vozila
+        </button>
+        <button onClick={() => setArhiv(true)}
+          className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${arhiv ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8080a0]'}`}>
+          Arhiv
+        </button>
+      </div>
+
+      {archiveMessage && (
+        <div className="mx-5 mb-3 rounded-xl border border-[#f59e0b44] bg-[#f59e0b18] p-3 text-[#fbbf24] text-sm">
+          {archiveMessage}
+        </div>
+      )}
+
+      {prodajniOpomnik && !arhiv && (
+        <div className="mx-5 mb-3 rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf18] p-4">
+          <p className="text-[#3ecfcf] font-bold text-sm">Je {prodajniOpomnik.znamka} {prodajniOpomnik.model} ze prodan?</p>
+          <p className="text-[#7b7ba6] text-xs mt-1">Pred casom si pripravil izvoz zgodovine. Ce vozila ne uporabljas vec, ga arhiviraj in sprosti glavno garazo.</p>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <button onClick={() => window.location.href = `/nastavitve-avta?car=${prodajniOpomnik.id}`}
+              className="rounded-xl bg-[#3ecfcf] text-black py-2 text-sm font-bold">Uredi/arhiviraj</button>
+            <button onClick={() => preskociArhivOpomnik(prodajniOpomnik.id)}
+              className="rounded-xl border border-[#1e1e32] text-[#8080a0] py-2 text-sm font-semibold">Se uporabljam</button>
+          </div>
+        </div>
+      )}
 
       {loading && avti.length === 0 && (
         <div className="px-5 pb-4 space-y-3">

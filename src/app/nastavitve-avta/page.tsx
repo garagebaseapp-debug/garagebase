@@ -168,6 +168,23 @@ export default function NastavitveAvta() {
     setSaving(false)
   }
 
+  const nastaviArhiv = async (value: boolean) => {
+    if (!avto?.id) return
+    setSaving(true)
+    setMessage('')
+    const { error } = await supabase.from('cars').update({
+      arhivirano: value,
+      archived_at: value ? new Date().toISOString() : null,
+    }).eq('id', avto.id)
+    if (error) {
+      setMessage(error.message.includes('arhivirano') ? 'Napaka: v Supabase najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql' : 'Napaka: ' + error.message)
+    } else {
+      setAvto({ ...avto, arhivirano: value, archived_at: value ? new Date().toISOString() : null })
+      setMessage(value ? 'Vozilo je premaknjeno v arhiv.' : 'Vozilo je vrnjeno med aktivna vozila.')
+    }
+    setSaving(false)
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">Nalaganje...</p>
@@ -428,6 +445,11 @@ export default function NastavitveAvta() {
       <button onClick={shrani} disabled={saving}
         className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50">
         {saving ? 'Shranjevanje...' : 'Shrani spremembe →'}
+      </button>
+
+      <button onClick={() => nastaviArhiv(!avto?.arhivirano)} disabled={saving}
+        className="w-full mt-3 bg-[#3ecfcf18] border border-[#3ecfcf55] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf22] transition-colors disabled:opacity-50">
+        {avto?.arhivirano ? 'Vrni med aktivna vozila' : 'Arhiviraj vozilo'}
       </button>
 
       {/* Gumb za brisanje vozila */}

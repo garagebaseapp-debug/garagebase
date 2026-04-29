@@ -60,6 +60,7 @@ const eventName = (name: string) => {
     fuel_saved: 'Gorivo shranjeno',
     service_add_open: 'Vnos servisa odprt',
     service_saved: 'Servis shranjen',
+    service_verification_set: 'Zaupanje servisa',
     expense_add_open: 'Vnos stroska odprt',
     expense_saved: 'Strosek shranjen',
   }
@@ -182,6 +183,9 @@ export default function AdminPage() {
     expenses: 0,
     push: 0,
     transfers: 0,
+    archivedCars: 0,
+    receiptAttachments: 0,
+    strongServices: 0,
     feedback: 0,
     newFeedback: 0,
     events: 0,
@@ -283,7 +287,7 @@ export default function AdminPage() {
         countTable('vehicle_transfers'),
         countTable('feedback'),
         countTable('app_events'),
-        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,created_at').order('created_at', { ascending: false }).limit(5000),
+        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,arhivirano,created_at').order('created_at', { ascending: false }).limit(5000),
         supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200),
         supabase.from('app_events').select('event_name,created_at,user_id,page_path,metadata').gte('created_at', since30).order('created_at', { ascending: false }).limit(5000),
         supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
@@ -300,6 +304,10 @@ export default function AdminPage() {
       const cars = carsData.data || []
       const events = eventsData.data || []
       const feedbackItems = feedbackData.data || []
+      const archivedCars = cars.filter((car: any) => car.arhivirano === true).length
+      const receiptAttachments = events.filter((event: any) => event.event_name === 'fuel_saved' || event.event_name === 'service_saved' || event.event_name === 'expense_saved')
+        .filter((event: any) => event.metadata?.hasReceipt === true).length
+      const strongServices = events.filter((event: any) => event.event_name === 'service_verification_set' && event.metadata?.verificationLevel === 'strong').length
       const settingsEvents = (settingsData.data || []).filter((event: any) => event.event_name === 'settings_saved' || event.event_name === 'settings_snapshot')
       const assistantUsers = new Set((settingsData.data || []).filter((event: any) => event.event_name === 'assistant_page_open').map((event: any) => event.user_id).filter(Boolean)).size
       const uniqueUsers = new Set([
@@ -362,6 +370,9 @@ export default function AdminPage() {
         expenses: expensesCount,
         push: pushCount,
         transfers: transfersCount,
+        archivedCars,
+        receiptAttachments,
+        strongServices,
         feedback: feedbackCount,
         events: eventsCount,
         newFeedback,
@@ -418,6 +429,9 @@ export default function AdminPage() {
     { label: tx('Stroski', 'Expenses'), value: stats.expenses, hint: tx('dodatni stroski', 'additional expenses'), color: 'text-[#a09aff]' },
     { label: tx('Push naprave', 'Push devices'), value: stats.push, hint: tx('naročene naprave', 'subscribed devices'), color: 'text-[#4ade80]' },
     { label: tx('QR prenosi', 'QR transfers'), value: stats.transfers, hint: tx('ustvarjene QR kode', 'created QR codes'), color: 'text-[#fca5a5]' },
+    { label: tx('Arhiv', 'Archive'), value: stats.archivedCars || 0, hint: tx('arhivirana vozila', 'archived vehicles'), color: 'text-[#3ecfcf]' },
+    { label: tx('Racuni/slike', 'Receipts/photos'), value: stats.receiptAttachments || 0, hint: tx('vnosi s prilogami', 'entries with attachments'), color: 'text-[#4ade80]' },
+    { label: tx('Strong zapisi', 'Strong records'), value: stats.strongServices || 0, hint: tx('servisi z dokazili', 'services with proof'), color: 'text-[#16a34a]' },
     { label: tx('Feedback', 'Feedback'), value: stats.feedback, hint: `${stats.newFeedback} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
     { label: tx('Dogodki', 'Events'), value: stats.events || 0, hint: tx('kliki in akcije', 'clicks and actions'), color: 'text-[#4ade80]' },
     { label: tx('Napake', 'Errors'), value: stats.errors || 0, hint: tx('nove napake', 'new errors'), color: 'text-[#fca5a5]' },

@@ -43,14 +43,22 @@ export default function ZgodovinaServisa() {
   }
 
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena || 0), 0)
+  const trustBadge = (vnos: any) => {
+    if (vnos.verification_level === 'strong') return { label: 'Strong', cls: 'bg-[#16a34a22] border-[#16a34a55] text-[#4ade80]' }
+    if (vnos.verification_level === 'photo') return { label: 'Photo', cls: 'bg-[#3ecfcf22] border-[#3ecfcf55] text-[#3ecfcf]' }
+    return { label: 'Basic', cls: 'bg-[#6c63ff22] border-[#6c63ff55] text-[#a09aff]' }
+  }
 
   const shraniUredi = async (id: string) => {
+    const existing = vnosi.find(v => v.id === id)
+    if (existing?.verification_level === 'strong' || existing?.locked_at) return
     setSaving(true)
     await supabase.from('service_logs').update({
       datum: editData.datum,
       opis: editData.opis,
       servis: editData.servis || null,
       cena: editData.cena ? parseFloat(editData.cena) : null,
+      edited_at: new Date().toISOString(),
     }).eq('id', id)
     const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: false })
     setVnosi(servisi || [])
@@ -100,15 +108,25 @@ export default function ZgodovinaServisa() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {vnosi.map((vnos) => {
+          {vnosi.map((vnos, index) => {
             const imaSlike = vnos.foto_url && vnos.foto_url.length > 0
+            const jePrejsnjiLastnik = !!vnos.source_owner_label || vnos.opis?.includes('[Prejsnji lastnik]')
+            const prejJePrejsnjiLastnik = index > 0 && (!!vnosi[index - 1].source_owner_label || vnosi[index - 1].opis?.includes('[Prejsnji lastnik]'))
             const jeNaknaden = vnos.opis?.includes('[Naknadno vnešeno:')
             const opisBrezOznake = vnos.opis?.replace(/\s*\[Naknadno vnešeno:.*?\]/, '') || ''
             const preostalo = preostaliCas(vnos.created_at)
+            const isStrong = vnos.verification_level === 'strong' || !!vnos.locked_at
             const jeUredi = uredi === vnos.id
+            const badge = trustBadge(vnos)
 
             return (
-              <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+              <div key={vnos.id}>
+              {jePrejsnjiLastnik && !prejJePrejsnjiLastnik && (
+                <div className="my-2 rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-3 py-2 text-center text-[#a09aff] text-xs font-bold">
+                  Zgodovina prejsnjega lastnika
+                </div>
+              )}
+              <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
 
                 <div className="flex justify-between items-start mb-2">
                   <div>
@@ -116,6 +134,7 @@ export default function ZgodovinaServisa() {
                       <p className="text-white font-semibold">
                         {new Date(vnos.datum).toLocaleDateString('sl-SI')}
                       </p>
+                      <span className={`text-xs border px-1.5 py-0.5 rounded-md font-bold ${badge.cls}`}>{badge.label}</span>
                       {jeNaknaden && (
                         <span className="text-[#f59e0b] text-xs bg-[#f59e0b22] px-1.5 py-0.5 rounded-md">⚠️ naknadno</span>
                       )}
@@ -130,7 +149,7 @@ export default function ZgodovinaServisa() {
                       {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
                     </div>
                     {/* Gumb uredi z odštevalnikom */}
-                    {preostalo && !jeUredi && (
+                    {preostalo && !jeUredi && !isStrong && (
                       <button onClick={() => {
                         setUredi(vnos.id)
                         setEditData({
@@ -143,6 +162,9 @@ export default function ZgodovinaServisa() {
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
                         ✏️ Uredi · {preostalo}
                       </button>
+                    )}
+                    {isStrong && (
+                      <span className="text-[#4ade80] text-[10px] font-semibold border border-[#16a34a44] bg-[#16a34a18] px-2 py-1 rounded-lg">Zaklenjeno</span>
                     )}
                   </div>
                 </div>
@@ -202,6 +224,7 @@ export default function ZgodovinaServisa() {
                     <p className="text-[#3a3a5a] text-xs mt-2 text-right">Tapni za detajle →</p>
                   </div>
                 )}
+              </div>
               </div>
             )
           })}
