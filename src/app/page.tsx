@@ -35,7 +35,6 @@ export default function LandingPage() {
           <a href="/" className="text-2xl font-black tracking-tight">Garage<span className="text-[#8b5cf6]">Base</span></a>
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-white/74">
             <a href="#funkcije" className="hover:text-white transition-colors">Funkcije</a>
-            <a href="#paketi" className="hover:text-white transition-colors">Paketi</a>
             <a href="#kontakt" className="hover:text-white transition-colors">Kontakt</a>
           </div>
           <div className="flex items-center gap-3">
@@ -97,6 +96,12 @@ export default function LandingPage() {
               <div className="rounded-xl bg-black/26 border border-white/12 p-4 backdrop-blur-sm"><p className="text-2xl font-black text-[#3ecfcf]">PDF</p><p className="text-white/58 text-xs mt-1">report</p></div>
               <div className="rounded-xl bg-black/26 border border-white/12 p-4 backdrop-blur-sm"><p className="text-2xl font-black text-[#a78bfa]">QR</p><p className="text-white/58 text-xs mt-1">prenos</p></div>
             </div>
+            <div className="mt-4 max-w-lg rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-4 backdrop-blur-sm">
+              <p className="text-[#3ecfcf] text-xs font-black uppercase tracking-[0.16em]">Launch promocija</p>
+              <p className="mt-2 text-white/86 text-sm leading-relaxed">
+                V obdobju testiranja so vse funkcije GarageBase odklenjene brez doplacila do 31. 12. 2026. Po tem datumu bodo napredne funkcije lahko del placljivih paketov; uporabnike bomo o paketih in cenah obvestili vnaprej.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -112,28 +117,6 @@ export default function LandingPage() {
               <div key={f.oznaka} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-xl p-6 hover:border-[#8b5cf666] transition-colors">
                 <p className="text-white font-bold text-lg mb-2">{f.oznaka}</p>
                 <p className="text-[#8a8aa8] text-sm leading-relaxed">{f.opis}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="paketi" className="py-24 px-5 bg-[#0a0a14]">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[0.8fr_1.2fr] gap-10 items-start">
-          <div>
-            <p className="text-[#8b5cf6] text-sm font-bold uppercase tracking-[0.18em] mb-3">Paketi</p>
-            <h2 className="text-3xl md:text-5xl font-black mb-5">Začni brezplačno</h2>
-            <p className="text-[#8a8aa8] text-lg leading-relaxed">Začni z osnovno evidenco in kasneje dodaj report, QR prenos zgodovine in napredne funkcije.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              ['Free', '0€', '1 vozilo'], ['Basic', '3€', '2 vozili'], ['Pro', '7€', '5 vozil']
-            ].map(([naziv, cena, opis]) => (
-              <div key={naziv} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-xl p-6">
-                <p className="text-[#8a8aa8] text-xs uppercase tracking-wider mb-2">{opis}</p>
-                <h3 className="text-white font-bold text-2xl">{naziv}</h3>
-                <p className="text-[#8b5cf6] text-4xl font-black my-4">{cena}</p>
-                <a href="/login" className="block text-center bg-[#13131f] border border-[#2a2a40] hover:border-[#8b5cf666] rounded-xl py-3 font-bold">Izberi</a>
               </div>
             ))}
           </div>

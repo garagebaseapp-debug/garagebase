@@ -446,6 +446,10 @@ export default function Report() {
   const [includeImportQr, setIncludeImportQr] = useState(false)
   const [includeVehicleImage, setIncludeVehicleImage] = useState(true)
   const [includeReceiptImages, setIncludeReceiptImages] = useState(false)
+  const [includeServices, setIncludeServices] = useState(true)
+  const [includeFuel, setIncludeFuel] = useState(false)
+  const [includeExpenses, setIncludeExpenses] = useState(true)
+  const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([])
   const [language, setLanguage] = useState<Language>('sl')
 
 
@@ -551,9 +555,18 @@ export default function Report() {
       const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
       const filteredExpenses = (expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba')
       setExpenses(filteredExpenses)
+      setSelectedExpenseCategories(prev => prev.length > 0 ? prev : [...new Set(filteredExpenses.map((e: any) => e.kategorija || 'ostalo'))] as string[])
 
       try {
-        await pripraviQrKode(carId, user.id, avtoData, servisData || [], gorivoData || [], filteredExpenses, currentLanguage)
+        await pripraviQrKode(
+          carId,
+          user.id,
+          avtoData,
+          includeServices ? (servisData || []) : [],
+          includeFuel ? (gorivoData || []) : [],
+          includeExpenses ? filteredExpenses.filter((e: any) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo')) : [],
+          currentLanguage
+        )
       } catch {
         setVerifyQr('')
         setImportQr('')
@@ -563,13 +576,23 @@ export default function Report() {
       setTimeout(() => setReady(true), 500)
     }
     init()
-  }, [includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages])
+  }, [includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, selectedExpenseCategories.join('|')])
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">Nalaganje podatkov...</p>
     </div>
   )
+
+  const expenseCategories = [...new Set(expenses.map((e: any) => e.kategorija || 'ostalo'))] as string[]
+  const expensesForReport = includeExpenses
+    ? expenses.filter((e: any) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo'))
+    : []
+  const servisiForReport = includeServices ? servisi : []
+  const gorivoForReport = includeFuel ? gorivo : []
+  const totalForReport = servisiForReport.reduce((s, v) => s + (v.cena || 0), 0) +
+    gorivoForReport.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
+    expensesForReport.reduce((s, v) => s + (v.znesek || 0), 0)
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -589,7 +612,35 @@ export default function Report() {
             <span className="text-white text-sm">🔧 Servisov</span>
             <span className="text-[#6c63ff] font-bold">{servisi.length}</span>
           </div>
-          <div className="flex justify-between items-center">
+          <button onClick={() => setIncludeServices(!includeServices)}
+            className={`rounded-xl border px-3 py-2 text-left ${includeServices ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeServices ? '[x]' : '[ ]'} Servisi</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Servisna knjiga: {servisi.length} zapisov</p>
+          </button>
+          <button onClick={() => setIncludeFuel(!includeFuel)}
+            className={`rounded-xl border px-3 py-2 text-left ${includeFuel ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeFuel ? '[x]' : '[ ]'} Gorivo / tankanja</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Vkljuci {gorivo.length} tankanj samo ce zelis podrobno porocilo.</p>
+          </button>
+          <button onClick={() => setIncludeExpenses(!includeExpenses)}
+            className={`rounded-xl border px-3 py-2 text-left ${includeExpenses ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
+            <p className="text-white text-sm font-semibold">{includeExpenses ? '[x]' : '[ ]'} Dodatni stroski</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Izbranih {expensesForReport.length} od {expenses.length} zapisov.</p>
+          </button>
+          {includeExpenses && expenseCategories.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#13131f] border border-[#1e1e32] p-3">
+              {expenseCategories.map((category) => {
+                const active = selectedExpenseCategories.includes(category)
+                return (
+                  <button key={category} onClick={() => setSelectedExpenseCategories(active ? selectedExpenseCategories.filter(c => c !== category) : [...selectedExpenseCategories, category])}
+                    className={`rounded-lg border px-3 py-2 text-xs font-bold ${active ? 'border-[#f59e0b66] bg-[#f59e0b22] text-[#f59e0b]' : 'border-[#2a2a40] text-[#7b7ba6]'}`}>
+                    {active ? '[x]' : '[ ]'} {category}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+          <div className="hidden">
             <span className="text-white text-sm">⛽ Tankanij</span>
             <span className="text-[#6c63ff] font-bold">{gorivo.length}</span>
           </div>
@@ -600,15 +651,13 @@ export default function Report() {
           <div className="flex justify-between items-center">
             <span className="text-white text-sm">📎 Prilog računov</span>
             <span className="text-[#6c63ff] font-bold">
-              {servisi.filter(s => s.foto_url).length + gorivo.filter(g => g.receipt_url).length + expenses.filter(e => e.receipt_url).length}
+              {servisiForReport.filter(s => s.foto_url).length + gorivoForReport.filter(g => g.receipt_url).length + expensesForReport.filter(e => e.receipt_url).length}
             </span>
           </div>
           <div className="flex justify-between items-center border-t border-[#1e1e32] pt-2 mt-1">
             <span className="text-white text-sm font-semibold">Skupaj stroški</span>
             <span className="text-[#3ecfcf] font-bold text-lg">
-              {(servisi.reduce((s, v) => s + (v.cena || 0), 0) +
-                gorivo.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
-                expenses.reduce((s, v) => s + (v.znesek || 0), 0)).toFixed(2)} €
+              {totalForReport.toFixed(2)} €
             </span>
           </div>
         </div>
@@ -651,10 +700,10 @@ export default function Report() {
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} />}
+          document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
-            <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
+            <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, expenseCategories: selectedExpenseCategories })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
               {pdfLoading ? 'Generiranje...' : 'Prenesi PDF Report'}
             </button>
           )}
