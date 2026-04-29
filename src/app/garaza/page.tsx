@@ -16,6 +16,7 @@ export default function Garaza() {
   const [prikaz, setPrikaz] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
+  const [garazaPisava, setGarazaPisava] = useState(100)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -36,6 +37,7 @@ export default function Garaza() {
         setPrikaz(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
+        setGarazaPisava(n.garazaPisava || 100)
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
         if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
       }
@@ -211,8 +213,8 @@ export default function Garaza() {
 
           return (
             <div key={`${isDatum ? 'd' : 'k'}-${op.id}`} className={`bg-white/75 border ${barva.border} rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-sm max-w-full`}>
-              <span className="text-[clamp(12px,calc(30px/var(--gb-mobile-columns,3)),16px)] lg:text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
-              <span className={`${barva.text} font-black text-[clamp(12px,calc(30px/var(--gb-mobile-columns,3)),16px)] lg:text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
+              <span className="text-[clamp(calc(12px*var(--gb-card-font-scale,1)),calc((30px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(16px*var(--gb-card-font-scale,1)))] lg:text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
+              <span className={`${barva.text} font-black text-[clamp(calc(12px*var(--gb-card-font-scale,1)),calc((30px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(16px*var(--gb-card-font-scale,1)))] lg:text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
             </div>
           )
         })}
@@ -287,7 +289,7 @@ export default function Garaza() {
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
           <div className="gb-car-grid grid gap-2 lg:gap-4"
-            style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci } as any}>
+            style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci, '--gb-card-font-scale': garazaPisava / 100 } as any}>
             {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
               return (
@@ -323,21 +325,21 @@ export default function Garaza() {
                   )}
 
                   <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                    <p className="text-white font-bold text-[clamp(10px,calc(28px/var(--gb-mobile-columns,3)),15px)] lg:text-[10px] leading-tight truncate">
+                    <p className="text-white font-bold text-[clamp(calc(10px*var(--gb-card-font-scale,1)),calc((28px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(15px*var(--gb-card-font-scale,1)))] lg:text-[10px] leading-tight truncate">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)} {avto.model.toUpperCase()}
                     </p>
                     {gridNastavitve.letnik && avto.letnik && (
-                      <p className="text-white/60 text-[clamp(8px,calc(22px/var(--gb-mobile-columns,3)),12px)] lg:text-[8px]">{avto.letnik}</p>
+                      <p className="text-white/60 text-[clamp(calc(8px*var(--gb-card-font-scale,1)),calc((22px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(12px*var(--gb-card-font-scale,1)))] lg:text-[8px]">{avto.letnik}</p>
                     )}
                     {gridNastavitve.gorivo && avto.gorivo && (
-                      <p className="text-white/60 text-[clamp(8px,calc(22px/var(--gb-mobile-columns,3)),12px)] lg:text-[8px]">{avto.gorivo}</p>
+                      <p className="text-white/60 text-[clamp(calc(8px*var(--gb-card-font-scale,1)),calc((22px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(12px*var(--gb-card-font-scale,1)))] lg:text-[8px]">{avto.gorivo}</p>
                     )}
                     {gridNastavitve.km && avto.km_trenutni && (
-                      <p className="text-[#3ecfcf] text-[clamp(9px,calc(24px/var(--gb-mobile-columns,3)),13px)] lg:text-[9px] font-semibold">{avto.km_trenutni.toLocaleString()} km</p>
+                      <p className="text-[#3ecfcf] text-[clamp(calc(9px*var(--gb-card-font-scale,1)),calc((24px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(13px*var(--gb-card-font-scale,1)))] lg:text-[9px] font-semibold">{avto.km_trenutni.toLocaleString()} km</p>
                     )}
                     {gridNastavitve.tablica && avto.tablica && (
                       <div className="mt-0.5 bg-white rounded px-1 inline-block">
-                        <span className="text-black font-bold text-[clamp(7px,calc(19px/var(--gb-mobile-columns,3)),11px)] lg:text-[7px] tracking-wider font-mono">
+                        <span className="text-black font-bold text-[clamp(calc(7px*var(--gb-card-font-scale,1)),calc((19px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(11px*var(--gb-card-font-scale,1)))] lg:text-[7px] tracking-wider font-mono">
                           {avto.tablica.toUpperCase()}
                         </span>
                       </div>
@@ -373,7 +375,7 @@ export default function Garaza() {
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] ${barvaBorder(barva)} ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
-                style={karticaVisina()}>
+                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 {avto.slika_url ? (
                   <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
                     loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
@@ -390,11 +392,11 @@ export default function Garaza() {
 
                 <div className="absolute left-3 top-3 right-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-white font-black text-lg leading-tight drop-shadow line-clamp-2">
+                    <h2 className="text-white font-black text-[calc(18px*var(--gb-card-font-scale,1))] leading-tight drop-shadow line-clamp-2">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
-                    <p className="text-white/75 text-xs mt-1 drop-shadow">
+                    <p className="text-white/75 text-[calc(12px*var(--gb-card-font-scale,1))] mt-1 drop-shadow">
                       {[
                         listaNastavitve.letnik && avto.letnik,
                         listaNastavitve.gorivo && avto.gorivo,
@@ -404,7 +406,7 @@ export default function Garaza() {
                   </div>
                   {listaNastavitve.tablica && avto.tablica && (
                     <div className="bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm max-w-[42%] overflow-hidden flex-shrink-0">
-                      <p className="text-[#111827] font-black text-[12px] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                      <p className="text-[#111827] font-black text-[calc(12px*var(--gb-card-font-scale,1))] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
                         {avto.tablica.toUpperCase()}
                       </p>
                     </div>
@@ -429,7 +431,7 @@ export default function Garaza() {
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] flex ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
-                style={karticaVisina()}>
+                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
                   {avto.slika_url ? (
                   <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
@@ -449,11 +451,11 @@ export default function Garaza() {
 
                 <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0 overflow-hidden">
                   <div>
-                    <h2 className="text-white font-bold text-base leading-tight line-clamp-2">
+                    <h2 className="text-white font-bold text-[calc(16px*var(--gb-card-font-scale,1))] leading-tight line-clamp-2">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
                       {avto.model.toUpperCase()}
                     </h2>
-                    <p className="text-[#5a5a80] text-xs mt-1">
+                    <p className="text-[#5a5a80] text-[calc(12px*var(--gb-card-font-scale,1))] mt-1">
                       {[
                         listaNastavitve.letnik && avto.letnik,
                         listaNastavitve.gorivo && avto.gorivo,
@@ -469,7 +471,7 @@ export default function Garaza() {
                     </div>
                     {listaNastavitve.tablica && avto.tablica && (
                       <div className="w-full bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm overflow-hidden">
-                        <p className="text-[#111827] font-black text-[12px] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                        <p className="text-[#111827] font-black text-[calc(12px*var(--gb-card-font-scale,1))] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
                           {avto.tablica.toUpperCase()}
                         </p>
                       </div>
