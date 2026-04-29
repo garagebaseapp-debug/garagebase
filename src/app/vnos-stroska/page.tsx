@@ -131,6 +131,14 @@ export default function VnosStroska() {
     if (result.date) setDatum(result.date)
     if (result.total) setZnesek(result.total)
     if (result.description && !opis) setOpis(result.description)
+    trackEvent('receipt_text_applied', {
+      carId,
+      type: 'expense',
+      hasDate: !!result.date,
+      hasTotal: !!result.total,
+      hasStation: !!result.station,
+      hasDescription: !!result.description,
+    })
     setOcrMessage('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.')
   }
 
@@ -146,7 +154,9 @@ export default function VnosStroska() {
       const text = await readReceiptTextFromImage(racun)
       setOcrText(text)
       uporabiPrebranTekst(text)
+      trackEvent('receipt_scan_success', { carId, type: 'expense', textLength: text.length })
     } catch (error: any) {
+      trackEvent('receipt_scan_failed', { carId, type: 'expense', message: error.message })
       setOcrMessage(`${error.message} Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".`)
     } finally {
       setOcrLoading(false)

@@ -54,6 +54,9 @@ const eventName = (name: string) => {
     qr_import_confirmed: 'QR uvoz potrjen',
     fuel_add_open: 'Vnos goriva odprt',
     receipt_scan_clicked: 'Scan racuna',
+    receipt_scan_success: 'Racun prebran',
+    receipt_scan_failed: 'Racun ni prebran',
+    receipt_text_applied: 'Tekst racuna uporabljen',
     fuel_saved: 'Gorivo shranjeno',
     service_add_open: 'Vnos servisa odprt',
     service_saved: 'Servis shranjen',
@@ -329,6 +332,19 @@ export default function AdminPage() {
     setPlanSaving(false)
   }
 
+  const resolveError = async (id: string) => {
+    const { error } = await supabase
+      .from('app_errors')
+      .update({ status: 'resolved' })
+      .eq('id', id)
+    if (error) {
+      setMessage(tx('Napake ni bilo mogoce oznaciti kot resene.', 'Could not mark the error as resolved.') + ` ${error.message}`)
+      return
+    }
+    setRecentErrors((prev) => prev.map((item) => item.id === id ? { ...item, status: 'resolved' } : item))
+    setStats((prev: any) => ({ ...prev, errors: Math.max(0, (prev.errors || 0) - 1) }))
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">{tx('Nalaganje...', 'Loading...')}</p>
@@ -423,6 +439,12 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs text-[#fca5a5]">{error.message || '-'}</p>
                 <p className="mt-1 text-[11px] text-[#5a5a80]">{pageName(error.page_path)} · {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                {error.status !== 'resolved' && (
+                  <button onClick={() => resolveError(error.id)}
+                    className="mt-3 rounded-lg border border-[#4ade8055] bg-[#4ade8018] px-3 py-2 text-xs font-bold text-[#4ade80]">
+                    {tx('Oznaci kot reseno', 'Mark resolved')}
+                  </button>
+                )}
               </div>
             ))}
           </div>

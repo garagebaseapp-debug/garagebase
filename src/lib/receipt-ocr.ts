@@ -8,7 +8,12 @@ export type ReceiptScanResult = {
 }
 
 const toNumber = (value: string) => {
-  const cleaned = value.replace(/\s/g, '').replace(',', '.')
+  const cleaned = value
+    .replace(/\s/g, '')
+    .replace(/[€]/g, '')
+    .replace(/eur/gi, '')
+    .replace(/(?<=\d)[.](?=\d{3}\b)/g, '')
+    .replace(',', '.')
   const parsed = Number.parseFloat(cleaned)
   return Number.isFinite(parsed) ? parsed : null
 }
@@ -16,18 +21,52 @@ const toNumber = (value: string) => {
 const toDecimalString = (value: number, decimals = 2) => value.toFixed(decimals).replace(/\.?0+$/, '')
 
 const normalizeDate = (value: string) => {
-  const match = value.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})/)
+  const iso = value.match(/(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})/)
+  const eu = value.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{2,4})/)
+  const match = iso || eu
   if (!match) return undefined
-  const day = match[1].padStart(2, '0')
-  const month = match[2].padStart(2, '0')
-  const year = match[3].length === 2 ? `20${match[3]}` : match[3]
-  return `${year}-${month}-${day}`
+  const yearRaw = iso ? match[1] : match[3]
+  const monthRaw = iso ? match[2] : match[2]
+  const dayRaw = iso ? match[3] : match[1]
+  const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw
+  return `${year}-${monthRaw.padStart(2, '0')}-${dayRaw.padStart(2, '0')}`
 }
 
 const numbersFrom = (line: string) =>
-  Array.from(line.matchAll(/\d+(?:[,.]\d{1,3})?/g))
+  Array.from(line.matchAll(/\d{1,4}(?:[.\s]\d{3})*(?:[,.]\d{1,3})?|\d+(?:[,.]\d{1,3})?/g))
     .map((m) => toNumber(m[0]))
     .filter((n): n is number => n !== null)
+
+const scoreLine = (line: string, positive: RegExp[], negative: RegExp[] = []) => {
+  const lower = line.toLowerCase()
+  const plus = positive.reduce((sum, pattern) => sum + (pattern.test(lower) ? 3 : 0), 0)
+  const minus = negative.reduce((sum, pattern) => sum + (pattern.test(lower) ? 4 : 0), 0)
+  return plus - minus
+}
+
+const findBestNumber = (lines: string[], positive: RegExp[], range: (n: number) => boolean) => {
+  const candidates = lines.flatMap((line, index) => {
+    const score = scoreLine(line, positive, [/dav/, /ddv/, /tax/, /terminal/, /kartica/, /card/, /racun st/, /change/])
+    return numbersFrom(line)
+      .filter(range)
+      .map((value) => ({ value, score, index }))
+  })
+  return candidates.sort((a, b) => b.score - a.score || b.index - a.index || b.value - a.value)[0]?.value
+}
+
+const findStation = (lines: string[]) => {
+  const known = lines.find((line) =>
+    /(omv|petrol|mol|shell|ina|agip|esso|tifon|q8|fuel|bencin|servis)/i.test(line)
+    && !/\d{5,}/.test(line)
+  )
+  if (known) return known.replace(/\s+/g, ' ').substring(0, 60)
+
+  return lines.find((line) =>
+    /^[A-ZČŠŽĆĐ0-9 .,&-]{4,}$/.test(line)
+    && !/\d{5,}/.test(line)
+    && !/(racun|račun|ddv|dav|terminal|kartica|eur|total|skupaj)/i.test(line)
+  )?.replace(/\s+/g, ' ').substring(0, 60)
+}
 
 export const parseReceiptText = (text: string): ReceiptScanResult => {
   const lines = text
@@ -35,44 +74,46 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
     .map((line) => line.trim())
     .filter(Boolean)
 
-  const lowerLines = lines.map((line) => line.toLowerCase())
   const allText = lines.join('\n')
   const result: ReceiptScanResult = {}
-
   result.date = normalizeDate(allText)
 
-  const litersLine = lines.find((line) => /\b(l|lit|liter|litri|litrov)\b/i.test(line) && /\d/.test(line))
-  if (litersLine) {
-    const nums = numbersFrom(litersLine).filter((n) => n > 0 && n < 250)
-    if (nums.length) result.liters = toDecimalString(nums[0], 2)
-  }
+  const liters = findBestNumber(
+    lines,
+    [/\bl\b/, /lit/, /liter/, /kolicina/, /količina/, /quantity/, /qty/],
+    (n) => n > 0.5 && n < 250
+  )
+  if (liters) result.liters = toDecimalString(liters, 2)
 
-  const priceLine = lines.find((line) => /(eur\/l|€\/l|cena\/l|price\/l|ppu)/i.test(line))
-  if (priceLine) {
-    const nums = numbersFrom(priceLine).filter((n) => n > 0 && n < 5)
-    if (nums.length) result.pricePerLiter = toDecimalString(nums[nums.length - 1], 3)
-  }
+  const pricePerLiter = findBestNumber(
+    lines,
+    [/eur\/l/, /€\/l/, /cena\/l/, /price\/l/, /ppu/, /\bl\b/],
+    (n) => n > 0.5 && n < 5
+  )
+  if (pricePerLiter) result.pricePerLiter = toDecimalString(pricePerLiter, 3)
 
-  const totalLines = lines.filter((line) => /(skupaj|znesek|total|amount|placilo|plačilo|eur|€)/i.test(line))
-  const totalCandidates = totalLines
-    .flatMap((line) => numbersFrom(line))
-    .filter((n) => n >= 1 && n < 10000)
-  if (totalCandidates.length) {
-    result.total = toDecimalString(totalCandidates[totalCandidates.length - 1], 2)
-  }
+  const totalLines = lines.filter((line) =>
+    /(skupaj|znesek|total|amount|placilo|plačilo|za placilo|za plačilo|eur|€)/i.test(line)
+  )
+  const totals = totalLines.flatMap((line, index) =>
+    numbersFrom(line)
+      .filter((value) => value >= 1 && value < 10000)
+      .map((value) => ({
+        value,
+        index,
+        score: scoreLine(line, [/skupaj/, /total/, /amount/, /za placilo/, /za plačilo/, /eur/, /€/], [/dav/, /ddv/, /tax/]),
+      }))
+  )
+  const total = totals.sort((a, b) => b.score - a.score || b.index - a.index || b.value - a.value)[0]?.value
+  if (total) result.total = toDecimalString(total, 2)
 
-  const liters = result.liters ? toNumber(result.liters) : null
-  const total = result.total ? toNumber(result.total) : null
-  const price = result.pricePerLiter ? toNumber(result.pricePerLiter) : null
-  if (liters && total && !price) result.pricePerLiter = toDecimalString(total / liters, 3)
-  if (liters && price && !total) result.total = toDecimalString(liters * price, 2)
+  const parsedLiters = result.liters ? toNumber(result.liters) : null
+  const parsedTotal = result.total ? toNumber(result.total) : null
+  const parsedPrice = result.pricePerLiter ? toNumber(result.pricePerLiter) : null
+  if (parsedLiters && parsedTotal && !parsedPrice) result.pricePerLiter = toDecimalString(parsedTotal / parsedLiters, 3)
+  if (parsedLiters && parsedPrice && !parsedTotal) result.total = toDecimalString(parsedLiters * parsedPrice, 2)
 
-  const stationLine = lines.find((line, index) => {
-    const lower = lowerLines[index]
-    return /(omv|petrol|mol|shell|ina|agip|fuel|bencin|servis)/i.test(lower) && !/\d{4,}/.test(lower)
-  }) || lines.find((line) => /^[A-ZČŠŽ0-9 .,&-]{4,}$/.test(line) && !/\d{4,}/.test(line))
-  if (stationLine) result.station = stationLine.substring(0, 60)
-
+  result.station = findStation(lines)
   result.description = result.station || lines[0]?.substring(0, 80)
   return result
 }

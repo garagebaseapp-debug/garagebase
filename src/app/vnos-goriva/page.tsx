@@ -188,6 +188,15 @@ export default function VnosGoriva() {
     if (result.liters) setLitri(result.liters)
     if (result.pricePerLiter) setCenaNaLiter(result.pricePerLiter)
     if (result.station) setPostaja(result.station)
+    trackEvent('receipt_text_applied', {
+      carId,
+      type: 'fuel',
+      hasDate: !!result.date,
+      hasLiters: !!result.liters,
+      hasPricePerLiter: !!result.pricePerLiter,
+      hasTotal: !!result.total,
+      hasStation: !!result.station,
+    })
     setOcrMessage('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.')
   }
 
@@ -203,7 +212,9 @@ export default function VnosGoriva() {
       const text = await readReceiptTextFromImage(racun)
       setOcrText(text)
       uporabiPrebranTekst(text)
+      trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
     } catch (error: any) {
+      trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
       setOcrMessage(`${error.message} Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".`)
     } finally {
       setOcrLoading(false)
