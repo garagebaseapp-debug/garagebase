@@ -19,3 +19,23 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
     console.warn('GarageBase analytics event skipped:', eventName, error)
   }
 }
+
+export async function trackError(errorName: string, metadata: Record<string, any> = {}) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    const pagePath = typeof window !== 'undefined'
+      ? `${window.location.pathname}${window.location.search}`
+      : null
+
+    await supabase.from('app_errors').insert({
+      user_id: user?.id || null,
+      error_name: errorName,
+      page_path: pagePath,
+      message: String(metadata.message || ''),
+      stack: metadata.stack ? String(metadata.stack).slice(0, 4000) : null,
+      metadata,
+    })
+  } catch (error) {
+    console.warn('GarageBase error tracking skipped:', errorName, error)
+  }
+}

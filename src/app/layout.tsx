@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppLock } from "@/lib/app-lock";
 import { GlobalTranslator } from "@/lib/i18n";
+import { AppAnalytics } from "@/lib/app-analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,6 +46,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
+        <AppAnalytics />
         <AppLock />
         <GlobalTranslator />
         <div id="offline-banner" className="hidden fixed top-0 left-0 right-0 bg-[#ef4444] text-white text-center text-xs py-2 z-[100]">

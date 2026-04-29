@@ -214,3 +214,60 @@ with check (
 
 create index if not exists user_plans_plan_idx
 on public.user_plans (plan);
+
+create table if not exists public.app_errors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  error_name text not null,
+  page_path text,
+  message text,
+  stack text,
+  metadata jsonb not null default '{}'::jsonb,
+  status text not null default 'new',
+  created_at timestamptz not null default now()
+);
+
+alter table public.app_errors enable row level security;
+
+drop policy if exists "Users can insert app errors" on public.app_errors;
+create policy "Users can insert app errors"
+on public.app_errors
+for insert
+to authenticated
+with check (auth.uid() = user_id or user_id is null);
+
+drop policy if exists "Admins can read all app errors" on public.app_errors;
+create policy "Admins can read all app errors"
+on public.app_errors
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+);
+
+drop policy if exists "Admins can update app errors" on public.app_errors;
+create policy "Admins can update app errors"
+on public.app_errors
+for update
+to authenticated
+using (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+)
+with check (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+);
+
+create index if not exists app_errors_status_created_at_idx
+on public.app_errors (status, created_at desc);
+
+create index if not exists app_errors_error_name_created_at_idx
+on public.app_errors (error_name, created_at desc);

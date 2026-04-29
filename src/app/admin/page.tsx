@@ -19,6 +19,71 @@ const statusLabel: Record<string, { sl: string; en: string }> = {
   rejected: { sl: 'Zavrnjeno', en: 'Rejected' },
 }
 
+const pageName = (path?: string | null) => {
+  if (!path) return '/'
+  const clean = path.split('?')[0] || '/'
+  const names: Record<string, string> = {
+    '/': 'Landing',
+    '/garaza': 'Garaza',
+    '/dashboard': 'Dashboard',
+    '/vnos-goriva': 'Vnos goriva',
+    '/vnos-servisa': 'Vnos servisa',
+    '/vnos-stroska': 'Vnos stroska',
+    '/stroski': 'Stroski',
+    '/report': 'PDF report',
+    '/scan': 'QR scan',
+    '/nastavitve': 'Nastavitve',
+    '/pomocnik': 'Pomocnik',
+    '/feedback': 'Feedback',
+  }
+  return names[clean] || clean.replace('/', '')
+}
+
+const eventName = (name: string) => {
+  const names: Record<string, string> = {
+    page_view: 'Ogled strani',
+    settings_open: 'Nastavitve odprte',
+    mode_lite_selected: 'Lite izbran',
+    mode_full_selected: 'Full izbran',
+    feedback_open: 'Feedback odprt',
+    admin_open: 'Admin odprt',
+    assistant_open: 'Pomocnik odprt',
+    report_open: 'Report odprt',
+    report_pdf_download: 'PDF prenos',
+    qr_scan_open: 'QR scan odprt',
+    qr_import_confirmed: 'QR uvoz potrjen',
+    fuel_add_open: 'Vnos goriva odprt',
+    receipt_scan_clicked: 'Scan racuna',
+    fuel_saved: 'Gorivo shranjeno',
+    service_add_open: 'Vnos servisa odprt',
+    service_saved: 'Servis shranjen',
+    expense_add_open: 'Vnos stroska odprt',
+    expense_saved: 'Strosek shranjen',
+  }
+  return names[name] || name
+}
+
+const dayKey = (value: string) => new Date(value).toISOString().slice(0, 10)
+
+const topSuggestionTerms = (items: any[]) => {
+  const stop = new Set(['app', 'aplikacija', 'funkcija', 'garagebase', 'lahko', 'mogoce', 'prosim', 'dodaj', 'dodal', 'uporabno', 'zato', 'ker', 'and', 'the', 'for'])
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const text = `${item.feature_description || ''} ${item.usefulness_reason || ''} ${item.extra_context || ''}`.toLowerCase()
+    const words = text
+      .replace(/[^a-z0-9čšžćđ\s]/gi, ' ')
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .filter((word) => word.length > 3 && !stop.has(word))
+    const unique = new Set(words)
+    for (const word of unique) counts.set(word, (counts.get(word) || 0) + 1)
+  }
+  return Array.from(counts.entries())
+    .map(([term, count]) => ({ term, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+}
+
 export default function AdminPage() {
   const { language } = useLanguage()
   const [loading, setLoading] = useState(true)
@@ -34,10 +99,20 @@ export default function AdminPage() {
     transfers: 0,
     feedback: 0,
     newFeedback: 0,
+    events: 0,
+    activeToday: 0,
+    active7: 0,
+    active30: 0,
+    errors: 0,
   })
   const [recentFeedback, setRecentFeedback] = useState<any[]>([])
   const [recentCars, setRecentCars] = useState<any[]>([])
   const [topEvents, setTopEvents] = useState<any[]>([])
+  const [topPages, setTopPages] = useState<any[]>([])
+  const [dailyActivity, setDailyActivity] = useState<any[]>([])
+  const [vehicleTypes, setVehicleTypes] = useState<any[]>([])
+  const [topFeedbackTerms, setTopFeedbackTerms] = useState<any[]>([])
+  const [recentErrors, setRecentErrors] = useState<any[]>([])
   const [plans, setPlans] = useState<any[]>([])
   const [planEmail, setPlanEmail] = useState('')
   const [planName, setPlanName] = useState('max')
@@ -83,6 +158,12 @@ export default function AdminPage() {
   const loadAdminData = async () => {
     setMessage('')
     try {
+      const now = Date.now()
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const since30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const since7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+
       const [
         carsCount,
         fuelCount,
@@ -95,6 +176,7 @@ export default function AdminPage() {
         carsData,
         feedbackData,
         eventsData,
+        errorsData,
         plansData,
       ] = await Promise.all([
         countTable('cars'),
@@ -105,9 +187,10 @@ export default function AdminPage() {
         countTable('vehicle_transfers'),
         countTable('feedback'),
         countTable('app_events'),
-        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,created_at').order('created_at', { ascending: false }).limit(8),
-        supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(8),
-        supabase.from('app_events').select('event_name,created_at,user_id').gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).limit(1000),
+        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,created_at').order('created_at', { ascending: false }).limit(5000),
+        supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200),
+        supabase.from('app_events').select('event_name,created_at,user_id,page_path,metadata').gte('created_at', since30).order('created_at', { ascending: false }).limit(5000),
+        supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
         supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
       ])
 
@@ -116,22 +199,60 @@ export default function AdminPage() {
       if (eventsData.error) throw eventsData.error
       if (plansData.error) throw plansData.error
 
+      const cars = carsData.data || []
+      const events = eventsData.data || []
+      const feedbackItems = feedbackData.data || []
       const uniqueUsers = new Set([
-        ...(carsData.data || []).map((car: any) => car.user_id).filter(Boolean),
-        ...(eventsData.data || []).map((event: any) => event.user_id).filter(Boolean),
+        ...cars.map((car: any) => car.user_id).filter(Boolean),
+        ...events.map((event: any) => event.user_id).filter(Boolean),
       ])
-      const newFeedback = (feedbackData.data || []).filter((item: any) => item.status === 'new').length
+      const activeToday = new Set(events.filter((event: any) => new Date(event.created_at) >= todayStart).map((event: any) => event.user_id).filter(Boolean)).size
+      const active7 = new Set(events.filter((event: any) => event.created_at >= since7).map((event: any) => event.user_id).filter(Boolean)).size
+      const active30 = new Set(events.map((event: any) => event.user_id).filter(Boolean)).size
+      const newFeedback = feedbackItems.filter((item: any) => item.status === 'new').length
       const eventCounts = new Map<string, { count: number; users: Set<string> }>()
-      for (const event of eventsData.data || []) {
+      const pageCounts = new Map<string, { count: number; users: Set<string> }>()
+      const dayCounts = new Map<string, { count: number; users: Set<string> }>()
+      for (const event of events) {
         const current = eventCounts.get(event.event_name) || { count: 0, users: new Set<string>() }
         current.count += 1
         if (event.user_id) current.users.add(event.user_id)
         eventCounts.set(event.event_name, current)
+
+        const page = pageName(event.page_path)
+        const pageCurrent = pageCounts.get(page) || { count: 0, users: new Set<string>() }
+        pageCurrent.count += 1
+        if (event.user_id) pageCurrent.users.add(event.user_id)
+        pageCounts.set(page, pageCurrent)
+
+        const day = dayKey(event.created_at)
+        const dayCurrent = dayCounts.get(day) || { count: 0, users: new Set<string>() }
+        dayCurrent.count += 1
+        if (event.user_id) dayCurrent.users.add(event.user_id)
+        dayCounts.set(day, dayCurrent)
       }
       const top = Array.from(eventCounts.entries())
-        .map(([name, value]) => ({ name, count: value.count, users: value.users.size }))
+        .map(([name, value]) => ({ name, label: eventName(name), count: value.count, users: value.users.size }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10)
+      const pages = Array.from(pageCounts.entries())
+        .map(([name, value]) => ({ name, count: value.count, users: value.users.size }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+      const days = Array.from({ length: 14 }).map((_, index) => {
+        const date = new Date(now - (13 - index) * 24 * 60 * 60 * 1000)
+        const key = date.toISOString().slice(0, 10)
+        const value = dayCounts.get(key)
+        return { day: key.slice(5), count: value?.count || 0, users: value?.users.size || 0 }
+      })
+      const typeCounts = new Map<string, number>()
+      for (const car of cars) {
+        const type = car.tip_vozila || 'vozilo'
+        typeCounts.set(type, (typeCounts.get(type) || 0) + 1)
+      }
+      const types = Array.from(typeCounts.entries())
+        .map(([type, count]) => ({ type, count }))
+        .sort((a, b) => b.count - a.count)
 
       setStats({
         cars: carsCount,
@@ -144,10 +265,19 @@ export default function AdminPage() {
         feedback: feedbackCount,
         events: eventsCount,
         newFeedback,
+        activeToday,
+        active7,
+        active30,
+        errors: errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length,
       })
-      setRecentCars(carsData.data || [])
-      setRecentFeedback(feedbackData.data || [])
+      setRecentCars(cars.slice(0, 8))
+      setRecentFeedback(feedbackItems.slice(0, 8))
       setTopEvents(top)
+      setTopPages(pages)
+      setDailyActivity(days)
+      setVehicleTypes(types)
+      setTopFeedbackTerms(topSuggestionTerms(feedbackItems))
+      setRecentErrors(errorsData.error ? [] : (errorsData.data || []))
       setPlans(plansData.data || [])
     } catch (error: any) {
       setMessage(tx(
@@ -158,6 +288,9 @@ export default function AdminPage() {
   }
 
   const statCards: StatCard[] = useMemo(() => [
+    { label: tx('Aktivni danes', 'Active today'), value: stats.activeToday || 0, hint: tx('uporabniki danes', 'users today'), color: 'text-[#4ade80]' },
+    { label: tx('Aktivni 7 dni', 'Active 7 days'), value: stats.active7 || 0, hint: tx('zadnji teden', 'last week'), color: 'text-[#3ecfcf]' },
+    { label: tx('Aktivni 30 dni', 'Active 30 days'), value: stats.active30 || 0, hint: tx('zadnji mesec', 'last month'), color: 'text-[#a09aff]' },
     { label: tx('Vozila', 'Vehicles'), value: stats.cars, hint: tx('vsa vozila v sistemu', 'all vehicles in the system'), color: 'text-[#a09aff]' },
     { label: tx('Znani uporabniki', 'Known users'), value: stats.users, hint: tx('iz zadnjih vozil', 'from recent vehicles'), color: 'text-[#3ecfcf]' },
     { label: tx('Tankanja', 'Fill-ups'), value: stats.fuel, hint: tx('vnosi goriva', 'fuel entries'), color: 'text-[#3ecfcf]' },
@@ -167,6 +300,7 @@ export default function AdminPage() {
     { label: tx('QR prenosi', 'QR transfers'), value: stats.transfers, hint: tx('ustvarjene QR kode', 'created QR codes'), color: 'text-[#fca5a5]' },
     { label: tx('Feedback', 'Feedback'), value: stats.feedback, hint: `${stats.newFeedback} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
     { label: tx('Dogodki', 'Events'), value: stats.events || 0, hint: tx('kliki in akcije', 'clicks and actions'), color: 'text-[#4ade80]' },
+    { label: tx('Napake', 'Errors'), value: stats.errors || 0, hint: tx('nove napake', 'new errors'), color: 'text-[#fca5a5]' },
   ], [stats, language])
 
   const savePlan = async () => {
@@ -245,6 +379,56 @@ export default function AdminPage() {
         ))}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr] mb-4">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <div className="mb-4 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-white font-bold">{tx('Aktivnost zadnjih 14 dni', 'Activity over 14 days')}</h2>
+              <p className="text-[#5a5a80] text-xs">{tx('Vsak stolpec prikaze stevilo akcij v appu.', 'Each bar shows app actions.')}</p>
+            </div>
+            <p className="text-xs text-[#5a5a80]">{tx('Uporabniki + kliki', 'Users + clicks')}</p>
+          </div>
+          <div className="flex h-44 items-end gap-2">
+            {dailyActivity.map((day) => {
+              const max = Math.max(...dailyActivity.map((item) => item.count), 1)
+              const height = Math.max(10, Math.round((day.count / max) * 100))
+              return (
+                <div key={day.day} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="flex h-32 w-full items-end rounded-xl bg-[#13131f] px-1">
+                    <div className="w-full rounded-lg bg-gradient-to-t from-[#6c63ff] to-[#3ecfcf]" style={{ height: `${height}%` }} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[10px] text-[#5a5a80]">{day.day}</p>
+                    <p className="text-[10px] font-bold text-white">{day.count}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Napake v sistemu', 'System errors')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnje napake iz brskalnika uporabnikov.', 'Latest browser errors from users.')}</p>
+          <div className="flex flex-col gap-2">
+            {recentErrors.length === 0 ? (
+              <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">
+                {tx('Za zdaj ni zabelezenih napak.', 'No recorded errors yet.')}
+              </p>
+            ) : recentErrors.slice(0, 6).map((error) => (
+              <div key={error.id} className="rounded-xl border border-[#ef444433] bg-[#ef444411] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-bold text-[#fca5a5]">{error.error_name}</p>
+                  <span className="rounded-full bg-[#ef444422] px-2 py-1 text-[10px] font-bold text-[#fca5a5]">{error.status}</span>
+                </div>
+                <p className="mt-1 line-clamp-2 text-xs text-[#fca5a5]">{error.message || '-'}</p>
+                <p className="mt-1 text-[11px] text-[#5a5a80]">{pageName(error.page_path)} · {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-4 mb-4">
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Najbolj uporabljene funkcije', 'Most used features')}</h2>
@@ -255,12 +439,28 @@ export default function AdminPage() {
             ) : topEvents.map((event, index) => (
               <div key={event.name} className="rounded-xl bg-[#13131f] p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-white text-sm font-semibold">{index + 1}. {event.name}</p>
+                  <p className="text-white text-sm font-semibold">{index + 1}. {event.label}</p>
                   <p className="text-[#3ecfcf] font-black">{event.count}</p>
                 </div>
                 <p className="mt-1 text-xs text-[#5a5a80]">{event.users} {tx('uporabnikov', 'users')}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-5 border-t border-[#1e1e32] pt-4">
+            <h3 className="text-sm font-bold text-white">{tx('Najbolj obiskane strani', 'Most visited pages')}</h3>
+            <div className="mt-3 flex flex-col gap-2">
+              {topPages.length === 0 ? (
+                <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni podatkov o straneh.', 'No page data yet.')}</p>
+              ) : topPages.map((page) => (
+                <div key={page.name} className="flex items-center justify-between rounded-xl bg-[#13131f] p-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{page.name}</p>
+                    <p className="text-xs text-[#5a5a80]">{page.users} {tx('uporabnikov', 'users')}</p>
+                  </div>
+                  <p className="text-lg font-black text-[#a09aff]">{page.count}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -329,6 +529,19 @@ export default function AdminPage() {
               </div>
             ))}
           </div>
+          <div className="mt-5 border-t border-[#1e1e32] pt-4">
+            <h3 className="text-sm font-bold text-white">{tx('Top 3 ponavljajoce teme', 'Top 3 repeated topics')}</h3>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {topFeedbackTerms.length === 0 ? (
+                <p className="col-span-3 rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni dovolj predlogov za trend.', 'Not enough suggestions for a trend.')}</p>
+              ) : topFeedbackTerms.map((item) => (
+                <div key={item.term} className="rounded-xl bg-[#f59e0b18] p-3 text-center">
+                  <p className="text-sm font-black text-[#f59e0b]">{item.term}</p>
+                  <p className="text-xs text-[#5a5a80]">{item.count}x</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
@@ -348,6 +561,18 @@ export default function AdminPage() {
                 </p>
               </div>
             ))}
+          </div>
+          <div className="mt-5 border-t border-[#1e1e32] pt-4">
+            <h3 className="text-sm font-bold text-white">{tx('Tipi vozil', 'Vehicle types')}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {vehicleTypes.length === 0 ? (
+                <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni podatkov o tipih.', 'No type data yet.')}</p>
+              ) : vehicleTypes.map((item) => (
+                <span key={item.type} className="rounded-full bg-[#3ecfcf18] px-3 py-2 text-xs font-bold text-[#3ecfcf]">
+                  {item.type}: {item.count}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
