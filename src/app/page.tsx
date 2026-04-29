@@ -89,7 +89,8 @@ export default function LandingPage() {
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
         <div className="landing-report-mockup absolute z-10 hidden xl:block">
-          <div className="landing-report-paper relative w-[285px] overflow-hidden rounded-[12px] border border-white/35 bg-white/94 p-4 text-[#151527] shadow-[0_30px_55px_rgba(0,0,0,0.38)]">
+          <div className="landing-report-sheet landing-report-sheet-back" />
+          <div className="landing-report-paper relative w-[265px] overflow-hidden rounded-[8px] border border-white/45 bg-white p-4 text-[#151527] shadow-[0_28px_70px_rgba(0,0,0,0.48)]">
             <div className="landing-report-curl" />
             <div className="flex items-start justify-between gap-3 border-b border-[#e7e8f6] pb-2.5">
               <div>
@@ -145,7 +146,7 @@ export default function LandingPage() {
             </div>
 
             <div className="mt-3 space-y-1.5 opacity-70">
-              {[82, 64, 74, 52].map((width, index) => (
+              {[82, 64, 74, 52, 68, 44].map((width, index) => (
                 <div key={index} className="h-1.5 rounded-full bg-[#e7e8f6]" style={{ width: `${width}%` }} />
               ))}
             </div>

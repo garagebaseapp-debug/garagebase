@@ -26,22 +26,22 @@ body {
 }
 
 .landing-report-mockup {
-  right: clamp(360px, 23vw, 520px);
-  bottom: clamp(36px, 6vh, 72px);
-  transform: perspective(760px) rotateX(64deg) rotateZ(-10deg) skewX(-4deg);
+  right: clamp(430px, 29vw, 650px);
+  bottom: clamp(92px, 12vh, 150px);
+  transform: rotate(-5deg);
   transform-origin: center;
 }
 
 @media (min-width: 1536px) {
   .landing-report-mockup {
-    right: clamp(420px, 26vw, 640px);
-    bottom: clamp(42px, 7vh, 86px);
+    right: clamp(500px, 31vw, 760px);
+    bottom: clamp(100px, 13vh, 170px);
   }
 }
 
 .landing-report-paper {
-  transform-origin: bottom center;
-  filter: saturate(0.96);
+  transform-origin: center;
+  filter: saturate(0.96) drop-shadow(0 0 26px rgba(139, 92, 246, 0.08));
 }
 
 .landing-report-paper::before {
@@ -59,10 +59,10 @@ body {
 .landing-report-paper::after {
   content: "";
   position: absolute;
-  left: 10%;
-  right: 6%;
-  bottom: -18px;
-  height: 34px;
+  left: 12%;
+  right: 10%;
+  bottom: -12px;
+  height: 22px;
   background: rgba(0, 0, 0, 0.35);
   filter: blur(16px);
   border-radius: 999px;
@@ -71,16 +71,35 @@ body {
 
 .landing-report-curl {
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 78px;
-  height: 72px;
+  right: -1px;
+  bottom: -1px;
+  width: 64px;
+  height: 62px;
   z-index: 3;
   border-top-left-radius: 48px;
   background:
     linear-gradient(135deg, rgba(218, 222, 244, 0.15) 0%, rgba(255,255,255,0.96) 38%, rgba(218,222,244,0.9) 64%, rgba(160, 168, 205, 0.42) 100%);
   box-shadow: -11px -10px 20px rgba(45, 42, 75, 0.16);
   clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.landing-report-sheet {
+  position: absolute;
+  inset: 0;
+  width: 265px;
+  min-height: 318px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,247,255,0.96)),
+    repeating-linear-gradient(180deg, transparent 0 16px, rgba(124, 58, 237, 0.08) 17px);
+  box-shadow: 0 24px 62px rgba(0, 0, 0, 0.34);
+}
+
+.landing-report-sheet-back {
+  transform: translate(28px, -30px) rotate(3deg);
+  opacity: 0.74;
+  z-index: -1;
 }
 
 body:not(.landing) {
