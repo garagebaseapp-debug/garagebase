@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
-import { createTransferToken, scanUrl } from '@/lib/transfer'
+import { createTransferToken, scanUrl, transferExpiresAt } from '@/lib/transfer'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
 import QRCode from 'qrcode'
@@ -121,8 +121,8 @@ const pdfCopy = {
     yes: 'DA',
     no: 'NE',
     transferredNote: 'Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.',
-    qrRead: 'QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom.',
-    qrImport: 'QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev.',
+    qrRead: 'QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom. QR velja 30 dni.',
+    qrImport: 'QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev. QR velja 30 dni.',
     serviceBook: 'Servisna knjiga',
     date: 'Datum',
     km: 'Km',
@@ -171,8 +171,8 @@ const pdfCopy = {
     yes: 'YES',
     no: 'NO',
     transferredNote: 'Records marked with [Previous owner] are transferred history. New records from the current owner are not marked.',
-    qrRead: 'QR READ: scan for the digital report from the GarageBase database. Compare the data with the PDF document.',
-    qrImport: 'QR HISTORY IMPORT: scan to import the vehicle and history into a new GarageBase garage. Confirmation is shown before import.',
+    qrRead: 'QR READ: scan for the digital report from the GarageBase database. Compare the data with the PDF document. QR is valid for 30 days.',
+    qrImport: 'QR HISTORY IMPORT: scan to import the vehicle and history into a new GarageBase garage. Confirmation is shown before import. QR is valid for 30 days.',
     serviceBook: 'Service book',
     date: 'Date',
     km: 'Km',
@@ -523,12 +523,12 @@ export default function Report() {
     setImportQr('')
     if (includeVerifyQr) {
       const token = createTransferToken()
-      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'verify', consent: true, payload: makePayload('verify', token) })
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'verify', consent: true, payload: makePayload('verify', token), expires_at: transferExpiresAt(30) })
       setVerifyQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
     if (includeImportQr) {
       const token = createTransferToken()
-      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import', token) })
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import', token), expires_at: transferExpiresAt(30) })
       setImportQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
     if (includeImportQr) {

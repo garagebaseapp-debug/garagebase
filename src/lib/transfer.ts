@@ -1,4 +1,7 @@
 export type TransferMode = 'verify' | 'import'
+export type TransferExpiryDays = 7 | 14 | 30
+
+export const transferExpiryOptions: TransferExpiryDays[] = [7, 14, 30]
 
 export function createTransferToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(18))
@@ -8,6 +11,19 @@ export function createTransferToken() {
 export function scanUrl(token: string) {
   if (typeof window === 'undefined') return `/scan?t=${token}`
   return `${window.location.origin}/scan?t=${token}`
+}
+
+export function transferExpiresAt(days: TransferExpiryDays = 30) {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+export function isTransferExpired(expiresAt?: string | null) {
+  return !!expiresAt && new Date(expiresAt).getTime() <= Date.now()
+}
+
+export function formatTransferDate(value?: string | null) {
+  if (!value) return ''
+  return new Date(value).toLocaleDateString('sl-SI')
 }
 
 export function getTokenFromScanValue(value: string) {

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
-import { cleanTransferRows, getTokenFromScanValue } from '@/lib/transfer'
+import { cleanTransferRows, formatTransferDate, getTokenFromScanValue, isTransferExpired } from '@/lib/transfer'
 import { trackEvent } from '@/lib/analytics'
 
 const fmtDate = (value?: string) => {
@@ -187,9 +187,24 @@ export default function ScanPage() {
       return
     }
 
+    if ((data as any).revoked_at) {
+      setMessage('Ta QR koda je bila preklicana in ni vec veljavna.')
+      setLoading(false)
+      return
+    }
+
+    if (isTransferExpired((data as any).expires_at)) {
+      setMessage('Ta QR koda je potekla. Lastnik mora ustvariti novo QR kodo.')
+      setLoading(false)
+      return
+    }
+
     setTransfer(data)
     setPayload(data.payload)
     setTokenInput(token)
+    if ((data as any).expires_at) {
+      setMessage(`QR koda je veljavna do ${formatTransferDate((data as any).expires_at)}.`)
+    }
     setLoading(false)
   }
 
@@ -309,7 +324,10 @@ export default function ScanPage() {
     if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
     if (expenseRows.length) await supabase.from('expenses').insert(expenseRows)
 
-    await supabase.from('vehicle_transfers').update({ imported_at: new Date().toISOString() }).eq('id', transfer.id)
+    await supabase.from('vehicle_transfers').update({
+      imported_at: new Date().toISOString(),
+      imported_by: user.id,
+    }).eq('id', transfer.id)
     trackEvent('qr_import_confirmed', { carId: newCar.id, transferId: transfer.id })
     setMessage(`Vozilo ${carName} je uvozeno v tvojo garazo.`)
     setTimeout(() => window.location.href = `/dashboard?car=${newCar.id}`, 1200)

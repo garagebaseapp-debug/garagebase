@@ -4,7 +4,17 @@ import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
-import { cleanTransferRows, createTransferToken, maskVin, scanUrl, type TransferMode } from '@/lib/transfer'
+import {
+  cleanTransferRows,
+  createTransferToken,
+  formatTransferDate,
+  maskVin,
+  scanUrl,
+  transferExpiresAt,
+  transferExpiryOptions,
+  type TransferExpiryDays,
+  type TransferMode,
+} from '@/lib/transfer'
 
 export default function PrenosZgodovine() {
   const [avto, setAvto] = useState<any>(null)
@@ -15,6 +25,8 @@ export default function PrenosZgodovine() {
   const [scanLink, setScanLink] = useState('')
   const [manualToken, setManualToken] = useState('')
   const [importCode, setImportCode] = useState('')
+  const [expiryDays, setExpiryDays] = useState<TransferExpiryDays>(14)
+  const [expiresAt, setExpiresAt] = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -107,11 +119,13 @@ export default function PrenosZgodovine() {
     setQrUrl('')
     setScanLink('')
     setManualToken('')
+    setExpiresAt('')
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
 
     const token = createTransferToken()
+    const expires = transferExpiresAt(expiryDays)
     const payload = await pripraviPayload(mode)
     const { error } = await supabase.from('vehicle_transfers').insert({
       token,
@@ -120,6 +134,7 @@ export default function PrenosZgodovine() {
       mode,
       consent: true,
       payload,
+      expires_at: expires,
     })
 
     if (error) {
@@ -130,8 +145,32 @@ export default function PrenosZgodovine() {
     const link = scanUrl(token)
     setScanLink(link)
     setManualToken(token)
+    setExpiresAt(expires)
     setQrUrl(await QRCode.toDataURL(link, { width: 320, margin: 2 }))
-    setMessage(mode === 'verify' ? 'QR je pripravljen za preverjanje reporta.' : 'QR je pripravljen za uvoz zgodovine.')
+    setMessage(`${mode === 'verify' ? 'QR je pripravljen za preverjanje reporta.' : 'QR je pripravljen za uvoz zgodovine.'} Velja do ${formatTransferDate(expires)}.`)
+  }
+
+  const prekliciAktivneKode = async () => {
+    if (!avto?.id) return
+    const potrdi = window.confirm('Preklicem vse aktivne QR kode za to vozilo? Stari PDF bo se vedno obstajal, QR kode pa ne bodo vec delovale.')
+    if (!potrdi) return
+    setLoading(true)
+    setMessage('')
+    const { error } = await supabase
+      .from('vehicle_transfers')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('car_id', avto.id)
+      .is('revoked_at', null)
+    setLoading(false)
+    if (error) {
+      setMessage(error.message.includes('revoked_at') ? 'Najprej v Supabase zazeni SUPABASE_MIGRACIJA_QR_VARNOST.sql.' : 'Preklic ni uspel: ' + error.message)
+      return
+    }
+    setQrUrl('')
+    setScanLink('')
+    setManualToken('')
+    setExpiresAt('')
+    setMessage('Aktivne QR kode za to vozilo so preklicane.')
   }
 
   const uvoziStaroKodo = async () => {
@@ -185,6 +224,15 @@ export default function PrenosZgodovine() {
             <p className="text-[#5a5a80] text-xs mt-1">Kupec lahko uvozi zgodovino v svoj avto.</p>
           </button>
         </div>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Veljavnost QR kode</p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {transferExpiryOptions.map((days) => (
+            <button key={days} onClick={() => setExpiryDays(days)}
+              className={`rounded-xl border px-3 py-2 text-sm font-semibold ${expiryDays === days ? 'bg-[#6c63ff22] border-[#6c63ff66] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8a8aa8]'}`}>
+              {days} dni
+            </button>
+          ))}
+        </div>
         <button onClick={pripraviQR} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
           Pripravi QR kodo
         </button>
@@ -192,6 +240,7 @@ export default function PrenosZgodovine() {
           <div className="mt-4 bg-white rounded-2xl p-4 flex flex-col items-center gap-3">
             <img src={qrUrl} alt="QR koda za prenos" className="w-64 h-64" />
             <p className="text-black text-xs text-center break-all">{manualToken}</p>
+            {expiresAt && <p className="text-black/70 text-xs text-center">Velja do {formatTransferDate(expiresAt)}</p>}
           </div>
         )}
         {scanLink && (
@@ -199,6 +248,9 @@ export default function PrenosZgodovine() {
             Odpri Scan
           </button>
         )}
+        <button onClick={prekliciAktivneKode} className="w-full mt-3 bg-[#ef444422] border border-[#ef444466] text-[#ef4444] font-semibold py-3 rounded-xl">
+          Preklici aktivne QR kode
+        </button>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
