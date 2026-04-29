@@ -19,26 +19,56 @@ export default function Stroski() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/stroski-garaza'; return }
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
-      setAvto(avtoData)
-      const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setGorivo(gorivoData || [])
-      const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setServisi(servisData || [])
-      const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setExpenses((expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
+
+      const cachedGarage = localStorage.getItem('garagebase_garaza_cache')
+      if (cachedGarage) {
+        try {
+          const parsed = JSON.parse(cachedGarage)
+          const cachedCar = parsed.avti?.find((a: any) => a.id === carId)
+          if (cachedCar) {
+            setAvto(cachedCar)
+            setLoading(false)
+          }
+        } catch {}
+      }
+
+      const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed.gorivo)) setGorivo(parsed.gorivo)
+          if (Array.isArray(parsed.servisi)) setServisi(parsed.servisi)
+          if (Array.isArray(parsed.expenses)) setExpenses(parsed.expenses)
+        } catch {}
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { window.location.href = '/'; return }
+      const started = performance.now()
+      const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
+        supabase.from('cars').select('*').eq('id', carId).single(),
+        supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true }),
+        supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true }),
+        supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true }),
+      ])
+      setAvto(avtoRes.data)
+      const gorivoData = gorivoRes.data || []
+      const servisData = servisRes.data || []
+      const expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      setGorivo(gorivoData)
+      setServisi(servisData)
+      setExpenses(expensesData)
+      localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, savedAt: Date.now() }))
+      console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       setLoading(false)
     }
     init()
     const timer = setInterval(() => setCas(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
-
   const preostaliCas = (createdAt: string) => {
     const ustvarjen = new Date(createdAt).getTime()
     const konec = ustvarjen + 24 * 60 * 60 * 1000
@@ -212,12 +242,6 @@ export default function Stroski() {
   ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
-
-  if (loading) return (
-    <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje...</p>
-    </div>
-  )
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
