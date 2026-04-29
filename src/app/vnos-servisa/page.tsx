@@ -18,6 +18,8 @@ export default function VnosServisa() {
   const [message, setMessage] = useState('')
   const [slike, setSlike] = useState<File[]>([])
   const [slikePreview, setSlikePreview] = useState<string[]>([])
+  const [stevec, setStevec] = useState<File | null>(null)
+  const [stevecPreview, setStevecPreview] = useState('')
   const [uploadProgress, setUploadProgress] = useState(false)
   const [servisHistory, setServisHistory] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -103,6 +105,17 @@ export default function VnosServisa() {
     const noveSlike = slike.filter((_, i) => i !== index)
     setSlike(noveSlike)
     setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
+  }
+
+  const dodajStevec = (e: any) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Slika stevca je lahko velika najvec 4MB.')
+      return
+    }
+    setStevec(file)
+    setStevecPreview(URL.createObjectURL(file))
   }
 
   const pretвориVStevilko = (tekst: string): number | null => {
@@ -238,6 +251,28 @@ export default function VnosServisa() {
     }
 
     setMessage('✅ Servis uspešno shranjen!')
+    let odometerUrl: string | null = null
+    if (stevec) {
+      setUploadProgress(true)
+      const fileExt = stevec.name.split('.').pop() || 'jpg'
+      const fileName = `${user.id}/${servisData.id}_odometer.${fileExt}`
+      const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, stevec, { upsert: true })
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
+        odometerUrl = urlData.publicUrl
+      }
+      setUploadProgress(false)
+    }
+
+    const verificationLevel = odometerUrl && slike.length > 0 ? 'strong' : odometerUrl ? 'photo' : 'basic'
+    await supabase.from('service_logs').update({
+      odometer_photo_url: odometerUrl,
+      verified_document_url: slike.length > 0 ? 'service_receipt_attached' : null,
+      verification_level: verificationLevel,
+      locked_at: verificationLevel === 'strong' ? new Date().toISOString() : null,
+    }).eq('id', servisData.id)
+    trackEvent('service_verification_set', { carId, verificationLevel, hasOdometerPhoto: !!odometerUrl, hasReceipt: slike.length > 0 })
+
     setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1500)
     setLoading(false)
   }
@@ -295,6 +330,25 @@ export default function VnosServisa() {
               <p className="text-[#ef4444] text-xs">⛔ Km ne smejo biti nižji od {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika stevca (za Photo/Strong verified)</label>
+          <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
+            <input type="file" accept="image/*" capture="environment" onChange={dodajStevec} className="hidden" />
+            {stevecPreview ? (
+              <img src={stevecPreview} alt="Stevec kilometrov" className="w-full max-h-44 object-contain rounded-lg" />
+            ) : (
+              <span className="text-[#3ecfcf] font-semibold">Dodaj/slikaj stevec kilometrov</span>
+            )}
+          </label>
+          {stevecPreview && (
+            <button type="button" onClick={() => { setStevec(null); setStevecPreview('') }}
+              className="mt-2 w-full rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
+              Odstrani sliko stevca
+            </button>
+          )}
+          <p className="mt-2 text-[#5a5a80] text-xs">Brez slike = Basic. Slika stevca = Photo. Slika stevca + racun = Strong.</p>
         </div>
 
         <div>

@@ -24,6 +24,8 @@ export default function VnosGoriva() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const [racun, setRacun] = useState<File | null>(null)
   const [racunPreview, setRacunPreview] = useState('')
+  const [stevec, setStevec] = useState<File | null>(null)
+  const [stevecPreview, setStevecPreview] = useState('')
   const [ocrText, setOcrText] = useState('')
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
@@ -182,6 +184,17 @@ export default function VnosGoriva() {
     setOcrMessage('')
   }
 
+  const dodajStevec = (e: any) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Slika stevca je lahko velika najvec 4MB.')
+      return
+    }
+    setStevec(file)
+    setStevecPreview(URL.createObjectURL(file))
+  }
+
   const uporabiPrebranTekst = (text: string) => {
     const result = parseReceiptText(text)
     if (result.date) setDatum(result.date)
@@ -233,6 +246,18 @@ export default function VnosGoriva() {
     return data.publicUrl
   }
 
+  const naloziStevec = async () => {
+    if (!stevec) return null
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const ext = stevec.name.split('.').pop() || 'jpg'
+    const path = `${user.id}/odometer_fuel_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('service-documents').upload(path, stevec, { upsert: true })
+    if (error) throw error
+    const { data } = supabase.storage.from('service-documents').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   const shrani = async () => {
     if (!km || !litri) { setMessage('Km in litri sta obvezna!'); return }
     const vneseniKm = parseInt(km)
@@ -243,13 +268,16 @@ export default function VnosGoriva() {
     setLoading(true)
     setMessage('')
     let receiptUrl: string | null = null
+    let odometerUrl: string | null = null
     try {
       receiptUrl = await naloziRacun()
+      odometerUrl = await naloziStevec()
     } catch (error: any) {
-      setMessage('Napaka pri nalaganju slike racuna: ' + error.message)
+      setMessage('Napaka pri nalaganju slike: ' + error.message)
       setLoading(false)
       return
     }
+    const verificationLevel = odometerUrl && receiptUrl ? 'strong' : odometerUrl ? 'photo' : 'basic'
 
     const datumVnosa = new Date().toLocaleDateString('sl-SI')
     const opombaNaknaden = jeNaknaden ? ` [Naknadno vneseno: ${datumVnosa}]` : ''
@@ -267,11 +295,15 @@ export default function VnosGoriva() {
       postaja: postajaZOpombo,
       tip_goriva: tipGoriva || null,
       receipt_url: receiptUrl,
+      odometer_photo_url: odometerUrl,
+      verified_document_url: receiptUrl,
+      verification_level: verificationLevel,
+      locked_at: verificationLevel === 'strong' ? new Date().toISOString() : null,
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
-    trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl })
+    trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl, hasOdometerPhoto: !!odometerUrl, verificationLevel })
     setMessage('✅ Tankanje uspešno shranjeno!')
     setTimeout(() => window.location.href = `/zgodovina-goriva?car=${carId}`, 1000)
     setLoading(false)
@@ -362,6 +394,25 @@ export default function VnosGoriva() {
               <p className="text-[#ef4444] text-xs">⛔ Km ne smejo biti nižji od {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika stevca (za Photo/Strong verified)</label>
+          <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
+            <input type="file" accept="image/*" capture="environment" onChange={dodajStevec} className="hidden" />
+            {stevecPreview ? (
+              <img src={stevecPreview} alt="Stevec kilometrov" className="w-full max-h-44 object-contain rounded-lg" />
+            ) : (
+              <span className="text-[#3ecfcf] font-semibold">Dodaj/slikaj stevec kilometrov</span>
+            )}
+          </label>
+          {stevecPreview && (
+            <button type="button" onClick={() => { setStevec(null); setStevecPreview('') }}
+              className="mt-2 w-full rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
+              Odstrani sliko stevca
+            </button>
+          )}
+          <p className="mt-2 text-[#5a5a80] text-xs">Brez slike = Basic. Slika stevca = Photo. Slika stevca + racun = Strong.</p>
         </div>
 
         {/* Litri */}
