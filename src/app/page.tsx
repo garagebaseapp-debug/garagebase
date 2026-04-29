@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { saveStoredLanguage, useLanguage, type Language } from '@/lib/i18n'
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
+  const { language } = useLanguage()
 
   useEffect(() => {
     document.body.classList.add('landing')
@@ -36,8 +38,26 @@ export default function LandingPage() {
             <a href="#paketi" className="hover:text-white transition-colors">Paketi</a>
             <a href="#kontakt" className="hover:text-white transition-colors">Kontakt</a>
           </div>
-          <div className="flex gap-3">
-            <a href="/login" className="hidden sm:inline-flex border border-white/18 bg-black/20 hover:bg-white/10 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-colors">Prijava</a>
+          <div className="flex items-center gap-3">
+            <div className="landing-lang hidden sm:flex items-center rounded-xl border border-white/18 bg-black/18 p-1 backdrop-blur-sm" data-gb-no-translate>
+              {[
+                { code: 'sl', label: '🇸🇮 SL' },
+                { code: 'en', label: '🇬🇧 EN' },
+              ].map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => saveStoredLanguage(item.code as Language)}
+                  className={`px-3 py-2 rounded-lg text-xs font-black transition-all ${
+                    language === item.code ? 'bg-white text-[#141426]' : 'text-white/72 hover:text-white'
+                  }`}
+                  aria-label={`Language ${item.code.toUpperCase()}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <a href="/login" className="landing-login hidden sm:inline-flex border border-white/18 bg-black/20 hover:bg-white/10 text-white text-sm font-semibold px-5 py-3 rounded-xl transition-colors">Prijava</a>
             <a href="/login" className="bg-[#8b5cf6] hover:bg-[#7c3aed] shadow-[0_0_28px_rgba(139,92,246,0.45)] text-white text-sm font-bold px-5 py-3 rounded-xl transition-all">Začni brezplačno</a>
           </div>
         </div>

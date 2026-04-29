@@ -249,3 +249,28 @@ body:not(.landing) {
 .light-mode .landing-copy a:first-of-type {
   color: #ffffff !important;
 }
+
+.light-mode .landing-login {
+  background-color: rgba(255, 255, 255, 0.86) !important;
+  border-color: rgba(20, 20, 38, 0.2) !important;
+  color: #141426 !important;
+}
+
+.light-mode .landing-login:hover {
+  background-color: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.45) !important;
+}
+
+.light-mode .landing-lang {
+  background-color: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(20, 20, 38, 0.18) !important;
+}
+
+.light-mode .landing-lang button {
+  color: #50566d !important;
+}
+
+.light-mode .landing-lang button.bg-white {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+}
