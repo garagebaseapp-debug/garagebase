@@ -11,9 +11,19 @@ export default function Dashboard() {
   const [poraba, setPoraba] = useState<{ skupaj: number | null, zadnja: number | null }>({ skupaj: null, zadnja: null })
   const [stroski, setStroski] = useState<{ skupaj: number, naKm: number | null }>({ skupaj: 0, naKm: null })
   const [loading, setLoading] = useState(true)
+  const [nacin, setNacin] = useState<'lite' | 'full'>('full')
 
   useEffect(() => {
     const init = async () => {
+      let jeLite = false
+      const settingsRaw = localStorage.getItem('garagebase_nastavitve')
+      if (settingsRaw) {
+        try {
+          const settings = JSON.parse(settingsRaw)
+          jeLite = settings.nacin === 'lite'
+          setNacin(jeLite ? 'lite' : 'full')
+        } catch {}
+      }
       const params = new URLSearchParams(window.location.search)
       const carIdFromUrl = params.get('car')
       const cached = localStorage.getItem('garagebase_garaza_cache')
@@ -49,13 +59,37 @@ export default function Dashboard() {
           : cars[0]
         setAktivniAvto(izbrani)
         setLoading(false)
-        await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
+        if (jeLite) await naloziLitePodatke(izbrani.id)
+        else await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
       console.info(`[GarageBase speed] dashboard cars ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()
   }, [])
+
+  const naloziLitePodatke = async (carId: string) => {
+    const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
+      } catch {}
+    }
+
+    const started = performance.now()
+    const { data } = await supabase
+      .from('reminders')
+      .select('*')
+      .eq('car_id', carId)
+      .order('datum', { ascending: true })
+
+    const opData = data || []
+    setOpomniki(opData)
+    localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, savedAt: Date.now() }))
+    console.info(`[GarageBase speed] lite dashboard ${Math.round(performance.now() - started)}ms`)
+  }
+
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
     const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
     if (cached) {
@@ -106,7 +140,8 @@ export default function Dashboard() {
   }
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
-    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
+    if (nacin === 'lite') await naloziLitePodatke(avto.id)
+    else await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {
@@ -148,6 +183,95 @@ export default function Dashboard() {
 
   const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
   const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje', gume: 'Gume' }
+
+  const nujniOpomniki = opomniki
+    .map((op) => ({ ...op, dni: dniDo(op.datum), km: op.km_opomnik ? kmDo(op.km_opomnik) : null }))
+    .sort((a, b) => Math.min(a.dni ?? 9999, a.km ?? 999999) - Math.min(b.dni ?? 9999, b.km ?? 999999))
+    .slice(0, 3)
+
+  if (nacin === 'lite' && aktivniAvto) {
+    return (
+      <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+        <div className="flex items-center gap-3 mb-5">
+          <BackButton href="/garaza" />
+          <div>
+            <h1 className="text-xl font-bold text-white">Lite</h1>
+            <p className="text-[#5a5a80] text-xs">Hitri pregled vozila</p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+          {avti.map((avto) => (
+            <button key={avto.id} onClick={() => preklopAvto(avto)}
+              className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold border ${
+                aktivniAvto?.id === avto.id ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]' : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80]'
+              }`}>
+              {avto.znamka} {avto.model}
+            </button>
+          ))}
+        </div>
+
+        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl overflow-hidden mb-4">
+          {aktivniAvto.slika_url && (
+            <img src={aktivniAvto.slika_url} alt={`${aktivniAvto.znamka} ${aktivniAvto.model}`}
+              loading="eager" decoding="async" className="w-full h-44 object-cover" />
+          )}
+          <div className="p-5">
+            <h2 className="text-white font-black text-2xl leading-tight">
+              {aktivniAvto.znamka.charAt(0).toUpperCase() + aktivniAvto.znamka.slice(1)} {aktivniAvto.model.toUpperCase()}
+            </h2>
+            <p className="text-[#5a5a80] mt-1">
+              {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.km_trenutni && `${aktivniAvto.km_trenutni.toLocaleString()} km`].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button onClick={() => window.location.href = `/vnos-goriva?car=${aktivniAvto.id}`} className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-2xl p-5 text-left font-bold">
+            <span className="block text-3xl mb-2">⛽</span>Vnos goriva
+          </button>
+          <button onClick={() => window.location.href = `/vnos-servisa?car=${aktivniAvto.id}`} className="bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] rounded-2xl p-5 text-left font-bold">
+            <span className="block text-3xl mb-2">🔧</span>Servis
+          </button>
+          <button onClick={() => window.location.href = `/vnos-stroska?car=${aktivniAvto.id}`} className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] rounded-2xl p-5 text-left font-bold">
+            <span className="block text-3xl mb-2">📊</span>Strosek
+          </button>
+          <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`} className="bg-[#16a34a22] border border-[#16a34a66] text-[#4ade80] rounded-2xl p-5 text-left font-bold">
+            <span className="block text-3xl mb-2">🔔</span>Opomnik
+          </button>
+        </div>
+
+        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+          <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Najblizji opomniki</p>
+          {nujniOpomniki.length === 0 ? (
+            <p className="text-[#5a5a80] text-sm">Ni aktivnih opomnikov.</p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {nujniOpomniki.map((op) => {
+                const b = skupnaBarva(op.dni, op.km)
+                return (
+                  <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3 flex items-center justify-between gap-3`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
+                      <div className="min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{tipNaziv[op.tip] || op.tip}</p>
+                        <p className="text-[#5a5a80] text-xs">{op.datum ? new Date(op.datum).toLocaleDateString('sl-SI') : 'Km opomnik'}</p>
+                      </div>
+                    </div>
+                    <p className={`${b.text} font-black text-lg whitespace-nowrap`}>
+                      {op.dni !== null ? `${op.dni} d` : op.km !== null ? `${op.km} km` : '-'}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <HomeButton />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">

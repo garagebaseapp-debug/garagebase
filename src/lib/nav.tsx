@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 
 const glavnePovezave = [
@@ -53,16 +54,38 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 
 export function BottomNav({ aktivna }: { aktivna?: string }) {
   const { t } = useLanguage()
+  const [lite, setLite] = useState(false)
+  const [firstCarId, setFirstCarId] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const settingsRaw = localStorage.getItem('garagebase_nastavitve')
+      const settings = settingsRaw ? JSON.parse(settingsRaw) : {}
+      setLite(settings.nacin === 'lite')
+
+      const cacheRaw = localStorage.getItem('garagebase_garaza_cache')
+      const cache = cacheRaw ? JSON.parse(cacheRaw) : {}
+      setFirstCarId(cache.avti?.[0]?.id || null)
+    } catch {}
+  }, [])
+
+  const litePovezave = [
+    { key: 'garaza', href: '/garaza', icon: '🏠', label: t('garage') },
+    { key: 'gorivo', href: firstCarId ? `/vnos-goriva?car=${firstCarId}` : '/dodaj-avto', icon: '⛽', label: t('fuel') },
+    { key: 'servis', href: firstCarId ? `/vnos-servisa?car=${firstCarId}` : '/dodaj-avto', icon: '🔧', label: t('service') },
+    { key: 'stroski', href: firstCarId ? `/vnos-stroska?car=${firstCarId}` : '/dodaj-avto', icon: '📊', label: t('costs') },
+    { key: 'nastavitve', href: '/nastavitve', icon: '⚙️', label: t('more') },
+  ]
 
   return (
     <>
       <DesktopNav aktivna={aktivna} />
       <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-around py-3 px-4 z-50">
-        {glavnePovezave.map((item) => (
+        {(lite ? litePovezave : glavnePovezave).map((item: any) => (
           <button key={item.key} onClick={() => pojdiNa(item.href)} className="flex flex-col items-center gap-1">
             <span className="text-2xl leading-none">{item.icon}</span>
             <span className={`text-[10px] uppercase tracking-wider ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
-              {t(item.labelKey)}
+              {item.label || t(item.labelKey)}
             </span>
           </button>
         ))}
