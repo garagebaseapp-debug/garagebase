@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { createTransferToken, scanUrl } from '@/lib/transfer'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics'
 import QRCode from 'qrcode'
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
@@ -500,6 +501,7 @@ export default function Report() {
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/garaza'; return }
+      trackEvent('report_open', { carId })
 
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(avtoData)
@@ -613,7 +615,7 @@ export default function Report() {
           document={<ReportPDF avto={avto} servisi={servisi} gorivo={gorivo} expenses={expenses} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
-            <button className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
+            <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
               {pdfLoading ? 'Generiranje...' : 'Prenesi PDF Report'}
             </button>
           )}

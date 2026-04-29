@@ -125,3 +125,92 @@ using (
     where admin_users.email = auth.jwt() ->> 'email'
   )
 );
+
+create table if not exists public.app_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  event_name text not null,
+  page_path text,
+  car_id uuid,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.app_events enable row level security;
+
+drop policy if exists "Users can insert own app events" on public.app_events;
+create policy "Users can insert own app events"
+on public.app_events
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+drop policy if exists "Admins can read all app events" on public.app_events;
+create policy "Admins can read all app events"
+on public.app_events
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+);
+
+create index if not exists app_events_event_name_created_at_idx
+on public.app_events (event_name, created_at desc);
+
+create index if not exists app_events_user_id_created_at_idx
+on public.app_events (user_id, created_at desc);
+
+create table if not exists public.user_plans (
+  email text primary key,
+  plan text not null default 'max',
+  note text,
+  valid_until date,
+  updated_by uuid references auth.users(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+alter table public.user_plans enable row level security;
+
+drop policy if exists "Users can read own plan" on public.user_plans;
+create policy "Users can read own plan"
+on public.user_plans
+for select
+to authenticated
+using (email = auth.jwt() ->> 'email');
+
+drop policy if exists "Admins can read all user plans" on public.user_plans;
+create policy "Admins can read all user plans"
+on public.user_plans
+for select
+to authenticated
+using (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+);
+
+drop policy if exists "Admins can upsert user plans" on public.user_plans;
+create policy "Admins can upsert user plans"
+on public.user_plans
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+)
+with check (
+  exists (
+    select 1 from public.admin_users
+    where admin_users.email = auth.jwt() ->> 'email'
+  )
+);
+
+create index if not exists user_plans_plan_idx
+on public.user_plans (plan);

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { saveStoredLanguage, type Language } from '@/lib/i18n'
+import { trackEvent } from '@/lib/analytics'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -84,6 +85,7 @@ export default function Nastavitve() {
       }
       setBiometricSupported('PublicKeyCredential' in window && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
+      trackEvent('settings_open')
       setLoading(false)
     }
     init()
@@ -428,7 +430,7 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Lite = enostavno, Full = vse možnosti</p>
         <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => setNacin('lite')}
+          <button onClick={() => { setNacin('lite'); trackEvent('mode_lite_selected') }}
             className={`p-4 rounded-xl border transition-all text-left ${
               nacin === 'lite' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
@@ -436,7 +438,7 @@ export default function Nastavitve() {
             <p className={`font-bold text-sm ${nacin === 'lite' ? 'text-[#3ecfcf]' : 'text-white'}`}>Lite</p>
             <p className="text-[#5a5a80] text-xs mt-1">Samo osnove, brez kompleksnih nastavitev</p>
           </button>
-          <button onClick={() => setNacin('full')}
+          <button onClick={() => { setNacin('full'); trackEvent('mode_full_selected') }}
             className={`p-4 rounded-xl border transition-all text-left ${
               nacin === 'full' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
@@ -656,7 +658,7 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Feedback</p>
         <p className="text-white font-semibold text-sm">Predlagaj funkcijo</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Poslji idejo, tezavo ali predlog za izboljsavo GarageBase.</p>
-        <button onClick={() => window.location.href = '/feedback'}
+        <button onClick={() => { trackEvent('feedback_open'); window.location.href = '/feedback' }}
           className="w-full bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors">
           Odpri predloge
         </button>
@@ -664,7 +666,7 @@ export default function Nastavitve() {
           className="mt-2 w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
           Admin pregled predlogov
         </button>
-        <button onClick={() => window.location.href = '/admin'}
+        <button onClick={() => { trackEvent('admin_open'); window.location.href = '/admin' }}
           className="mt-2 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
           Glavni admin panel
         </button>
@@ -674,7 +676,7 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Pomoc</p>
         <p className="text-white font-semibold text-sm">Pomocnik</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Hitri vodic za osnovne funkcije GarageBase.</p>
-        <button onClick={() => window.location.href = '/pomocnik'}
+        <button onClick={() => { trackEvent('assistant_open'); window.location.href = '/pomocnik' }}
           className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
           Odpri pomocnika
         </button>

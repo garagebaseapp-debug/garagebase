@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
+import { trackEvent } from '@/lib/analytics'
 
 export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -56,6 +57,7 @@ export default function VnosGoriva() {
         await naloziPostaje()
         if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
         else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
+        trackEvent('fuel_add_open', { carId: izbrani.id })
       }
     }
     init()
@@ -195,6 +197,7 @@ export default function VnosGoriva() {
       return
     }
     setOcrLoading(true)
+    trackEvent('receipt_scan_clicked', { carId })
     setOcrMessage('')
     try {
       const text = await readReceiptTextFromImage(racun)
@@ -257,6 +260,7 @@ export default function VnosGoriva() {
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl })
     setMessage('✅ Tankanje uspešno shranjeno!')
     setTimeout(() => window.location.href = `/zgodovina-goriva?car=${carId}`, 1000)
     setLoading(false)

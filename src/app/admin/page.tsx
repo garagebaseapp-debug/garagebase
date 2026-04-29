@@ -37,6 +37,12 @@ export default function AdminPage() {
   })
   const [recentFeedback, setRecentFeedback] = useState<any[]>([])
   const [recentCars, setRecentCars] = useState<any[]>([])
+  const [topEvents, setTopEvents] = useState<any[]>([])
+  const [plans, setPlans] = useState<any[]>([])
+  const [planEmail, setPlanEmail] = useState('')
+  const [planName, setPlanName] = useState('max')
+  const [planNote, setPlanNote] = useState('')
+  const [planSaving, setPlanSaving] = useState(false)
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -85,8 +91,11 @@ export default function AdminPage() {
         pushCount,
         transfersCount,
         feedbackCount,
+        eventsCount,
         carsData,
         feedbackData,
+        eventsData,
+        plansData,
       ] = await Promise.all([
         countTable('cars'),
         countTable('fuel_logs'),
@@ -95,15 +104,34 @@ export default function AdminPage() {
         countTable('push_subscriptions'),
         countTable('vehicle_transfers'),
         countTable('feedback'),
+        countTable('app_events'),
         supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,created_at').order('created_at', { ascending: false }).limit(8),
         supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(8),
+        supabase.from('app_events').select('event_name,created_at,user_id').gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()).limit(1000),
+        supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
       ])
 
       if (carsData.error) throw carsData.error
       if (feedbackData.error) throw feedbackData.error
+      if (eventsData.error) throw eventsData.error
+      if (plansData.error) throw plansData.error
 
-      const uniqueUsers = new Set((carsData.data || []).map((car: any) => car.user_id).filter(Boolean))
+      const uniqueUsers = new Set([
+        ...(carsData.data || []).map((car: any) => car.user_id).filter(Boolean),
+        ...(eventsData.data || []).map((event: any) => event.user_id).filter(Boolean),
+      ])
       const newFeedback = (feedbackData.data || []).filter((item: any) => item.status === 'new').length
+      const eventCounts = new Map<string, { count: number; users: Set<string> }>()
+      for (const event of eventsData.data || []) {
+        const current = eventCounts.get(event.event_name) || { count: 0, users: new Set<string>() }
+        current.count += 1
+        if (event.user_id) current.users.add(event.user_id)
+        eventCounts.set(event.event_name, current)
+      }
+      const top = Array.from(eventCounts.entries())
+        .map(([name, value]) => ({ name, count: value.count, users: value.users.size }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
 
       setStats({
         cars: carsCount,
@@ -114,10 +142,13 @@ export default function AdminPage() {
         push: pushCount,
         transfers: transfersCount,
         feedback: feedbackCount,
+        events: eventsCount,
         newFeedback,
       })
       setRecentCars(carsData.data || [])
       setRecentFeedback(feedbackData.data || [])
+      setTopEvents(top)
+      setPlans(plansData.data || [])
     } catch (error: any) {
       setMessage(tx(
         'Admin statistika se ni dostopna. Zazeni posodobljen SQL SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql.',
@@ -135,7 +166,34 @@ export default function AdminPage() {
     { label: tx('Push naprave', 'Push devices'), value: stats.push, hint: tx('naročene naprave', 'subscribed devices'), color: 'text-[#4ade80]' },
     { label: tx('QR prenosi', 'QR transfers'), value: stats.transfers, hint: tx('ustvarjene QR kode', 'created QR codes'), color: 'text-[#fca5a5]' },
     { label: tx('Feedback', 'Feedback'), value: stats.feedback, hint: `${stats.newFeedback} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
+    { label: tx('Dogodki', 'Events'), value: stats.events || 0, hint: tx('kliki in akcije', 'clicks and actions'), color: 'text-[#4ade80]' },
   ], [stats, language])
+
+  const savePlan = async () => {
+    const email = planEmail.trim().toLowerCase()
+    if (!email) {
+      setMessage(tx('Vnesi email uporabnika.', 'Enter the user email.'))
+      return
+    }
+    setPlanSaving(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await supabase.from('user_plans').upsert({
+      email,
+      plan: planName,
+      note: planNote || null,
+      updated_by: user?.id || null,
+      updated_at: new Date().toISOString(),
+    })
+    if (error) {
+      setMessage(tx('Paketa ni bilo mogoce shraniti.', 'Could not save the plan.') + ` ${error.message}`)
+    } else {
+      setMessage(tx('Paket je shranjen.', 'Plan saved.'))
+      setPlanEmail('')
+      setPlanNote('')
+      await loadAdminData()
+    }
+    setPlanSaving(false)
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -185,6 +243,62 @@ export default function AdminPage() {
             <p className="mt-1 text-xs text-[#5a5a80]">{card.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-4 mb-4">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Najbolj uporabljene funkcije', 'Most used features')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnjih 30 dni, za odlocanje o paketih.', 'Last 30 days, useful for package decisions.')}</p>
+          <div className="flex flex-col gap-2">
+            {topEvents.length === 0 ? (
+              <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">{tx('Ni zabelezenih dogodkov.', 'No tracked events yet.')}</p>
+            ) : topEvents.map((event, index) => (
+              <div key={event.name} className="rounded-xl bg-[#13131f] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-white text-sm font-semibold">{index + 1}. {event.name}</p>
+                  <p className="text-[#3ecfcf] font-black">{event.count}</p>
+                </div>
+                <p className="mt-1 text-xs text-[#5a5a80]">{event.users} {tx('uporabnikov', 'users')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Paketi uporabnikov', 'User packages')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Za prvih 6 mesecev lahko vsem pustis max, posameznikom pa rocno nastavis paket.', 'For the first 6 months you can keep max open, while manually assigning plans to individuals.')}</p>
+          <div className="grid gap-2 mb-4">
+            <input value={planEmail} onChange={(e) => setPlanEmail(e.target.value)} placeholder="email@example.com"
+              className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]" />
+            <select value={planName} onChange={(e) => setPlanName(e.target.value)}
+              className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]">
+              <option value="free">free</option>
+              <option value="pro">pro</option>
+              <option value="max">max</option>
+              <option value="business">business</option>
+            </select>
+            <input value={planNote} onChange={(e) => setPlanNote(e.target.value)} placeholder={tx('Opomba, npr. prijatelj testira', 'Note, e.g. friend testing')}
+              className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]" />
+            <button onClick={savePlan} disabled={planSaving}
+              className="rounded-xl bg-[#6c63ff] py-3 font-semibold text-white disabled:opacity-60">
+              {planSaving ? tx('Shranjujem...', 'Saving...') : tx('Shrani paket', 'Save plan')}
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {plans.length === 0 ? (
+              <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">{tx('Ni rocno nastavljenih paketov.', 'No manually assigned plans.')}</p>
+            ) : plans.map((plan) => (
+              <div key={plan.email} className="flex items-center justify-between gap-3 rounded-xl bg-[#13131f] p-3">
+                <div>
+                  <p className="text-white text-sm font-semibold">{plan.email}</p>
+                  <p className="text-[#5a5a80] text-xs">{plan.note || '-'}</p>
+                </div>
+                <span className="rounded-full bg-[#3ecfcf22] px-3 py-1 text-xs font-black text-[#3ecfcf]">{plan.plan}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">

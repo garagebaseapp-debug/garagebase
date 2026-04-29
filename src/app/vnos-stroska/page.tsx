@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
+import { trackEvent } from '@/lib/analytics'
 
 export default function VnosStroska() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -44,6 +45,7 @@ export default function VnosStroska() {
         setAvti(data)
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]
         setCarId(izbrani.id)
+        trackEvent('expense_add_open', { carId: izbrani.id })
       }
     }
     init()
@@ -138,6 +140,7 @@ export default function VnosStroska() {
       return
     }
     setOcrLoading(true)
+    trackEvent('receipt_scan_clicked', { carId, type: 'expense' })
     setOcrMessage('')
     try {
       const text = await readReceiptTextFromImage(racun)
@@ -189,6 +192,7 @@ export default function VnosStroska() {
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
+    trackEvent('expense_saved', { carId, category: finalnaKategorija, hasReceipt: !!receiptUrl })
 
     setMessage('✅ Strošek uspešno shranjen!')
     setTimeout(() => window.location.href = `/stroski?car=${carId}`, 1000)

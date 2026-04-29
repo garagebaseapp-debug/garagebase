@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { cleanTransferRows, getTokenFromScanValue } from '@/lib/transfer'
+import { trackEvent } from '@/lib/analytics'
 
 const fmtDate = (value?: string) => {
   if (!value) return '-'
@@ -163,6 +164,7 @@ export default function ScanPage() {
 
       const params = new URLSearchParams(window.location.search)
       const token = params.get('t')
+      trackEvent('qr_scan_open', { hasToken: !!token })
       if (token) await naloziToken(token)
     }
     init()
@@ -283,6 +285,7 @@ export default function ScanPage() {
     if (expenseRows.length) await supabase.from('expenses').insert(expenseRows)
 
     await supabase.from('vehicle_transfers').update({ imported_at: new Date().toISOString() }).eq('id', transfer.id)
+    trackEvent('qr_import_confirmed', { carId: newCar.id, transferId: transfer.id })
     setMessage(`Vozilo ${carName} je uvozeno v tvojo garazo.`)
     setTimeout(() => window.location.href = `/dashboard?car=${newCar.id}`, 1200)
     setLoading(false)

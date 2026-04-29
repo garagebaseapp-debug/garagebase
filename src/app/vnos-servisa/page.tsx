@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { trackEvent } from '@/lib/analytics'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -40,6 +41,7 @@ export default function VnosServisa() {
         setAvti(data)
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]
         setCarId(izbrani.id)
+        trackEvent('service_add_open', { carId: izbrani.id })
         await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
         await naloziServisHistory()
       }
@@ -213,6 +215,7 @@ export default function VnosServisa() {
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
 
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
     await ustvariServisniOpomnik(vneseniKm)
 
     if (slike.length > 0) {
