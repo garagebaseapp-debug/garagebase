@@ -89,7 +89,8 @@ export default function LandingPage() {
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
         <div className="landing-report-mockup absolute z-10 hidden xl:block">
-          <div className="relative w-[236px] rotate-[-9deg] rounded-[18px] border border-white/24 bg-white/92 p-4 text-[#151527] shadow-[0_24px_70px_rgba(0,0,0,0.48)] backdrop-blur-sm">
+          <div className="landing-report-paper relative w-[285px] overflow-hidden rounded-[12px] border border-white/35 bg-white/94 p-4 text-[#151527] shadow-[0_30px_55px_rgba(0,0,0,0.38)]">
+            <div className="landing-report-curl" />
             <div className="flex items-start justify-between gap-3 border-b border-[#e7e8f6] pb-2.5">
               <div>
                 <p className="text-base font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
