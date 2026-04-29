@@ -344,6 +344,15 @@ export default function Stroski() {
                     )}
                   </div>
                 </div>
+                {!jeUredi && v.receipt_url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(v.receipt_url, '_blank')}
+                    className="mt-3 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
+                  >
+                    Odpri racun
+                  </button>
+                )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
                     <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
@@ -393,6 +402,15 @@ export default function Stroski() {
                     )}
                   </div>
                 </div>
+                {!jeUredi && v.foto_url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(String(v.foto_url).split(',')[0], '_blank')}
+                    className="mt-3 w-full rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] px-3 py-2 text-sm font-semibold text-[#f59e0b]"
+                  >
+                    Odpri racun
+                  </button>
+                )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
                     <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
@@ -443,6 +461,15 @@ export default function Stroski() {
                     )}
                   </div>
                 </div>
+                {!jeUredi && v.receipt_url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(v.receipt_url, '_blank')}
+                    className="mt-3 w-full rounded-xl border border-[#a09aff55] bg-[#6c63ff18] px-3 py-2 text-sm font-semibold text-[#a09aff]"
+                  >
+                    Odpri racun
+                  </button>
+                )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
                     <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>

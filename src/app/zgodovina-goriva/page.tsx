@@ -230,6 +230,15 @@ export default function ZgodovinaGoriva() {
                     </div>
                   </div>
                 )}
+                {!jeUredi && vnos.receipt_url && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(vnos.receipt_url, '_blank')}
+                    className="mt-2 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
+                  >
+                    Odpri racun
+                  </button>
+                )}
               </div>
             )
           })}

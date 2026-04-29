@@ -43,27 +43,31 @@ const styles = StyleSheet.create({
   sCenaH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
   sRacunH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   // Gorivo stolpci
-  gDate: { width: '15%', fontSize: 8, color: '#333333' },
-  gKm: { width: '15%', fontSize: 8, color: '#333333' },
-  gOpis: { width: '40%', fontSize: 8, color: '#333333' },
-gTip95: { width: '10%', fontSize: 8, color: '#16a34a', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
-gTip100: { width: '10%', fontSize: 8, color: '#2563eb', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
-gTipD: { width: '10%', fontSize: 8, color: '#888888', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
-gTipH: { width: '10%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
-gOpisH: { width: '40%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  gCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
-  gDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  gKmH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  gCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  gDate: { width: '14%', fontSize: 8, color: '#333333' },
+  gKm: { width: '14%', fontSize: 8, color: '#333333' },
+  gOpis: { width: '32%', fontSize: 8, color: '#333333' },
+gTip95: { width: '9%', fontSize: 8, color: '#16a34a', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTip100: { width: '9%', fontSize: 8, color: '#2563eb', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTipD: { width: '9%', fontSize: 8, color: '#888888', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
+gTipH: { width: '9%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+gOpisH: { width: '32%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gCena: { width: '17%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  gRacun: { width: '14%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  gDateH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gKmH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  gCenaH: { width: '17%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  gRacunH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   // Expenses stolpci
   eDate: { width: '15%', fontSize: 8, color: '#333333' },
-  eKat: { width: '20%', fontSize: 8, color: '#333333' },
-  eOpis: { width: '45%', fontSize: 8, color: '#333333' },
-  eCena: { width: '20%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  eKat: { width: '18%', fontSize: 8, color: '#333333' },
+  eOpis: { width: '37%', fontSize: 8, color: '#333333' },
+  eCena: { width: '16%', fontSize: 8, color: '#333333', textAlign: 'right' },
+  eRacun: { width: '14%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
   eDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  eKatH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  eOpisH: { width: '45%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
-  eCenaH: { width: '20%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  eKatH: { width: '18%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  eOpisH: { width: '37%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
+  eCenaH: { width: '16%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
+  eRacunH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   opomba: { fontSize: 8, color: '#5555cc', marginTop: 8, padding: 8, backgroundColor: '#f0f0ff', borderRadius: 4, borderLeftWidth: 3, borderLeftColor: '#6c63ff' },
   ownerDivider: { marginVertical: 7, paddingVertical: 5, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#6c63ff', backgroundColor: '#f8f8ff' },
   ownerDividerText: { fontSize: 8, color: '#6c63ff', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
@@ -183,7 +187,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const skupajLitrov = gorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
-  const imaPrivonke = servisi.some((s: any) => s.foto_url)
+  const imaPrivonke = servisi.some((s: any) => s.foto_url) || gorivo.some((g: any) => g.receipt_url) || expenses.some((e: any) => e.receipt_url)
   const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
 
   return (
@@ -347,6 +351,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.gTipH}>{copy.type}</Text>
 <Text style={styles.gOpisH}>{copy.litersStation}</Text>
               <Text style={styles.gCenaH}>{copy.price}</Text>
+              <Text style={styles.gRacunH}>{copy.receipt}</Text>
             </View>
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -357,6 +362,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
 </Text>
 <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
                 <Text style={styles.gCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} EUR` : '-'}</Text>
+                <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
               </View>
             ))}
           </View>
@@ -371,6 +377,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.eKatH}>{copy.category}</Text>
               <Text style={styles.eOpisH}>{copy.description}</Text>
               <Text style={styles.eCenaH}>{copy.amount}</Text>
+              <Text style={styles.eRacunH}>{copy.receipt}</Text>
             </View>
             {expenses.map((e: any, i: number) => (
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -378,6 +385,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 <Text style={styles.eKat}>{e.kategorija}</Text>
                 <Text style={styles.eOpis}>{String(e.opis || '-').replace('[Prejsnji lastnik]', '[PREJSNJI]')}</Text>
                 <Text style={styles.eCena}>{e.znesek?.toFixed(2)} EUR</Text>
+                <Text style={styles.eRacun}>{e.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
               </View>
             ))}
           </View>
@@ -453,6 +461,8 @@ export default function Report() {
       slika_url: includeVehicleImage ? avtoData?.slika_url : null,
     }
     const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url, ...row }: any) => row)
+    const gorivoForTransfer = includeReceiptImages ? (gorivoData || []) : (gorivoData || []).map(({ receipt_url, ...row }: any) => row)
+    const expensesForTransfer = includeReceiptImages ? (filteredExpenses || []) : (filteredExpenses || []).map(({ receipt_url, ...row }: any) => row)
     const makePayload = (mode: 'verify' | 'import') => ({
       type: 'garagebase-transfer-v1',
       mode,
@@ -464,8 +474,8 @@ export default function Report() {
       include_vehicle_image: includeVehicleImage,
       include_receipt_images: includeReceiptImages,
       service_logs: servisForTransfer,
-      fuel_logs: gorivoData || [],
-      expenses: filteredExpenses || [],
+      fuel_logs: gorivoForTransfer,
+      expenses: expensesForTransfer,
     })
 
     setVerifyQr('')
@@ -548,7 +558,9 @@ export default function Report() {
           </div>
           <div className="flex justify-between items-center">
             <span className="text-white text-sm">📎 Prilog računov</span>
-            <span className="text-[#6c63ff] font-bold">{servisi.filter(s => s.foto_url).length}</span>
+            <span className="text-[#6c63ff] font-bold">
+              {servisi.filter(s => s.foto_url).length + gorivo.filter(g => g.receipt_url).length + expenses.filter(e => e.receipt_url).length}
+            </span>
           </div>
           <div className="flex justify-between items-center border-t border-[#1e1e32] pt-2 mt-1">
             <span className="text-white text-sm font-semibold">Skupaj stroški</span>
@@ -561,7 +573,7 @@ export default function Report() {
         </div>
       </div>
 
-      {servisi.some(s => s.foto_url) && (
+      {(servisi.some(s => s.foto_url) || gorivo.some(g => g.receipt_url) || expenses.some(e => e.receipt_url)) && (
         <div className="bg-[#6c63ff11] border border-[#6c63ff33] rounded-xl p-4 mb-4">
           <p className="text-[#a09aff] text-xs">
             To vozilo ima priložene slike računov. V PDF reportu so označene z [ DA ] — za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com
@@ -591,7 +603,7 @@ export default function Report() {
           <button onClick={() => setIncludeReceiptImages(!includeReceiptImages)}
             className={`rounded-xl border p-4 text-left ${includeReceiptImages ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
             <p className="text-white text-sm font-semibold">{includeReceiptImages ? '[x]' : '[ ]'} Slike racunov</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Prenese slike pri servisih.</p>
+            <p className="text-[#5a5a80] text-xs mt-1">Prenese slike racunov pri servisih, gorivu in stroskih.</p>
           </button>
         </div>
       </div>
