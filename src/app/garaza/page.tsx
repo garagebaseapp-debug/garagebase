@@ -406,7 +406,7 @@ export default function Garaza() {
                   </div>
                   {listaNastavitve.tablica && avto.tablica && (
                     <div className="bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm max-w-[42%] overflow-hidden flex-shrink-0">
-                      <p className="text-[#111827] font-black text-[calc(12px*var(--gb-card-font-scale,1))] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                      <p className="text-[calc(12px*var(--gb-card-font-scale,1))] text-[#111827] font-black tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
                         {avto.tablica.toUpperCase()}
                       </p>
                     </div>
@@ -432,7 +432,7 @@ export default function Garaza() {
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
-                <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
+                <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
                   {avto.slika_url ? (
                   <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
                     loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
@@ -449,7 +449,7 @@ export default function Garaza() {
                 {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
                 {urejanje && <div className="absolute top-3 right-3 text-white/50 text-lg">⠿</div>}
 
-                <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0 overflow-hidden">
+                <div className={`${prikaz === 'malo' ? 'w-2/3 p-2' : 'w-1/2 p-3'} h-full flex flex-col justify-between border-l border-[#1e1e32] min-w-0 overflow-hidden`}>
                   <div>
                     <h2 className="text-white font-bold text-[calc(16px*var(--gb-card-font-scale,1))] leading-tight line-clamp-2">
                       {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
@@ -463,15 +463,15 @@ export default function Garaza() {
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  <div className="flex flex-col gap-2 min-w-0">
-                    <div className="flex flex-wrap gap-1.5 min-h-[32px] content-start overflow-hidden">
+                  <div className={`${prikaz === 'malo' ? 'flex-row items-end justify-between gap-2' : 'flex-col gap-2'} flex min-w-0`}>
+                    <div className={`${prikaz === 'malo' ? 'min-h-0 flex-1' : 'min-h-[32px]'} flex flex-wrap gap-1.5 content-start overflow-hidden`}>
                       {listaNastavitve.opomnik && (
                         <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
                       )}
                     </div>
                     {listaNastavitve.tablica && avto.tablica && (
-                      <div className="w-full bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm overflow-hidden">
-                        <p className="text-[#111827] font-black text-[calc(12px*var(--gb-card-font-scale,1))] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                      <div className={`${prikaz === 'malo' ? 'w-[42%] px-1.5 py-0.5' : 'w-full px-2 py-1'} bg-white border border-[#cfd7e6] rounded-md shadow-sm overflow-hidden flex-shrink-0`}>
+                        <p className="text-[calc(12px*var(--gb-card-font-scale,1))] text-[#111827] font-black tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
                           {avto.tablica.toUpperCase()}
                         </p>
                       </div>
