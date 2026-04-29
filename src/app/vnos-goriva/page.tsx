@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { trackEvent } from '@/lib/analytics'
+import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 
 export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -178,15 +179,25 @@ export default function VnosGoriva() {
     </button>
   )
 
-  const dodajRacun = (e: any) => {
+  const dodajRacun = async (e: any) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 4 * 1024 * 1024) {
-      setMessage('Slika racuna je lahko velika najvec 4MB.')
+    setMessage('')
+    try {
+      const result = await compressImageFile(file, uploadImageProfiles.receipt)
+      setRacun(result.file)
+      setRacunPreview(URL.createObjectURL(result.file))
+      if (result.changed) {
+        trackEvent('image_compressed', {
+          type: 'fuel_receipt',
+          originalBytes: result.originalBytes,
+          compressedBytes: result.compressedBytes,
+        })
+      }
+    } catch (error: any) {
+      setMessage(error.message || 'Slike racuna ni bilo mogoce pripraviti.')
       return
     }
-    setRacun(file)
-    setRacunPreview(URL.createObjectURL(file))
     setOcrText('')
     setOcrMessage('')
   }

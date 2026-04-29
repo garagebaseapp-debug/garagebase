@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 
 export default function NastavitveAvta() {
   const [avto, setAvto] = useState<any>(null)
@@ -102,11 +103,19 @@ export default function NastavitveAvta() {
     if (!file) return
     setUploadingSlika(true)
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const fileExt = file.name.split('.').pop()
+    if (!user) { setUploadingSlika(false); return }
+    let preparedFile = file
+    try {
+      preparedFile = (await compressImageFile(file, uploadImageProfiles.vehicle)).file
+    } catch (error: any) {
+      setMessage(error.message || 'Slike ni bilo mogoce pripraviti.')
+      setUploadingSlika(false)
+      return
+    }
+    const fileExt = preparedFile.name.split('.').pop() || 'jpg'
     const fileName = `${user.id}/${avto.id}.${fileExt}`
     await supabase.storage.from('car-images').remove([fileName])
-    const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { upsert: true })
     if (uploadError) { setMessage('Napaka pri nalaganju slike'); setUploadingSlika(false); return }
     const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
     await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', avto.id)
@@ -121,9 +130,19 @@ export default function NastavitveAvta() {
     setUploadingHomologacija(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setUploadingHomologacija(false); return }
-    const fileExt = file.name.split('.').pop()
+    let preparedFile = file
+    if (file.type.startsWith('image/')) {
+      try {
+        preparedFile = (await compressImageFile(file, uploadImageProfiles.document)).file
+      } catch (error: any) {
+        setMessage(error.message || 'Slike homologacije ni bilo mogoce pripraviti.')
+        setUploadingHomologacija(false)
+        return
+      }
+    }
+    const fileExt = preparedFile.name.split('.').pop()
     const fileName = `${user.id}/homologacija_${avto.id}.${fileExt}`
-    const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, file, { upsert: true })
+    const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, preparedFile, { upsert: true })
     if (uploadError) {
       setMessage('Napaka pri nalaganju homologacije.')
       setUploadingHomologacija(false)

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
+import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -92,13 +93,27 @@ export default function VnosServisa() {
     }
   }
 
-  const dodajSliko = (e: any) => {
+  const dodajSliko = async (e: any) => {
     const files = Array.from(e.target.files) as File[]
     if (slike.length + files.length > 3) { setMessage('Največ 3 slike na servis!'); return }
-    const noveSlike = [...slike, ...files].slice(0, 3)
-    setSlike(noveSlike)
-    setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
-    setMessage('')
+    try {
+      const compressed = await Promise.all(files.map((file) => compressImageFile(file, uploadImageProfiles.receipt)))
+      const noveSlike = [...slike, ...compressed.map((item) => item.file)].slice(0, 3)
+      setSlike(noveSlike)
+      setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
+      setMessage('')
+      compressed.forEach((item) => {
+        if (item.changed) {
+          trackEvent('image_compressed', {
+            type: 'service_receipt',
+            originalBytes: item.originalBytes,
+            compressedBytes: item.compressedBytes,
+          })
+        }
+      })
+    } catch (error: any) {
+      setMessage(error.message || 'Slike racuna ni bilo mogoce pripraviti.')
+    }
   }
 
   const odstraniSliko = (index: number) => {
@@ -107,15 +122,25 @@ export default function VnosServisa() {
     setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
   }
 
-  const dodajStevec = (e: any) => {
+  const dodajStevec = async (e: any) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 4 * 1024 * 1024) {
-      setMessage('Slika stevca je lahko velika najvec 4MB.')
+    try {
+      const result = await compressImageFile(file, uploadImageProfiles.document)
+      setStevec(result.file)
+      setStevecPreview(URL.createObjectURL(result.file))
+      setMessage('')
+      if (result.changed) {
+        trackEvent('image_compressed', {
+          type: 'odometer_photo',
+          originalBytes: result.originalBytes,
+          compressedBytes: result.compressedBytes,
+        })
+      }
+    } catch (error: any) {
+      setMessage(error.message || 'Slike stevca ni bilo mogoce pripraviti.')
       return
     }
-    setStevec(file)
-    setStevecPreview(URL.createObjectURL(file))
   }
 
   const pretвориVStevilko = (tekst: string): number | null => {
