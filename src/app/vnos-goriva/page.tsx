@@ -20,6 +20,8 @@ export default function VnosGoriva() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [filteredPostaje, setFilteredPostaje] = useState<string[]>([])
   const [poslusam, setPoslusam] = useState<string | null>(null)
+  const [racun, setRacun] = useState<File | null>(null)
+  const [racunPreview, setRacunPreview] = useState('')
   const postajRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -161,6 +163,29 @@ export default function VnosGoriva() {
     </button>
   )
 
+  const dodajRacun = (e: any) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Slika racuna je lahko velika najvec 4MB.')
+      return
+    }
+    setRacun(file)
+    setRacunPreview(URL.createObjectURL(file))
+  }
+
+  const naloziRacun = async () => {
+    if (!racun) return null
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const ext = racun.name.split('.').pop() || 'jpg'
+    const path = `${user.id}/fuel_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('service-documents').upload(path, racun, { upsert: true })
+    if (error) throw error
+    const { data } = supabase.storage.from('service-documents').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   const shrani = async () => {
     if (!km || !litri) { setMessage('Km in litri sta obvezna!'); return }
     const vneseniKm = parseInt(km)
@@ -170,6 +195,14 @@ export default function VnosGoriva() {
     }
     setLoading(true)
     setMessage('')
+    let receiptUrl: string | null = null
+    try {
+      receiptUrl = await naloziRacun()
+    } catch (error: any) {
+      setMessage('Napaka pri nalaganju slike racuna: ' + error.message)
+      setLoading(false)
+      return
+    }
 
     const datumVnosa = new Date().toLocaleDateString('sl-SI')
     const opombaNaknaden = jeNaknaden ? ` [Naknadno vneseno: ${datumVnosa}]` : ''
@@ -186,6 +219,7 @@ export default function VnosGoriva() {
       cena_skupaj: cenaSkupaj ? parseFloat(cenaSkupaj) : null,
       postaja: postajaZOpombo,
       tip_goriva: tipGoriva || null,
+      receipt_url: receiptUrl,
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
@@ -336,6 +370,24 @@ export default function VnosGoriva() {
                 </button>
               ))}
             </div>
+          )}
+        </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika racuna</label>
+          <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#6c63ff66] transition-colors">
+            <input type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
+            {racunPreview ? (
+              <img src={racunPreview} alt="Racun" className="w-full max-h-56 object-contain rounded-lg" />
+            ) : (
+              <span className="text-[#a09aff] font-semibold">📷 Dodaj/slikaj racun</span>
+            )}
+          </label>
+          {racunPreview && (
+            <button type="button" onClick={() => { setRacun(null); setRacunPreview('') }}
+              className="text-[#ef4444] text-xs mt-2">
+              Odstrani sliko
+            </button>
           )}
         </div>
 

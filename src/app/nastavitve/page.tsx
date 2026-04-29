@@ -662,6 +662,16 @@ export default function Nastavitve() {
         </button>
       </div>
 
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Pomoc</p>
+        <p className="text-white font-semibold text-sm">Pomocnik</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">Hitri vodic za osnovne funkcije GarageBase.</p>
+        <button onClick={() => window.location.href = '/pomocnik'}
+          className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
+          Odpri pomocnika
+        </button>
+      </div>
+
       {/* Autocomplete */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <div className="flex justify-between items-center">

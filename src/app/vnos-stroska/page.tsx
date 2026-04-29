@@ -15,6 +15,8 @@ export default function VnosStroska() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [poslusam, setPoslusam] = useState<string | null>(null)
+  const [racun, setRacun] = useState<File | null>(null)
+  const [racunPreview, setRacunPreview] = useState('')
 
   const kategorije = [
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
@@ -105,12 +107,43 @@ export default function VnosStroska() {
     </button>
   )
 
+  const dodajRacun = (e: any) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMessage('Slika racuna je lahko velika najvec 4MB.')
+      return
+    }
+    setRacun(file)
+    setRacunPreview(URL.createObjectURL(file))
+  }
+
+  const naloziRacun = async () => {
+    if (!racun) return null
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const ext = racun.name.split('.').pop() || 'jpg'
+    const path = `${user.id}/expense_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('service-documents').upload(path, racun, { upsert: true })
+    if (error) throw error
+    const { data } = supabase.storage.from('service-documents').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   const shrani = async () => {
     if (!znesek) { setMessage('Znesek je obvezen!'); return }
     if (kategorija === 'custom' && !kategorijaCustom) { setMessage('Vnesi naziv stroška!'); return }
 
     setLoading(true)
     setMessage('')
+    let receiptUrl: string | null = null
+    try {
+      receiptUrl = await naloziRacun()
+    } catch (error: any) {
+      setMessage('Napaka pri nalaganju slike racuna: ' + error.message)
+      setLoading(false)
+      return
+    }
 
     const finalnaKategorija = kategorija === 'custom' ? kategorijaCustom : kategorija
 
@@ -120,6 +153,7 @@ export default function VnosStroska() {
       kategorija: finalnaKategorija,
       opis: opis || null,
       znesek: parseFloat(znesek),
+      receipt_url: receiptUrl,
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
@@ -210,6 +244,24 @@ export default function VnosStroska() {
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors resize-none" />
             <MicButton polje="opis" />
           </div>
+        </div>
+
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika racuna</label>
+          <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
+            <input type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
+            {racunPreview ? (
+              <img src={racunPreview} alt="Racun" className="w-full max-h-56 object-contain rounded-lg" />
+            ) : (
+              <span className="text-[#3ecfcf] font-semibold">📷 Dodaj/slikaj racun</span>
+            )}
+          </label>
+          {racunPreview && (
+            <button type="button" onClick={() => { setRacun(null); setRacunPreview('') }}
+              className="text-[#ef4444] text-xs mt-2">
+              Odstrani sliko
+            </button>
+          )}
         </div>
 
         {message && (
