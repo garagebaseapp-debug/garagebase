@@ -650,6 +650,16 @@ export default function Nastavitve() {
         )}
       </div>
 
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Feedback</p>
+        <p className="text-white font-semibold text-sm">Predlagaj funkcijo</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">Poslji idejo, tezavo ali predlog za izboljsavo GarageBase.</p>
+        <button onClick={() => window.location.href = '/feedback'}
+          className="w-full bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors">
+          Odpri predloge
+        </button>
+      </div>
+
       {/* Autocomplete */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <div className="flex justify-between items-center">
