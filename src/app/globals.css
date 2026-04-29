@@ -72,6 +72,10 @@ body:not(.landing) {
   body:not(.landing) .gb-desktop-nav {
     display: none;
   }
+
+  .gb-car-grid {
+    grid-template-columns: repeat(var(--gb-mobile-columns, 3), minmax(0, 1fr));
+  }
 }
 
 /* Light mode */

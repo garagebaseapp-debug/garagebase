@@ -26,6 +26,7 @@ export default function Nastavitve() {
   const [pisava, setPisava] = useState('normalna')
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
+  const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [avtocomplete, setAvtocomplete] = useState(true)
   const [tema, setTema] = useState('temna')
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
@@ -60,6 +61,7 @@ export default function Nastavitve() {
         setPisava(n.pisava || 'normalna')
         setPrikazGaraze(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
+        setMobileGridStolpci(n.mobileGridStolpci || 3)
         setAvtocomplete(n.avtocomplete !== false)
         setTema(n.tema || 'temna')
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
@@ -160,7 +162,7 @@ export default function Nastavitve() {
   }
 
   const shrani = () => {
-    const nastavitve = { nacin, jezik, pisava, prikazGaraze, desktopStolpci, avtocomplete, tema, gridNastavitve, listaNastavitve }
+    const nastavitve = { nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, avtocomplete, tema, gridNastavitve, listaNastavitve }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
@@ -528,6 +530,31 @@ export default function Nastavitve() {
             <span>2</span><span>4</span><span>6</span><span>8</span>
           </div>
         </div>
+
+        {prikazGaraze === 'grid' && (
+          <div className="mt-4 pt-4 border-t border-[#1e1e32]">
+            <div className="flex justify-between items-center gap-4 mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">Avtov v vrstici v app</p>
+                <p className="text-[#5a5a80] text-xs mt-0.5">Velja za telefon in nameščeno aplikacijo</p>
+              </div>
+              <div className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-xl px-4 py-2 font-bold">
+                {mobileGridStolpci}
+              </div>
+            </div>
+            <input
+              type="range"
+              min="2"
+              max="5"
+              value={mobileGridStolpci}
+              onChange={(e) => setMobileGridStolpci(Number(e.target.value))}
+              className="w-full accent-[#3ecfcf]"
+            />
+            <div className="flex justify-between text-[#3a3a5a] text-xs mt-1">
+              <span>2</span><span>3</span><span>4</span><span>5</span>
+            </div>
+          </div>
+        )}
 
         {/* Grid nastavitve */}
         {prikazGaraze === 'grid' && (

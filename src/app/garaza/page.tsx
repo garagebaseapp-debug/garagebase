@@ -15,6 +15,7 @@ export default function Garaza() {
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [prikaz, setPrikaz] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
+  const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -34,6 +35,7 @@ export default function Garaza() {
         const n = JSON.parse(shranjene)
         setPrikaz(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
+        setMobileGridStolpci(n.mobileGridStolpci || 3)
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
         if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
       }
@@ -156,9 +158,9 @@ export default function Garaza() {
   }
 
   const karticaVisina = () => {
-    if (prikaz === 'malo') return { height: '28dvh', minHeight: '180px', maxHeight: '240px' }
-    if (prikaz === 'veliko') return { height: '24dvh', minHeight: '165px', maxHeight: '210px' }
-    return { height: '31dvh', minHeight: '205px', maxHeight: '270px' }
+    if (prikaz === 'malo') return { height: '10.5dvh', minHeight: '78px', maxHeight: '92px' }
+    if (prikaz === 'veliko') return { height: '29dvh', minHeight: '210px', maxHeight: '250px' }
+    return { height: '17dvh', minHeight: '124px', maxHeight: '148px' }
   }
 
   const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: any }) => {
@@ -284,8 +286,8 @@ export default function Garaza() {
         </div>
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
-          <div className="gb-car-grid grid grid-cols-3 gap-2 lg:gap-4"
-            style={{ '--gb-desktop-columns': desktopStolpci } as any}>
+          <div className="gb-car-grid grid gap-2 lg:gap-4"
+            style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci } as any}>
             {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
               return (
@@ -360,6 +362,62 @@ export default function Garaza() {
         <div className="flex-1 overflow-y-auto lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:overflow-visible lg:auto-rows-fr">
           {avti.map((avto, index) => {
             const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
+            if (prikaz === 'veliko') return (
+              <div key={avto.id}
+                draggable={urejanje}
+                onDragStart={() => onDragStart(index)}
+                onDragEnter={() => onDragEnter(index)}
+                onDragEnd={onDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] ${barvaBorder(barva)} ${
+                  urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
+                } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
+                style={karticaVisina()}>
+                {avto.slika_url ? (
+                  <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                    loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
+                ) : (
+                  <div className={`absolute inset-0 ${
+                    index % 2 === 0
+                      ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]'
+                      : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'
+                  }`} />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
+                {urejanje && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#3ecfcf]" />}
+                {urejanje && <div className="absolute top-3 right-3 text-white/70 text-lg">⠿</div>}
+
+                <div className="absolute left-3 top-3 right-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="text-white font-black text-lg leading-tight drop-shadow line-clamp-2">
+                      {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
+                      {avto.model.toUpperCase()}
+                    </h2>
+                    <p className="text-white/75 text-xs mt-1 drop-shadow">
+                      {[
+                        listaNastavitve.letnik && avto.letnik,
+                        listaNastavitve.gorivo && avto.gorivo,
+                        listaNastavitve.km && avto.km_trenutni && `${avto.km_trenutni.toLocaleString()} km`
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  {listaNastavitve.tablica && avto.tablica && (
+                    <div className="bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm max-w-[42%] overflow-hidden flex-shrink-0">
+                      <p className="text-[#111827] font-black text-[12px] tracking-[0.12em] font-mono text-center leading-none whitespace-nowrap truncate">
+                        {avto.tablica.toUpperCase()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {listaNastavitve.opomnik && !urejanje && (
+                  <div className="absolute left-3 bottom-3 right-3 flex flex-wrap gap-1.5 content-end">
+                    <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={4} nastavitve={listaNastavitve} />
+                  </div>
+                )}
+              </div>
+            )
             return (
               <div key={avto.id}
                 draggable={urejanje}
