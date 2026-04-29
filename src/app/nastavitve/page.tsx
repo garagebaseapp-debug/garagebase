@@ -494,6 +494,10 @@ export default function Nastavitve() {
           className="w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
           Odpri Scan
         </button>
+        <button onClick={() => window.location.href = '/uvoz-podatkov'}
+          className="mt-3 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
+          Uvoz iz drugih app
+        </button>
       </div>
 
       {/* Način uporabe */}
