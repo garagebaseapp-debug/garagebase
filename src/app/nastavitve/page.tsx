@@ -664,6 +664,10 @@ export default function Nastavitve() {
           className="mt-2 w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
           Admin pregled predlogov
         </button>
+        <button onClick={() => window.location.href = '/admin'}
+          className="mt-2 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
+          Glavni admin panel
+        </button>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
