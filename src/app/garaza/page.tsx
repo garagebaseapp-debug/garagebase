@@ -13,6 +13,7 @@ export default function Garaza() {
   const [urejanje, setUrejanje] = useState(false)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [prikaz, setPrikaz] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -34,6 +35,7 @@ export default function Garaza() {
       const shranjene = localStorage.getItem('garagebase_nastavitve')
       if (shranjene) {
         const n = JSON.parse(shranjene)
+        setNacin(n.nacin || 'full')
         setPrikaz(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
@@ -113,6 +115,15 @@ export default function Garaza() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
+  }
+
+  const prviAvto = avti[0]
+  const pojdiNaVnos = (pot: string) => {
+    if (!prviAvto) {
+      window.location.href = '/dodaj-avto'
+      return
+    }
+    window.location.href = `${pot}?car=${prviAvto.id}`
   }
 
   const onDragStart = (index: number) => setDragIndex(index)
@@ -287,6 +298,45 @@ export default function Garaza() {
         <p className="text-center text-[#5a5a80] text-xs mb-2 px-5">
           Povleci avte da spreminjaš vrstni red
         </p>
+      )}
+
+      {nacin === 'lite' && avti.length > 0 && !urejanje && (
+        <div className="px-5 pb-4">
+          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <p className="text-white font-bold text-base">Hitri vnos</p>
+                <p className="text-[#5a5a80] text-xs mt-0.5">Lite nacin za najpogostejse akcije</p>
+              </div>
+              <button onClick={() => window.location.href = '/nastavitve'}
+                className="bg-[#13131f] border border-[#1e1e32] text-[#8080a0] text-xs font-semibold px-3 py-2 rounded-xl">
+                Nastavitve
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => pojdiNaVnos('/vnos-goriva')}
+                className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-xl py-4 px-3 text-left font-bold">
+                <span className="block text-2xl mb-1">⛽</span>
+                Vnos goriva
+              </button>
+              <button onClick={() => pojdiNaVnos('/vnos-servisa')}
+                className="bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] rounded-xl py-4 px-3 text-left font-bold">
+                <span className="block text-2xl mb-1">🔧</span>
+                Servis
+              </button>
+              <button onClick={() => pojdiNaVnos('/vnos-stroska')}
+                className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] rounded-xl py-4 px-3 text-left font-bold">
+                <span className="block text-2xl mb-1">📊</span>
+                Strosek
+              </button>
+              <button onClick={() => pojdiNaVnos('/opomniki')}
+                className="bg-[#16a34a22] border border-[#16a34a66] text-[#4ade80] rounded-xl py-4 px-3 text-left font-bold">
+                <span className="block text-2xl mb-1">🔔</span>
+                Opomnik
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {!loading && avti.length === 0 ? (
