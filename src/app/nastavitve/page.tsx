@@ -164,7 +164,9 @@ export default function Nastavitve() {
   }
 
   const shrani = () => {
-    const nastavitve = { nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve }
+    const raw = localStorage.getItem('garagebase_nastavitve')
+    const current = raw ? JSON.parse(raw) : {}
+    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024

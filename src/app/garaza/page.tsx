@@ -54,6 +54,21 @@ export default function Garaza() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
 
+      const onboardingRaw = localStorage.getItem('garagebase_nastavitve')
+      if (!onboardingRaw) {
+        window.location.href = '/onboarding'
+        return
+      }
+      try {
+        if (JSON.parse(onboardingRaw).onboardingDone !== true) {
+          window.location.href = '/onboarding'
+          return
+        }
+      } catch {
+        window.location.href = '/onboarding'
+        return
+      }
+
       const started = performance.now()
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)

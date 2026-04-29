@@ -47,7 +47,14 @@ export default function LoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
-      else window.location.href = '/garaza'
+      else {
+        const raw = localStorage.getItem('garagebase_nastavitve')
+        let onboardingDone = false
+        if (raw) {
+          try { onboardingDone = JSON.parse(raw).onboardingDone === true } catch {}
+        }
+        window.location.href = onboardingDone ? '/garaza' : '/onboarding'
+      }
     }
     setLoading(false)
   }
