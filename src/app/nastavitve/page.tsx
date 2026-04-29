@@ -316,16 +316,52 @@ export default function Nastavitve() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 overflow-hidden rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 lg:p-7">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6c63ff]">Settings</p>
+              <h1 className="mt-2 text-3xl font-black text-white">
+                Garage<span className="text-[#6c63ff]">Base</span>
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-[#5a5a80]">
+                Uredi prikaz, varnost, jezik, prenos podatkov in delovanje aplikacije na enem mestu.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-[#5a5a80]">
+              <span className="font-semibold text-white">{user?.email}</span>
+              <span className="mx-2 text-[#3a3a5a]">/</span>
+              Free paket
+            </div>
+          </div>
+        </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-white">
-          Garage<span className="text-[#6c63ff]">Base</span>
-        </h1>
-      </div>
+        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="hidden xl:block">
+            <nav className="sticky top-28 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
+              {[
+                ['Profil', '#profil'],
+                ['Varnost', '#varnost'],
+                ['Prenos', '#prenos'],
+                ['Uporaba', '#uporaba'],
+                ['Prikaz', '#garaza-prikaz'],
+                ['Feedback', '#feedback'],
+                ['Aplikacija', '#aplikacija'],
+              ].map(([label, href]) => (
+                <a key={href} href={href}
+                  className="flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-[#5a5a80] transition-colors hover:bg-[#6c63ff11] hover:text-[#a09aff]">
+                  {label}
+                  <span className="text-[#3a3a5a]">→</span>
+                </a>
+              ))}
+            </nav>
+          </aside>
+
+          <main className="grid gap-4 lg:grid-cols-2">
 
       {/* Profil */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="profil" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Profil</p>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#6c63ff22] border border-[#6c63ff44] flex items-center justify-center">
@@ -339,7 +375,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Tema */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="tema" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">
@@ -359,7 +395,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Obvestila */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="obvestila" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Obvestila</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Opomniki za registracijo, servis in vinjeto</p>
         {notifikacije === 'dovoljeno' ? (
@@ -394,7 +430,7 @@ export default function Nastavitve() {
 
 
       {/* App lock */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="varnost" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Varnost</p>
         <p className="text-white font-semibold text-sm">Odklep z biometrijo</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Zakleni app z odtisom, obrazom ali PIN-om naprave.</p>
@@ -415,7 +451,7 @@ export default function Nastavitve() {
         )}
         {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}
       </div>
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="prenos" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prenos</p>
         <p className="text-white font-semibold text-sm">Skeniranje QR</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Preveri report ali uvozi zgodovino vozila od prejsnjega lastnika.</p>
@@ -426,7 +462,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Način uporabe */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="uporaba" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Lite = enostavno, Full = vse možnosti</p>
         <div className="grid grid-cols-2 gap-3">
@@ -450,7 +486,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Jezik */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="jezik" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Jezik</p>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -470,7 +506,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Pisava */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="pisava" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Velikost pisave</p>
         <div className="grid grid-cols-3 gap-2">
           {[
@@ -497,7 +533,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Prikaz garaže */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="garaza-prikaz" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prikaz garaže</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
         <div className="grid grid-cols-2 gap-2">
@@ -654,7 +690,7 @@ export default function Nastavitve() {
         )}
       </div>
 
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="feedback" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Feedback</p>
         <p className="text-white font-semibold text-sm">Predlagaj funkcijo</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Poslji idejo, tezavo ali predlog za izboljsavo GarageBase.</p>
@@ -672,7 +708,7 @@ export default function Nastavitve() {
         </button>
       </div>
 
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="pomoc" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Pomoc</p>
         <p className="text-white font-semibold text-sm">Pomocnik</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Hitri vodic za osnovne funkcije GarageBase.</p>
@@ -683,7 +719,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Autocomplete */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="predlogi" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">Predlagane besede</p>
@@ -701,7 +737,7 @@ export default function Nastavitve() {
       </div>
 
       {/* O aplikaciji */}
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+      <div id="aplikacija" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">O aplikaciji</p>
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
@@ -727,15 +763,20 @@ export default function Nastavitve() {
         </div>
       )}
 
-      <button onClick={shrani}
-        className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors mb-3">
-        Shrani nastavitve
-      </button>
+      <div className="grid gap-3 lg:col-span-2 sm:grid-cols-2">
+        <button onClick={shrani}
+          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
+          Shrani nastavitve
+        </button>
 
-      <button onClick={handleLogout}
-        className="w-full bg-[#13131f] border border-[#1e1e32] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
-        Odjava
-      </button>
+        <button onClick={handleLogout}
+          className="w-full bg-[#13131f] border border-[#1e1e32] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
+          Odjava
+        </button>
+      </div>
+          </main>
+        </div>
+      </div>
 
       <BottomNav aktivna="nastavitve" />
     </div>
