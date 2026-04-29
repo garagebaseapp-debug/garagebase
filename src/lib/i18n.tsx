@@ -35,6 +35,13 @@ const phrasePairs: Array<[string, string]> = [
   ['Digitalni report iz GarageBase baze', 'Digital report from the GarageBase database'], ['Vozilo', 'Vehicle'], ['Lastnistvo', 'Ownership'], ['Pregled stroskov', 'Cost overview'], ['UVOZ', 'IMPORT'], ['BRANJE', 'READ'], ['Uvozi vozilo', 'Import vehicle'], ['Odpri racun', 'Open receipt'], ['Report je najden v GarageBase bazi.', 'Report found in the GarageBase database.'],
   ['Prenos zgodovine', 'History transfer'], ['Generiraj QR', 'Generate QR'], ['Skeniraj', 'Scan'], ['Uvoz vozila', 'Vehicle import'], ['Preverjanje', 'Verification'], ['Nizka prioriteta', 'Low priority'], ['Srednja prioriteta', 'Medium priority'], ['Visoka prioriteta', 'High priority'], ['Datum poteka', 'Expiry date'], ['Km opomnik', 'Mileage reminder'],
   ['Tvoja garaža. Vse na enem mestu.', 'Your garage. Everything in one place.'], ['Web + mobilna aplikacija', 'Web + mobile app'], ['Servisi, stroški, opomniki, gorivo in poročila za vsako vozilo. Urejeno za vsakdanjo uporabo in pripravljeno za prodajo vozila.', 'Services, costs, reminders, fuel and reports for every vehicle. Organized for everyday use and ready when selling a vehicle.'], ['Začni brezplačno', 'Start for free'], ['Oglej si funkcije', 'View features'], ['Funkcije', 'Features'], ['Paketi', 'Plans'], ['Kontakt', 'Contact'], ['Narejeno za realno uporabo vozila', 'Built for real vehicle use'], ['Poraba, tankanja in stroški po vozilih.', 'Consumption, fill-ups and costs by vehicle.'], ['Servisna knjiga z računi in kilometri.', 'Service book with receipts and mileage.'], ['Registracija, vinjeta, servis in zavarovanje.', 'Registration, vignette, service and insurance.'], ['Pregleden PDF za prodajo vozila.', 'Clear PDF for selling a vehicle.'], ['Mobilna app', 'Mobile app'], ['Namesti na telefon in uporabljaj kot aplikacijo.', 'Install on your phone and use it as an app.'], ['Več vozil', 'Multiple vehicles'], ['Celotna domača garaža na enem mestu.', 'Your whole home garage in one place.'], ['Začni z osnovno evidenco in kasneje dodaj report, QR prenos zgodovine in napredne funkcije.', 'Start with basic records and later add reports, QR history transfer and advanced features.'], ['1 vozilo', '1 vehicle'], ['2 vozili', '2 vehicles'], ['5 vozil', '5 vehicles'], ['namestitev', 'install'], ['report', 'report'], ['prenos', 'transfer'],
+  ['Shrani nastavitve', 'Save settings'], ['Predlagane besede', 'Suggested words'], ['Autocomplete pri vnosu postaje in servisa', 'Autocomplete for station and service entry'], ['O aplikaciji', 'About the app'], ['Verzija', 'Version'], ['Spletna stran', 'Website'], ['Podpora', 'Support'],
+  ['Varnost', 'Security'], ['Odklep z biometrijo', 'Biometric unlock'], ['Zakleni app z odtisom, obrazom ali PIN-om naprave.', 'Lock the app with fingerprint, face or device PIN.'], ['Prenos', 'Transfer'], ['Skeniranje QR', 'QR scanning'], ['Preveri report ali uvozi zgodovino vozila od prejšnjega lastnika.', 'Verify a report or import vehicle history from the previous owner.'], ['Odpri Scan', 'Open Scan'],
+  ['Skupni stroški', 'Total costs'], ['Zadnjih 6 mesecev', 'Last 6 months'], ['Razmerje stroškov', 'Cost ratio'], ['Servisi', 'Services'], ['Ostalo', 'Other'], ['+ Dodaj strošek', '+ Add expense'], ['Dodaj strošek', 'Add expense'], ['Filtrirano:', 'Filtered:'], ['Počisti filter', 'Clear filter'],
+  ['Kilometri *', 'Mileage *'], ['Litri *', 'Liters *'], ['Cena/L (€)', 'Price/L (€)'], ['Postaja (po želji)', 'Station (optional)'], ['Skupna cena', 'Total price'], ['Shrani tankanje', 'Save fill-up'], ['Shrani tankanje →', 'Save fill-up →'], ['Tankanje uspešno shranjeno!', 'Fill-up saved successfully!'], ['najmanj', 'at least'], ['Poslušam... govori zdaj', 'Listening... speak now'], ['Naknaden vnos', 'Backdated entry'], ['zabeleženo bo kdaj je bilo dejansko vneseno', 'the actual entry time will be recorded'],
+  ['Skupaj servisov', 'Total services'], ['Skupaj strošek', 'Total service cost'], ['+ Dodaj servis', '+ Add service'], ['Opravljeno delo', 'Work performed'], ['Tapni za detajle', 'Tap for details'], ['Tapni za detajle →', 'Tap for details →'], ['Ni priloženih računov', 'No receipt photos attached'],
+  ['Dodaj opomnik', 'Add reminder'], ['Tip', 'Type'], ['Opozori X dni prej', 'Warn X days before'], ['Shranjujem...', 'Saving...'], ['Dodaj registracijo, vinjeto ali drug opomnik', 'Add registration, vignette or another reminder'], ['Drugo...', 'Other...'],
+  ['Slike racunov', 'Receipt photos'], ['Slike računov', 'Receipt photos'], ['To vozilo ima priložene slike računov. V PDF reportu so označene z [ DA ] — za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com', 'This vehicle has attached receipt photos. In the PDF report they are marked with [ YES ] — ask the seller for access in the GarageBase app to view original photos at getgaragebase.com'], ['PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroške — idealno za prodajo vozila.', 'The PDF report contains the full service history, fuel log and expenses — ideal when selling a vehicle.'],
 ]
 
 const slToEn = new Map<string, string>()
@@ -58,7 +65,7 @@ function splitDecor(value: string) {
   return { leading, core: core.trim(), trailing }
 }
 
-function translateCore(value: string, language: Language) {
+function translateCore(value: string, language: Language): string {
   const clean = norm(value)
   if (!clean) return value
   if (language === 'sl') return value
@@ -69,6 +76,22 @@ function translateCore(value: string, language: Language) {
   const { leading, core, trailing } = splitDecor(clean)
   const coreHit = slToEn.get(norm(core))
   if (coreHit) return `${leading}${coreHit}${trailing}`
+
+  const checkbox = clean.match(/^(\[[xX ]\]\s*)(.+)$/)
+  if (checkbox) {
+    const translated = translateCore(checkbox[2], language)
+    return `${checkbox[1]}${translated}`
+  }
+
+  const lastKm = clean.match(/^\((zadnji|trenutni):\s*([^)]+)\)$/i)
+  if (lastKm) return `(${lastKm[1].toLowerCase() === 'zadnji' ? 'last' : 'current'}: ${lastKm[2]})`
+
+  const warnDays = clean.match(/^opozori\s+(\d+)\s+dni prej$/i)
+  if (warnDays) return `warn ${warnDays[1]} days before`
+
+  if (clean.startsWith('⚠️ Naknaden vnos')) {
+    return '⚠️ Backdated entry — the actual entry time will be recorded'
+  }
 
   const days = clean.match(/^(-?\d+)\s*dni$/i)
   if (days) return `${days[1]} days`
