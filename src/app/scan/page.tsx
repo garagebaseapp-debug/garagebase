@@ -244,6 +244,28 @@ export default function ScanPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
 
+    const { data: existingCar, error: existingError } = await supabase
+      .from('cars')
+      .select('id,znamka,model')
+      .eq('user_id', user.id)
+      .eq('source_transfer_id', transfer.id)
+      .maybeSingle()
+
+    if (existingError) {
+      setMessage(existingError.message.includes('source_transfer_id')
+        ? 'Najprej v Supabase zazeni SUPABASE_MIGRACIJA_ZAUPANJE_PRENOS.sql, potem poskusi uvoz znova.'
+        : 'Preverjanje uvoza ni uspelo: ' + existingError.message)
+      setLoading(false)
+      return
+    }
+
+    if (existingCar?.id) {
+      setMessage(`Ta QR prenos je ze uvozen kot ${existingCar.znamka || ''} ${existingCar.model || ''}. Odpiram vozilo brez podvajanja.`)
+      setTimeout(() => window.location.href = `/dashboard?car=${existingCar.id}`, 900)
+      setLoading(false)
+      return
+    }
+
     const source = payload.car_full || {}
     const { data: newCar, error: carError } = await supabase.from('cars').insert({
       user_id: user.id,
@@ -266,6 +288,9 @@ export default function ScanPage() {
       st_lastnikov: source.st_lastnikov || payload.car?.st_lastnikov || null,
       lastnik_mesto: source.lastnik_mesto || payload.car?.lastnik_mesto || null,
       lastnik_starost: source.lastnik_starost || payload.car?.lastnik_starost || null,
+      source_transfer_id: transfer.id,
+      source_owner_label: 'Prejsnji lastnik',
+      imported_at: new Date().toISOString(),
       prenos_soglasje: false,
       prenos_opomba: 'Uvozeno iz GarageBase QR prenosa.'
     }).select().single()
@@ -276,9 +301,9 @@ export default function ScanPage() {
       return
     }
 
-    const serviceRows = cleanTransferRows(payload.service_logs || [], newCar.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
-    const fuelRows = cleanTransferRows(payload.fuel_logs || [], newCar.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
-    const expenseRows = cleanTransferRows(payload.expenses || [], newCar.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+    const serviceRows = cleanTransferRows(payload.service_logs || [], newCar.id, transfer.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+    const fuelRows = cleanTransferRows(payload.fuel_logs || [], newCar.id, transfer.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
+    const expenseRows = cleanTransferRows(payload.expenses || [], newCar.id, transfer.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
 
     if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
     if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)

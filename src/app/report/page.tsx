@@ -37,12 +37,14 @@ const styles = StyleSheet.create({
   sKm: { width: '13%', fontSize: 8, color: '#333333' },
   sOpis: { width: '44%', fontSize: 8, color: '#333333' },
   sCena: { width: '15%', fontSize: 8, color: '#333333', textAlign: 'right' },
-  sRacun: { width: '15%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  sRacun: { width: '8%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  sTrust: { width: '7%', fontSize: 7, color: '#16a34a', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
   sDateH: { width: '13%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   sKmH: { width: '13%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   sOpisH: { width: '44%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   sCenaH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
-  sRacunH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  sRacunH: { width: '8%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  sTrustH: { width: '7%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   // Gorivo stolpci
   gDate: { width: '14%', fontSize: 8, color: '#333333' },
   gKm: { width: '14%', fontSize: 8, color: '#333333' },
@@ -53,22 +55,26 @@ gTipD: { width: '9%', fontSize: 8, color: '#888888', fontFamily: 'Helvetica-Bold
 gTipH: { width: '9%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
 gOpisH: { width: '32%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gCena: { width: '17%', fontSize: 8, color: '#333333', textAlign: 'right' },
-  gRacun: { width: '14%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  gRacun: { width: '7%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  gTrust: { width: '7%', fontSize: 7, color: '#16a34a', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
   gDateH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gKmH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   gCenaH: { width: '17%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
-  gRacunH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  gRacunH: { width: '7%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  gTrustH: { width: '7%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   // Expenses stolpci
   eDate: { width: '15%', fontSize: 8, color: '#333333' },
   eKat: { width: '18%', fontSize: 8, color: '#333333' },
   eOpis: { width: '37%', fontSize: 8, color: '#333333' },
   eCena: { width: '16%', fontSize: 8, color: '#333333', textAlign: 'right' },
-  eRacun: { width: '14%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  eRacun: { width: '7%', fontSize: 8, color: '#6c63ff', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
+  eTrust: { width: '7%', fontSize: 7, color: '#16a34a', textAlign: 'center', fontFamily: 'Helvetica-Bold' },
   eDateH: { width: '15%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   eKatH: { width: '18%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   eOpisH: { width: '37%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff' },
   eCenaH: { width: '16%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'right' },
-  eRacunH: { width: '14%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  eRacunH: { width: '7%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
+  eTrustH: { width: '7%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63ff', textAlign: 'center' },
   opomba: { fontSize: 8, color: '#5555cc', marginTop: 8, padding: 8, backgroundColor: '#f0f0ff', borderRadius: 4, borderLeftWidth: 3, borderLeftColor: '#6c63ff' },
   ownerDivider: { marginVertical: 7, paddingVertical: 5, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#6c63ff', backgroundColor: '#f8f8ff' },
   ownerDividerText: { fontSize: 8, color: '#6c63ff', fontFamily: 'Helvetica-Bold', textAlign: 'center' },
@@ -123,6 +129,11 @@ const pdfCopy = {
     work: 'Opis dela',
     price: 'Cena',
     receipt: 'Racun',
+    trust: 'Zaupanje',
+    trustBasic: 'Basic',
+    trustPhoto: 'Photo',
+    trustStrong: 'Strong',
+    trustNote: 'Stopnje zaupanja: Basic = rocni vnos, Photo = vnos s sliko stevca, Strong = slika stevca + uradni dokument + casovni zig + zaklenjen zapis. GarageBase potrjuje transparentno zgodovino od trenutka uporabe aplikacije naprej.',
     receiptsNote: '[ DA ] = Slike racunov so prilozene v GarageBase aplikaciji. Za ogled originalnih racunov zahtevajte dostop pri prodajalcu vozila ali obiscite getgaragebase.com',
     fuelLog: 'Evidenca goriva',
     type: 'Tip',
@@ -168,6 +179,11 @@ const pdfCopy = {
     work: 'Work performed',
     price: 'Price',
     receipt: 'Receipt',
+    trust: 'Trust',
+    trustBasic: 'Basic',
+    trustPhoto: 'Photo',
+    trustStrong: 'Strong',
+    trustNote: 'Trust levels: Basic = manual entry, Photo = odometer photo, Strong = odometer photo + official document + timestamp + locked record. GarageBase verifies transparent history from the moment the app is used onward.',
     receiptsNote: '[ YES ] = Receipt photos are attached in the GarageBase app. Ask the vehicle seller for access to view original receipts or visit getgaragebase.com',
     fuelLog: 'Fuel log',
     type: 'Type',
@@ -190,6 +206,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = servisi.some((s: any) => s.foto_url) || gorivo.some((g: any) => g.receipt_url) || expenses.some((e: any) => e.receipt_url)
   const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
+  const trustLabel = (row: any) => {
+    if (row.verification_level === 'strong') return copy.trustStrong
+    if (row.verification_level === 'photo') return copy.trustPhoto
+    return copy.trustBasic
+  }
 
   return (
     <Document>
@@ -324,6 +345,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.sOpisH}>{copy.work}</Text>
               <Text style={styles.sCenaH}>{copy.price}</Text>
               <Text style={styles.sRacunH}>{copy.receipt}</Text>
+              <Text style={styles.sTrustH}>{copy.trust}</Text>
             </View>
             {servisi.map((s: any, i: number) => (
               <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -332,6 +354,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 <Text style={styles.sOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 55)}{s.servis ? ` (${s.servis})` : ''}</Text>
                 <Text style={styles.sCena}>{s.cena ? `${s.cena.toFixed(2)} EUR` : '-'}</Text>
                 <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                <Text style={styles.sTrust}>{trustLabel(s)}</Text>
               </View>
             ))}
             {imaPrivonke && (
@@ -339,6 +362,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 {copy.receiptsNote}
               </Text>
             )}
+            <Text style={styles.opomba}>{copy.trustNote}</Text>
           </View>
         )}
 
@@ -350,9 +374,10 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.gDateH}>{copy.date}</Text>
               <Text style={styles.gKmH}>{copy.km}</Text>
               <Text style={styles.gTipH}>{copy.type}</Text>
-<Text style={styles.gOpisH}>{copy.litersStation}</Text>
+              <Text style={styles.gOpisH}>{copy.litersStation}</Text>
               <Text style={styles.gCenaH}>{copy.price}</Text>
               <Text style={styles.gRacunH}>{copy.receipt}</Text>
+              <Text style={styles.gTrustH}>{copy.trust}</Text>
             </View>
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -361,11 +386,13 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
 </Text>
-<Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
+                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
                 <Text style={styles.gCena}>{g.cena_skupaj ? `${g.cena_skupaj.toFixed(2)} EUR` : '-'}</Text>
                 <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                <Text style={styles.gTrust}>{trustLabel(g)}</Text>
               </View>
             ))}
+            <Text style={styles.opomba}>{copy.trustNote}</Text>
           </View>
         )}
 
@@ -379,6 +406,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.eOpisH}>{copy.description}</Text>
               <Text style={styles.eCenaH}>{copy.amount}</Text>
               <Text style={styles.eRacunH}>{copy.receipt}</Text>
+              <Text style={styles.eTrustH}>{copy.trust}</Text>
             </View>
             {expenses.map((e: any, i: number) => (
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -387,8 +415,10 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 <Text style={styles.eOpis}>{String(e.opis || '-').replace('[Prejsnji lastnik]', '[PREJSNJI]')}</Text>
                 <Text style={styles.eCena}>{e.znesek?.toFixed(2)} EUR</Text>
                 <Text style={styles.eRacun}>{e.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                <Text style={styles.eTrust}>{trustLabel(e)}</Text>
               </View>
             ))}
+            <Text style={styles.opomba}>{copy.trustNote}</Text>
           </View>
         )}
 
@@ -464,9 +494,15 @@ export default function Report() {
     const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url, ...row }: any) => row)
     const gorivoForTransfer = includeReceiptImages ? (gorivoData || []) : (gorivoData || []).map(({ receipt_url, ...row }: any) => row)
     const expensesForTransfer = includeReceiptImages ? (filteredExpenses || []) : (filteredExpenses || []).map(({ receipt_url, ...row }: any) => row)
-    const makePayload = (mode: 'verify' | 'import') => ({
+    const withSourceIds = (rows: any[]) => rows.map((row: any) => ({
+      ...row,
+      source_entry_id: row.source_entry_id || row.id,
+      verification_level: row.verification_level || 'basic',
+    }))
+    const makePayload = (mode: 'verify' | 'import', token: string) => ({
       type: 'garagebase-transfer-v1',
       mode,
+      transfer_token: token,
       language: reportLanguage,
       exportedAt: new Date().toISOString(),
       consent: true,
@@ -474,21 +510,21 @@ export default function Report() {
       car_full: carFull,
       include_vehicle_image: includeVehicleImage,
       include_receipt_images: includeReceiptImages,
-      service_logs: servisForTransfer,
-      fuel_logs: gorivoForTransfer,
-      expenses: expensesForTransfer,
+      service_logs: withSourceIds(servisForTransfer),
+      fuel_logs: withSourceIds(gorivoForTransfer),
+      expenses: withSourceIds(expensesForTransfer),
     })
 
     setVerifyQr('')
     setImportQr('')
     if (includeVerifyQr) {
       const token = createTransferToken()
-      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'verify', consent: true, payload: makePayload('verify') })
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'verify', consent: true, payload: makePayload('verify', token) })
       setVerifyQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
     if (includeImportQr) {
       const token = createTransferToken()
-      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import') })
+      await supabase.from('vehicle_transfers').insert({ token, car_id: carId, created_by: userId, mode: 'import', consent: true, payload: makePayload('import', token) })
       setImportQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
   }
