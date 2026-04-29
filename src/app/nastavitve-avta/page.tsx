@@ -29,6 +29,10 @@ export default function NastavitveAvta() {
   const [lastnikStarost, setLastnikStarost] = useState('')
   const [prenosSoglasje, setPrenosSoglasje] = useState(false)
   const [prenosOpomba, setPrenosOpomba] = useState('')
+  const [homologacijaStevilka, setHomologacijaStevilka] = useState('')
+  const [homologacijaOpis, setHomologacijaOpis] = useState('')
+  const [homologacijaUrl, setHomologacijaUrl] = useState('')
+  const [uploadingHomologacija, setUploadingHomologacija] = useState(false)
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },
@@ -84,6 +88,9 @@ export default function NastavitveAvta() {
         setLastnikStarost(data.lastnik_starost?.toString() || '')
         setPrenosSoglasje(data.prenos_soglasje === true)
         setPrenosOpomba(data.prenos_opomba || '')
+        setHomologacijaStevilka(data.homologacija_stevilka || '')
+        setHomologacijaOpis(data.homologacija_opis || '')
+        setHomologacijaUrl(data.homologacija_url || '')
       }
       setLoading(false)
     }
@@ -108,6 +115,28 @@ export default function NastavitveAvta() {
     setUploadingSlika(false)
   }
 
+  const naloziHomologacijo = async (e: any) => {
+    const file = e.target.files[0]
+    if (!file || !avto?.id) return
+    setUploadingHomologacija(true)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setUploadingHomologacija(false); return }
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/homologacija_${avto.id}.${fileExt}`
+    const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, file, { upsert: true })
+    if (uploadError) {
+      setMessage('Napaka pri nalaganju homologacije.')
+      setUploadingHomologacija(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
+    setHomologacijaUrl(urlData.publicUrl)
+    await supabase.from('cars').update({ homologacija_url: urlData.publicUrl }).eq('id', avto.id)
+    setAvto({ ...avto, homologacija_url: urlData.publicUrl })
+    setMessage('✅ Homologacija uspešno naložena!')
+    setUploadingHomologacija(false)
+  }
+
   const shrani = async () => {
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage('Vnesi tip vozila!'); return }
     setSaving(true)
@@ -130,8 +159,11 @@ export default function NastavitveAvta() {
       lastnik_starost: lastnikStarost ? parseInt(lastnikStarost) : null,
       prenos_soglasje: prenosSoglasje,
       prenos_opomba: prenosOpomba || null,
+      homologacija_stevilka: homologacijaStevilka || null,
+      homologacija_opis: homologacijaOpis || null,
+      homologacija_url: homologacijaUrl || null,
     }).eq('id', avto.id)
-    if (error) setMessage(error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
+    if (error) setMessage(error.message.includes('homologacija') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql' : error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
     else { setMessage('✅ Nastavitve shranjene!'); setAvto({ ...avto }) }
     setSaving(false)
   }
@@ -316,6 +348,40 @@ export default function NastavitveAvta() {
         </div>
       </div>
 
+
+      {/* Homologacija */}
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">
+        <div>
+          <h2 className="text-white font-semibold">Homologacija</h2>
+          <p className="text-[#5a5a80] text-xs mt-1">Vnesi številko, opombo ali priloži sliko/PDF homologacije.</p>
+        </div>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Številka homologacije</label>
+          <input value={homologacijaStevilka} onChange={e => setHomologacijaStevilka(e.target.value)} placeholder="npr. e1*2007/46*1234"
+            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+        </div>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opis homologacije</label>
+          <textarea value={homologacijaOpis} onChange={e => setHomologacijaOpis(e.target.value)} rows={3} placeholder="npr. Vpisane pnevmatike, platišča, vlečna kljuka..."
+            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors resize-none" />
+        </div>
+        <div className="flex flex-col gap-3">
+          {homologacijaUrl && (
+            <a href={homologacijaUrl} target="_blank" rel="noreferrer"
+              className="bg-[#3ecfcf11] border border-[#3ecfcf44] text-[#3ecfcf] rounded-xl px-4 py-3 text-sm font-semibold">
+              Odpri priloženo homologacijo
+            </a>
+          )}
+          <label className="flex items-center gap-3 bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl px-4 py-3 cursor-pointer hover:border-[#6c63ff] transition-colors">
+            <span className="text-2xl">📄</span>
+            <div>
+              <p className="text-[#5a5a80] text-sm font-semibold">{uploadingHomologacija ? 'Nalaganje...' : homologacijaUrl ? 'Zamenjaj dokument' : 'Dodaj dokument ali sliko'}</p>
+              <p className="text-[#3a3a5a] text-xs">Slika ali PDF dokument</p>
+            </div>
+            <input type="file" accept="image/*,.pdf" onChange={naloziHomologacijo} className="hidden" />
+          </label>
+        </div>
+      </div>
 
       {/* Lastništvo in prenos */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">

@@ -102,6 +102,11 @@ const pdfCopy = {
     ownerCity: 'MESTO LASTNIKA',
     ownerAge: 'STAROST LASTNIKA',
     transferConsent: 'SOGLASJE PRENOSA',
+    homologation: 'Homologacija',
+    homologationNumber: 'STEVILKA HOMOLOGACIJE',
+    homologationDescription: 'OPIS HOMOLOGACIJE',
+    homologationDocument: 'DOKUMENT',
+    attached: 'PRILOZENO',
     yes: 'DA',
     no: 'NE',
     transferredNote: 'Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.',
@@ -142,6 +147,11 @@ const pdfCopy = {
     ownerCity: 'OWNER CITY',
     ownerAge: 'OWNER AGE',
     transferConsent: 'TRANSFER CONSENT',
+    homologation: 'Homologation',
+    homologationNumber: 'HOMOLOGATION NUMBER',
+    homologationDescription: 'HOMOLOGATION DESCRIPTION',
+    homologationDocument: 'DOCUMENT',
+    attached: 'ATTACHED',
     yes: 'YES',
     no: 'NO',
     transferredNote: 'Records marked with [Previous owner] are transferred history. New records from the current owner are not marked.',
@@ -281,6 +291,24 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             </View>
           )}
         </View>
+        {(avto.homologacija_stevilka || avto.homologacija_opis || avto.homologacija_url) && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{copy.homologation}</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>{copy.homologationNumber}</Text>
+                <Text style={styles.statValue}>{avto.homologacija_stevilka || '-'}</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text style={styles.statLabel}>{copy.homologationDocument}</Text>
+                <Text style={styles.statValue}>{avto.homologacija_url ? copy.attached : '-'}</Text>
+              </View>
+            </View>
+            {avto.homologacija_opis && (
+              <Text style={styles.opomba}>{copy.homologationDescription}: {avto.homologacija_opis}</Text>
+            )}
+          </View>
+        )}
         {/* Servisna knjiga */}
         {servisi.length > 0 && (
           <View style={styles.section}>
@@ -393,6 +421,9 @@ export default function Report() {
       st_lastnikov: avtoData?.st_lastnikov,
       lastnik_mesto: avtoData?.lastnik_mesto,
       lastnik_starost: avtoData?.lastnik_starost,
+      homologacija_stevilka: avtoData?.homologacija_stevilka,
+      homologacija_opis: avtoData?.homologacija_opis,
+      homologacija_url: avtoData?.homologacija_url,
       servisi: servisData?.length || 0,
       tankanja: gorivoData?.length || 0,
       stroski: filteredExpenses.length,
@@ -416,6 +447,9 @@ export default function Report() {
       st_lastnikov: avtoData?.st_lastnikov,
       lastnik_mesto: avtoData?.lastnik_mesto,
       lastnik_starost: avtoData?.lastnik_starost,
+      homologacija_stevilka: avtoData?.homologacija_stevilka,
+      homologacija_opis: avtoData?.homologacija_opis,
+      homologacija_url: avtoData?.homologacija_url,
       slika_url: includeVehicleImage ? avtoData?.slika_url : null,
     }
     const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url, ...row }: any) => row)
