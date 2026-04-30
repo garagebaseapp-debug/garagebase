@@ -6,6 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { getStoredLanguage } from '@/lib/i18n'
 
 export default function VnosStroska() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -24,6 +25,7 @@ export default function VnosStroska() {
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrAllowed, setOcrAllowed] = useState(false)
+  const jeEn = typeof window !== 'undefined' && getStoredLanguage() === 'en'
   const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
   const kategorije = [
@@ -159,17 +161,17 @@ export default function VnosStroska() {
       hasStation: !!result.station,
       hasDescription: !!result.description,
     })
-    setOcrMessage('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.')
+    setOcrMessage(jeEn ? 'Data was read. Check it once more before saving.' : 'Podatki so prebrani. Pred shranjevanjem jih še enkrat preveri.')
   }
 
   const preberiRacun = async () => {
     if (!ocrAllowed) {
-      setOcrMessage('AI branje racunov je trenutno v internem testiranju. Javna lansiranje je planirano v letu 2027.')
+      setOcrMessage(jeEn ? 'AI receipt scanning is currently in internal testing. Public launch is planned for 2027.' : 'AI branje računov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.')
       trackEvent('receipt_scan_locked_clicked', { carId, type: 'expense' })
       return
     }
     if (!racun) {
-      setOcrMessage('Najprej dodaj ali slikaj racun.')
+      setOcrMessage(jeEn ? 'First add or take a receipt photo.' : 'Najprej dodaj ali slikaj račun.')
       return
     }
     setOcrLoading(true)
@@ -182,7 +184,7 @@ export default function VnosStroska() {
       trackEvent('receipt_scan_success', { carId, type: 'expense', textLength: text.length })
     } catch (error: any) {
       trackEvent('receipt_scan_failed', { carId, type: 'expense', message: error.message })
-      setOcrMessage(`${error.message} Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".`)
+      setOcrMessage(`${error.message} ${jeEn ? 'You can paste the receipt text below and click "Use text".' : 'Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".'}`)
     } finally {
       setOcrLoading(false)
     }
@@ -332,28 +334,38 @@ export default function VnosStroska() {
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={preberiRacun} disabled={ocrLoading}
                   className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#3ecfcf] text-black' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
-                  {ocrLoading ? 'Berem...' : ocrAllowed ? 'Preberi racun' : 'AI scan - Coming 2027'}
+                  {ocrLoading
+                    ? (jeEn ? 'Reading...' : 'Berem...')
+                    : ocrAllowed
+                      ? (jeEn ? 'Read receipt' : 'Preberi račun')
+                      : (jeEn ? 'AI scan - coming in 2027' : 'AI scan - prihaja v 2027')}
                 </button>
                 <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
                   className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
-                  Odstrani sliko
+                  {jeEn ? 'Remove photo' : 'Odstrani sliko'}
                 </button>
               </div>
               <textarea
                 value={ocrText}
                 onChange={e => setOcrText(e.target.value)}
-                placeholder="Ce avtomatsko branje ni podprto, prilepi tekst racuna sem..."
+                placeholder={jeEn ? 'If automatic reading is not supported, paste receipt text here...' : 'Če avtomatsko branje ni podprto, prilepi tekst računa sem...'}
                 rows={3}
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-[#3ecfcf] transition-colors resize-none"
               />
               <button type="button" onClick={() => uporabiPrebranTekst(ocrText)}
                 className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
-                Uporabi tekst
+                {jeEn ? 'Use text' : 'Uporabi tekst'}
               </button>
               {!ocrAllowed && (
                 <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
-                  <p className="text-[#f59e0b] text-xs font-bold">AI/OCR branje racunov je zaklenjeno za beta uporabnike.</p>
-                  <p className="text-[#f8c873] text-xs mt-1">Funkcija je v internem testiranju in je planirana za javni lansiranje v letu 2027. Rocni vnos in shranjevanje slike racuna delujeta normalno.</p>
+                  <p className="text-[#f59e0b] text-xs font-bold">
+                    {jeEn ? 'AI/OCR receipt reading is locked for beta users.' : 'AI/OCR branje računov je zaklenjeno za beta uporabnike.'}
+                  </p>
+                  <p className="text-[#f8c873] text-xs mt-1">
+                    {jeEn
+                      ? 'The feature is in internal testing and is planned for public launch in 2027. Manual entry and receipt photo storage work normally.'
+                      : 'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Ročni vnos in shranjevanje slike računa delujeta normalno.'}
+                  </p>
                 </div>
               )}
               {ocrMessage && <p className="text-[#3ecfcf] text-xs leading-relaxed">{ocrMessage}</p>}

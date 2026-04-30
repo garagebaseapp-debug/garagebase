@@ -508,6 +508,10 @@ export default function AdminPage() {
           className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-sm font-semibold text-[#a09aff]">
           {tx('Osvezi', 'Refresh')}
         </button>
+        <button onClick={() => window.location.href = '/vnos-goriva'}
+          className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b22] px-4 py-2 text-sm font-semibold text-[#fbbf24]">
+          {tx('Scan racuna', 'Receipt scan')}
+        </button>
       </div>
 
       {message && (

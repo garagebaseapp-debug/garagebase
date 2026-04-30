@@ -374,7 +374,20 @@ export default function VnosServisa() {
               Odstrani sliko stevca
             </button>
           )}
-          <p className="mt-2 text-[#5a5a80] text-xs">Brez slike = Basic. Slika stevca = Photo. Slika stevca + racun = Strong.</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-[#5a5a8044] bg-[#5a5a8018] p-2 text-center">
+              <p className="text-[11px] font-black text-white">Basic</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Brez slike</p>
+            </div>
+            <div className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] p-2 text-center">
+              <p className="text-[11px] font-black text-[#3ecfcf]">Photo</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Slika števca</p>
+            </div>
+            <div className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] p-2 text-center">
+              <p className="text-[11px] font-black text-[#f59e0b]">Strong</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Števec + račun</p>
+            </div>
+          </div>
         </div>
 
         <div>
