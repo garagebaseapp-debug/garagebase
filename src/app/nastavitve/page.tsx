@@ -195,6 +195,13 @@ export default function Nastavitve() {
         return
       }
 
+      registration.active?.postMessage({
+        type: 'GARAGEBASE_TEST_NOTIFICATION',
+        title: 'GarageBase lokalni test',
+        body: 'Ce vidis to obvestilo, telefon in dovoljenja delujejo.',
+        url: '/nastavitve'
+      })
+
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
       const response = await fetch('/api/push', {
@@ -212,11 +219,16 @@ export default function Nastavitve() {
       })
 
       if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(errorText || 'Testno obvestilo ni bilo poslano.')
+        const errorData = await response.json().catch(async () => ({ error: await response.text() }))
+        if (errorData.statusCode === 410 || errorData.statusCode === 404) {
+          await subscription.unsubscribe()
+          setNotifikacije('neznano')
+          throw new Error('Stara push povezava je potekla. Klikni Vklopi obvestila in potem se enkrat Poslji test.')
+        }
+        throw new Error(errorData.error || errorData.body || 'Testno obvestilo ni bilo poslano.')
       }
 
-      setMessage('Testno obvestilo poslano.')
+      setMessage('Test poslan. Najprej mora priti lokalni test, nato server push.')
       setTimeout(() => setMessage(''), 3000)
     } catch (error: any) {
       console.error('Test obvestila:', error)

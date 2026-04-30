@@ -34,6 +34,27 @@ self.addEventListener('push', (event) => {
   )
 })
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'GARAGEBASE_TEST_NOTIFICATION') return
+
+  const data = event.data
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'GarageBase test', {
+      body: data.body || 'Obvestila na tej napravi delujejo.',
+      icon: data.icon || '/android-chrome-192x192.png',
+      badge: data.badge || '/notification-badge.png',
+      tag: 'garagebase-local-test',
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+      data: { url: data.url || '/nastavitve' },
+      actions: [
+        { action: 'odpri', title: 'Odpri' },
+        { action: 'zapri', title: 'Zapri' }
+      ]
+    })
+  )
+})
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
 
