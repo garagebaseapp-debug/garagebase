@@ -44,6 +44,7 @@ export default function Nastavitve() {
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [dbTestLoading, setDbTestLoading] = useState(false)
+  const [reminderTestLoading, setReminderTestLoading] = useState(false)
   const [notificationSettings, setNotificationSettings] = useState(defaultNotificationSettings)
   const [biometricSupported, setBiometricSupported] = useState(false)
   const [appLockEnabled, setAppLockEnabled] = useState(false)
@@ -293,6 +294,33 @@ export default function Nastavitve() {
       setMessage(`Test iz baze ni uspel: ${error.message || 'neznana napaka'}`)
     }
     setDbTestLoading(false)
+  }
+
+  const posljiTestOpomnikovZdaj = async () => {
+    setReminderTestLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/push-reminder-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || result.sent < 1) {
+        throw new Error(result.error || 'Test opomnikov ni poslal obvestila.')
+      }
+
+      setMessage(`Test opomnikov poslan: ${result.redReminders} rdecih opomnikov, ${result.sent}/${result.devices} naprav.`)
+      setTimeout(() => setMessage(''), 7000)
+    } catch (error: any) {
+      console.error('Test opomnikov:', error)
+      setMessage(`Test opomnikov ni uspel: ${error.message || 'neznana napaka'}`)
+    }
+    setReminderTestLoading(false)
   }
 
   const shraniNotificationSettings = async (nextSettings: typeof defaultNotificationSettings) => {
@@ -638,6 +666,10 @@ export default function Nastavitve() {
             <button onClick={posljiBazaTestnoObvestilo} disabled={dbTestLoading}
               className="w-full bg-[#14b8a622] border border-[#14b8a655] text-[#5eead4] font-semibold py-3 rounded-xl hover:bg-[#14b8a633] transition-colors disabled:opacity-50">
               {dbTestLoading ? 'Pošiljam iz baze...' : 'Pošlji test iz baze'}
+            </button>
+            <button onClick={posljiTestOpomnikovZdaj} disabled={reminderTestLoading}
+              className="w-full bg-[#f59e0b22] border border-[#f59e0b55] text-[#fbbf24] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors disabled:opacity-50">
+              {reminderTestLoading ? 'Preverjam opomnike...' : 'Test opomnikov zdaj'}
             </button>
             <button onClick={izklopiNotifikacije} disabled={notifikacijeLoading}
               className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors disabled:opacity-50">
