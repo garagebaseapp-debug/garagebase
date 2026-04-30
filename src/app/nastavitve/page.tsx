@@ -79,6 +79,24 @@ export default function Nastavitve() {
     })
   }
 
+  const shraniPushSubscriptionNaServer = async (subscription: PushSubscription, settings = notificationSettings) => {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    const response = await fetch('/api/push-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        subscription: subscription.toJSON(),
+        notificationSettings: settings,
+      })
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(result.error || result.details || 'Push povezave ni bilo mogoce shraniti.')
+  }
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -164,14 +182,7 @@ export default function Nastavitve() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       })
-      const { data: { user } } = await supabase.auth.getUser()
-      const { error: subscriptionError } = await supabase.from('push_subscriptions').upsert({
-        user_id: user?.id,
-        subscription: subscription.toJSON(),
-        notification_settings: notificationSettings,
-        updated_at: new Date().toISOString()
-      })
-      if (subscriptionError) throw subscriptionError
+      await shraniPushSubscriptionNaServer(subscription, notificationSettings)
       setNotifikacije('dovoljeno')
       setMessage('✅ Obvestila so vklopljena!')
       setTimeout(() => setMessage(''), 3000)
@@ -252,17 +263,9 @@ export default function Nastavitve() {
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       })
 
+      await shraniPushSubscriptionNaServer(subscription, notificationSettings)
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
-      const { data: { user } } = await supabase.auth.getUser()
-
-      const { error: subscriptionError } = await supabase.from('push_subscriptions').upsert({
-        user_id: user?.id,
-        subscription: subscription.toJSON(),
-        notification_settings: notificationSettings,
-        updated_at: new Date().toISOString()
-      })
-      if (subscriptionError) throw subscriptionError
 
       const response = await fetch('/api/push-db-test', {
         method: 'POST',
@@ -299,15 +302,11 @@ export default function Nastavitve() {
       const current = raw ? JSON.parse(raw) : {}
       localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, notificationSettings: nextSettings }))
       trackEvent('notification_settings_changed', nextSettings)
-      if (user && notifikacije === 'dovoljeno') {
-        const { error } = await supabase
-          .from('push_subscriptions')
-          .update({
-            notification_settings: nextSettings,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id)
-        if (error) throw error
+      if (notifikacije === 'dovoljeno') {
+        const registration = await navigator.serviceWorker.ready
+        const subscription = await registration.pushManager.getSubscription()
+        if (!subscription) throw new Error('Telefon nima aktivne push povezave. Najprej klikni Vklopi obvestila.')
+        await shraniPushSubscriptionNaServer(subscription, nextSettings)
       }
       setMessage('Nastavitve obvestil so shranjene.')
       setTimeout(() => setMessage(''), 3000)
