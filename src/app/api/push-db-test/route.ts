@@ -4,7 +4,7 @@ import webpush from 'web-push'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const vapidEmail = process.env.VAPID_EMAIL
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -17,7 +17,7 @@ if (pushConfigured) {
 
 export async function POST(req: NextRequest) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+    if (!supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json({ error: 'Supabase ni konfiguriran.' }, { status: 503 })
     }
 
@@ -37,9 +37,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+    const dbClient = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey)
+      : userClient
     const { title, body, url } = await req.json()
-    const { data: subs, error: subsError } = await adminClient
+    const { data: subs, error: subsError } = await dbClient
       .from('push_subscriptions')
       .select('subscription')
       .eq('user_id', userData.user.id)
