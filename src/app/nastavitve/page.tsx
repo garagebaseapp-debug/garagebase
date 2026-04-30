@@ -652,7 +652,7 @@ export default function Nastavitve() {
               <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => setNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
                 className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none" />
               <p className="mt-2 text-[11px] text-[#5a5a80]">
-                Za test nastavi uro nekaj minut naprej, potem klikni shrani. Cron sprejme tudi nekaj minut zamika.
+                Na brezplacnem Vercel planu avtomatski cron deluje dnevno okoli 8:00 po slovenskem casu. Minutno testiranje je odvisno od Pro/Trial plana.
               </p>
               <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)}
                 className="mt-3 w-full bg-[#6c63ff] text-white font-semibold py-3 rounded-xl hover:bg-[#5a52e8] transition-colors">
