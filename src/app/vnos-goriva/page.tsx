@@ -451,31 +451,51 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika racuna</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
+            {jeEn ? 'Receipt photo' : 'Slika računa'}
+          </label>
           <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#6c63ff66] transition-colors">
             <input type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
             {racunPreview ? (
               <img src={racunPreview} alt="Racun" className="w-full max-h-56 object-contain rounded-lg" />
             ) : (
-              <span className="text-[#a09aff] font-semibold">📷 Dodaj/slikaj racun</span>
+              <span className="text-[#a09aff] font-semibold">{jeEn ? 'Add/take receipt photo' : 'Dodaj/slikaj račun'}</span>
             )}
           </label>
-          {racunPreview && (
-            <div className="mt-3 space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={preberiRacun} disabled={ocrLoading}
-                  className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
-                  {ocrLoading
-                    ? (jeEn ? 'Reading...' : 'Berem...')
-                    : ocrAllowed
-                      ? (jeEn ? 'Read receipt' : 'Preberi račun')
-                      : (jeEn ? 'AI scan - coming in 2027' : 'AI scan - prihaja v 2027')}
-                </button>
+
+          <div className="mt-3 space-y-3">
+            <div className={racunPreview ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
+              <button type="button" onClick={preberiRacun} disabled={ocrLoading}
+                className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
+                {ocrLoading
+                  ? (jeEn ? 'Reading...' : 'Berem...')
+                  : ocrAllowed
+                    ? (jeEn ? 'Scan/read receipt' : 'Skeniraj/preberi račun')
+                    : (jeEn ? 'AI scan - coming in 2027' : 'AI scan - prihaja v 2027')}
+              </button>
+              {racunPreview && (
                 <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
                   className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
                   {jeEn ? 'Remove photo' : 'Odstrani sliko'}
                 </button>
+              )}
+            </div>
+
+            {!ocrAllowed && (
+              <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
+                <p className="text-[#f59e0b] text-xs font-bold">
+                  {jeEn ? 'AI/OCR receipt reading is locked for beta users.' : 'AI/OCR branje računov je zaklenjeno za beta uporabnike.'}
+                </p>
+                <p className="text-[#f8c873] text-xs mt-1">
+                  {jeEn
+                    ? 'The feature is in internal testing and is planned for public launch in 2027. Manual entry and receipt photo storage work normally.'
+                    : 'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Ročni vnos in shranjevanje slike računa delujeta normalno.'}
+                </p>
               </div>
+            )}
+
+            {racunPreview && (
+              <>
               <textarea
                 value={ocrText}
                 onChange={e => setOcrText(e.target.value)}
@@ -487,21 +507,10 @@ export default function VnosGoriva() {
                 className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
                 {jeEn ? 'Use text' : 'Uporabi tekst'}
               </button>
-              {!ocrAllowed && (
-                <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
-                  <p className="text-[#f59e0b] text-xs font-bold">
-                    {jeEn ? 'AI/OCR receipt reading is locked for beta users.' : 'AI/OCR branje računov je zaklenjeno za beta uporabnike.'}
-                  </p>
-                  <p className="text-[#f8c873] text-xs mt-1">
-                    {jeEn
-                      ? 'The feature is in internal testing and is planned for public launch in 2027. Manual entry and receipt photo storage work normally.'
-                      : 'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Ročni vnos in shranjevanje slike računa delujeta normalno.'}
-                  </p>
-                </div>
-              )}
+              </>
+            )}
               {ocrMessage && <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>}
             </div>
-          )}
         </div>
 
         {message && (

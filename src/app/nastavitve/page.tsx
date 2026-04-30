@@ -182,13 +182,13 @@ export default function Nastavitve() {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
         setNotifikacije('zavrnjeno')
-        setMessage('âťŚ Obvestila so zavrnjena. Dovoli jih v nastavitvah brskalnika.')
+        setMessage('❌ Obvestila so zavrnjena. Dovoli jih v nastavitvah brskalnika.')
         setNotifikacijeLoading(false)
         return
       }
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
       if (!vapidPublicKey) {
-        setMessage('Push kljuÄŤi niso nastavljeni.')
+        setMessage('Push ključi niso nastavljeni.')
         setNotifikacijeLoading(false)
         return
       }
@@ -202,11 +202,11 @@ export default function Nastavitve() {
       })
       await shraniPushSubscriptionNaServer(subscription, notificationSettings)
       setNotifikacije('dovoljeno')
-      setMessage('âś… Obvestila so vklopljena!')
+      setMessage('✅ Obvestila so vklopljena!')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
       console.error('Napaka:', error)
-      setMessage('âťŚ Napaka pri vklopu obvestil.')
+      setMessage('❌ Napaka pri vklopu obvestil.')
     }
     setNotifikacijeLoading(false)
   }
@@ -243,7 +243,7 @@ export default function Nastavitve() {
         body: JSON.stringify({
           subscription: subscription.toJSON(),
           title: 'GarageBase test',
-          body: 'ÄŚe vidiĹˇ to obvestilo, push deluje.',
+          body: 'Če vidiš to obvestilo, push deluje.',
           url: '/nastavitve'
         })
       })
@@ -398,7 +398,7 @@ export default function Nastavitve() {
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     applyFontSize(pisava)
-    setMessage('âś… Nastavitve shranjene!')
+    setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
   }
 
@@ -428,7 +428,7 @@ export default function Nastavitve() {
     setAppLockMessage('')
     try {
       if (!('PublicKeyCredential' in window) || !window.isSecureContext) {
-        setAppLockMessage('Ta naprava ali brskalnik ne podpira varnega biometriÄŤnega odklepa.')
+        setAppLockMessage('Ta naprava ali brskalnik ne podpira varnega biometričnega odklepa.')
         setAppLockLoading(false)
         return
       }
@@ -461,7 +461,7 @@ export default function Nastavitve() {
       setAppLockMessage('Odklep aplikacije je vklopljen.')
     } catch (error) {
       console.error('App lock:', error)
-      setAppLockMessage('Odklepa ni bilo mogoÄŤe vklopiti. Poskusi na telefonu v nameĹˇÄŤeni aplikaciji.')
+      setAppLockMessage('Odklepa ni bilo mogoče vklopiti. Poskusi na telefonu v nameščeni aplikaciji.')
     }
     setAppLockLoading(false)
   }
@@ -513,7 +513,7 @@ export default function Nastavitve() {
 
   const izbrisiRacun = async () => {
     if (deleteConfirmText.trim().toUpperCase() !== 'IZBRISI') {
-      setMessage('Za potrditev vpiĹˇi IZBRISI.')
+      setMessage('Za potrditev vpiši IZBRISI.')
       return
     }
     setDeleteLoading(true)
@@ -529,28 +529,34 @@ export default function Nastavitve() {
         },
       })
       const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error || 'Brisanje raÄŤuna ni uspelo.')
+      if (!response.ok) throw new Error(result.error || 'Brisanje računa ni uspelo.')
       localStorage.clear()
       await supabase.auth.signOut()
       window.location.href = '/'
     } catch (error: any) {
-      setMessage(`RaÄŤuna ni bilo mogoÄŤe izbrisati: ${error.message || 'neznana napaka'}`)
+      setMessage(`Računa ni bilo mogoče izbrisati: ${error.message || 'neznana napaka'}`)
       setDeleteLoading(false)
     }
   }
 
   // Filter za datumske in km opomnike
+  const reminderTone = {
+    red: 'bg-[#ef4444] shadow-[0_0_0_3px_rgba(239,68,68,0.12)]',
+    yellow: 'bg-[#f59e0b] shadow-[0_0_0_3px_rgba(245,158,11,0.12)]',
+    green: 'bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.12)]',
+  }
+
   const OpomnikFilter = ({ nastavitve, setNastavitve }: { nastavitve: any, setNastavitve: any }) => (
     <div className="mt-3 pt-3 border-t border-[#1e1e32] flex flex-col gap-3">
 
       {/* Datumski opomniki */}
       <div>
-        <p className="text-[#5a5a80] text-xs mb-2">đź“… PrikaĹľi datumske opomnike:</p>
+        <p className="text-[#5a5a80] text-xs mb-2">{jezik === 'en' ? 'Show date reminders:' : 'Prikaži datumske opomnike:'}</p>
         <div className="flex gap-2">
           {[
-            { key: 'opomnikRdeci', naziv: 'đź”´ Nujni', opis: '<7 dni' },
-            { key: 'opomnikRumeni', naziv: 'đźźˇ Kmalu', opis: '<30 dni' },
-            { key: 'opomnikZeleni', naziv: 'đźź˘ Vsi', opis: '>30 dni' },
+            { key: 'opomnikRdeci', tone: 'red', naziv: jezik === 'en' ? 'Urgent' : 'Nujni', opis: '<7 dni' },
+            { key: 'opomnikRumeni', tone: 'yellow', naziv: jezik === 'en' ? 'Soon' : 'Kmalu', opis: '<30 dni' },
+            { key: 'opomnikZeleni', tone: 'green', naziv: jezik === 'en' ? 'All' : 'Vsi', opis: '>30 dni' },
           ].map((item) => (
             <button key={item.key}
               onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
@@ -559,7 +565,10 @@ export default function Nastavitve() {
                   ? 'bg-[#6c63ff22] border-[#6c63ff66]'
                   : 'bg-[#13131f] border-[#1e1e32]'
               }`}>
-              <p className="text-xs">{item.naziv}</p>
+              <p className="text-xs flex items-center justify-center gap-1.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${reminderTone[item.tone as keyof typeof reminderTone]}`} />
+                <span>{item.naziv}</span>
+              </p>
               <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
             </button>
           ))}
@@ -568,12 +577,12 @@ export default function Nastavitve() {
 
       {/* Km opomniki */}
       <div>
-        <p className="text-[#5a5a80] text-xs mb-2">đź›Łď¸Ź PrikaĹľi km opomnike:</p>
+        <p className="text-[#5a5a80] text-xs mb-2">{jezik === 'en' ? 'Show mileage reminders:' : 'Prikaži km opomnike:'}</p>
         <div className="flex gap-2">
           {[
-            { key: 'opomnikKmRdeci', naziv: 'đź”´ Nujni', opis: '<500 km' },
-            { key: 'opomnikKmRumeni', naziv: 'đźźˇ Kmalu', opis: '<1500 km' },
-            { key: 'opomnikKmZeleni', naziv: 'đźź˘ Vsi', opis: '>1500 km' },
+            { key: 'opomnikKmRdeci', tone: 'red', naziv: jezik === 'en' ? 'Urgent' : 'Nujni', opis: '<500 km' },
+            { key: 'opomnikKmRumeni', tone: 'yellow', naziv: jezik === 'en' ? 'Soon' : 'Kmalu', opis: '<1500 km' },
+            { key: 'opomnikKmZeleni', tone: 'green', naziv: jezik === 'en' ? 'All' : 'Vsi', opis: '>1500 km' },
           ].map((item) => (
             <button key={item.key}
               onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
@@ -582,7 +591,10 @@ export default function Nastavitve() {
                   ? 'bg-[#6c63ff22] border-[#6c63ff66]'
                   : 'bg-[#13131f] border-[#1e1e32]'
               }`}>
-              <p className="text-xs">{item.naziv}</p>
+              <p className="text-xs flex items-center justify-center gap-1.5">
+                <span className={`h-2.5 w-2.5 rounded-full ${reminderTone[item.tone as keyof typeof reminderTone]}`} />
+                <span>{item.naziv}</span>
+              </p>
               <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
             </button>
           ))}
@@ -630,7 +642,7 @@ export default function Nastavitve() {
                 ['Prenos', 'prenos'],
                 ['Uporaba', 'uporaba'],
                 ['Prikaz', 'prikaz'],
-                ['PomoÄŤ', 'pomoc'],
+                ['Pomoč', 'pomoc'],
                 ['Aplikacija', 'aplikacija'],
                 ...(isAdmin ? [['Admin panel', '/admin']] : []),
               ].map(([label, href]) => href === '/admin' ? (
@@ -641,7 +653,7 @@ export default function Nastavitve() {
                       : 'text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
                   }`}>
                   {label}
-                  <span className="text-[#3a3a5a]">â†’</span>
+                  <span className="text-[#3a3a5a]">→</span>
                 </a>
               ) : (
                 <button key={href} type="button" onClick={() => setSettingsView(href)}
@@ -651,7 +663,7 @@ export default function Nastavitve() {
                       : 'border-transparent text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
                   }`}>
                   {label}
-                  <span className="text-[#3a3a5a]">â†’</span>
+                  <span className="text-[#3a3a5a]">→</span>
                 </button>
               ))}
             </nav>
@@ -664,7 +676,7 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Profil</p>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#6c63ff22] border border-[#6c63ff44] flex items-center justify-center">
-            <span className="text-2xl">đź‘¤</span>
+            <span className="text-2xl">👤</span>
           </div>
           <div>
             <p className="text-white font-semibold">{user?.email}</p>
@@ -674,7 +686,7 @@ export default function Nastavitve() {
         <div className="mt-5 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
           <p className="text-white text-sm font-semibold">{jezik === 'en' ? 'Password' : 'Geslo'}</p>
           <p className="text-[#5a5a80] text-xs mt-1">
-            {jezik === 'en' ? 'Change your password or send yourself a reset link.' : 'Spremeni geslo ali si poĹˇlji povezavo za ponastavitev.'}
+            {jezik === 'en' ? 'Change your password or send yourself a reset link.' : 'Spremeni geslo ali si pošlji povezavo za ponastavitev.'}
           </p>
           <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
             <input
@@ -701,7 +713,7 @@ export default function Nastavitve() {
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">
-              {tema === 'temna' ? 'đźŚ™ Temni naÄŤin' : 'â€ď¸Ź Svetli naÄŤin'}
+              {tema === 'temna' ? '🌙 Temni način' : '☀️ Svetli način'}
             </p>
             <p className="text-[#5a5a80] text-xs mt-0.5">Preklopi med temnim in svetlim</p>
           </div>
@@ -725,21 +737,21 @@ export default function Nastavitve() {
         {notifikacije === 'dovoljeno' ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 bg-[#16a34a22] border border-[#16a34a44] rounded-xl p-3">
-              <span className="text-xl">đź””</span>
+              <span className="text-xl">🔔</span>
               <div>
                 <p className="text-[#4ade80] text-sm font-semibold">{jezik === 'en' ? 'Notifications are enabled' : 'Obvestila so vklopljena'}</p>
                 <p className="text-[#5a5a80] text-xs">
-                  {jezik === 'en' ? 'Reminders are sent according to the settings below.' : 'Opomniki se poĹˇiljajo po spodnjih nastavitvah.'}
+                  {jezik === 'en' ? 'Reminders are sent according to the settings below.' : 'Opomniki se pošiljajo po spodnjih nastavitvah.'}
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
-                { key: 'enabled', title: jezik === 'en' ? 'Main notification switch' : 'Glavni vklop obvestil', desc: jezik === 'en' ? 'When off, reminders are not sent.' : 'ÄŚe je izklopljeno, ne poĹˇiljamo opomnikov.' },
-                { key: 'dateReminders', title: jezik === 'en' ? 'Date reminders' : 'Datumski opomniki', desc: jezik === 'en' ? 'Registration, vignette, technical inspection, insurance.' : 'Registracija, vinjeta, tehniÄŤni, zavarovanje.' },
+                { key: 'enabled', title: jezik === 'en' ? 'Main notification switch' : 'Glavni vklop obvestil', desc: jezik === 'en' ? 'When off, reminders are not sent.' : 'Če je izklopljeno, ne pošiljamo opomnikov.' },
+                { key: 'dateReminders', title: jezik === 'en' ? 'Date reminders' : 'Datumski opomniki', desc: jezik === 'en' ? 'Registration, vignette, technical inspection, insurance.' : 'Registracija, vinjeta, tehnični, zavarovanje.' },
                 { key: 'kmReminders', title: jezik === 'en' ? 'Mileage reminders' : 'KM opomniki', desc: jezik === 'en' ? 'Service or another reminder based on mileage.' : 'Servis ali drug opomnik po kilometrih.' },
-                { key: 'transitionAlerts', title: jezik === 'en' ? 'Priority changes' : 'Prehod prioritet', desc: jezik === 'en' ? 'Notify when a reminder changes from green to yellow or yellow to red.' : 'Obvestilo pri prehodu zelena -> rumena ali rumena -> rdeÄŤa.' },
-                { key: 'dailyRedAlerts', title: jezik === 'en' ? 'Daily urgent reminder' : 'Dnevni rdeÄŤi opomnik', desc: jezik === 'en' ? 'When urgent, remind me every morning.' : 'Ko je nujno, te opomni vsako jutro.' },
+                { key: 'transitionAlerts', title: jezik === 'en' ? 'Priority changes' : 'Prehod prioritet', desc: jezik === 'en' ? 'Notify when a reminder changes from green to yellow or yellow to red.' : 'Obvestilo pri prehodu zelena -> rumena ali rumena -> rdeča.' },
+                { key: 'dailyRedAlerts', title: jezik === 'en' ? 'Daily urgent reminder' : 'Dnevni rdeči opomnik', desc: jezik === 'en' ? 'When urgent, remind me every morning.' : 'Ko je nujno, te opomni vsako jutro.' },
               ].map((item) => (
                 <button key={item.key} type="button" onClick={() => toggleNotificationSetting(item.key as keyof typeof defaultNotificationSettings)}
                   className={`rounded-xl border p-4 text-left transition-all ${
@@ -772,7 +784,7 @@ export default function Nastavitve() {
               <p className="mt-2 text-[11px] text-[#5a5a80]">
                 {jezik === 'en'
                   ? 'Reminders are sent once per day at the selected time when active reminders exist.'
-                  : 'Obvestila se poĹˇljejo enkrat na dan ob izbrani uri, ÄŤe imaĹˇ aktivne opomnike.'}
+                  : 'Obvestila se pošljejo enkrat na dan ob izbrani uri, če imaš aktivne opomnike.'}
               </p>
               <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)} disabled={notificationSaveState === 'saving'}
                 className={`mt-3 w-full font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 ${
@@ -785,7 +797,7 @@ export default function Nastavitve() {
                 {notificationSaveState === 'saving'
                   ? (jezik === 'en' ? 'Saving...' : 'Shranjujem...')
                   : notificationSaveState === 'saved'
-                    ? (jezik === 'en' ? 'Saved âś“' : 'Shranjeno âś“')
+                    ? (jezik === 'en' ? 'Saved ✓' : 'Shranjeno ✓')
                     : notificationSaveState === 'error'
                       ? (jezik === 'en' ? 'Not saved' : 'Ni shranjeno')
                       : (jezik === 'en' ? 'Save notification settings' : 'Shrani nastavitve obvestil')}
@@ -799,11 +811,11 @@ export default function Nastavitve() {
                 <div className="flex flex-col gap-3">
                   <button onClick={posljiTestnoObvestilo} disabled={testLoading}
                     className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
-                    {testLoading ? (jezik === 'en' ? 'Sending test...' : 'PoĹˇiljam test...') : (jezik === 'en' ? 'Send test' : 'PoĹˇlji test')}
+                    {testLoading ? (jezik === 'en' ? 'Sending test...' : 'Pošiljam test...') : (jezik === 'en' ? 'Send test' : 'Pošlji test')}
                   </button>
                   <button onClick={posljiBazaTestnoObvestilo} disabled={dbTestLoading}
                     className="w-full bg-[#14b8a622] border border-[#14b8a655] text-[#5eead4] font-semibold py-3 rounded-xl hover:bg-[#14b8a633] transition-colors disabled:opacity-50">
-                    {dbTestLoading ? (jezik === 'en' ? 'Sending from database...' : 'PoĹˇiljam iz baze...') : (jezik === 'en' ? 'Send database test' : 'PoĹˇlji test iz baze')}
+                    {dbTestLoading ? (jezik === 'en' ? 'Sending from database...' : 'Pošiljam iz baze...') : (jezik === 'en' ? 'Send database test' : 'Pošlji test iz baze')}
                   </button>
                   <button onClick={posljiTestOpomnikovZdaj} disabled={reminderTestLoading}
                     className="w-full bg-[#f59e0b22] border border-[#f59e0b55] text-[#fbbf24] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors disabled:opacity-50">
@@ -819,7 +831,7 @@ export default function Nastavitve() {
           </div>
         ) : notifikacije === 'zavrnjeno' ? (
           <div className="flex items-center gap-3 bg-[#ef444422] border border-[#ef444444] rounded-xl p-3">
-            <span className="text-xl">đź”•</span>
+            <span className="text-xl">🔕</span>
             <div>
               <p className="text-[#fca5a5] text-sm font-semibold">{jezik === 'en' ? 'Notifications are blocked' : 'Obvestila so zavrnjena'}</p>
               <p className="text-[#5a5a80] text-xs">{jezik === 'en' ? 'Allow them in browser settings.' : 'Dovoli jih v nastavitvah brskalnika'}</p>
@@ -828,7 +840,7 @@ export default function Nastavitve() {
         ) : (
           <button onClick={vklopiNotifikacije} disabled={notifikacijeLoading}
             className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
-            {notifikacijeLoading ? (jezik === 'en' ? 'Enabling...' : 'Vklapljam...') : (jezik === 'en' ? 'đź”” Enable notifications' : 'đź”” Vklopi obvestila')}
+            {notifikacijeLoading ? (jezik === 'en' ? 'Enabling...' : 'Vklapljam...') : (jezik === 'en' ? '🔔 Enable notifications' : '🔔 Vklopi obvestila')}
           </button>
         )}
       </div>
@@ -841,7 +853,7 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Zakleni app z odtisom, obrazom ali PIN-om naprave.</p>
         {!biometricSupported ? (
           <div className="bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
-            Ta brskalnik trenutno ne podpira varnega odklepa. Poskusi v nameĹˇÄŤeni aplikaciji na telefonu.
+            Ta brskalnik trenutno ne podpira varnega odklepa. Poskusi v nameščeni aplikaciji na telefonu.
           </div>
         ) : appLockEnabled ? (
           <button onClick={izklopiAppLock}
@@ -887,16 +899,16 @@ export default function Nastavitve() {
         )}
       </div>
 
-      {/* NaÄŤin uporabe */}
+      {/* Način uporabe */}
       <div id="uporaba" style={{ display: showSection('uporaba') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">NaÄŤin uporabe</p>
-        <p className="text-[#3a3a5a] text-xs mb-3">Lite = enostavno, Full = vse moĹľnosti</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
+        <p className="text-[#3a3a5a] text-xs mb-3">Lite = enostavno, Full = vse možnosti</p>
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => { setNacin('lite'); trackEvent('mode_lite_selected') }}
             className={`p-4 rounded-xl border transition-all text-left ${
               nacin === 'lite' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
-            <p className="text-lg mb-1">đźź˘</p>
+            <p className="text-lg mb-1">🟢</p>
             <p className={`font-bold text-sm ${nacin === 'lite' ? 'text-[#3ecfcf]' : 'text-white'}`}>Lite</p>
             <p className="text-[#5a5a80] text-xs mt-1">Samo osnove, brez kompleksnih nastavitev</p>
           </button>
@@ -904,7 +916,7 @@ export default function Nastavitve() {
             className={`p-4 rounded-xl border transition-all text-left ${
               nacin === 'full' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'
             }`}>
-            <p className="text-lg mb-1">đź”µ</p>
+            <p className="text-lg mb-1">🔵</p>
             <p className={`font-bold text-sm ${nacin === 'full' ? 'text-[#a09aff]' : 'text-white'}`}>Full</p>
             <p className="text-[#5a5a80] text-xs mt-1">Vse funkcije in napredne nastavitve</p>
           </button>
@@ -916,8 +928,8 @@ export default function Nastavitve() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Jezik</p>
         <div className="grid grid-cols-2 gap-3">
           {[
-            { vrednost: 'sl', naziv: 'đź‡¸đź‡® SlovenĹˇÄŤina' },
-            { vrednost: 'en', naziv: 'đź‡¬đź‡§ English' },
+            { vrednost: 'sl', naziv: 'SI Slovenščina' },
+            { vrednost: 'en', naziv: 'GB English' },
           ].map((j) => (
             <button key={j.vrednost} onClick={() => spremeniJezik(j.vrednost as Language)}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
@@ -955,16 +967,16 @@ export default function Nastavitve() {
         </div>
       </div>
 
-      {/* Prikaz garaĹľe */}
+      {/* Prikaz garaže */}
       <div id="garaza-prikaz" style={{ display: showSection('prikaz') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prikaz garaĹľe</p>
-        <p className="text-[#3a3a5a] text-xs mb-3">ViĹˇina kartic avtov na zaÄŤetnem zaslonu</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prikaz garaže</p>
+        <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { vrednost: 'malo', naziv: 'Malo', opis: 'VeÄŤ avtov' },
+            { vrednost: 'malo', naziv: 'Malo', opis: 'Več avtov' },
             { vrednost: 'srednje', naziv: 'Srednje', opis: 'Privzeto' },
-            { vrednost: 'veliko', naziv: 'Veliko', opis: 'VeÄŤje slike' },
-            { vrednost: 'grid', naziv: 'âŠž Grid', opis: '3x kompaktno' },
+            { vrednost: 'veliko', naziv: 'Veliko', opis: 'Večje slike' },
+            { vrednost: 'grid', naziv: '⊞ Grid', opis: '3x kompaktno' },
           ].map((p) => (
             <button key={p.vrednost} onClick={() => setPrikazGaraze(p.vrednost)}
               className={`py-3 px-2 rounded-xl border transition-all text-center ${
@@ -980,7 +992,7 @@ export default function Nastavitve() {
           <div className="flex justify-between items-center gap-4 mb-3">
             <div>
               <p className="text-white font-semibold text-sm">Avtov v vrstici na webu</p>
-              <p className="text-[#5a5a80] text-xs mt-0.5">Velja za raÄŤunalnik in ĹˇirĹˇi ekran</p>
+              <p className="text-[#5a5a80] text-xs mt-0.5">Velja za računalnik in širši ekran</p>
             </div>
             <div className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] rounded-xl px-4 py-2 font-bold">
               {desktopStolpci}
@@ -1004,7 +1016,7 @@ export default function Nastavitve() {
             <div className="flex justify-between items-center gap-4 mb-3">
               <div>
                 <p className="text-white font-semibold text-sm">Avtov v vrstici v app</p>
-                <p className="text-[#5a5a80] text-xs mt-0.5">Velja za telefon in nameĹˇÄŤeno aplikacijo</p>
+                <p className="text-[#5a5a80] text-xs mt-0.5">Velja za telefon in nameščeno aplikacijo</p>
               </div>
               <div className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-xl px-4 py-2 font-bold">
                 {mobileGridStolpci}
@@ -1051,7 +1063,7 @@ export default function Nastavitve() {
         {/* Grid nastavitve */}
         {prikazGaraze === 'grid' && (
           <div className="mt-4 pt-4 border-t border-[#1e1e32]">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">PrikaĹľi v grid kockici</p>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži v grid kockici</p>
             <div className="flex flex-col gap-3">
               {[
                 { key: 'tablica', naziv: 'Registrska tablica' },
@@ -1083,7 +1095,7 @@ export default function Nastavitve() {
         {/* Lista nastavitve */}
         {prikazGaraze !== 'grid' && (
           <div className="mt-4 pt-4 border-t border-[#1e1e32]">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">PrikaĹľi na kartici</p>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži na kartici</p>
             <div className="flex flex-col gap-3">
               {[
                 { key: 'letnik', naziv: 'Letnik' },
@@ -1182,7 +1194,7 @@ export default function Nastavitve() {
 
       {message && (
         <div className={`p-3 rounded-xl text-sm border mb-4 ${
-          message.includes('âś…') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
+          message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
         }`}>
           {message}
         </div>
@@ -1201,20 +1213,20 @@ export default function Nastavitve() {
       </div>
 
       <div id="brisanje-racuna" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#ef444455] rounded-2xl p-5 lg:col-span-2">
-        <p className="text-[#ef4444] text-xs uppercase tracking-wider mb-1">Brisanje raÄŤuna</p>
-        <p className="text-white font-semibold text-sm">IzbriĹˇi raÄŤun in vse podatke</p>
+        <p className="text-[#ef4444] text-xs uppercase tracking-wider mb-1">Brisanje računa</p>
+        <p className="text-white font-semibold text-sm">Izbriši račun in vse podatke</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">
-          To izbriĹˇe vozila, servise, tankanja, stroĹˇke, opomnike, slike, QR prenose, feedback in prijavo.
+          To izbriše vozila, servise, tankanja, stroške, opomnike, slike, QR prenose, feedback in prijavo.
         </p>
         {!deleteConfirmOpen ? (
           <button type="button" onClick={() => setDeleteConfirmOpen(true)}
             className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
-            IzbriĹˇi raÄŤun
+            Izbriši račun
           </button>
         ) : (
           <div className="rounded-xl border border-[#ef444455] bg-[#ef444411] p-4">
             <p className="text-sm font-semibold text-[#fca5a5]">
-              Pozor: po potrditvi podatkov ne moremo veÄŤ obnoviti. ÄŚe si prepriÄŤan, vpiĹˇi IZBRISI.
+              Pozor: po potrditvi podatkov ne moremo več obnoviti. Če si prepričan, vpiši IZBRISI.
             </p>
             <input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder="IZBRISI"
@@ -1222,11 +1234,11 @@ export default function Nastavitve() {
             <div className="mt-3 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => { setDeleteConfirmOpen(false); setDeleteConfirmText('') }}
                 className="rounded-xl border border-[#1e1e32] bg-[#13131f] py-3 font-semibold text-[#5a5a80]">
-                PrekliÄŤi
+                Prekliči
               </button>
               <button type="button" onClick={izbrisiRacun} disabled={deleteLoading}
                 className="rounded-xl bg-[#ef4444] py-3 font-semibold text-white disabled:opacity-60">
-                {deleteLoading ? 'BriĹˇem...' : 'DokonÄŤno izbriĹˇi'}
+                {deleteLoading ? 'Brišem...' : 'Dokončno izbriši'}
               </button>
             </div>
           </div>
