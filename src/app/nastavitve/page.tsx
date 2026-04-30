@@ -241,8 +241,29 @@ export default function Nastavitve() {
   const posljiBazaTestnoObvestilo = async () => {
     setDbTestLoading(true)
     try {
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      if (!vapidPublicKey) throw new Error('Push kljuci niso nastavljeni.')
+
+      await navigator.serviceWorker.register('/sw.js')
+      const registration = await navigator.serviceWorker.ready
+      const existingSubscription = await registration.pushManager.getSubscription()
+      const subscription = existingSubscription || await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      })
+
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
+      const { data: { user } } = await supabase.auth.getUser()
+
+      const { error: subscriptionError } = await supabase.from('push_subscriptions').upsert({
+        user_id: user?.id,
+        subscription: subscription.toJSON(),
+        notification_settings: notificationSettings,
+        updated_at: new Date().toISOString()
+      })
+      if (subscriptionError) throw subscriptionError
+
       const response = await fetch('/api/push-db-test', {
         method: 'POST',
         headers: {
@@ -257,10 +278,13 @@ export default function Nastavitve() {
       })
 
       const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result.error || 'Test iz baze ni bil poslan.')
+      if (!response.ok || result.sent < 1) {
+        const details = result.failed?.length ? ` Napaka: ${result.failed.join(', ')}` : ''
+        throw new Error(`${result.error || 'Test iz baze ni bil poslan.'}${details}`)
+      }
 
-      setMessage(`Test iz baze poslan (${result.sent || 0} naprav).`)
-      setTimeout(() => setMessage(''), 3000)
+      setMessage(`Test iz baze poslan (${result.sent || 0}/${result.found || result.sent || 0} naprav).`)
+      setTimeout(() => setMessage(''), 6000)
     } catch (error: any) {
       console.error('Test iz baze:', error)
       setMessage(`Test iz baze ni uspel: ${error.message || 'neznana napaka'}`)

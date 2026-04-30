@@ -50,6 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     let sent = 0
+    let expired = 0
     const failed: string[] = []
 
     for (const sub of subs) {
@@ -64,11 +65,20 @@ export async function POST(req: NextRequest) {
         )
         sent++
       } catch (error: any) {
-        failed.push(error.message || 'neznana napaka')
+        if (error.statusCode === 404 || error.statusCode === 410) expired++
+        failed.push(error.body || error.message || 'neznana napaka')
       }
     }
 
-    return NextResponse.json({ success: sent > 0, sent, failed })
+    const result = { success: sent > 0, found: subs.length, sent, expired, failed }
+    if (sent < 1) {
+      return NextResponse.json({
+        ...result,
+        error: `Najdenih je ${subs.length} push povezav, vendar ni bilo poslano nobeno obvestilo.`,
+      }, { status: 502 })
+    }
+
+    return NextResponse.json(result)
   } catch (error: any) {
     console.error('Push DB test napaka:', error)
     return NextResponse.json({
