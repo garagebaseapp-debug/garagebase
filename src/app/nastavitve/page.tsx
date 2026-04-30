@@ -43,6 +43,7 @@ export default function Nastavitve() {
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [dbTestLoading, setDbTestLoading] = useState(false)
   const [notificationSettings, setNotificationSettings] = useState(defaultNotificationSettings)
   const [biometricSupported, setBiometricSupported] = useState(false)
   const [appLockEnabled, setAppLockEnabled] = useState(false)
@@ -237,20 +238,58 @@ export default function Nastavitve() {
     setTestLoading(false)
   }
 
-  const shraniNotificationSettings = async (nextSettings: typeof defaultNotificationSettings) => {
-    setNotificationSettings(nextSettings)
-    const raw = localStorage.getItem('garagebase_nastavitve')
-    const current = raw ? JSON.parse(raw) : {}
-    localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, notificationSettings: nextSettings }))
-    trackEvent('notification_settings_changed', nextSettings)
-    if (user && notifikacije === 'dovoljeno') {
-      await supabase
-        .from('push_subscriptions')
-        .update({
-          notification_settings: nextSettings,
-          updated_at: new Date().toISOString()
+  const posljiBazaTestnoObvestilo = async () => {
+    setDbTestLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/push-db-test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: 'GarageBase test iz baze',
+          body: `To obvestilo je poslano iz Supabase zapisa. Nastavljena ura: ${notificationSettings.sendTime}.`,
+          url: '/nastavitve'
         })
-        .eq('user_id', user.id)
+      })
+
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || 'Test iz baze ni bil poslan.')
+
+      setMessage(`Test iz baze poslan (${result.sent || 0} naprav).`)
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Test iz baze:', error)
+      setMessage(`Test iz baze ni uspel: ${error.message || 'neznana napaka'}`)
+    }
+    setDbTestLoading(false)
+  }
+
+  const shraniNotificationSettings = async (nextSettings: typeof defaultNotificationSettings) => {
+    try {
+      setNotificationSettings(nextSettings)
+      const raw = localStorage.getItem('garagebase_nastavitve')
+      const current = raw ? JSON.parse(raw) : {}
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, notificationSettings: nextSettings }))
+      trackEvent('notification_settings_changed', nextSettings)
+      if (user && notifikacije === 'dovoljeno') {
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .update({
+            notification_settings: nextSettings,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id)
+        if (error) throw error
+      }
+      setMessage('Nastavitve obvestil so shranjene.')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error: any) {
+      console.error('Shranjevanje nastavitev obvestil:', error)
+      setMessage(`Nastavitev obvestil ni bilo mogoce shraniti: ${error.message || 'neznana napaka'}`)
     }
   }
 
@@ -559,15 +598,23 @@ export default function Nastavitve() {
             </div>
             <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider">Ura jutranjega opomnika</label>
-              <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => shraniNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
+              <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => setNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
                 className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none" />
               <p className="mt-2 text-[11px] text-[#5a5a80]">
-                Za test nastavi uro nekaj minut naprej. Cron sprejme tudi nekaj minut zamika.
+                Za test nastavi uro nekaj minut naprej, potem klikni shrani. Cron sprejme tudi nekaj minut zamika.
               </p>
+              <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)}
+                className="mt-3 w-full bg-[#6c63ff] text-white font-semibold py-3 rounded-xl hover:bg-[#5a52e8] transition-colors">
+                Shrani nastavitve obvestil
+              </button>
             </div>
             <button onClick={posljiTestnoObvestilo} disabled={testLoading}
               className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
               {testLoading ? 'Pošiljam test...' : 'Pošlji test'}
+            </button>
+            <button onClick={posljiBazaTestnoObvestilo} disabled={dbTestLoading}
+              className="w-full bg-[#14b8a622] border border-[#14b8a655] text-[#5eead4] font-semibold py-3 rounded-xl hover:bg-[#14b8a633] transition-colors disabled:opacity-50">
+              {dbTestLoading ? 'Pošiljam iz baze...' : 'Pošlji test iz baze'}
             </button>
             <button onClick={izklopiNotifikacije} disabled={notifikacijeLoading}
               className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors disabled:opacity-50">
