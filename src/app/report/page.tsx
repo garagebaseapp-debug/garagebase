@@ -92,6 +92,13 @@ const maskVin = (vin?: string) => {
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
+const maskPlate = (plate?: string) => {
+  if (!plate) return ''
+  const clean = plate.toUpperCase()
+  if (clean.length <= 4) return clean.substring(0, 1) + '***'
+  return clean.substring(0, 2) + ' *** ' + clean.substring(clean.length - 2)
+}
+
 const pdfCopy = {
   sl: {
     subtitle: 'Servisna knjiga in evidenca vozila',
@@ -195,7 +202,7 @@ const pdfCopy = {
   },
 } as const
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl' }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {} }: any) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
@@ -230,11 +237,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             <Text style={[styles.carTitle, { marginTop: includeVehicleImage && avto.slika_url ? 8 : 0 }]}>
               {avto.znamka?.charAt(0).toUpperCase() + avto.znamka?.slice(1)} {avto.model?.toUpperCase()}
             </Text>
-            {avto.letnik && <Text style={styles.carInfo}>{copy.year}: {avto.letnik}</Text>}
-            {avto.tablica && <Text style={styles.carInfo}>{copy.plate}: {avto.tablica.toUpperCase()}</Text>}
-            {avto.vin && <Text style={styles.carInfo}>VIN: {maskVin(avto.vin)}</Text>}
-            {avto.gorivo && <Text style={styles.carInfo}>{copy.fuel}: {avto.gorivo}</Text>}
-            {avto.km_trenutni && <Text style={styles.carInfo}>{copy.currentKm}: {avto.km_trenutni.toLocaleString()} km</Text>}
+            {privacy.showYear !== false && avto.letnik && <Text style={styles.carInfo}>{copy.year}: {avto.letnik}</Text>}
+            {privacy.showPlate !== false && avto.tablica && <Text style={styles.carInfo}>{copy.plate}: {privacy.maskPlate === false ? avto.tablica.toUpperCase() : maskPlate(avto.tablica)}</Text>}
+            {privacy.showVin !== false && avto.vin && <Text style={styles.carInfo}>VIN: {privacy.maskVin === false ? avto.vin : maskVin(avto.vin)}</Text>}
+            {privacy.showFuel !== false && avto.gorivo && <Text style={styles.carInfo}>{copy.fuel}: {avto.gorivo}</Text>}
+            {privacy.showKm !== false && avto.km_trenutni && <Text style={styles.carInfo}>{copy.currentKm}: {avto.km_trenutni.toLocaleString()} km</Text>}
             <Text style={styles.reportDate}>{copy.generated}: {danes}</Text>
           </View>
         </View>
@@ -275,7 +282,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.currentKm.toUpperCase()}</Text>
-              <Text style={styles.statValue}>{avto.km_trenutni?.toLocaleString() || '-'}</Text>
+              <Text style={styles.statValue}>{privacy.showKm !== false ? (avto.km_trenutni?.toLocaleString() || '-') : '-'}</Text>
             </View>
           </View>
         </View>
@@ -291,11 +298,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.ownerCity}</Text>
-              <Text style={styles.statValue}>{avto.lastnik_mesto || '-'}</Text>
+              <Text style={styles.statValue}>{privacy.showOwnerCity !== false ? (avto.lastnik_mesto || '-') : '-'}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.ownerAge}</Text>
-              <Text style={styles.statValue}>{avto.lastnik_starost || '-'}</Text>
+              <Text style={styles.statValue}>{privacy.showOwnerAge !== false ? (avto.lastnik_starost || '-') : '-'}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.transferConsent}</Text>
@@ -451,6 +458,17 @@ export default function Report() {
   const [includeExpenses, setIncludeExpenses] = useState(true)
   const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([])
   const [language, setLanguage] = useState<Language>('sl')
+  const [privacy, setPrivacy] = useState({
+    showPlate: true,
+    maskPlate: true,
+    showVin: true,
+    maskVin: true,
+    showKm: true,
+    showFuel: true,
+    showYear: true,
+    showOwnerCity: true,
+    showOwnerAge: true,
+  })
 
 
   const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[], reportLanguage: Language) => {
@@ -460,6 +478,7 @@ export default function Report() {
       letnik: avtoData?.letnik,
       gorivo: avtoData?.gorivo,
       vin_masked: maskVin(avtoData?.vin),
+      tablica_masked: maskPlate(avtoData?.tablica),
       km_trenutni: avtoData?.km_trenutni,
       st_lastnikov: avtoData?.st_lastnikov,
       lastnik_mesto: avtoData?.lastnik_mesto,
@@ -479,8 +498,8 @@ export default function Report() {
       letnik: avtoData?.letnik,
       gorivo: avtoData?.gorivo,
       barva: avtoData?.barva,
-      tablica: avtoData?.tablica,
-      vin: avtoData?.vin,
+      tablica: privacy.showPlate ? (privacy.maskPlate ? maskPlate(avtoData?.tablica) : avtoData?.tablica) : null,
+      vin: privacy.showVin ? (privacy.maskVin ? maskVin(avtoData?.vin) : avtoData?.vin) : null,
       km_trenutni: avtoData?.km_trenutni,
       km_ob_vnosu: avtoData?.km_ob_vnosu,
       kubikaza: avtoData?.kubikaza,
@@ -514,6 +533,7 @@ export default function Report() {
       car_full: carFull,
       include_vehicle_image: includeVehicleImage,
       include_receipt_images: includeReceiptImages,
+      privacy,
       service_logs: withSourceIds(servisForTransfer),
       fuel_logs: withSourceIds(gorivoForTransfer),
       expenses: withSourceIds(expensesForTransfer),
@@ -576,7 +596,7 @@ export default function Report() {
       setTimeout(() => setReady(true), 500)
     }
     init()
-  }, [includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, selectedExpenseCategories.join('|')])
+  }, [includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, selectedExpenseCategories.join('|'), JSON.stringify(privacy)])
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
@@ -698,12 +718,40 @@ export default function Report() {
         </div>
       </div>
 
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Zasebnost podatkov v PDF</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { key: 'showPlate', label: 'Prikaži tablico' },
+            { key: 'maskPlate', label: 'Delno zakrij tablico' },
+            { key: 'showVin', label: 'Prikaži VIN' },
+            { key: 'maskVin', label: 'Delno zakrij VIN' },
+            { key: 'showKm', label: 'Prikaži kilometre' },
+            { key: 'showFuel', label: 'Prikaži gorivo' },
+            { key: 'showYear', label: 'Prikaži letnik' },
+            { key: 'showOwnerCity', label: 'Prikaži mesto lastnika' },
+            { key: 'showOwnerAge', label: 'Prikaži starost lastnika' },
+          ].map((item) => {
+            const active = privacy[item.key as keyof typeof privacy]
+            return (
+              <button key={item.key} onClick={() => setPrivacy(prev => ({ ...prev, [item.key]: !active }))}
+                className={`rounded-xl border px-3 py-3 text-left text-xs font-bold ${active ? 'border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff]' : 'border-[#1e1e32] bg-[#13131f] text-[#5a5a80]'}`}>
+                {active ? '[x]' : '[ ]'} {item.label}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-3 text-xs text-[#5a5a80]">
+          Za potencialnega kupca lahko pokažeš samo osnovo, za bodočega lastnika pa vključiš več podatkov in QR uvoz.
+        </p>
+      </div>
+
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} />}
+          document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} privacy={privacy} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
-            <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, expenseCategories: selectedExpenseCategories })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
+            <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, expenseCategories: selectedExpenseCategories, privacy })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
               {pdfLoading ? 'Generiranje...' : 'Prenesi PDF Report'}
             </button>
           )}

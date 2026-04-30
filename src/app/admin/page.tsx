@@ -617,6 +617,10 @@ export default function AdminPage() {
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Napake v sistemu', 'System errors')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnje napake iz brskalnika uporabnikov.', 'Latest browser errors from users.')}</p>
+          <button onClick={() => window.location.href = '/admin-napake'}
+            className="mb-4 w-full rounded-xl border border-[#ef444455] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5]">
+            {tx('Odpri prijave napak uporabnikov', 'Open user bug reports')}
+          </button>
           <div className="flex flex-col gap-2">
             {recentErrors.length === 0 ? (
               <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">

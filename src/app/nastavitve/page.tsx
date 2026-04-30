@@ -62,6 +62,20 @@ export default function Nastavitve() {
   })
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
+  const [settingsView, setSettingsView] = useState('vse')
+  const [notificationSaveState, setNotificationSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+
+  const showSection = (section: string) => settingsView === 'vse' || settingsView === section
+
+  const applyFontSize = (value: string) => {
+    const appSizes: any = { mala: '25px', normalna: '35px', velika: '45px' }
+    const webSizes: any = { mala: '15px', normalna: '16px', velika: '18px' }
+    const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
+    document.documentElement.style.fontSize = jeApp ? appSizes[value] : webSizes[value]
+  }
 
   const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
     trackEvent(eventName, {
@@ -117,6 +131,7 @@ export default function Nastavitve() {
         setNacin(n.nacin || 'full')
         setJezik(n.jezik || 'sl')
         setPisava(n.pisava || 'normalna')
+        applyFontSize(n.pisava || 'normalna')
         setPrikazGaraze(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
@@ -325,6 +340,7 @@ export default function Nastavitve() {
 
   const shraniNotificationSettings = async (nextSettings: typeof defaultNotificationSettings) => {
     try {
+      setNotificationSaveState('saving')
       setNotificationSettings(nextSettings)
       const raw = localStorage.getItem('garagebase_nastavitve')
       const current = raw ? JSON.parse(raw) : {}
@@ -336,11 +352,17 @@ export default function Nastavitve() {
         if (!subscription) throw new Error('Telefon nima aktivne push povezave. Najprej klikni Vklopi obvestila.')
         await shraniPushSubscriptionNaServer(subscription, nextSettings)
       }
+      setNotificationSaveState('saved')
       setMessage('Nastavitve obvestil so shranjene.')
-      setTimeout(() => setMessage(''), 3000)
+      setTimeout(() => {
+        setMessage('')
+        setNotificationSaveState('idle')
+      }, 3000)
     } catch (error: any) {
       console.error('Shranjevanje nastavitev obvestil:', error)
+      setNotificationSaveState('error')
       setMessage(`Nastavitev obvestil ni bilo mogoce shraniti: ${error.message || 'neznana napaka'}`)
+      setTimeout(() => setNotificationSaveState('idle'), 4000)
     }
   }
 
@@ -373,10 +395,7 @@ export default function Nastavitve() {
     const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
-    const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
-    const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
-    if (jeApp) document.documentElement.style.fontSize = velikosti[pisava]
-    else document.documentElement.style.removeProperty('font-size')
+    applyFontSize(pisava)
     setMessage('✅ Nastavitve shranjene!')
     setTimeout(() => setMessage(''), 2000)
   }
@@ -460,6 +479,34 @@ export default function Nastavitve() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
+  }
+
+  const izbrisiRacun = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'IZBRISI') {
+      setMessage('Za potrditev vpiši IZBRISI.')
+      return
+    }
+    setDeleteLoading(true)
+    setMessage('')
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.error || 'Brisanje računa ni uspelo.')
+      localStorage.clear()
+      await supabase.auth.signOut()
+      window.location.href = '/'
+    } catch (error: any) {
+      setMessage(`Računa ni bilo mogoče izbrisati: ${error.message || 'neznana napaka'}`)
+      setDeleteLoading(false)
+    }
   }
 
   // Filter za datumske in km opomnike
@@ -546,15 +593,17 @@ export default function Nastavitve() {
           <aside className="hidden xl:block">
             <nav className="sticky top-28 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
               {[
-                ['Profil', '#profil'],
-                ['Varnost', '#varnost'],
-                ['Prenos', '#prenos'],
-                ['Uporaba', '#uporaba'],
-                ['Prikaz', '#garaza-prikaz'],
-                ['Feedback', '#feedback'],
-                ['Aplikacija', '#aplikacija'],
+                ['Vse nastavitve', 'vse'],
+                ['Profil', 'profil'],
+                ['Obvestila', 'obvestila'],
+                ['Varnost', 'varnost'],
+                ['Prenos', 'prenos'],
+                ['Uporaba', 'uporaba'],
+                ['Prikaz', 'prikaz'],
+                ['Pomoč', 'pomoc'],
+                ['Aplikacija', 'aplikacija'],
                 ...(isAdmin ? [['Admin panel', '/admin']] : []),
-              ].map(([label, href]) => (
+              ].map(([label, href]) => href === '/admin' ? (
                 <a key={href} href={href}
                   className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
                     href === '/admin'
@@ -564,6 +613,16 @@ export default function Nastavitve() {
                   {label}
                   <span className="text-[#3a3a5a]">→</span>
                 </a>
+              ) : (
+                <button key={href} type="button" onClick={() => setSettingsView(href)}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
+                    settingsView === href
+                      ? 'border-[#6c63ff55] bg-[#6c63ff22] text-[#a09aff]'
+                      : 'border-transparent text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
+                  }`}>
+                  {label}
+                  <span className="text-[#3a3a5a]">→</span>
+                </button>
               ))}
             </nav>
           </aside>
@@ -571,7 +630,7 @@ export default function Nastavitve() {
           <main className="grid gap-4 lg:grid-cols-2">
 
       {/* Profil */}
-      <div id="profil" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
+      <div id="profil" style={{ display: showSection('profil') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Profil</p>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#6c63ff22] border border-[#6c63ff44] flex items-center justify-center">
@@ -585,7 +644,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Tema */}
-      <div id="tema" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="tema" style={{ display: showSection('profil') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">
@@ -605,7 +664,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Obvestila */}
-      <div id="obvestila" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="obvestila" style={{ display: showSection('obvestila') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Obvestila</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Opomniki za registracijo, servis in vinjeto</p>
         {notifikacije === 'dovoljeno' ? (
@@ -654,9 +713,21 @@ export default function Nastavitve() {
               <p className="mt-2 text-[11px] text-[#5a5a80]">
                 Na brezplacnem Vercel planu avtomatski cron deluje dnevno okoli 8:00 po slovenskem casu. Minutno testiranje je odvisno od Pro/Trial plana.
               </p>
-              <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)}
-                className="mt-3 w-full bg-[#6c63ff] text-white font-semibold py-3 rounded-xl hover:bg-[#5a52e8] transition-colors">
-                Shrani nastavitve obvestil
+              <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)} disabled={notificationSaveState === 'saving'}
+                className={`mt-3 w-full font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 ${
+                  notificationSaveState === 'saved'
+                    ? 'bg-[#16a34a] text-white shadow-lg shadow-[#16a34a33]'
+                    : notificationSaveState === 'error'
+                      ? 'bg-[#ef4444] text-white'
+                      : 'bg-[#6c63ff] text-white hover:bg-[#5a52e8]'
+                }`}>
+                {notificationSaveState === 'saving'
+                  ? 'Shranjujem...'
+                  : notificationSaveState === 'saved'
+                    ? 'Shranjeno ✓'
+                    : notificationSaveState === 'error'
+                      ? 'Ni shranjeno'
+                      : 'Shrani nastavitve obvestil'}
               </button>
             </div>
             <button onClick={posljiTestnoObvestilo} disabled={testLoading}
@@ -694,7 +765,7 @@ export default function Nastavitve() {
 
 
       {/* App lock */}
-      <div id="varnost" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="varnost" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Varnost</p>
         <p className="text-white font-semibold text-sm">Odklep z biometrijo</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Zakleni app z odtisom, obrazom ali PIN-om naprave.</p>
@@ -715,7 +786,7 @@ export default function Nastavitve() {
         )}
         {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}
       </div>
-      <div id="prenos" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="prenos" style={{ display: showSection('prenos') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prenos</p>
         <p className="text-white font-semibold text-sm">Skeniranje QR</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Preveri report ali uvozi zgodovino vozila od prejsnjega lastnika.</p>
@@ -730,7 +801,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Način uporabe */}
-      <div id="uporaba" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="uporaba" style={{ display: showSection('uporaba') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Način uporabe</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Lite = enostavno, Full = vse možnosti</p>
         <div className="grid grid-cols-2 gap-3">
@@ -754,7 +825,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Jezik */}
-      <div id="jezik" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="jezik" style={{ display: showSection('uporaba') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Jezik</p>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -774,7 +845,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Pisava */}
-      <div id="pisava" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="pisava" style={{ display: showSection('prikaz') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Velikost pisave</p>
         <div className="grid grid-cols-3 gap-2">
           {[
@@ -784,10 +855,7 @@ export default function Nastavitve() {
           ].map((p) => (
             <button key={p.vrednost} onClick={() => {
               setPisava(p.vrednost)
-              const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
-              const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
-              if (jeApp) document.documentElement.style.fontSize = velikosti[p.vrednost]
-              else document.documentElement.style.removeProperty('font-size')
+              applyFontSize(p.vrednost)
             }}
               className={`py-3 rounded-xl border text-sm font-semibold transition-all ${
                 pisava === p.vrednost
@@ -801,7 +869,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Prikaz garaže */}
-      <div id="garaza-prikaz" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
+      <div id="garaza-prikaz" style={{ display: showSection('prikaz') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Prikaz garaže</p>
         <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
         <div className="grid grid-cols-2 gap-2">
@@ -958,7 +1026,7 @@ export default function Nastavitve() {
         )}
       </div>
 
-      <div id="feedback" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="feedback" style={{ display: showSection('pomoc') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Feedback</p>
         <p className="text-white font-semibold text-sm">Predlagaj funkcijo</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Poslji idejo, tezavo ali predlog za izboljsavo GarageBase.</p>
@@ -966,9 +1034,19 @@ export default function Nastavitve() {
           className="w-full bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors">
           Odpri predloge
         </button>
+        <button onClick={() => { trackEvent('bug_report_open'); window.location.href = '/prijava-napake' }}
+          className="mt-3 w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
+          Prijavi napako
+        </button>
+        {isAdmin && (
+          <button onClick={() => window.location.href = '/admin-napake'}
+            className="mt-3 w-full bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] font-semibold py-3 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
+            Admin pregled napak
+          </button>
+        )}
       </div>
 
-      <div id="pomoc" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="pomoc" style={{ display: showSection('pomoc') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Pomoc</p>
         <p className="text-white font-semibold text-sm">Pomocnik</p>
         <p className="text-[#5a5a80] text-xs mt-1 mb-3">Hitri vodic za osnovne funkcije GarageBase.</p>
@@ -979,7 +1057,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Autocomplete */}
-      <div id="predlogi" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="predlogi" style={{ display: showSection('aplikacija') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">Predlagane besede</p>
@@ -997,7 +1075,7 @@ export default function Nastavitve() {
       </div>
 
       {/* O aplikaciji */}
-      <div id="aplikacija" className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="aplikacija" style={{ display: showSection('aplikacija') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">O aplikaciji</p>
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
@@ -1033,6 +1111,39 @@ export default function Nastavitve() {
           className="w-full bg-[#13131f] border border-[#1e1e32] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
           Odjava
         </button>
+      </div>
+
+      <div id="brisanje-racuna" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#ef444455] rounded-2xl p-5 lg:col-span-2">
+        <p className="text-[#ef4444] text-xs uppercase tracking-wider mb-1">Brisanje računa</p>
+        <p className="text-white font-semibold text-sm">Izbriši račun in vse podatke</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">
+          To izbriše vozila, servise, tankanja, stroške, opomnike, slike, QR prenose, feedback in prijavo.
+        </p>
+        {!deleteConfirmOpen ? (
+          <button type="button" onClick={() => setDeleteConfirmOpen(true)}
+            className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
+            Izbriši račun
+          </button>
+        ) : (
+          <div className="rounded-xl border border-[#ef444455] bg-[#ef444411] p-4">
+            <p className="text-sm font-semibold text-[#fca5a5]">
+              Pozor: po potrditvi podatkov ne moremo več obnoviti. Če si prepričan, vpiši IZBRISI.
+            </p>
+            <input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="IZBRISI"
+              className="mt-3 w-full rounded-xl border border-[#ef444455] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#ef4444]" />
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => { setDeleteConfirmOpen(false); setDeleteConfirmText('') }}
+                className="rounded-xl border border-[#1e1e32] bg-[#13131f] py-3 font-semibold text-[#5a5a80]">
+                Prekliči
+              </button>
+              <button type="button" onClick={izbrisiRacun} disabled={deleteLoading}
+                className="rounded-xl bg-[#ef4444] py-3 font-semibold text-white disabled:opacity-60">
+                {deleteLoading ? 'Brišem...' : 'Dokončno izbriši'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
           </main>
         </div>

@@ -21,6 +21,7 @@ export default function DodajAvto() {
   const [pogon, setPogon] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [korak, setKorak] = useState(1)
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },
@@ -69,17 +70,44 @@ export default function DodajAvto() {
     setLoading(false)
   }
 
+  const naprej = () => {
+    if (korak === 1 && tipVozila === 'drugo' && !tipVozilaCustom.trim()) {
+      setMessage('Najprej vnesi tip vozila.')
+      return
+    }
+    if (korak === 2 && (!znamka.trim() || !model.trim())) {
+      setMessage('Znamka in model sta nujna podatka.')
+      return
+    }
+    setMessage('')
+    setKorak(Math.min(3, korak + 1))
+  }
+
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
       <div className="flex items-center gap-3 mb-8">
         <BackButton href="/garaza" />
-        <h1 className="text-xl font-bold text-white">Dodaj vozilo</h1>
+        <div>
+          <h1 className="text-xl font-bold text-white">Dodaj vozilo</h1>
+          <p className="text-[#5a5a80] text-xs">Korak {korak}/3 · najprej nujni podatki, nato opcijski.</p>
+        </div>
+      </div>
+
+      <div className="mb-5 grid grid-cols-3 gap-2">
+        {['Tip', 'Osnovno', 'Dodatno'].map((label, index) => (
+          <button key={label} type="button" onClick={() => setKorak(index + 1)}
+            className={`rounded-xl border py-2 text-xs font-bold ${
+              korak === index + 1 ? 'border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff]' : 'border-[#1e1e32] bg-[#0f0f1a] text-[#5a5a80]'
+            }`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col gap-4">
 
         {/* Tip vozila */}
-        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+        <div className={`${korak === 1 ? '' : 'hidden'} bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5`}>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">Tip vozila</label>
           <div className="grid grid-cols-3 gap-2">
             {tipiVozil.map((tip) => (
@@ -108,8 +136,11 @@ export default function DodajAvto() {
         </div>
 
         {/* Osnovno */}
-        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4">
-          <h2 className="text-white font-semibold">Osnovni podatki</h2>
+        <div className={`${korak === 2 ? '' : 'hidden'} bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4`}>
+          <div>
+            <h2 className="text-white font-semibold">Osnovni podatki</h2>
+            <p className="text-[#5a5a80] text-xs mt-1">Znamka in model sta nujna. Ostalo lahko dopolniš kasneje.</p>
+          </div>
 
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Znamka *</label>
@@ -163,7 +194,7 @@ export default function DodajAvto() {
         </div>
 
         {/* Napredne nastavitve */}
-        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4">
+        <div className={`${korak === 3 ? '' : 'hidden'} bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4`}>
           <h2 className="text-white font-semibold">Napredni podatki <span className="text-[#5a5a80] text-xs font-normal">(po želji)</span></h2>
 
           {oblikeAvta[tipVozila] && (
@@ -236,8 +267,21 @@ export default function DodajAvto() {
           }`}>{message}</div>
         )}
 
-        <button onClick={shrani} disabled={loading}
-          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50">
+        {korak < 3 && (
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setKorak(Math.max(1, korak - 1))} disabled={korak === 1}
+              className="w-full rounded-xl border border-[#1e1e32] bg-[#13131f] py-3 font-semibold text-[#5a5a80] disabled:opacity-40">
+              Nazaj
+            </button>
+            <button onClick={naprej}
+              className="w-full rounded-xl bg-[#6c63ff] py-3 font-semibold text-white transition-colors hover:bg-[#5a52e0]">
+              Naprej →
+            </button>
+          </div>
+        )}
+
+        <button onClick={shrani} disabled={loading || korak < 3}
+          className={`${korak < 3 ? 'hidden' : ''} w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50`}>
           {loading ? 'Shranjevanje...' : 'Shrani vozilo →'}
         </button>
       </div>
