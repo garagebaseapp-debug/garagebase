@@ -157,19 +157,20 @@ export default function Nastavitve() {
       }
 
       const registration = await navigator.serviceWorker.register('/sw.js')
-      await navigator.serviceWorker.ready
-      const existingSubscription = await registration.pushManager.getSubscription()
-      const subscription = existingSubscription || await registration.pushManager.subscribe({
+      const readyRegistration = await navigator.serviceWorker.ready
+      const existingSubscription = await readyRegistration.pushManager.getSubscription()
+      const subscription = existingSubscription || await readyRegistration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
       })
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('push_subscriptions').upsert({
+      const { error: subscriptionError } = await supabase.from('push_subscriptions').upsert({
         user_id: user?.id,
         subscription: subscription.toJSON(),
         notification_settings: notificationSettings,
         updated_at: new Date().toISOString()
       })
+      if (subscriptionError) throw subscriptionError
       setNotifikacije('dovoljeno')
       setMessage('✅ Obvestila so vklopljena!')
       setTimeout(() => setMessage(''), 3000)
@@ -183,8 +184,9 @@ export default function Nastavitve() {
   const posljiTestnoObvestilo = async () => {
     setTestLoading(true)
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/sw.js')
-      const subscription = await registration?.pushManager.getSubscription()
+      await navigator.serviceWorker.register('/sw.js')
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
 
       if (!subscription) {
         setNotifikacije('neznano')
@@ -209,13 +211,16 @@ export default function Nastavitve() {
         })
       })
 
-      if (!response.ok) throw new Error('Testno obvestilo ni bilo poslano.')
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Testno obvestilo ni bilo poslano.')
+      }
 
       setMessage('Testno obvestilo poslano.')
       setTimeout(() => setMessage(''), 3000)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Test obvestila:', error)
-      setMessage('Test obvestila ni uspel.')
+      setMessage(`Test obvestila ni uspel: ${error.message || 'neznana napaka'}`)
     }
     setTestLoading(false)
   }
