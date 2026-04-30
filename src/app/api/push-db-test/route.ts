@@ -49,11 +49,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'V bazi ni shranjene push povezave za ta racun.' }, { status: 404 })
     }
 
+    const uniqueSubs = Array.from(
+      new Map(subs.map((sub: any) => [sub.subscription?.endpoint, sub])).values()
+    )
+
     let sent = 0
     let expired = 0
     const failed: string[] = []
 
-    for (const sub of subs) {
+    for (const sub of uniqueSubs) {
       try {
         await webpush.sendNotification(
           sub.subscription,
@@ -70,11 +74,11 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const result = { success: sent > 0, found: subs.length, sent, expired, failed }
+    const result = { success: sent > 0, found: subs.length, unique: uniqueSubs.length, sent, expired, failed }
     if (sent < 1) {
       return NextResponse.json({
         ...result,
-        error: `Najdenih je ${subs.length} push povezav, vendar ni bilo poslano nobeno obvestilo.`,
+        error: `Najdenih je ${subs.length} push povezav (${uniqueSubs.length} unikatnih), vendar ni bilo poslano nobeno obvestilo.`,
       }, { status: 502 })
     }
 
