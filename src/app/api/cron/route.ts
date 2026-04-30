@@ -116,9 +116,15 @@ function buildSummary(items: string[]) {
 
 export async function GET(req: Request) {
   const authHeader = req.headers.get('authorization')
+  const userAgent = req.headers.get('user-agent') || ''
   const cronSecret = process.env.CRON_SECRET
+  const isVercelCron = userAgent.includes('vercel-cron/1.0')
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
+    return NextResponse.json({ error: 'Unauthorized', reason: 'bad_cron_secret' }, { status: 401 })
+  }
+
+  if (!cronSecret && !isVercelCron) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
