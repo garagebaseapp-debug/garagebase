@@ -559,10 +559,11 @@ export default function Nastavitve() {
             </div>
             <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider">Ura jutranjega opomnika</label>
-              <select value={notificationSettings.sendTime} onChange={(e) => shraniNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
-                className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none">
-                {['07:00', '08:00', '09:00', '10:00'].map((time) => <option key={time} value={time}>{time}</option>)}
-              </select>
+              <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => shraniNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
+                className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none" />
+              <p className="mt-2 text-[11px] text-[#5a5a80]">
+                Za test nastavi uro nekaj minut naprej. Cron sprejme tudi nekaj minut zamika.
+              </p>
             </div>
             <button onClick={posljiTestnoObvestilo} disabled={testLoading}
               className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">

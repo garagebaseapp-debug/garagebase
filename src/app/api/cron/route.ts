@@ -70,13 +70,23 @@ function isWorseStatus(previous?: ReminderStatus, current?: ReminderStatus) {
 }
 
 function shouldRunForSendTime(sendTime: string) {
-  const wantedHour = Number((sendTime || '08:00').split(':')[0])
-  const currentHour = Number(new Intl.DateTimeFormat('sl-SI', {
+  const [wantedHour, wantedMinute] = (sendTime || '08:00').split(':').map(Number)
+  const parts = new Intl.DateTimeFormat('sl-SI', {
     hour: '2-digit',
+    minute: '2-digit',
     hour12: false,
     timeZone: 'Europe/Ljubljana',
-  }).format(new Date()))
-  return Number.isFinite(wantedHour) ? wantedHour === currentHour : currentHour === 8
+  }).formatToParts(new Date())
+  const currentHour = Number(parts.find((part) => part.type === 'hour')?.value || 0)
+  const currentMinute = Number(parts.find((part) => part.type === 'minute')?.value || 0)
+
+  if (!Number.isFinite(wantedHour) || !Number.isFinite(wantedMinute)) {
+    return currentHour === 8 && currentMinute < 5
+  }
+
+  const wantedTotal = wantedHour * 60 + wantedMinute
+  const currentTotal = currentHour * 60 + currentMinute
+  return currentTotal >= wantedTotal && currentTotal < wantedTotal + 5
 }
 
 async function sendPush(subscription: any, title: string, body: string) {
