@@ -665,24 +665,28 @@ export default function Nastavitve() {
 
       {/* Obvestila */}
       <div id="obvestila" style={{ display: showSection('obvestila') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Obvestila</p>
-        <p className="text-[#3a3a5a] text-xs mb-3">Opomniki za registracijo, servis in vinjeto</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{jezik === 'en' ? 'Notifications' : 'Obvestila'}</p>
+        <p className="text-[#3a3a5a] text-xs mb-3">
+          {jezik === 'en' ? 'Reminders for registration, service and vignette' : 'Opomniki za registracijo, servis in vinjeto'}
+        </p>
         {notifikacije === 'dovoljeno' ? (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-3 bg-[#16a34a22] border border-[#16a34a44] rounded-xl p-3">
               <span className="text-xl">🔔</span>
               <div>
-                <p className="text-[#4ade80] text-sm font-semibold">Obvestila so vklopljena</p>
-                <p className="text-[#5a5a80] text-xs">Opomniki se posiljajo po spodnjih nastavitvah.</p>
+                <p className="text-[#4ade80] text-sm font-semibold">{jezik === 'en' ? 'Notifications are enabled' : 'Obvestila so vklopljena'}</p>
+                <p className="text-[#5a5a80] text-xs">
+                  {jezik === 'en' ? 'Reminders are sent according to the settings below.' : 'Opomniki se pošiljajo po spodnjih nastavitvah.'}
+                </p>
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {[
-                { key: 'enabled', title: 'Glavni vklop obvestil', desc: 'Ce je izklopljeno, ne posiljamo opomnikov.' },
-                { key: 'dateReminders', title: 'Datumski opomniki', desc: 'Registracija, vinjeta, tehnicni, zavarovanje.' },
-                { key: 'kmReminders', title: 'KM opomniki', desc: 'Servis ali drug opomnik po kilometrih.' },
-                { key: 'transitionAlerts', title: 'Prehod prioritet', desc: 'Obvestilo pri prehodu zelena -> rumena ali rumena -> rdeca.' },
-                { key: 'dailyRedAlerts', title: 'Dnevni rdeci opomnik', desc: 'Ko je nujno, te opomni vsako jutro.' },
+                { key: 'enabled', title: jezik === 'en' ? 'Main notification switch' : 'Glavni vklop obvestil', desc: jezik === 'en' ? 'When off, reminders are not sent.' : 'Če je izklopljeno, ne pošiljamo opomnikov.' },
+                { key: 'dateReminders', title: jezik === 'en' ? 'Date reminders' : 'Datumski opomniki', desc: jezik === 'en' ? 'Registration, vignette, technical inspection, insurance.' : 'Registracija, vinjeta, tehnični, zavarovanje.' },
+                { key: 'kmReminders', title: jezik === 'en' ? 'Mileage reminders' : 'KM opomniki', desc: jezik === 'en' ? 'Service or another reminder based on mileage.' : 'Servis ali drug opomnik po kilometrih.' },
+                { key: 'transitionAlerts', title: jezik === 'en' ? 'Priority changes' : 'Prehod prioritet', desc: jezik === 'en' ? 'Notify when a reminder changes from green to yellow or yellow to red.' : 'Obvestilo pri prehodu zelena -> rumena ali rumena -> rdeča.' },
+                { key: 'dailyRedAlerts', title: jezik === 'en' ? 'Daily urgent reminder' : 'Dnevni rdeči opomnik', desc: jezik === 'en' ? 'When urgent, remind me every morning.' : 'Ko je nujno, te opomni vsako jutro.' },
               ].map((item) => (
                 <button key={item.key} type="button" onClick={() => toggleNotificationSetting(item.key as keyof typeof defaultNotificationSettings)}
                   className={`rounded-xl border p-4 text-left transition-all ${
@@ -707,11 +711,15 @@ export default function Nastavitve() {
               ))}
             </div>
             <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
-              <label className="text-[#5a5a80] text-xs uppercase tracking-wider">Ura jutranjega opomnika</label>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider">
+                {jezik === 'en' ? 'Morning reminder time' : 'Ura jutranjega opomnika'}
+              </label>
               <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => setNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
                 className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none" />
               <p className="mt-2 text-[11px] text-[#5a5a80]">
-                Na brezplacnem Vercel planu avtomatski cron deluje dnevno okoli 8:00 po slovenskem casu. Minutno testiranje je odvisno od Pro/Trial plana.
+                {jezik === 'en'
+                  ? 'Reminders are sent once per day at the selected time when active reminders exist.'
+                  : 'Obvestila se pošljejo enkrat na dan ob izbrani uri, če imaš aktivne opomnike.'}
               </p>
               <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)} disabled={notificationSaveState === 'saving'}
                 className={`mt-3 w-full font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 ${
@@ -722,43 +730,52 @@ export default function Nastavitve() {
                       : 'bg-[#6c63ff] text-white hover:bg-[#5a52e8]'
                 }`}>
                 {notificationSaveState === 'saving'
-                  ? 'Shranjujem...'
+                  ? (jezik === 'en' ? 'Saving...' : 'Shranjujem...')
                   : notificationSaveState === 'saved'
-                    ? 'Shranjeno ✓'
+                    ? (jezik === 'en' ? 'Saved ✓' : 'Shranjeno ✓')
                     : notificationSaveState === 'error'
-                      ? 'Ni shranjeno'
-                      : 'Shrani nastavitve obvestil'}
+                      ? (jezik === 'en' ? 'Not saved' : 'Ni shranjeno')
+                      : (jezik === 'en' ? 'Save notification settings' : 'Shrani nastavitve obvestil')}
               </button>
             </div>
-            <button onClick={posljiTestnoObvestilo} disabled={testLoading}
-              className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
-              {testLoading ? 'Pošiljam test...' : 'Pošlji test'}
-            </button>
-            <button onClick={posljiBazaTestnoObvestilo} disabled={dbTestLoading}
-              className="w-full bg-[#14b8a622] border border-[#14b8a655] text-[#5eead4] font-semibold py-3 rounded-xl hover:bg-[#14b8a633] transition-colors disabled:opacity-50">
-              {dbTestLoading ? 'Pošiljam iz baze...' : 'Pošlji test iz baze'}
-            </button>
-            <button onClick={posljiTestOpomnikovZdaj} disabled={reminderTestLoading}
-              className="w-full bg-[#f59e0b22] border border-[#f59e0b55] text-[#fbbf24] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors disabled:opacity-50">
-              {reminderTestLoading ? 'Preverjam opomnike...' : 'Test opomnikov zdaj'}
-            </button>
+            {isAdmin && (
+              <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff11] p-3">
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#a09aff]">
+                  {jezik === 'en' ? 'Admin testing tools' : 'Admin testna orodja'}
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button onClick={posljiTestnoObvestilo} disabled={testLoading}
+                    className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
+                    {testLoading ? (jezik === 'en' ? 'Sending test...' : 'Pošiljam test...') : (jezik === 'en' ? 'Send test' : 'Pošlji test')}
+                  </button>
+                  <button onClick={posljiBazaTestnoObvestilo} disabled={dbTestLoading}
+                    className="w-full bg-[#14b8a622] border border-[#14b8a655] text-[#5eead4] font-semibold py-3 rounded-xl hover:bg-[#14b8a633] transition-colors disabled:opacity-50">
+                    {dbTestLoading ? (jezik === 'en' ? 'Sending from database...' : 'Pošiljam iz baze...') : (jezik === 'en' ? 'Send database test' : 'Pošlji test iz baze')}
+                  </button>
+                  <button onClick={posljiTestOpomnikovZdaj} disabled={reminderTestLoading}
+                    className="w-full bg-[#f59e0b22] border border-[#f59e0b55] text-[#fbbf24] font-semibold py-3 rounded-xl hover:bg-[#f59e0b33] transition-colors disabled:opacity-50">
+                    {reminderTestLoading ? (jezik === 'en' ? 'Checking reminders...' : 'Preverjam opomnike...') : (jezik === 'en' ? 'Test reminders now' : 'Test opomnikov zdaj')}
+                  </button>
+                </div>
+              </div>
+            )}
             <button onClick={izklopiNotifikacije} disabled={notifikacijeLoading}
               className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors disabled:opacity-50">
-              {notifikacijeLoading ? 'Izklapljam...' : 'Izklopi obvestila na tej napravi'}
+              {notifikacijeLoading ? (jezik === 'en' ? 'Disabling...' : 'Izklapljam...') : (jezik === 'en' ? 'Disable notifications on this device' : 'Izklopi obvestila na tej napravi')}
             </button>
           </div>
         ) : notifikacije === 'zavrnjeno' ? (
           <div className="flex items-center gap-3 bg-[#ef444422] border border-[#ef444444] rounded-xl p-3">
             <span className="text-xl">🔕</span>
             <div>
-              <p className="text-[#fca5a5] text-sm font-semibold">Obvestila so zavrnjena</p>
-              <p className="text-[#5a5a80] text-xs">Dovoli jih v nastavitvah brskalnika</p>
+              <p className="text-[#fca5a5] text-sm font-semibold">{jezik === 'en' ? 'Notifications are blocked' : 'Obvestila so zavrnjena'}</p>
+              <p className="text-[#5a5a80] text-xs">{jezik === 'en' ? 'Allow them in browser settings.' : 'Dovoli jih v nastavitvah brskalnika'}</p>
             </div>
           </div>
         ) : (
           <button onClick={vklopiNotifikacije} disabled={notifikacijeLoading}
             className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
-            {notifikacijeLoading ? 'Vklapljam...' : '🔔 Vklopi obvestila'}
+            {notifikacijeLoading ? (jezik === 'en' ? 'Enabling...' : 'Vklapljam...') : (jezik === 'en' ? '🔔 Enable notifications' : '🔔 Vklopi obvestila')}
           </button>
         )}
       </div>
