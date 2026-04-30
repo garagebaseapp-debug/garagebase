@@ -116,6 +116,8 @@ export default function AdminNapakePage() {
                 <Info label={tx('Dejansko', 'Actual')} value={item.actual} />
                 <Info label={tx('Področje', 'Area')} value={`${item.area || '-'} / ${item.priority || '-'}`} />
                 <Info label={tx('Naprava', 'Device')} value={item.device_info} />
+                <Info label={tx('Verzija', 'Version')} value={`${item.app_version || item.metadata?.appVersion || '-'} / ${item.release_channel || item.metadata?.releaseChannel || '-'}`} />
+                <Info label={tx('Zadnji dogodki', 'Recent events')} value={(item.metadata?.recentEvents || []).map((event: any) => `${event.createdAt} ${event.eventName} ${event.pagePath || ''}`).join('\n')} />
               </div>
               {item.page_url && <p className="mt-3 break-all text-xs text-[#5a5a80]">{item.page_url}</p>}
               <div className="mt-4 grid grid-cols-3 gap-2">

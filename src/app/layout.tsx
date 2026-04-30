@@ -64,12 +64,11 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            const velikosti = { mala: '25px', normalna: '35px', velika: '45px' };
+            const appVelikosti = { mala: '25px', normalna: '35px', velika: '45px' };
+            const webVelikosti = { mala: '15px', normalna: '16px', velika: '18px' };
             const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024;
-            if (jeApp && n.pisava && velikosti[n.pisava]) {
-              document.documentElement.style.fontSize = velikosti[n.pisava];
-            } else if (!jeApp) {
-              document.documentElement.style.removeProperty('font-size');
+            if (n.pisava) {
+              document.documentElement.style.fontSize = jeApp ? appVelikosti[n.pisava] : webVelikosti[n.pisava];
             }
           }
         `}} />

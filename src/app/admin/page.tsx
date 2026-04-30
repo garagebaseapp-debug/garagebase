@@ -634,6 +634,12 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs text-[#fca5a5]">{error.message || '-'}</p>
                 <p className="mt-1 text-[11px] text-[#5a5a80]">{pageName(error.page_path)} · {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                <p className="mt-1 text-[11px] text-[#5a5a80]">
+                  v{error.app_version || error.metadata?.appVersion || '-'} · {error.release_channel || error.metadata?.releaseChannel || '-'}
+                </p>
+                {(error.device_info || error.metadata?.userAgent) && (
+                  <p className="mt-1 line-clamp-1 text-[10px] text-[#5a5a80]">{error.device_info || error.metadata?.userAgent}</p>
+                )}
                 {error.status !== 'resolved' && (
                   <button onClick={() => resolveError(error.id)}
                     className="mt-3 rounded-lg border border-[#4ade8055] bg-[#4ade8018] px-3 py-2 text-xs font-bold text-[#4ade80]">
