@@ -19,6 +19,15 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
+const defaultNotificationSettings = {
+  enabled: true,
+  dateReminders: true,
+  kmReminders: true,
+  transitionAlerts: true,
+  dailyRedAlerts: true,
+  sendTime: '08:00',
+}
+
 export default function Nastavitve() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -34,6 +43,7 @@ export default function Nastavitve() {
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
+  const [notificationSettings, setNotificationSettings] = useState(defaultNotificationSettings)
   const [biometricSupported, setBiometricSupported] = useState(false)
   const [appLockEnabled, setAppLockEnabled] = useState(false)
   const [appLockLoading, setAppLockLoading] = useState(false)
@@ -93,6 +103,7 @@ export default function Nastavitve() {
         setGarazaPisava(n.garazaPisava || 100)
         setAvtocomplete(n.avtocomplete !== false)
         setTema(n.tema || 'temna')
+        if (n.notificationSettings) setNotificationSettings({ ...defaultNotificationSettings, ...n.notificationSettings })
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
         if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
         if (n.tema === 'svetla') {
@@ -106,6 +117,16 @@ export default function Nastavitve() {
           const registration = await navigator.serviceWorker.getRegistration('/sw.js')
           const subscription = await registration?.pushManager.getSubscription()
           setNotifikacije(subscription ? 'dovoljeno' : 'neznano')
+          if (subscription) {
+            const { data: subRow } = await supabase
+              .from('push_subscriptions')
+              .select('notification_settings')
+              .eq('user_id', user.id)
+              .maybeSingle()
+            if (subRow?.notification_settings) {
+              setNotificationSettings({ ...defaultNotificationSettings, ...subRow.notification_settings })
+            }
+          }
         } else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
         else setNotifikacije('neznano')
       }
@@ -145,7 +166,9 @@ export default function Nastavitve() {
       const { data: { user } } = await supabase.auth.getUser()
       await supabase.from('push_subscriptions').upsert({
         user_id: user?.id,
-        subscription: subscription.toJSON()
+        subscription: subscription.toJSON(),
+        notification_settings: notificationSettings,
+        updated_at: new Date().toISOString()
       })
       setNotifikacije('dovoljeno')
       setMessage('✅ Obvestila so vklopljena!')
@@ -197,10 +220,50 @@ export default function Nastavitve() {
     setTestLoading(false)
   }
 
+  const shraniNotificationSettings = async (nextSettings: typeof defaultNotificationSettings) => {
+    setNotificationSettings(nextSettings)
+    const raw = localStorage.getItem('garagebase_nastavitve')
+    const current = raw ? JSON.parse(raw) : {}
+    localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, notificationSettings: nextSettings }))
+    trackEvent('notification_settings_changed', nextSettings)
+    if (user && notifikacije === 'dovoljeno') {
+      await supabase
+        .from('push_subscriptions')
+        .update({
+          notification_settings: nextSettings,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+    }
+  }
+
+  const toggleNotificationSetting = (key: keyof typeof defaultNotificationSettings) => {
+    const value = notificationSettings[key]
+    if (typeof value !== 'boolean') return
+    shraniNotificationSettings({ ...notificationSettings, [key]: !value })
+  }
+
+  const izklopiNotifikacije = async () => {
+    setNotifikacijeLoading(true)
+    try {
+      const registration = await navigator.serviceWorker.getRegistration('/sw.js')
+      const subscription = await registration?.pushManager.getSubscription()
+      await subscription?.unsubscribe()
+      if (user) await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
+      setNotifikacije('neznano')
+      setMessage('Obvestila so izklopljena na tej napravi.')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      console.error('Izklop obvestil:', error)
+      setMessage('Obvestil ni bilo mogoce izklopiti.')
+    }
+    setNotifikacijeLoading(false)
+  }
+
   const shrani = () => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, onboardingDone: true }
+    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     const velikosti: any = { mala: '25px', normalna: '35px', velika: '45px' }
@@ -444,12 +507,53 @@ export default function Nastavitve() {
               <span className="text-xl">🔔</span>
               <div>
                 <p className="text-[#4ade80] text-sm font-semibold">Obvestila so vklopljena</p>
-                <p className="text-[#5a5a80] text-xs">Prejeli boste opomnike ob 8:00</p>
+                <p className="text-[#5a5a80] text-xs">Opomniki se posiljajo po spodnjih nastavitvah.</p>
               </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {[
+                { key: 'enabled', title: 'Glavni vklop obvestil', desc: 'Ce je izklopljeno, ne posiljamo opomnikov.' },
+                { key: 'dateReminders', title: 'Datumski opomniki', desc: 'Registracija, vinjeta, tehnicni, zavarovanje.' },
+                { key: 'kmReminders', title: 'KM opomniki', desc: 'Servis ali drug opomnik po kilometrih.' },
+                { key: 'transitionAlerts', title: 'Prehod prioritet', desc: 'Obvestilo pri prehodu zelena -> rumena ali rumena -> rdeca.' },
+                { key: 'dailyRedAlerts', title: 'Dnevni rdeci opomnik', desc: 'Ko je nujno, te opomni vsako jutro.' },
+              ].map((item) => (
+                <button key={item.key} type="button" onClick={() => toggleNotificationSetting(item.key as keyof typeof defaultNotificationSettings)}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    notificationSettings[item.key as keyof typeof defaultNotificationSettings]
+                      ? 'bg-[#6c63ff22] border-[#6c63ff66]'
+                      : 'bg-[#13131f] border-[#1e1e32]'
+                  }`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-white text-sm font-semibold">{item.title}</p>
+                      <p className="text-[#5a5a80] text-xs mt-1">{item.desc}</p>
+                    </div>
+                    <span className={`mt-0.5 h-6 w-11 rounded-full p-0.5 transition-colors ${
+                      notificationSettings[item.key as keyof typeof defaultNotificationSettings] ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
+                    }`}>
+                      <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${
+                        notificationSettings[item.key as keyof typeof defaultNotificationSettings] ? 'translate-x-5' : ''
+                      }`} />
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider">Ura jutranjega opomnika</label>
+              <select value={notificationSettings.sendTime} onChange={(e) => shraniNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
+                className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none">
+                {['07:00', '08:00', '09:00', '10:00'].map((time) => <option key={time} value={time}>{time}</option>)}
+              </select>
             </div>
             <button onClick={posljiTestnoObvestilo} disabled={testLoading}
               className="w-full bg-[#13131f] border border-[#1e1e32] text-[#a09aff] font-semibold py-3 rounded-xl hover:border-[#6c63ff66] transition-colors disabled:opacity-50">
               {testLoading ? 'Pošiljam test...' : 'Pošlji test'}
+            </button>
+            <button onClick={izklopiNotifikacije} disabled={notifikacijeLoading}
+              className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors disabled:opacity-50">
+              {notifikacijeLoading ? 'Izklapljam...' : 'Izklopi obvestila na tej napravi'}
             </button>
           </div>
         ) : notifikacije === 'zavrnjeno' ? (
