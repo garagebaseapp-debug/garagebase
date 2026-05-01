@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { getStoredLanguage, type Language } from '@/lib/i18n'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -28,12 +29,16 @@ export default function VnosServisa() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const [intervalKm, setIntervalKm] = useState('')
   const [intervalDni, setIntervalDni] = useState('')
+  const [language, setLanguage] = useState<Language>('sl')
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
   const jeNaknaden = datum < danes
+  const jeEn = language === 'en'
+  const tx = (sl: string, en: string) => jeEn ? en : sl
 
   useEffect(() => {
+    setLanguage(getStoredLanguage())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -112,7 +117,7 @@ export default function VnosServisa() {
         }
       })
     } catch (error: any) {
-      setMessage(error.message || 'Slike racuna ni bilo mogoce pripraviti.')
+      setMessage(error.message || tx('Slike racuna ni bilo mogoce pripraviti.', 'Receipt photos could not be prepared.'))
     }
   }
 
@@ -138,7 +143,7 @@ export default function VnosServisa() {
         })
       }
     } catch (error: any) {
-      setMessage(error.message || 'Slike stevca ni bilo mogoce pripraviti.')
+      setMessage(error.message || tx('Slike stevca ni bilo mogoce pripraviti.', 'Odometer photo could not be prepared.'))
       return
     }
   }
@@ -188,13 +193,13 @@ export default function VnosServisa() {
           if (polje === 'km') setKm(stevilka.toString())
           if (polje === 'cena') setCena(stevilka.toString())
         } else {
-          setMessage(`Nisem razumel: "${tekst}". Poskusi znova.`)
+          setMessage(`${tx('Nisem razumel', 'I did not understand')}: "${tekst}". ${tx('Poskusi znova.', 'Try again.')}`)
         }
       }
       setPoslusam(null)
     }
 
-    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu.'); setPoslusam(null) }
+    recognition.onerror = () => { setMessage(tx('Napaka pri glasovnem vnosu.', 'Voice input error.')); setPoslusam(null) }
     recognition.onend = () => setPoslusam(null)
     recognition.start()
   }
@@ -231,10 +236,10 @@ export default function VnosServisa() {
     })
   }
   const shrani = async () => {
-    if (!km || !opis) { setMessage('Km in opis sta obvezna!'); return }
+    if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
     const vneseniKm = parseInt(km)
     if (vneseniKm < zadnjiKm) {
-      setMessage(`⚠️ Km ne smejo biti nižji od ${zadnjiKm.toLocaleString()} km!`)
+      setMessage(`⚠️ ${tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} ${zadnjiKm.toLocaleString()} km!`)
       return
     }
     setLoading(true)
@@ -250,7 +255,7 @@ export default function VnosServisa() {
       cena: cena ? parseFloat(cena) : null,
     }).select().single()
 
-    if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
+    if (error) { setMessage(tx('Napaka: ', 'Error: ') + error.message); setLoading(false); return }
 
     await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
     trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
@@ -308,13 +313,13 @@ export default function VnosServisa() {
 
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
-        <h1 className="text-xl font-bold text-white">🔧 Vnos servisa</h1>
+        <h1 className="text-xl font-bold text-white">🔧 {tx('Vnos servisa', 'Service entry')}</h1>
       </div>
 
       {poslusam && (
         <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
           <span className="text-xl animate-pulse">🎤</span>
-          <p className="text-[#ef4444] text-sm font-semibold">Poslušam... govori zdaj</p>
+          <p className="text-[#ef4444] text-sm font-semibold">{tx('Poslusam... govori zdaj', 'Listening... speak now')}</p>
         </div>
       )}
 
@@ -322,7 +327,7 @@ export default function VnosServisa() {
 
         {avti.length > 1 && (
           <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Avto</label>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select value={carId} onChange={e => menjavaAvta(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors">
               {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
@@ -331,77 +336,77 @@ export default function VnosServisa() {
         )}
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Datum</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Datum', 'Date')}</label>
           <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
             className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${jeNaknaden ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
           {jeNaknaden && (
             <div className="mt-2 p-2 rounded-lg bg-[#f59e0b22] border border-[#f59e0b44]">
-              <p className="text-[#f59e0b] text-xs">⚠️ Naknadno vnešen servis — zabeležen datum vnosa ({danes})</p>
+              <p className="text-[#f59e0b] text-xs">⚠️ {tx('Naknadno vnesen servis - zabelezen datum vnosa', 'Backdated service entry - entry date recorded')} ({danes})</p>
             </div>
           )}
         </div>
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            Kilometri * <span className="text-[#3a3a5a] normal-case">(zadnji: {zadnjiKm.toLocaleString()} km)</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {zadnjiKm.toLocaleString()} km)</span>
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
-              placeholder={`najmanj ${zadnjiKm.toLocaleString()}`}
+              placeholder={`${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}`}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
             <MicButton polje="km" />
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ Km ne smejo biti nižji od {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">⛔ {tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Slika stevca (za Photo/Strong verified)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Slika stevca (za Photo/Strong verified)', 'Odometer photo (for Photo/Strong verified)')}</label>
           <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
             <input type="file" accept="image/*" capture="environment" onChange={dodajStevec} className="hidden" />
             {stevecPreview ? (
-              <img src={stevecPreview} alt="Stevec kilometrov" className="w-full max-h-44 object-contain rounded-lg" />
+              <img src={stevecPreview} alt={tx('Stevec kilometrov', 'Odometer')} className="w-full max-h-44 object-contain rounded-lg" />
             ) : (
-              <span className="text-[#3ecfcf] font-semibold">Dodaj/slikaj stevec kilometrov</span>
+              <span className="text-[#3ecfcf] font-semibold">{tx('Dodaj/slikaj stevec kilometrov', 'Add/take odometer photo')}</span>
             )}
           </label>
           {stevecPreview && (
             <button type="button" onClick={() => { setStevec(null); setStevecPreview('') }}
               className="mt-2 w-full rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
-              Odstrani sliko stevca
+              {tx('Odstrani sliko stevca', 'Remove odometer photo')}
             </button>
           )}
           <div className="mt-3 grid grid-cols-3 gap-2">
             <div className="rounded-xl border border-[#5a5a8044] bg-[#5a5a8018] p-2 text-center">
               <p className="text-[11px] font-black text-white">Basic</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Brez slike</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Brez slike', 'No photo')}</p>
             </div>
             <div className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] p-2 text-center">
               <p className="text-[11px] font-black text-[#3ecfcf]">Photo</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Slika števca</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Slika stevca', 'Odometer photo')}</p>
             </div>
             <div className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] p-2 text-center">
               <p className="text-[11px] font-black text-[#f59e0b]">Strong</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">Števec + račun</p>
+              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Stevec + racun', 'Odometer + receipt')}</p>
             </div>
           </div>
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Opis dela *</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Opis dela', 'Work performed')} *</label>
           <div className="flex gap-2">
             <textarea value={opis} onChange={e => setOpis(e.target.value)}
-              placeholder="npr. Menjava olja + filter" rows={3}
+              placeholder={tx('npr. Menjava olja + filter', 'e.g. Oil and filter change')} rows={3}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors resize-none" />
             <MicButton polje="opis" />
           </div>
         </div>
 
         <div ref={servisRef} className="relative">
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Ime servisa (po želji)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Ime servisa (po zelji)', 'Service name (optional)')}</label>
           <div className="flex gap-2">
             <input type="text" value={servis}
               onChange={e => handleServisChange(e.target.value)}
@@ -412,7 +417,7 @@ export default function VnosServisa() {
                   setShowSuggestions(filtered.length > 0)
                 }
               }}
-              placeholder="npr. Volvo Center Ljubljana"
+              placeholder={tx('npr. Volvo Center Ljubljana', 'e.g. Volvo Center Ljubljana')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
             <MicButton polje="servis" />
           </div>
@@ -429,9 +434,9 @@ export default function VnosServisa() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Cena (€)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena', 'Price')} (€)</label>
           <div className="flex gap-2">
-            <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder="npr. 320"
+            <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder={tx('npr. 320', 'e.g. 320')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
             <MicButton polje="cena" />
           </div>
@@ -439,13 +444,13 @@ export default function VnosServisa() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            Slike računov <span className="text-[#3a3a5a] normal-case">(največ 3, max 2MB vsaka)</span>
+            {tx('Slike racunov', 'Receipt photos')} <span className="text-[#3a3a5a] normal-case">({tx('najvec 3, max 2MB vsaka', 'maximum 3, max 2MB each')})</span>
           </label>
           {slikePreview.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mb-3">
               {slikePreview.map((preview, index) => (
                 <div key={index} className="relative rounded-xl overflow-hidden aspect-square">
-                  <img src={preview} alt={`Račun ${index + 1}`} className="w-full h-full object-cover" />
+                  <img src={preview} alt={`${tx('Racun', 'Receipt')} ${index + 1}`} className="w-full h-full object-cover" />
                   <button onClick={() => odstraniSliko(index)}
                     className="absolute top-1 right-1 w-6 h-6 bg-black/70 rounded-full flex items-center justify-center text-white text-xs hover:bg-red-500 transition-colors">✕</button>
                 </div>
@@ -456,8 +461,8 @@ export default function VnosServisa() {
             <label className="flex items-center gap-3 bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl px-4 py-3 cursor-pointer hover:border-[#f59e0b] transition-colors">
               <span className="text-2xl">📷</span>
               <div>
-                <p className="text-[#5a5a80] text-sm font-semibold">Dodaj sliko računa</p>
-                <p className="text-[#3a3a5a] text-xs">{slike.length}/3 slik</p>
+                <p className="text-[#5a5a80] text-sm font-semibold">{tx('Dodaj sliko racuna', 'Add receipt photo')}</p>
+                <p className="text-[#3a3a5a] text-xs">{slike.length}/3 {tx('slik', 'photos')}</p>
               </div>
               <input type="file" accept="image/*" multiple onChange={dodajSliko} className="hidden" />
             </label>
@@ -467,17 +472,17 @@ export default function VnosServisa() {
 
         <div className="bg-[#f59e0b11] border border-[#f59e0b33] rounded-xl p-4 flex flex-col gap-3">
           <div>
-            <p className="text-white text-sm font-semibold">Naslednji servis</p>
-            <p className="text-[#5a5a80] text-xs mt-0.5">Če vneseš interval, aplikacija sama ustvari opomnik.</p>
+            <p className="text-white text-sm font-semibold">{tx('Naslednji servis', 'Next service')}</p>
+            <p className="text-[#5a5a80] text-xs mt-0.5">{tx('Ce vneses interval, aplikacija sama ustvari opomnik.', 'If you enter an interval, the app creates a reminder automatically.')}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Čez km</label>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cez km', 'After km')}</label>
               <input type="number" value={intervalKm} onChange={e => setIntervalKm(e.target.value)} placeholder="15000"
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
             </div>
             <div>
-              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Čez dni</label>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cez dni', 'After days')}</label>
               <input type="number" value={intervalDni} onChange={e => setIntervalDni(e.target.value)} placeholder="365"
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
             </div>
@@ -487,9 +492,9 @@ export default function VnosServisa() {
           <div className="flex items-start gap-3">
             <span className="text-xl">⚠️</span>
             <div>
-              <p className="text-white text-sm font-bold">Preveri kilometre in podatke pred shranjevanjem</p>
+              <p className="text-white text-sm font-bold">{tx('Preveri kilometre in podatke pred shranjevanjem', 'Check mileage and details before saving')}</p>
               <p className="mt-1 text-[#f8c873] text-xs leading-relaxed">
-                Servisni zapis lahko popravis samo prvih 24 ur. Po tem se Basic, Photo verified in Strong verified zapis zaklene, zato se enkrat preveri datum, kilometre, opis dela, racun in sliko stevca.
+                {tx('Servisni zapis lahko popravis samo prvih 24 ur. Po tem se Basic, Photo verified in Strong verified zapis zaklene, zato se enkrat preveri datum, kilometre, opis dela, racun in sliko stevca.', 'A service record can only be edited for the first 24 hours. After that, Basic, Photo verified and Strong verified records are locked, so check the date, mileage, work description, receipt and odometer photo once more.')}
               </p>
             </div>
           </div>
@@ -502,7 +507,7 @@ export default function VnosServisa() {
 
         <button onClick={shrani} disabled={loading || uploadProgress}
           className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2">
-          {uploadProgress ? 'Nalaganje slik...' : loading ? 'Shranjevanje...' : 'Shrani servis →'}
+          {uploadProgress ? tx('Nalaganje slik...', 'Uploading photos...') : loading ? tx('Shranjevanje...', 'Saving...') : tx('Shrani servis', 'Save service') + ' →'}
         </button>
       </div>
 

@@ -600,7 +600,7 @@ export default function Report() {
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje podatkov...</p>
+      <p className="text-[#5a5a80]">{language === 'en' ? 'Loading data...' : 'Nalaganje podatkov...'}</p>
     </div>
   )
 
@@ -613,6 +613,7 @@ export default function Report() {
   const totalForReport = servisiForReport.reduce((s, v) => s + (v.cena || 0), 0) +
     gorivoForReport.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
     expensesForReport.reduce((s, v) => s + (v.znesek || 0), 0)
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -620,32 +621,32 @@ export default function Report() {
       <div className="flex items-center gap-3 mb-6">
         <BackButton />
         <div>
-          <h1 className="text-xl font-bold text-white">📄 PDF Report</h1>
+          <h1 className="text-xl font-bold text-white">📄 {tx('PDF Report', 'PDF Report')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
         </div>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Vsebina reporta</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Vsebina reporta', 'Report content')}</p>
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
-            <span className="text-white text-sm">🔧 Servisov</span>
+            <span className="text-white text-sm">🔧 {tx('Servisov', 'Services')}</span>
             <span className="text-[#6c63ff] font-bold">{servisi.length}</span>
           </div>
           <button onClick={() => setIncludeServices(!includeServices)}
             className={`rounded-xl border px-3 py-2 text-left ${includeServices ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeServices ? '[x]' : '[ ]'} Servisi</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Servisna knjiga: {servisi.length} zapisov</p>
+            <p className="text-white text-sm font-semibold">{includeServices ? '[x]' : '[ ]'} {tx('Servisi', 'Services')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Servisna knjiga', 'Service book')}: {servisi.length} {tx('zapisov', 'records')}</p>
           </button>
           <button onClick={() => setIncludeFuel(!includeFuel)}
             className={`rounded-xl border px-3 py-2 text-left ${includeFuel ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeFuel ? '[x]' : '[ ]'} Gorivo / tankanja</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Vkljuci {gorivo.length} tankanj samo ce zelis podrobno porocilo.</p>
+            <p className="text-white text-sm font-semibold">{includeFuel ? '[x]' : '[ ]'} {tx('Gorivo / tankanja', 'Fuel / fill-ups')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Vkljuci', 'Include')} {gorivo.length} {tx('tankanj samo ce zelis podrobno porocilo.', 'fill-ups only if you want a detailed report.')}</p>
           </button>
           <button onClick={() => setIncludeExpenses(!includeExpenses)}
             className={`rounded-xl border px-3 py-2 text-left ${includeExpenses ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeExpenses ? '[x]' : '[ ]'} Dodatni stroski</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Izbranih {expensesForReport.length} od {expenses.length} zapisov.</p>
+            <p className="text-white text-sm font-semibold">{includeExpenses ? '[x]' : '[ ]'} {tx('Dodatni stroski', 'Additional costs')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Izbranih', 'Selected')} {expensesForReport.length} {tx('od', 'of')} {expenses.length} {tx('zapisov.', 'records.')}</p>
           </button>
           {includeExpenses && expenseCategories.length > 0 && (
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-[#13131f] border border-[#1e1e32] p-3">
@@ -661,21 +662,21 @@ export default function Report() {
             </div>
           )}
           <div className="hidden">
-            <span className="text-white text-sm">⛽ Tankanij</span>
+            <span className="text-white text-sm">⛽ {tx('Tankanij', 'Fill-ups')}</span>
             <span className="text-[#6c63ff] font-bold">{gorivo.length}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-white text-sm">💰 Dodatnih stroškov</span>
+            <span className="text-white text-sm">💰 {tx('Dodatnih stroskov', 'Additional costs')}</span>
             <span className="text-[#6c63ff] font-bold">{expenses.length}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-white text-sm">📎 Prilog računov</span>
+            <span className="text-white text-sm">📎 {tx('Prilog racunov', 'Receipt attachments')}</span>
             <span className="text-[#6c63ff] font-bold">
               {servisiForReport.filter(s => s.foto_url).length + gorivoForReport.filter(g => g.receipt_url).length + expensesForReport.filter(e => e.receipt_url).length}
             </span>
           </div>
           <div className="flex justify-between items-center border-t border-[#1e1e32] pt-2 mt-1">
-            <span className="text-white text-sm font-semibold">Skupaj stroški</span>
+            <span className="text-white text-sm font-semibold">{tx('Skupaj stroski', 'Total costs')}</span>
             <span className="text-[#3ecfcf] font-bold text-lg">
               {totalForReport.toFixed(2)} €
             </span>
@@ -686,51 +687,51 @@ export default function Report() {
       {(servisi.some(s => s.foto_url) || gorivo.some(g => g.receipt_url) || expenses.some(e => e.receipt_url)) && (
         <div className="bg-[#6c63ff11] border border-[#6c63ff33] rounded-xl p-4 mb-4">
           <p className="text-[#a09aff] text-xs">
-            To vozilo ima priložene slike računov. V PDF reportu so označene z [ DA ] — za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com
+            {tx('To vozilo ima prilozene slike racunov. V PDF reportu so oznacene z [ DA ] - za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com', 'This vehicle has attached receipt photos. In the PDF report they are marked with [ YES ] - ask for access in the GarageBase app to view the original photos at getgaragebase.com')}
           </p>
         </div>
       )}
 
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">QR kode v PDF</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('QR kode v PDF', 'QR codes in PDF')}</p>
         <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setIncludeVerifyQr(!includeVerifyQr)}
             className={`rounded-xl border p-4 text-left ${includeVerifyQr ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeVerifyQr ? '[x]' : '[ ]'} Samo za branje</p>
-            <p className="text-[#5a5a80] text-xs mt-1">QR za digitalni report.</p>
+            <p className="text-white text-sm font-semibold">{includeVerifyQr ? '[x]' : '[ ]'} {tx('Samo za branje', 'Read only')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('QR za digitalni report.', 'QR for the digital report.')}</p>
           </button>
           <button onClick={() => setIncludeImportQr(!includeImportQr)}
             className={`rounded-xl border p-4 text-left ${includeImportQr ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeImportQr ? '[x]' : '[ ]'} Izvoz zgodovine</p>
-            <p className="text-[#5a5a80] text-xs mt-1">QR za uvoz vozila.</p>
+            <p className="text-white text-sm font-semibold">{includeImportQr ? '[x]' : '[ ]'} {tx('Izvoz zgodovine', 'History export')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('QR za uvoz vozila.', 'QR for vehicle import.')}</p>
           </button>
           <button onClick={() => setIncludeVehicleImage(!includeVehicleImage)}
             className={`rounded-xl border p-4 text-left ${includeVehicleImage ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeVehicleImage ? '[x]' : '[ ]'} Slika vozila</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Slika v PDF in pri uvozu.</p>
+            <p className="text-white text-sm font-semibold">{includeVehicleImage ? '[x]' : '[ ]'} {tx('Slika vozila', 'Vehicle photo')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Slika v PDF in pri uvozu.', 'Photo in PDF and import.')}</p>
           </button>
           <button onClick={() => setIncludeReceiptImages(!includeReceiptImages)}
             className={`rounded-xl border p-4 text-left ${includeReceiptImages ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
-            <p className="text-white text-sm font-semibold">{includeReceiptImages ? '[x]' : '[ ]'} Slike racunov</p>
-            <p className="text-[#5a5a80] text-xs mt-1">Prenese slike racunov pri servisih, gorivu in stroskih.</p>
+            <p className="text-white text-sm font-semibold">{includeReceiptImages ? '[x]' : '[ ]'} {tx('Slike racunov', 'Receipt photos')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Prenese slike racunov pri servisih, gorivu in stroskih.', 'Transfers receipt photos from services, fuel and expenses.')}</p>
           </button>
         </div>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Zasebnost podatkov v PDF</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Zasebnost podatkov v PDF', 'Data privacy in PDF')}</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { key: 'showPlate', label: 'Prikaži tablico' },
-            { key: 'maskPlate', label: 'Delno zakrij tablico' },
-            { key: 'showVin', label: 'Prikaži VIN' },
-            { key: 'maskVin', label: 'Delno zakrij VIN' },
-            { key: 'showKm', label: 'Prikaži kilometre' },
-            { key: 'showFuel', label: 'Prikaži gorivo' },
-            { key: 'showYear', label: 'Prikaži letnik' },
-            { key: 'showOwnerCity', label: 'Prikaži mesto lastnika' },
-            { key: 'showOwnerAge', label: 'Prikaži starost lastnika' },
+            { key: 'showPlate', label: tx('Prikazi tablico', 'Show license plate') },
+            { key: 'maskPlate', label: tx('Delno zakrij tablico', 'Partly hide license plate') },
+            { key: 'showVin', label: tx('Prikazi VIN', 'Show VIN') },
+            { key: 'maskVin', label: tx('Delno zakrij VIN', 'Partly hide VIN') },
+            { key: 'showKm', label: tx('Prikazi kilometre', 'Show mileage') },
+            { key: 'showFuel', label: tx('Prikazi gorivo', 'Show fuel') },
+            { key: 'showYear', label: tx('Prikazi letnik', 'Show year') },
+            { key: 'showOwnerCity', label: tx('Prikazi mesto lastnika', 'Show owner city') },
+            { key: 'showOwnerAge', label: tx('Prikazi starost lastnika', 'Show owner age') },
           ].map((item) => {
             const active = privacy[item.key as keyof typeof privacy]
             return (
@@ -742,7 +743,7 @@ export default function Report() {
           })}
         </div>
         <p className="mt-3 text-xs text-[#5a5a80]">
-          Za potencialnega kupca lahko pokažeš samo osnovo, za bodočega lastnika pa vključiš več podatkov in QR uvoz.
+          {tx('Za potencialnega kupca lahko pokazes samo osnovo, za bodocega lastnika pa vkljucis vec podatkov in QR uvoz.', 'For a potential buyer you can show only the basics; for the next owner you can include more data and QR import.')}
         </p>
       </div>
 
@@ -752,7 +753,7 @@ export default function Report() {
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, expenseCategories: selectedExpenseCategories, privacy })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">
-              {pdfLoading ? 'Generiranje...' : 'Prenesi PDF Report'}
+              {pdfLoading ? tx('Generiranje...', 'Generating...') : tx('Prenesi PDF Report', 'Download PDF Report')}
             </button>
           )}
         </PDFDownloadLink>
@@ -760,7 +761,7 @@ export default function Report() {
 
       <div className="mt-4 bg-[#f59e0b11] border border-[#f59e0b33] rounded-xl p-4">
         <p className="text-[#f59e0b] text-xs">
-          PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroške — idealno za prodajo vozila.
+          {tx('PDF report vsebuje celotno servisno zgodovino, evidenco goriva in stroske - idealno za prodajo vozila.', 'The PDF report contains the full service history, fuel log and expenses - ideal when selling a vehicle.')}
         </p>
       </div>
 
