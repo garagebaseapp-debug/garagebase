@@ -84,7 +84,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
         {(lite ? litePovezave : glavnePovezave).map((item: any) => (
           <button key={item.key} onClick={() => pojdiNa(item.href)} className="flex flex-col items-center gap-1">
             <span className="text-2xl leading-none">{item.icon}</span>
-            <span className={`text-[10px] uppercase tracking-wider ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
+            <span className={`text-[11px] uppercase tracking-wide ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
               {item.label || t(item.labelKey)}
             </span>
           </button>
@@ -103,7 +103,7 @@ export function HomeButton() {
       <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex justify-center py-3 px-4 z-50">
         <button onClick={() => pojdiNa('/garaza')} className="flex flex-col items-center gap-1">
           <span className="text-2xl leading-none">🏠</span>
-          <span className="text-[10px] uppercase tracking-wider text-[#6c63ff] font-bold">{t('garage')}</span>
+          <span className="text-[11px] uppercase tracking-wide text-[#6c63ff] font-bold">{t('garage')}</span>
         </button>
       </div>
     </>

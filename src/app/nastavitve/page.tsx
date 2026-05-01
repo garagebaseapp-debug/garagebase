@@ -67,7 +67,10 @@ export default function Nastavitve() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [repeatPassword, setRepeatPassword] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
 
   const showSection = (section: string) => settingsView === 'vse' || settingsView === section
@@ -484,15 +487,33 @@ export default function Nastavitve() {
   }
 
   const spremeniGeslo = async () => {
+    if (!oldPassword) {
+      setMessage(jezik === 'en' ? 'Enter your current password.' : 'Vpiši trenutno geslo.')
+      return
+    }
     if (newPassword.length < 6) {
       setMessage(jezik === 'en' ? 'Password must be at least 6 characters.' : 'Geslo mora imeti vsaj 6 znakov.')
       return
     }
+    if (newPassword !== repeatPassword) {
+      setMessage(jezik === 'en' ? 'New passwords do not match.' : 'Novi gesli se ne ujemata.')
+      return
+    }
+    if (!user?.email) return
     setPasswordLoading(true)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: user.email, password: oldPassword })
+    if (signInError) {
+      setMessage(jezik === 'en' ? 'Current password is not correct.' : 'Trenutno geslo ni pravilno.')
+      setPasswordLoading(false)
+      return
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) setMessage(error.message)
     else {
+      setOldPassword('')
       setNewPassword('')
+      setRepeatPassword('')
+      setPasswordDialogOpen(false)
       setMessage(jezik === 'en' ? 'Password changed.' : 'Geslo je spremenjeno.')
     }
     setPasswordLoading(false)
@@ -688,15 +709,8 @@ export default function Nastavitve() {
           <p className="text-[#5a5a80] text-xs mt-1">
             {jezik === 'en' ? 'Change your password or send yourself a reset link.' : 'Spremeni geslo ali si pošlji povezavo za ponastavitev.'}
           </p>
-          <div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto_auto]">
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder={jezik === 'en' ? 'New password' : 'Novo geslo'}
-              className="rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]"
-            />
-            <button type="button" onClick={spremeniGeslo} disabled={passwordLoading}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setPasswordDialogOpen(true)} disabled={passwordLoading}
               className="rounded-xl bg-[#6c63ff] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
               {jezik === 'en' ? 'Change password' : 'Spremeni geslo'}
             </button>
@@ -1191,6 +1205,56 @@ export default function Nastavitve() {
           </div>
         </div>
       </div>
+
+      {isAdmin && (
+        <div id="admin-panel" style={{ display: showSection('aplikacija') || showSection('pomoc') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#6c63ff66] rounded-2xl p-5 lg:col-span-2">
+          <p className="text-[#a09aff] text-xs uppercase tracking-wider mb-1">Admin</p>
+          <p className="text-white font-semibold text-sm">{jezik === 'en' ? 'Main admin panel' : 'Glavni admin panel'}</p>
+          <p className="text-[#5a5a80] text-xs mt-1 mb-3">
+            {jezik === 'en'
+              ? 'Visible only to accounts added as admins.'
+              : 'Vidno samo računom, ki so dodani kot admini.'}
+          </p>
+          <button onClick={() => window.location.href = '/admin'}
+            className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
+            {jezik === 'en' ? 'Open admin panel' : 'Odpri admin panel'}
+          </button>
+        </div>
+      )}
+
+      {passwordDialogOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-white text-lg font-bold">{jezik === 'en' ? 'Change password' : 'Spremeni geslo'}</p>
+                <p className="text-[#5a5a80] text-xs mt-1">
+                  {jezik === 'en' ? 'Enter your current password and confirm the new one.' : 'Vpiši trenutno geslo in potrdi novo geslo.'}
+                </p>
+              </div>
+              <button type="button" onClick={() => setPasswordDialogOpen(false)}
+                className="h-10 w-10 rounded-xl border border-[#2a2a40] bg-[#13131f] text-[#8a8aa8]">
+                ×
+              </button>
+            </div>
+            <div className="flex flex-col gap-3">
+              <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)}
+                placeholder={jezik === 'en' ? 'Current password' : 'Trenutno geslo'}
+                className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]" />
+              <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={jezik === 'en' ? 'New password' : 'Novo geslo'}
+                className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]" />
+              <input type="password" value={repeatPassword} onChange={(e) => setRepeatPassword(e.target.value)}
+                placeholder={jezik === 'en' ? 'Repeat new password' : 'Ponovi novo geslo'}
+                className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]" />
+              <button type="button" onClick={spremeniGeslo} disabled={passwordLoading}
+                className="mt-2 rounded-xl bg-[#6c63ff] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                {passwordLoading ? (jezik === 'en' ? 'Saving...' : 'Shranjujem...') : (jezik === 'en' ? 'Confirm change' : 'Potrdi spremembo')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <div className={`p-3 rounded-xl text-sm border mb-4 ${
