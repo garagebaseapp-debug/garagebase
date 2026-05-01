@@ -66,8 +66,10 @@ export default function VnosGoriva() {
         setAvti(data)
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]
         setCarId(izbrani.id)
-        await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
-        await naloziPostaje()
+        await Promise.all([
+          naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0),
+          naloziPostaje(data.map((a: any) => a.id)),
+        ])
         if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
         else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
         trackEvent('fuel_add_open', { carId: izbrani.id })
@@ -84,15 +86,24 @@ export default function VnosGoriva() {
   }, [])
 
   const naloziZadnjiKm = async (id: string, kmAvta: number) => {
-    const { data: servisData } = await supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
-    const { data: gorivoData } = await supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
+    const [{ data: servisData }, { data: gorivoData }] = await Promise.all([
+      supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+      supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+    ])
     const maxServis = servisData?.[0]?.km || 0
     const maxGorivo = gorivoData?.[0]?.km || 0
     setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
   }
 
-  const naloziPostaje = async () => {
-    const { data } = await supabase.from('fuel_logs').select('postaja').not('postaja', 'is', null)
+  const naloziPostaje = async (carIds: string[]) => {
+    if (carIds.length === 0) return
+    const { data } = await supabase
+      .from('fuel_logs')
+      .select('postaja')
+      .in('car_id', carIds)
+      .not('postaja', 'is', null)
+      .order('datum', { ascending: false })
+      .limit(200)
     if (data) {
       const unikatne = [...new Set(data.map((v: any) => v.postaja).filter(Boolean))] as string[]
       setPostajeHistory(unikatne)
@@ -308,7 +319,7 @@ export default function VnosGoriva() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen w-full max-w-none bg-[#080810] px-4 py-6 pb-24">
 
       <div className="flex items-center gap-3 mb-8">
         <BackButton />

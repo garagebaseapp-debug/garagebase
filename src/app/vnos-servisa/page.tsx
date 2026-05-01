@@ -50,8 +50,10 @@ export default function VnosServisa() {
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]
         setCarId(izbrani.id)
         trackEvent('service_add_open', { carId: izbrani.id })
-        await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
-        await naloziServisHistory()
+        await Promise.all([
+          naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0),
+          naloziServisHistory(data.map((a: any) => a.id)),
+        ])
       }
     }
     init()
@@ -66,15 +68,24 @@ export default function VnosServisa() {
   }, [])
 
   const naloziZadnjiKm = async (id: string, kmAvta: number) => {
-    const { data: servisData } = await supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
-    const { data: gorivoData } = await supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1)
+    const [{ data: servisData }, { data: gorivoData }] = await Promise.all([
+      supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+      supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+    ])
     const maxServis = servisData?.[0]?.km || 0
     const maxGorivo = gorivoData?.[0]?.km || 0
     setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
   }
 
-  const naloziServisHistory = async () => {
-    const { data } = await supabase.from('service_logs').select('servis').not('servis', 'is', null)
+  const naloziServisHistory = async (carIds: string[]) => {
+    if (carIds.length === 0) return
+    const { data } = await supabase
+      .from('service_logs')
+      .select('servis')
+      .in('car_id', carIds)
+      .not('servis', 'is', null)
+      .order('datum', { ascending: false })
+      .limit(200)
     if (data) {
       const unikatni = [...new Set(data.map((v: any) => v.servis).filter(Boolean))] as string[]
       setServisHistory(unikatni)
