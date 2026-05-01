@@ -120,6 +120,14 @@ const parseDate = (value?: string) => {
   return trimmed
 }
 
+const normalizeFuelType = (value?: string | null) => {
+  const normalized = normalizeText(value || '')
+  if (normalized.includes('premium') || normalized.includes('100')) return '100'
+  if (normalized.includes('dizel') || normalized.includes('diesel')) return 'diesel'
+  if (normalized.includes('bencin') || normalized.includes('petrol') || normalized.includes('gasoline') || normalized.includes('95')) return '95'
+  return value || null
+}
+
 const findHeader = (headers: string[], options: string[]) => {
   const normalized = headers.map(normalizeText)
   const index = normalized.findIndex((header) => options.some((option) => header.includes(normalizeText(option))))
@@ -206,7 +214,7 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
     pricePerLiter: toNumber(isFuelSection ? valueAt(row, 3, map.pricePerLiter) : row[map.pricePerLiter]),
     station: isFuelSection ? valueAt(row, 19, map.station) : row[map.station] || '',
     category: isExpenseSection ? valueAt(row, 3, map.category) || 'uvoz' : row[map.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
-    fuelType: isFuelSection ? valueAt(row, 2, map.fuelType) || null : row[map.fuelType] || null,
+    fuelType: normalizeFuelType(isFuelSection ? valueAt(row, 2, map.fuelType) : row[map.fuelType]),
   })).filter(row => row.date)
 }
 
@@ -312,7 +320,10 @@ export default function UvozPodatkov() {
           return !duplicate
         })
         inserted = rows.length
-        if (rows.length) await supabase.from('fuel_logs').insert(rows)
+        if (rows.length) {
+          const { error } = await supabase.from('fuel_logs').insert(rows)
+          if (error) throw error
+        }
       }
 
       if (importType === 'service') {
@@ -332,7 +343,10 @@ export default function UvozPodatkov() {
           return !duplicate
         })
         inserted = rows.length
-        if (rows.length) await supabase.from('service_logs').insert(rows)
+        if (rows.length) {
+          const { error } = await supabase.from('service_logs').insert(rows)
+          if (error) throw error
+        }
       }
 
       if (importType === 'expense') {
@@ -351,11 +365,17 @@ export default function UvozPodatkov() {
           return !duplicate
         })
         inserted = rows.length
-        if (rows.length) await supabase.from('expenses').insert(rows)
+        if (rows.length) {
+          const { error } = await supabase.from('expenses').insert(rows)
+          if (error) throw error
+        }
       }
 
       const maxKm = previewRows.reduce((max, row) => row.km && row.km > max ? row.km : max, 0)
-      if (maxKm > 0) await supabase.from('cars').update({ km_trenutni: maxKm }).eq('id', carId)
+      if (maxKm > 0) {
+        const { error } = await supabase.from('cars').update({ km_trenutni: maxKm }).eq('id', carId)
+        if (error) throw error
+      }
       trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic' })
       setMessage(tx(`Uvozeno ${inserted} zapisov. Preskoceno podvojenih: ${skipped}.`, `Imported ${inserted} records. Skipped duplicates: ${skipped}.`))
     } catch (error: any) {
