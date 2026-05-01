@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
+import { getStoredLanguage } from '@/lib/i18n'
 
 export default function DodajAvto() {
   const [tipVozila, setTipVozila] = useState('avto')
@@ -22,6 +23,12 @@ export default function DodajAvto() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [korak, setKorak] = useState(1)
+  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
+
+  useEffect(() => {
+    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
+  }, [])
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },
@@ -42,12 +49,26 @@ export default function DodajAvto() {
   }
 
   const shrani = async () => {
-    if (!znamka || !model) { setMessage('Znamka in model sta obvezna!'); return }
-    if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage('Vnesi tip vozila!'); return }
+    if (!znamka || !model) { setMessage(tx('Znamka in model sta obvezna!', 'Make and model are required!')); return }
+    if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage(tx('Vnesi tip vozila!', 'Enter the vehicle type!')); return }
     setLoading(true)
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
+    const { count, error: countError } = await supabase
+      .from('cars')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+    if (countError) {
+      setMessage(tx('Napaka pri preverjanju stevila vozil: ', 'Could not check vehicle limit: ') + countError.message)
+      setLoading(false)
+      return
+    }
+    if ((count || 0) >= 10) {
+      setMessage(tx('Dosezen je limit 10 vozil. Za zdaj lahko imas najvec 10 vozil.', 'The 10 vehicle limit has been reached. For now you can have up to 10 vehicles.'))
+      setLoading(false)
+      return
+    }
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
     const { error } = await supabase.from('cars').insert({
       user_id: user.id,
@@ -65,18 +86,18 @@ export default function DodajAvto() {
       menjalnik: menjalnik || null,
       pogon: pogon || null,
     })
-    if (error) setMessage('Napaka: ' + error.message)
-    else { setMessage('✅ Vozilo uspešno shranjeno!'); setTimeout(() => window.location.href = '/garaza', 1000) }
+    if (error) setMessage(tx('Napaka: ', 'Error: ') + error.message)
+    else { setMessage(tx('Vozilo uspesno shranjeno!', 'Vehicle saved successfully!')); setTimeout(() => window.location.href = '/garaza', 1000) }
     setLoading(false)
   }
 
   const naprej = () => {
     if (korak === 1 && tipVozila === 'drugo' && !tipVozilaCustom.trim()) {
-      setMessage('Najprej vnesi tip vozila.')
+      setMessage(tx('Najprej vnesi tip vozila.', 'Enter the vehicle type first.'))
       return
     }
     if (korak === 2 && (!znamka.trim() || !model.trim())) {
-      setMessage('Znamka in model sta nujna podatka.')
+      setMessage(tx('Znamka in model sta nujna podatka.', 'Make and model are required.'))
       return
     }
     setMessage('')
