@@ -101,7 +101,7 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const normalizeFontPercent = (value: any) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return Math.min(200, Math.max(85, value))
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.min(300, Math.max(85, value))
     const legacy: Record<string, number> = { mala: 90, normalna: 100, velika: 120 }
     return legacy[value] || 100
   }
@@ -122,8 +122,14 @@ export default function Nastavitve() {
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
     const rootPx = 16 * (percent / 100)
-    document.documentElement.style.fontSize = `${Math.min(32, Math.max(14, rootPx))}px`
+    document.documentElement.style.fontSize = `${Math.min(48, Math.max(14, rootPx))}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
+  }
+
+  const spremeniPisavo = (value: number) => {
+    const next = normalizeFontPercent(value)
+    setPisava(next)
+    applyFontSize(next)
   }
 
   const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
@@ -1075,20 +1081,17 @@ export default function Nastavitve() {
             </p>
           </div>
           <div className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 font-bold text-[#a09aff]">
-            {pisava}%
+            {Math.round(pisava)}%
           </div>
         </div>
         <input
           type="range"
           min="85"
-          max="200"
-          step="5"
+          max="300"
+          step="1"
           value={pisava}
-          onChange={(e) => {
-            const next = Number(e.target.value)
-            setPisava(next)
-            applyFontSize(next)
-          }}
+          onInput={(e) => spremeniPisavo(Number((e.target as HTMLInputElement).value))}
+          onChange={(e) => spremeniPisavo(Number(e.target.value))}
           className="w-full accent-[#6c63ff]"
         />
         <div className="mt-1 flex justify-between text-xs text-[#3a3a5a]">

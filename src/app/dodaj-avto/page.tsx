@@ -55,17 +55,28 @@ export default function DodajAvto() {
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
-    const { count, error: countError } = await supabase
+    const activeCountResult = await supabase
       .from('cars')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-    if (countError) {
-      setMessage(tx('Napaka pri preverjanju stevila vozil: ', 'Could not check vehicle limit: ') + countError.message)
-      setLoading(false)
-      return
+      .eq('arhivirano', false)
+
+    let vehicleCount = activeCountResult.count || 0
+    if (activeCountResult.error) {
+      const fallbackCountResult = await supabase
+        .from('cars')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+      if (fallbackCountResult.error) {
+        setMessage(tx('Napaka pri preverjanju stevila vozil: ', 'Could not check vehicle limit: ') + fallbackCountResult.error.message)
+        setLoading(false)
+        return
+      }
+      vehicleCount = fallbackCountResult.count || 0
     }
-    if ((count || 0) >= 10) {
-      setMessage(tx('Dosezen je limit 10 vozil. Za zdaj lahko imas najvec 10 vozil.', 'The 10 vehicle limit has been reached. For now you can have up to 10 vehicles.'))
+
+    if (vehicleCount >= 10) {
+      setMessage(tx('Dosezen je limit 10 vozil. Arhiviraj ali izbriši vozilo, da lahko dodaš novo.', 'The 10 vehicle limit has been reached. Archive or delete a vehicle before adding a new one.'))
       setLoading(false)
       return
     }

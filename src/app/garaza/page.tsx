@@ -13,6 +13,8 @@ export default function Garaza() {
   const [urejanje, setUrejanje] = useState(false)
   const [arhiv, setArhiv] = useState(false)
   const [archiveMessage, setArchiveMessage] = useState('')
+  const [limitMessage, setLimitMessage] = useState('')
+  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
@@ -31,12 +33,14 @@ export default function Garaza() {
     opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
   const dragOver = useRef<number | null>(null)
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
     const init = async () => {
       const shranjene = localStorage.getItem('garagebase_nastavitve')
       if (shranjene) {
         const n = JSON.parse(shranjene)
+        setLanguage(n.jezik === 'en' ? 'en' : 'sl')
         setNacin(n.nacin || 'full')
         setPrikaz(n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
@@ -157,6 +161,43 @@ export default function Garaza() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     window.location.href = '/'
+  }
+
+  const pojdiDodajAvto = async () => {
+    setLimitMessage('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      window.location.href = '/'
+      return
+    }
+
+    let activeCount = 0
+    const activeResult = await supabase
+      .from('cars')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('arhivirano', false)
+
+    if (activeResult.error) {
+      const fallback = await supabase
+        .from('cars')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+      activeCount = fallback.count || 0
+    } else {
+      activeCount = activeResult.count || 0
+    }
+
+    if (activeCount >= 10) {
+      setLimitMessage(tx(
+        'V garaži imaš že največje dovoljeno število vozil (10). Arhiviraj ali izbriši vozilo, da lahko dodaš novo.',
+        'You already have the maximum number of vehicles in your garage (10). Archive or delete a vehicle before adding a new one.'
+      ))
+      window.setTimeout(() => setLimitMessage(''), 6500)
+      return
+    }
+
+    window.location.href = '/dodaj-avto'
   }
 
   const prodajniOpomnik = avti.find((avto: any) => {
@@ -325,7 +366,7 @@ export default function Garaza() {
               {urejanje ? '✓ Končaj' : '⇅ Uredi'}
             </button>
           )}
-          <button onClick={() => window.location.href = '/dodaj-avto'}
+          <button onClick={pojdiDodajAvto}
             className="bg-[#6c63ff] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
             + Avto
           </button>
@@ -350,6 +391,12 @@ export default function Garaza() {
       {archiveMessage && (
         <div className="mx-5 mb-3 rounded-xl border border-[#f59e0b44] bg-[#f59e0b18] p-3 text-[#fbbf24] text-sm">
           {archiveMessage}
+        </div>
+      )}
+
+      {limitMessage && (
+        <div className="mx-5 mb-3 rounded-xl border border-[#ef444444] bg-[#ef444418] p-3 text-[#fecaca] text-sm font-semibold">
+          {limitMessage}
         </div>
       )}
 
@@ -431,7 +478,7 @@ export default function Garaza() {
             <p className="text-6xl mb-4">🚗</p>
             <p className="text-white font-semibold text-xl mb-2">Tvoja garaža je prazna</p>
             <p className="text-[#5a5a80] text-sm mb-6">Dodaj prvi avto in začni slediti stroškom</p>
-            <button onClick={() => window.location.href = '/dodaj-avto'}
+            <button onClick={pojdiDodajAvto}
               className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
               + Dodaj avto
             </button>
@@ -501,7 +548,7 @@ export default function Garaza() {
             })}
 
             {!urejanje && (
-              <div onClick={() => window.location.href = '/dodaj-avto'}
+              <div onClick={pojdiDodajAvto}
                 className="aspect-square rounded-xl border-2 border-dashed border-[#2a2a40] flex items-center justify-center cursor-pointer hover:border-[#6c63ff] transition-colors">
                 <div className="text-center">
                   <p className="text-[#3a3a5a] text-2xl">+</p>
@@ -634,7 +681,7 @@ export default function Garaza() {
           })}
 
           {!urejanje && (
-            <div onClick={() => window.location.href = '/dodaj-avto'}
+            <div onClick={pojdiDodajAvto}
               className="relative cursor-pointer overflow-hidden flex items-center justify-center border-t border-[#1a1a28]"
               style={{ height: '10vh', minHeight: '70px' }}>
               <div className="absolute inset-0 bg-[#080810]" />
