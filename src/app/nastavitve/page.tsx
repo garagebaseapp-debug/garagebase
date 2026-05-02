@@ -240,7 +240,8 @@ export default function Nastavitve() {
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
       console.error('Napaka:', error)
-      setMessage('❌ Napaka pri vklopu obvestil.')
+      const reason = error instanceof Error ? error.message : 'neznana napaka'
+      setMessage(`Napaka pri vklopu obvestil: ${reason}`)
     }
     setNotifikacijeLoading(false)
   }
