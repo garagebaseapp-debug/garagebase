@@ -64,11 +64,13 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            const appVelikosti = { mala: '24px', normalna: '38px', velika: '54px' };
-            const webVelikosti = { mala: '15px', normalna: '16px', velika: '18px' };
-            const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024;
             if (n.pisava) {
-              document.documentElement.style.fontSize = jeApp ? appVelikosti[n.pisava] : webVelikosti[n.pisava];
+              const legacy = { mala: 90, normalna: 100, velika: 120 };
+              const raw = n.pisava;
+              const percent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
+              const rootPx = Math.min(22, Math.max(14, 16 * (percent / 100)));
+              document.documentElement.style.fontSize = rootPx + 'px';
+              document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
             }
           }
         `}} />
