@@ -74,9 +74,22 @@ export default function Nastavitve() {
   const [passwordLoading, setPasswordLoading] = useState(false)
 
   const showSection = (section: string) => settingsView === 'vse' || settingsView === section
+  const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
+
+  const settingsSections = [
+    { id: 'vse', title: tx('Vse nastavitve', 'All settings'), desc: tx('Pregled vseh nastavitev', 'Overview of all settings'), tone: 'from-[#6c63ff] to-[#8b5cf6]' },
+    { id: 'profil', title: tx('Profil', 'Profile'), desc: tx('Račun, paket in geslo', 'Account, plan and password'), tone: 'from-[#8b5cf6] to-[#3b82f6]' },
+    { id: 'obvestila', title: tx('Obvestila', 'Notifications'), desc: tx('Ura, prioritete in telefon', 'Time, priorities and phone'), tone: 'from-[#f59e0b] to-[#ef4444]' },
+    { id: 'varnost', title: tx('Varnost', 'Security'), desc: tx('Odklep in zasebnost', 'Unlock and privacy'), tone: 'from-[#22c55e] to-[#14b8a6]' },
+    { id: 'prenos', title: tx('Prenos', 'Transfer'), desc: tx('QR, uvoz in računi', 'QR, import and receipts'), tone: 'from-[#14b8a6] to-[#06b6d4]' },
+    { id: 'uporaba', title: tx('Uporaba', 'Usage'), desc: tx('Lite ali Full način', 'Lite or Full mode'), tone: 'from-[#3b82f6] to-[#6c63ff]' },
+    { id: 'prikaz', title: tx('Prikaz', 'Display'), desc: tx('Pisava, kartice in grid', 'Font, cards and grid'), tone: 'from-[#a855f7] to-[#ec4899]' },
+    { id: 'pomoc', title: tx('Pomoč', 'Help'), desc: tx('Predlogi, napake in pomočnik', 'Suggestions, bugs and assistant'), tone: 'from-[#f97316] to-[#f59e0b]' },
+    { id: 'aplikacija', title: tx('Aplikacija', 'App'), desc: tx('Verzija in podpora', 'Version and support'), tone: 'from-[#64748b] to-[#94a3b8]' },
+  ]
 
   const applyFontSize = (value: string) => {
-    const appSizes: any = { mala: '25px', normalna: '35px', velika: '45px' }
+    const appSizes: any = { mala: '24px', normalna: '38px', velika: '54px' }
     const webSizes: any = { mala: '15px', normalna: '16px', velika: '18px' }
     const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024
     document.documentElement.style.fontSize = jeApp ? appSizes[value] : webSizes[value]
@@ -590,7 +603,7 @@ export default function Nastavitve() {
                 <span className={`h-2.5 w-2.5 rounded-full ${reminderTone[item.tone as keyof typeof reminderTone]}`} />
                 <span>{item.naziv}</span>
               </p>
-              <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
+              <p className="text-[#5a5a80] text-[11px]">{item.opis}</p>
             </button>
           ))}
         </div>
@@ -616,7 +629,7 @@ export default function Nastavitve() {
                 <span className={`h-2.5 w-2.5 rounded-full ${reminderTone[item.tone as keyof typeof reminderTone]}`} />
                 <span>{item.naziv}</span>
               </p>
-              <p className="text-[#5a5a80] text-[9px]">{item.opis}</p>
+              <p className="text-[#5a5a80] text-[11px]">{item.opis}</p>
             </button>
           ))}
         </div>
@@ -636,18 +649,18 @@ export default function Nastavitve() {
         <div className="mb-6 overflow-hidden rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 lg:p-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6c63ff]">Settings</p>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6c63ff]">{tx('Nastavitve', 'Settings')}</p>
               <h1 className="mt-2 text-3xl font-black text-white">
                 Garage<span className="text-[#6c63ff]">Base</span>
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-[#5a5a80]">
-                Uredi prikaz, varnost, jezik, prenos podatkov in delovanje aplikacije na enem mestu.
+                {tx('Uredi prikaz, varnost, jezik, prenos podatkov in delovanje aplikacije na enem mestu.', 'Manage display, security, language, data transfer and app behavior in one place.')}
               </p>
             </div>
             <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-[#5a5a80]">
               <span className="font-semibold text-white">{user?.email}</span>
               <span className="mx-2 text-[#3a3a5a]">/</span>
-              Free paket
+              {tx('Free paket', 'Free plan')}
             </div>
           </div>
         </div>
@@ -655,42 +668,55 @@ export default function Nastavitve() {
         <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
           <aside className="hidden xl:block">
             <nav className="sticky top-28 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
-              {[
-                ['Vse nastavitve', 'vse'],
-                ['Profil', 'profil'],
-                ['Obvestila', 'obvestila'],
-                ['Varnost', 'varnost'],
-                ['Prenos', 'prenos'],
-                ['Uporaba', 'uporaba'],
-                ['Prikaz', 'prikaz'],
-                ['Pomoč', 'pomoc'],
-                ['Aplikacija', 'aplikacija'],
-                ...(isAdmin ? [['Admin panel', '/admin']] : []),
-              ].map(([label, href]) => href === '/admin' ? (
-                <a key={href} href={href}
-                  className={`flex items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
-                    href === '/admin'
-                      ? 'mt-3 border border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff] hover:bg-[#6c63ff33]'
-                      : 'text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
-                  }`}>
-                  {label}
-                  <span className="text-[#3a3a5a]">→</span>
-                </a>
-              ) : (
-                <button key={href} type="button" onClick={() => setSettingsView(href)}
+              {settingsSections.map((section) => (
+                <button key={section.id} type="button" onClick={() => setSettingsView(section.id)}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-colors ${
-                    settingsView === href
+                    settingsView === section.id
                       ? 'border-[#6c63ff55] bg-[#6c63ff22] text-[#a09aff]'
                       : 'border-transparent text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
                   }`}>
-                  {label}
-                  <span className="text-[#3a3a5a]">→</span>
+                  {section.title}
+                  <span className="text-[#3a3a5a]">&gt;</span>
                 </button>
               ))}
+              {isAdmin && (
+                <a href="/admin"
+                  className="mt-3 flex items-center justify-between rounded-2xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-3 text-sm font-semibold text-[#a09aff] transition-colors hover:bg-[#6c63ff33]">
+                  {tx('Admin panel', 'Admin panel')}
+                  <span className="text-[#3a3a5a]">&gt;</span>
+                </a>
+              )}
             </nav>
           </aside>
 
           <main className="grid gap-4 lg:grid-cols-2">
+      <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
+        <div className="grid grid-cols-2 gap-2">
+          {settingsSections.map((section) => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => setSettingsView(section.id)}
+              className={`relative overflow-hidden rounded-2xl border p-3 text-left transition-all ${
+                settingsView === section.id
+                  ? 'border-[#6c63ff66] bg-[#6c63ff22] shadow-lg shadow-[#6c63ff18]'
+                  : 'border-[#1e1e32] bg-[#13131f]'
+              }`}
+            >
+              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${section.tone}`} />
+              <span className="block text-sm font-bold text-white">{section.title}</span>
+              <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{section.desc}</span>
+            </button>
+          ))}
+          {isAdmin && (
+            <a href="/admin" className="relative overflow-hidden rounded-2xl border border-[#6c63ff66] bg-[#6c63ff22] p-3 text-left shadow-lg shadow-[#6c63ff18]">
+              <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#6c63ff] to-[#14b8a6]" />
+              <span className="block text-sm font-bold text-white">{tx('Admin panel', 'Admin panel')}</span>
+              <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{tx('Samo za administratorje', 'Administrators only')}</span>
+            </a>
+          )}
+        </div>
+      </div>
 
       {/* Profil */}
       <div id="profil" style={{ display: showSection('profil') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 lg:col-span-2">
@@ -1062,8 +1088,8 @@ export default function Nastavitve() {
           </div>
           <input
             type="range"
-            min="80"
-            max="150"
+            min="70"
+            max="200"
             step="5"
             value={garazaPisava}
             onChange={(e) => setGarazaPisava(Number(e.target.value))}

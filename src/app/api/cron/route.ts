@@ -20,9 +20,10 @@ type NotificationState = Record<string, {
   lastDailySlot?: string
 }>
 
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  supabaseServiceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
 const vapidEmail = process.env.VAPID_EMAIL
@@ -130,6 +131,18 @@ export async function GET(req: Request) {
 
   if (!pushConfigured) {
     return NextResponse.json({ success: true, poslano: 0, skipped: 'push_not_configured' })
+  }
+
+  if (!supabaseServiceRoleKey) {
+    return NextResponse.json(
+      {
+        success: false,
+        poslano: 0,
+        error: 'missing_supabase_service_role_key',
+        message: 'SUPABASE_SERVICE_ROLE_KEY manjka. Cron za dnevna obvestila potrebuje service role key, ker nima prijavljenega uporabnika.',
+      },
+      { status: 500 }
+    )
   }
 
   try {

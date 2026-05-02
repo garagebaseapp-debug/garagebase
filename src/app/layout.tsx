@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "GarageBase",
-  description: "Tvoja avto evidenca — vse na enem mestu",
+  description: "Tvoja avto evidenca - vse na enem mestu",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -50,21 +50,21 @@ export default function RootLayout({
         <AppLock />
         <GlobalTranslator />
         <div id="offline-banner" className="hidden fixed top-0 left-0 right-0 bg-[#ef4444] text-white text-center text-xs py-2 z-[100]">
-          ⚠️ Ni internetne povezave — vnosi niso mogoči
+          Ni internetne povezave - vnosi niso mogoci
         </div>
         <script dangerouslySetInnerHTML={{__html: `
-          // Offline detekcija
+          // Offline detection
           window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
           window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
           
-          // Dark/Light mode + Velikost pisave
+          // Theme and app font size
           const nastavitve = localStorage.getItem('garagebase_nastavitve');
           if (nastavitve) {
             const n = JSON.parse(nastavitve);
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            const appVelikosti = { mala: '25px', normalna: '35px', velika: '45px' };
+            const appVelikosti = { mala: '24px', normalna: '38px', velika: '54px' };
             const webVelikosti = { mala: '15px', normalna: '16px', velika: '18px' };
             const jeApp = window.matchMedia('(display-mode: standalone)').matches || window.innerWidth < 1024;
             if (n.pisava) {
