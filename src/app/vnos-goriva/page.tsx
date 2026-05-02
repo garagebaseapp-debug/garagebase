@@ -48,6 +48,7 @@ export default function VnosGoriva() {
   const [ocrAllowed, setOcrAllowed] = useState(false)
   const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const postajRef = useRef<HTMLDivElement>(null)
+  const receiptInputRef = useRef<HTMLInputElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
   const jeNaknaden = datum < danes
@@ -209,12 +210,40 @@ export default function VnosGoriva() {
     </button>
   )
 
+  const preberiRacunIzDatoteke = async (file: File) => {
+    if (!ocrAllowed) {
+      setOcrMessage(tx(
+        'AI branje računov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
+        'AI receipt reading is currently in internal testing. Public launch is planned for 2027.'
+      ))
+      trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
+      return
+    }
+
+    setOcrLoading(true)
+    setOcrMessage('')
+    trackEvent('receipt_scan_clicked', { carId, type: 'fuel' })
+    try {
+      const text = await readReceiptTextFromImage(file)
+      setOcrText(text)
+      uporabiPrebranTekst(text)
+      trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
+    } catch (error: any) {
+      trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
+      setOcrMessage(`${error.message} ${tx('Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
+    } finally {
+      setOcrLoading(false)
+    }
+  }
+
   const dodajRacun = async (event: any) => {
     const file = event.target.files?.[0]
     if (!file) return
     setMessage('')
+    let preparedFile = file
     try {
       const result = await compressImageFile(file, uploadImageProfiles.receipt)
+      preparedFile = result.file
       setRacun(result.file)
       setRacunPreview(URL.createObjectURL(result.file))
       if (result.changed) {
@@ -230,6 +259,7 @@ export default function VnosGoriva() {
     }
     setOcrText('')
     setOcrMessage('')
+    await preberiRacunIzDatoteke(preparedFile)
   }
 
   const uporabiPrebranTekst = (text: string) => {
@@ -266,20 +296,7 @@ export default function VnosGoriva() {
       return
     }
 
-    setOcrLoading(true)
-    setOcrMessage('')
-    trackEvent('receipt_scan_clicked', { carId, type: 'fuel' })
-    try {
-      const text = await readReceiptTextFromImage(racun)
-      setOcrText(text)
-      uporabiPrebranTekst(text)
-      trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
-    } catch (error: any) {
-      trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
-      setOcrMessage(`${error.message} ${tx('Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
-    } finally {
-      setOcrLoading(false)
-    }
+    await preberiRacunIzDatoteke(racun)
   }
 
   const naloziRacun = async () => {
@@ -461,7 +478,7 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} (€)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} ({currencySymbol})</label>
           <div className="flex gap-2">
             <input
               type="number"
@@ -478,7 +495,7 @@ export default function VnosGoriva() {
         {cenaSkupaj && (
           <div className="bg-[#3ecfcf22] border border-[#3ecfcf44] rounded-xl px-4 py-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Skupna cena', 'Total price')}</p>
-            <p className="text-white font-bold text-xl">{cenaSkupaj} €</p>
+            <p className="text-white font-bold text-xl">{cenaSkupaj} {currencySymbol}</p>
           </div>
         )}
 
@@ -515,13 +532,30 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Slika računa', 'Receipt photo')}</label>
-          <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
-            <input type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Scan računa', 'Receipt scan')}</label>
+          <input ref={receiptInputRef} type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
+          <button
+            type="button"
+            onClick={() => (ocrAllowed ? receiptInputRef.current?.click() : preberiRacun())}
+            disabled={ocrLoading}
+            className={`w-full rounded-xl border px-4 py-4 text-center font-bold transition-colors disabled:opacity-60 ${
+              ocrAllowed
+                ? 'bg-[#3ecfcf18] border-[#3ecfcf66] text-[#3ecfcf] hover:bg-[#3ecfcf28]'
+                : 'bg-[#f59e0b14] border-[#f59e0b55] text-[#f59e0b]'
+            }`}
+          >
+            {ocrLoading
+              ? tx('Berem račun...', 'Reading receipt...')
+              : ocrAllowed
+                ? tx('📷 Scan računa', '📷 Scan receipt')
+                : tx('AI scan računov - prihaja v 2027', 'AI receipt scan - coming in 2027')}
+          </button>
+          <label className="mt-3 block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
+            <input type="file" accept="image/*" onChange={dodajRacun} className="hidden" />
             {racunPreview ? (
               <img src={racunPreview} alt={tx('Račun', 'Receipt')} className="w-full max-h-56 object-contain rounded-lg" />
             ) : (
-              <span className="text-[#3ecfcf] font-semibold">{tx('Dodaj/slikaj račun', 'Add/take receipt photo')}</span>
+              <span className="text-[#3ecfcf] font-semibold">{tx('Ali izberi sliko računa iz galerije', 'Or choose a receipt photo from gallery')}</span>
             )}
           </label>
 
@@ -538,7 +572,7 @@ export default function VnosGoriva() {
                 {ocrLoading
                   ? tx('Berem...', 'Reading...')
                   : ocrAllowed
-                    ? tx('Skeniraj/preberi račun', 'Scan/read receipt')
+                    ? tx('Ponovno preberi sliko', 'Read photo again')
                     : tx('AI scan - prihaja v 2027', 'AI scan - coming in 2027')}
               </button>
               {racunPreview && (

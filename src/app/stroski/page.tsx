@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function Stroski() {
   const [avto, setAvto] = useState<any>(null)
@@ -16,9 +17,11 @@ export default function Stroski() {
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
+      setValuta(getCurrencyFromSettings())
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/stroski-garaza'; return }
@@ -86,6 +89,7 @@ export default function Stroski() {
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
+  const znakValute = currencySymbol(valuta)
 
   const kategorijaIkona: { [key: string]: string } = {
     registracija: '📋', vinjeta: '🛣️', zavarovanje: '🛡️', gume: '⚫',
@@ -129,7 +133,7 @@ export default function Stroski() {
               )}
             </div>
             <p className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
-            {skupaj > 0 && <p className="text-white text-[8px] font-bold">{skupaj.toFixed(0)}€</p>}
+            {skupaj > 0 && <p className="text-white text-[8px] font-bold">{skupaj.toFixed(0)}{znakValute}</p>}
           </div>
         )
       })}
@@ -152,7 +156,7 @@ export default function Stroski() {
           <defs><linearGradient id="gradCrta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6c63ff" stopOpacity="0.4" /><stop offset="100%" stopColor="#6c63ff" stopOpacity="0" /></linearGradient></defs>
           <path d={fill} fill="url(#gradCrta)" />
           <path d={path} fill="none" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          {tocke.map((t, i) => (<g key={i}><circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />{t.skupaj > 0 && <text x={t.x} y={t.y - 8} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">{t.skupaj.toFixed(0)}€</text>}</g>))}
+          {tocke.map((t, i) => (<g key={i}><circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />{t.skupaj > 0 && <text x={t.x} y={t.y - 8} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">{t.skupaj.toFixed(0)}{znakValute}</text>}</g>))}
         </svg>
         <div className="flex justify-between px-2 mt-1">{meseci.map((m, i) => <p key={i} className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>)}</div>
       </div>
@@ -179,13 +183,13 @@ export default function Stroski() {
           {poti.map((p, i) => <path key={i} d={p.pot} fill={p.barva} stroke="#080810" strokeWidth="2" />)}
           <circle cx={cx} cy={cy} r="22" fill="#0f0f1a" />
           <text x={cx} y={cy - 4} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">{skupajVse.toFixed(0)}</text>
-          <text x={cx} y={cy + 7} textAnchor="middle" fill="#5a5a80" fontSize="6">EUR</text>
+          <text x={cx} y={cy + 7} textAnchor="middle" fill="#5a5a80" fontSize="6">{valuta}</text>
         </svg>
         <div className="flex flex-col gap-2 flex-1">
           {poti.map((p, i) => (
             <div key={i} className="flex items-center justify-between">
               <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: p.barva }} /><p className="text-[#5a5a80] text-xs">{p.naziv}</p></div>
-              <div className="text-right"><p className="text-white text-xs font-bold">{p.vrednost.toFixed(0)} €</p><p className="text-[#5a5a80] text-[9px]">{(p.delež * 100).toFixed(0)}%</p></div>
+              <div className="text-right"><p className="text-white text-xs font-bold">{p.vrednost.toFixed(0)} {znakValute}</p><p className="text-[#5a5a80] text-[9px]">{(p.delež * 100).toFixed(0)}%</p></div>
             </div>
           ))}
         </div>
@@ -256,8 +260,8 @@ export default function Stroski() {
 
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Skupni stroški</p>
-        <p className="text-white font-bold text-4xl mb-1">{skupajVse.toFixed(2)} €</p>
-        {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} €/km · {kmPrevozeni.toLocaleString()} km skupaj</p>}
+        <p className="text-white font-bold text-4xl mb-1">{formatMoney(skupajVse, valuta)}</p>
+        {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/km · {kmPrevozeni.toLocaleString()} km skupaj</p>}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
@@ -285,19 +289,19 @@ export default function Stroski() {
         <button onClick={() => setFilter(filter === 'gorivo' ? 'vse' : 'gorivo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'gorivo' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">⛽</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-[#5a5a80]'}`}>Gorivo</p>
-          <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{skupajGorivo.toFixed(0)} €</p>
+          <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{skupajGorivo.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{gorivo.length}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'servis' ? 'vse' : 'servis')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'servis' ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">🔧</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-[#5a5a80]'}`}>Servisi</p>
-          <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{skupajServis.toFixed(0)} €</p>
+          <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{skupajServis.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{servisi.length}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'ostalo' ? 'vse' : 'ostalo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'ostalo' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">💰</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>Ostalo</p>
-          <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{skupajExpenses.toFixed(0)} €</p>
+          <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{skupajExpenses.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{expenses.length}x</p>
         </button>
       </div>
@@ -335,7 +339,7 @@ export default function Stroski() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#3ecfcf] font-semibold">{v.cena_skupaj?.toFixed(2) || '—'} €</p>
+                    <p className="text-[#3ecfcf] font-semibold">{formatMoney(v.cena_skupaj, valuta)}</p>
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, litri: v.litri?.toString(), cena_na_liter: v.cena_na_liter?.toString(), postaja: v.postaja || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
@@ -393,7 +397,7 @@ export default function Stroski() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#f59e0b] font-semibold">{v.cena?.toFixed(2) || '—'} €</p>
+                    <p className="text-[#f59e0b] font-semibold">{formatMoney(v.cena, valuta)}</p>
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis?.replace(/\s*\[Naknadno.*?\]/, '') || '', servis: v.servis || '', cena: v.cena?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
@@ -426,7 +430,7 @@ export default function Stroski() {
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                       <div>
-                        <label className="text-[#5a5a80] text-xs mb-1 block">Cena (€)</label>
+                        <label className="text-[#5a5a80] text-xs mb-1 block">Cena ({znakValute})</label>
                         <input type="number" value={editData.cena} onChange={e => setEditData({ ...editData, cena: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
@@ -452,7 +456,7 @@ export default function Stroski() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#a09aff] font-semibold">{v.znesek?.toFixed(2)} €</p>
+                    <p className="text-[#a09aff] font-semibold">{formatMoney(v.znesek, valuta)}</p>
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis || '', znesek: v.znesek?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
@@ -479,7 +483,7 @@ export default function Stroski() {
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
                     <div>
-                      <label className="text-[#5a5a80] text-xs mb-1 block">Znesek (€)</label>
+                      <label className="text-[#5a5a80] text-xs mb-1 block">Znesek ({znakValute})</label>
                       <input type="number" value={editData.znesek} onChange={e => setEditData({ ...editData, znesek: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>

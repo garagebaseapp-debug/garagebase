@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
 import { getStoredLanguage } from '@/lib/i18n'
+import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 type ImportType = 'fuel' | 'service' | 'expense'
 type Language = 'sl' | 'en'
@@ -227,11 +228,13 @@ export default function UvozPodatkov() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [language, setLanguage] = useState<Language>('sl')
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
     setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
+    setValuta(getCurrencyFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -482,7 +485,7 @@ export default function UvozPodatkov() {
             {previewRows.slice(0, 8).map((row, index) => (
               <div key={index} className="rounded-xl bg-[#0f0f1a] border border-[#1e1e32] p-3">
                 <p className="text-white text-sm font-bold">{row.date} - {row.description}</p>
-                <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? `${row.km.toLocaleString()} km` : tx('brez km', 'no mileage')} | {row.amount ? `${row.amount.toFixed(2)} EUR` : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
+                <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? `${row.km.toLocaleString()} km` : tx('brez km', 'no mileage')} | {row.amount ? formatMoney(row.amount, valuta) : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
               </div>
             ))}
             {previewRows.length === 0 && <p className="text-[#7b7ba6] text-sm">{tx('Ni prepoznanih vrstic. Preveri datum stolpec ali izbrano sekcijo.', 'No rows detected. Check the date column or selected section.')}</p>}

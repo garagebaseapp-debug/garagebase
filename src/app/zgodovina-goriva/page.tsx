@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function ZgodovinaGoriva() {
   const [vnosi, setVnosi] = useState<any[]>([])
@@ -12,9 +13,11 @@ export default function ZgodovinaGoriva() {
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
+      setValuta(getCurrencyFromSettings())
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
@@ -54,6 +57,7 @@ export default function ZgodovinaGoriva() {
 
   const skupajLitrov = vnosi.reduce((sum, v) => sum + (v.litri || 0), 0)
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena_skupaj || 0), 0)
+  const znakValute = currencySymbol(valuta)
 
   const tipGorivaIkona = (tip: string) => {
     if (tip === '95') return { label: '95', bg: 'bg-[#16a34a]', text: 'text-white' }
@@ -103,7 +107,7 @@ export default function ZgodovinaGoriva() {
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj</p>
-            <p className="text-white font-bold text-lg">{skupajEurov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> €</span></p>
+          <p className="text-white font-bold text-lg">{skupajEurov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> {znakValute}</span></p>
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Tankanij</p>
@@ -146,7 +150,7 @@ export default function ZgodovinaGoriva() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    {vnos.cena_skupaj && <span className="text-[#3ecfcf] font-bold">{vnos.cena_skupaj.toFixed(2)} €</span>}
+                    {vnos.cena_skupaj && <span className="text-[#3ecfcf] font-bold">{formatMoney(vnos.cena_skupaj, valuta)}</span>}
                     {/* Gumb uredi z odštevalnikom */}
                     {preostalo && !jeUredi && (
                       <button onClick={() => {
@@ -219,7 +223,7 @@ export default function ZgodovinaGoriva() {
                     {vnos.cena_na_liter && (
                       <div className="bg-[#13131f] rounded-xl p-2.5">
                         <p className="text-[#5a5a80] text-xs mb-1">Cena/L</p>
-                        <p className="text-white font-semibold text-sm">{vnos.cena_na_liter} €</p>
+                        <p className="text-white font-semibold text-sm">{vnos.cena_na_liter} {znakValute}</p>
                       </div>
                     )}
                     <div className={`rounded-xl p-2.5 ${poraba ? 'bg-[#6c63ff22] border border-[#6c63ff33]' : 'bg-[#13131f]'}`}>

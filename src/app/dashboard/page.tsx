@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
@@ -12,6 +13,8 @@ export default function Dashboard() {
   const [stroski, setStroski] = useState<{ skupaj: number, naKm: number | null }>({ skupaj: 0, naKm: null })
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const znakValute = currencySymbol(valuta)
 
   useEffect(() => {
     const init = async () => {
@@ -22,6 +25,7 @@ export default function Dashboard() {
           const settings = JSON.parse(settingsRaw)
           jeLite = settings.nacin === 'lite'
           setNacin(jeLite ? 'lite' : 'full')
+          setValuta(settings.valuta === 'USD' ? 'USD' : 'EUR')
         } catch {}
       }
       const params = new URLSearchParams(window.location.search)
@@ -375,7 +379,7 @@ export default function Dashboard() {
                     </div>
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Stroški</p>
-                      <p className="text-white font-bold text-2xl">{stroski.skupaj > 0 ? stroski.skupaj.toFixed(0) : '-'} <span className="text-[#5a5a80] text-sm font-normal">€</span></p>
+              <p className="text-white font-bold text-2xl">{stroski.skupaj > 0 ? stroski.skupaj.toFixed(0) : '-'} <span className="text-[#5a5a80] text-sm font-normal">{znakValute}</span></p>
                     </div>
                   </div>
 
@@ -465,12 +469,12 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-[#5a5a80] text-xs mb-0.5">Skupaj</p>
-                        <p className="text-white font-bold text-xl">{stroski.skupaj.toFixed(2)} €</p>
+          <p className="text-white font-bold text-xl">{formatMoney(stroski.skupaj, valuta)}</p>
                       </div>
                       {stroski.naKm !== null && (
                         <div className="text-right">
                           <p className="text-[#5a5a80] text-xs mb-0.5">Cena na km</p>
-                          <p className="text-[#6c63ff] font-bold text-xl">{stroski.naKm.toFixed(3)} €/km</p>
+          <p className="text-[#6c63ff] font-bold text-xl">{stroski.naKm.toFixed(3)} {znakValute}/km</p>
                         </div>
                       )}
                     </div>

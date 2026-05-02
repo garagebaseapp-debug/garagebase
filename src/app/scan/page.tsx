@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { cleanTransferRows, formatTransferDate, getTokenFromScanValue, isTransferExpired } from '@/lib/transfer'
 import { trackEvent } from '@/lib/analytics'
+import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 const fmtDate = (value?: string) => {
   if (!value) return '-'
@@ -13,7 +14,6 @@ const fmtDate = (value?: string) => {
   return date.toLocaleDateString('sl-SI')
 }
 
-const fmtMoney = (value?: number) => typeof value === 'number' ? `${value.toFixed(2)} EUR` : '-'
 const fmtKm = (value?: number) => typeof value === 'number' ? `${value.toLocaleString('sl-SI')} km` : '-'
 const stripPrevious = (value?: string) => String(value || '-').replace('[Prejsnji lastnik]', '').trim() || '-'
 
@@ -39,9 +39,10 @@ function EmptyRows({ text }: { text: string }) {
   return <p className="text-[#7b7ba6] text-sm bg-[#13131f] rounded-xl p-4 border border-[#1e1e32]">{text}</p>
 }
 
-function DigitalReport({ payload }: { payload: any }) {
+function DigitalReport({ payload, valuta }: { payload: any, valuta: GarageBaseCurrency }) {
   const car = payload?.car || {}
   const carFull = payload?.car_full || {}
+  const reportCurrency: GarageBaseCurrency = payload?.currency === 'USD' ? 'USD' : valuta
   const servisi = payload?.service_logs || []
   const gorivo = payload?.fuel_logs || []
   const expenses = payload?.expenses || []
@@ -86,10 +87,10 @@ function DigitalReport({ payload }: { payload: any }) {
 
       <Section title="Pregled stroskov">
         <div className="grid grid-cols-2 gap-3">
-          <StatBox label="Skupaj" value={fmtMoney(skupajVse)} />
-          <StatBox label="Servisi" value={fmtMoney(skupajServis)} />
-          <StatBox label="Gorivo" value={fmtMoney(skupajGorivo)} />
-          <StatBox label="Ostalo" value={fmtMoney(skupajStroski)} />
+          <StatBox label="Skupaj" value={formatMoney(skupajVse, reportCurrency)} />
+          <StatBox label="Servisi" value={formatMoney(skupajServis, reportCurrency)} />
+          <StatBox label="Gorivo" value={formatMoney(skupajGorivo, reportCurrency)} />
+          <StatBox label="Ostalo" value={formatMoney(skupajStroski, reportCurrency)} />
         </div>
       </Section>
 
@@ -102,7 +103,7 @@ function DigitalReport({ payload }: { payload: any }) {
                 <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
                 <div>
                   <p className="text-white text-sm font-semibold">{stripPrevious(row.opis)}</p>
-                  <p className="text-[#7b7ba6] text-xs mt-1">{row.servis || '-'} · {fmtMoney(row.cena)}{row.foto_url ? ' · racun prilozen' : ''}</p>{row.foto_url && <a href={String(row.foto_url).split(',')[0]} target="_blank" className="inline-flex mt-2 text-[#3ecfcf] text-xs font-semibold">Odpri racun</a>}
+                  <p className="text-[#7b7ba6] text-xs mt-1">{row.servis || '-'} · {formatMoney(row.cena, reportCurrency)}{row.foto_url ? ' · racun prilozen' : ''}</p>{row.foto_url && <a href={String(row.foto_url).split(',')[0]} target="_blank" className="inline-flex mt-2 text-[#3ecfcf] text-xs font-semibold">Odpri racun</a>}
                 </div>
               </div>
             ))}
@@ -119,7 +120,7 @@ function DigitalReport({ payload }: { payload: any }) {
                 <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
                 <div>
                   <p className="text-white text-sm font-semibold">{row.litri || '-'} L · {row.tip_goriva || '-'}</p>
-                  <p className="text-[#7b7ba6] text-xs mt-1">{stripPrevious(row.postaja)} · {fmtMoney(row.cena_skupaj)}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{stripPrevious(row.postaja)} · {formatMoney(row.cena_skupaj, reportCurrency)}</p>
                 </div>
               </div>
             ))}
@@ -136,7 +137,7 @@ function DigitalReport({ payload }: { payload: any }) {
                 <div className="text-[#a09aff] text-xs font-semibold">{row.kategorija || '-'}</div>
                 <div>
                   <p className="text-white text-sm font-semibold">{stripPrevious(row.opis)}</p>
-                  <p className="text-[#7b7ba6] text-xs mt-1">{fmtMoney(row.znesek)}</p>
+                  <p className="text-[#7b7ba6] text-xs mt-1">{formatMoney(row.znesek, reportCurrency)}</p>
                 </div>
               </div>
             ))}
@@ -156,11 +157,13 @@ export default function ScanPage() {
   const [message, setMessage] = useState('')
   const [cameraOn, setCameraOn] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
+      setValuta(getCurrencyFromSettings())
 
       const params = new URLSearchParams(window.location.search)
       const token = params.get('t')
@@ -375,7 +378,7 @@ export default function ScanPage() {
             </span>
           </div>
 
-          <DigitalReport payload={payload} />
+          <DigitalReport payload={payload} valuta={valuta} />
 
           {transfer?.mode === 'import' ? (
             <div className="border-t border-[#1e1e32] pt-4 mt-5">

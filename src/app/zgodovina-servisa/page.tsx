@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function ZgodovinaServisa() {
   const [vnosi, setVnosi] = useState<any[]>([])
@@ -12,9 +13,11 @@ export default function ZgodovinaServisa() {
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
+      setValuta(getCurrencyFromSettings())
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
@@ -49,6 +52,7 @@ export default function ZgodovinaServisa() {
   }
 
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena || 0), 0)
+  const znakValute = currencySymbol(valuta)
   const trustBadge = (vnos: any) => {
     if (vnos.verification_level === 'strong') return { label: 'Strong', cls: 'bg-[#16a34a22] border-[#16a34a55] text-[#4ade80]' }
     if (vnos.verification_level === 'photo') return { label: 'Photo', cls: 'bg-[#3ecfcf22] border-[#3ecfcf55] text-[#3ecfcf]' }
@@ -97,7 +101,7 @@ export default function ZgodovinaServisa() {
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj strošek</p>
-            <p className="text-white font-bold text-xl">{skupajEurov.toFixed(2)} €</p>
+        <p className="text-white font-bold text-xl">{formatMoney(skupajEurov, valuta)}</p>
           </div>
         </div>
       )}
@@ -152,7 +156,7 @@ export default function ZgodovinaServisa() {
                   <div className="flex flex-col items-end gap-1">
                     <div className="flex items-center gap-2">
                       {imaSlike && <span className="text-[#5a5a80] text-sm">📎</span>}
-                      {vnos.cena && <span className="text-[#f59e0b] font-bold">{vnos.cena.toFixed(2)} €</span>}
+                    {vnos.cena && <span className="text-[#f59e0b] font-bold">{formatMoney(vnos.cena, valuta)}</span>}
                     </div>
                     {/* Gumb uredi z odštevalnikom */}
                     {preostalo && !jeUredi && !isLocked && (
@@ -200,7 +204,7 @@ export default function ZgodovinaServisa() {
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                       <div>
-                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Cena (€)</label>
+                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Cena ({znakValute})</label>
                         <input type="number" value={editData.cena}
                           onChange={e => setEditData({ ...editData, cena: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />

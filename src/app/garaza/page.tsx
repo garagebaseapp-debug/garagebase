@@ -400,7 +400,7 @@ export default function Garaza() {
       )}
 
       {limitMessage && limitAnchor === 'header' && (
-        <div className="mx-5 mb-3 rounded-xl border border-[#ef444444] bg-[#ef444418] p-3 text-[#fecaca] text-sm font-semibold">
+        <div className="mx-5 mb-3 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-[#fecaca] text-base font-black leading-snug shadow-lg shadow-[#ef444422]">
           {limitMessage}
         </div>
       )}
@@ -488,7 +488,7 @@ export default function Garaza() {
               + Dodaj avto
             </button>
             {limitMessage && limitAnchor === 'empty' && (
-              <p className="mt-3 rounded-xl border border-[#ef444444] bg-[#ef444418] p-3 text-sm font-semibold text-[#fecaca]">
+              <p className="mt-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-base font-black leading-snug text-[#fecaca] shadow-lg shadow-[#ef444422]">
                 {limitMessage}
               </p>
             )}
@@ -564,7 +564,7 @@ export default function Garaza() {
                   <p className="text-[#3a3a5a] text-2xl">+</p>
                   <p className="text-[#3a3a5a] text-[9px]">Dodaj</p>
                   {limitMessage && limitAnchor === 'grid' && (
-                    <p className="mx-2 mt-1 rounded-lg bg-[#ef444422] px-2 py-1 text-[9px] font-bold text-[#fecaca]">
+                    <p className="mx-2 mt-2 rounded-xl border border-[#ef4444] bg-[#ef444422] px-3 py-2 text-[12px] font-black leading-tight text-[#fecaca]">
                       {limitMessage}
                     </p>
                   )}
@@ -702,7 +702,7 @@ export default function Garaza() {
               <div className="absolute inset-0 bg-[#080810]" />
               <div className="relative flex items-center gap-2">
                 <span className="text-[#3a3a5a] text-2xl">+</span>
-                <span className={`text-sm ${limitMessage && limitAnchor === 'list' ? 'text-[#fecaca] font-semibold' : 'text-[#3a3a5a]'}`}>
+                <span className={`text-sm ${limitMessage && limitAnchor === 'list' ? 'rounded-xl border-2 border-[#ef4444] bg-[#ef444422] px-3 py-2 text-base font-black leading-tight text-[#fecaca]' : 'text-[#3a3a5a]'}`}>
                   {limitMessage && limitAnchor === 'list' ? limitMessage : 'Dodaj avto'}
                 </span>
               </div>

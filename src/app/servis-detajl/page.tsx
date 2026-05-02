@@ -3,15 +3,18 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function ServisDetajl() {
   const [servis, setServis] = useState<any>(null)
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [odprtaSlika, setOdprtaSlika] = useState<string | null>(null)
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
+      setValuta(getCurrencyFromSettings())
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
 
@@ -97,7 +100,7 @@ export default function ServisDetajl() {
           </div>
           {servis.cena && (
             <div className="text-right">
-              <p className="text-[#f59e0b] font-bold text-2xl">{servis.cena.toFixed(2)} €</p>
+              <p className="text-[#f59e0b] font-bold text-2xl">{formatMoney(servis.cena, valuta)}</p>
             </div>
           )}
         </div>

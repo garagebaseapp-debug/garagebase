@@ -7,6 +7,7 @@ import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage } from '@/lib/i18n'
+import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function VnosStroska() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -25,7 +26,9 @@ export default function VnosStroska() {
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrAllowed, setOcrAllowed] = useState(false)
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const jeEn = typeof window !== 'undefined' && getStoredLanguage() === 'en'
+  const tx = (sl: string, en: string) => jeEn ? en : sl
   const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
   const kategorije = [
@@ -40,6 +43,7 @@ export default function VnosStroska() {
   ]
 
   useEffect(() => {
+    setValuta(getCurrencyFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -299,7 +303,7 @@ export default function VnosStroska() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Znesek (€) *</label>
+        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Znesek', 'Amount')} ({currencySymbol(valuta)}) *</label>
           <div className="flex gap-2">
             <input type="number" step="0.01" value={znesek} onChange={e => setZnesek(e.target.value)}
               placeholder="npr. 150"

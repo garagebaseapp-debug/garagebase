@@ -6,6 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
+import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -30,6 +31,7 @@ export default function VnosServisa() {
   const [intervalKm, setIntervalKm] = useState('')
   const [intervalDni, setIntervalDni] = useState('')
   const [language, setLanguage] = useState<Language>('sl')
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -39,6 +41,7 @@ export default function VnosServisa() {
 
   useEffect(() => {
     setLanguage(getStoredLanguage())
+    setValuta(getCurrencyFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -445,7 +448,7 @@ export default function VnosServisa() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena', 'Price')} (€)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena', 'Price')} ({currencySymbol(valuta)})</label>
           <div className="flex gap-2">
             <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder={tx('npr. 320', 'e.g. 320')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />

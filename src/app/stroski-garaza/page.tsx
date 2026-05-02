@@ -3,14 +3,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
+import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 
 export default function StroškiGaraza() {
   const [avti, setAvti] = useState<any[]>([])
   const [stroski, setStroski] = useState<{ [key: string]: number }>({})
   const [loading, setLoading] = useState(true)
+  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
   useEffect(() => {
     const init = async () => {
+      setValuta(getCurrencyFromSettings())
       const cachedGarage = localStorage.getItem('garagebase_garaza_cache')
       if (cachedGarage) {
         try {
@@ -118,7 +121,7 @@ export default function StroškiGaraza() {
                 <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="text-right">
-                <p className="text-[#3ecfcf] font-bold text-xl">{(stroski[avto.id] || 0).toFixed(0)} €</p>
+                    <p className="text-[#3ecfcf] font-bold text-xl">{(stroski[avto.id] || 0).toFixed(0)} {currencySymbol(valuta)}</p>
                 <p className="text-[#5a5a80] text-xs">skupaj</p>
               </div>
             </div>
