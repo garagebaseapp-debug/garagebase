@@ -94,6 +94,7 @@ const settingTitle: Record<string, string> = {
   desktopColumns: 'Avtov v vrstici web',
   mobileGridColumns: 'Avtov v vrstici app',
   cardFontPercent: 'Pisava na karticah',
+  currency: 'Valuta',
   autocomplete: 'Predlagane besede',
   assistantUsage: 'AI pomocnik',
   dateReminder: 'Datumski opomniki',
@@ -107,6 +108,8 @@ const valueLabel = (value: any) => {
   if (value === 'svetla') return 'White'
   if (value === 'sl') return 'SLO'
   if (value === 'en') return 'ANG'
+  if (value === 'EUR') return 'EUR / €'
+  if (value === 'USD') return 'USD / $'
   if (value === 'malo') return 'Malo'
   if (value === 'srednje') return 'Srednje'
   if (value === 'veliko') return 'Veliko'
@@ -209,6 +212,7 @@ export default function AdminPage() {
   const [planSaving, setPlanSaving] = useState(false)
   const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
   const [settingsStats, setSettingsStats] = useState<any[]>([])
+  const [clearLoading, setClearLoading] = useState('')
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -399,6 +403,7 @@ export default function AdminPage() {
         aggregateSetting(settingsEvents, 'desktopColumns', (m) => m.desktopColumns),
         aggregateSetting(settingsEvents, 'mobileGridColumns', (m) => m.mobileGridColumns),
         aggregateSetting(settingsEvents, 'cardFontPercent', (m) => `${m.cardFontPercent || 100}%`),
+        aggregateSetting(settingsEvents, 'currency', (m) => m.currency),
         aggregateSetting(settingsEvents, 'dateReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnik')),
         aggregateSetting(settingsEvents, 'kmReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnikKm')),
         aggregateSetting(settingsEvents, 'autocomplete', (m) => m.autocomplete),
@@ -476,6 +481,38 @@ export default function AdminPage() {
     setStats((prev: any) => ({ ...prev, errors: Math.max(0, (prev.errors || 0) - 1) }))
   }
 
+  const clearAnalyticsHistory = async (range: '24h' | '7d' | '30d' | 'all') => {
+    if (range === 'all') {
+      const confirmed = window.confirm(tx(
+        'To bo izbrisalo celotno zgodovino klikov in analitike od začetka. Tega ni mogoče razveljaviti. Res želiš nadaljevati?',
+        'This will delete the entire click and analytics history from the beginning. This cannot be undone. Do you really want to continue?'
+      ))
+      if (!confirmed) return
+    }
+
+    setClearLoading(range)
+    setMessage('')
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/admin/clear-analytics', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ range }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'delete_failed')
+      setMessage(tx('Zgodovina analitike je počiščena.', 'Analytics history has been cleared.'))
+      await loadAdminData()
+    } catch (error: any) {
+      setMessage(tx('Zgodovine ni bilo mogoče počistiti.', 'Could not clear history.') + ` ${error.message || ''}`)
+    }
+    setClearLoading('')
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">{tx('Nalaganje...', 'Loading...')}</p>
@@ -550,6 +587,26 @@ export default function AdminPage() {
               </button>
             ))}
           </div>
+        </div>
+        <div className="mb-5 rounded-2xl border border-[#ef444433] bg-[#ef444410] p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#fca5a5]">
+            {tx('Čiščenje zgodovine analitike', 'Clear analytics history')}
+          </p>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            {(['24h', '7d', '30d', 'all'] as const).map((range) => (
+              <button key={range} onClick={() => clearAnalyticsHistory(range)} disabled={!!clearLoading}
+                className={`rounded-xl border px-3 py-2 text-xs font-bold transition-all disabled:opacity-50 ${
+                  range === 'all'
+                    ? 'border-[#ef444466] bg-[#ef444418] text-[#fca5a5]'
+                    : 'border-[#f59e0b55] bg-[#f59e0b18] text-[#fbbf24]'
+                }`}>
+                {clearLoading === range ? tx('Brišem...', 'Deleting...') : range === 'all' ? tx('Vse', 'All') : rangeLabel[range]}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-[#5a5a80]">
+            {tx('Tipka Vse ima dodatno opozorilo, da ne izbrišeš celotne zgodovine po nesreči.', 'The All button has an extra warning so the full history is not deleted by accident.')}
+          </p>
         </div>
 
         {settingsStats.every((item) => item.values.length === 0) ? (
@@ -660,6 +717,23 @@ export default function AdminPage() {
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Najbolj uporabljene funkcije', 'Most used features')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnjih 30 dni, za odlocanje o paketih.', 'Last 30 days, useful for package decisions.')}</p>
+          <div className="mb-4 rounded-2xl border border-[#ef444433] bg-[#ef444410] p-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#fca5a5]">
+              {tx('Počisti zgodovino funkcij', 'Clear feature history')}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {(['24h', '7d', '30d', 'all'] as const).map((range) => (
+                <button key={range} onClick={() => clearAnalyticsHistory(range)} disabled={!!clearLoading}
+                  className={`rounded-xl border px-2 py-2 text-[11px] font-bold transition-all disabled:opacity-50 ${
+                    range === 'all'
+                      ? 'border-[#ef444466] bg-[#ef444418] text-[#fca5a5]'
+                      : 'border-[#f59e0b55] bg-[#f59e0b18] text-[#fbbf24]'
+                  }`}>
+                  {clearLoading === range ? '...' : range === 'all' ? tx('Vse', 'All') : rangeLabel[range]}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="flex flex-col gap-2">
             {topEvents.length === 0 ? (
               <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">{tx('Ni zabelezenih dogodkov.', 'No tracked events yet.')}</p>

@@ -14,6 +14,7 @@ export default function Garaza() {
   const [arhiv, setArhiv] = useState(false)
   const [archiveMessage, setArchiveMessage] = useState('')
   const [limitMessage, setLimitMessage] = useState('')
+  const [limitAnchor, setLimitAnchor] = useState('')
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
@@ -163,8 +164,9 @@ export default function Garaza() {
     window.location.href = '/'
   }
 
-  const pojdiDodajAvto = async () => {
+  const pojdiDodajAvto = async (anchor = 'header') => {
     setLimitMessage('')
+    setLimitAnchor(anchor)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       window.location.href = '/'
@@ -193,7 +195,10 @@ export default function Garaza() {
         'V garaži imaš že največje dovoljeno število vozil (10). Arhiviraj ali izbriši vozilo, da lahko dodaš novo.',
         'You already have the maximum number of vehicles in your garage (10). Archive or delete a vehicle before adding a new one.'
       ))
-      window.setTimeout(() => setLimitMessage(''), 6500)
+      window.setTimeout(() => {
+        setLimitMessage('')
+        setLimitAnchor('')
+      }, 6500)
       return
     }
 
@@ -366,7 +371,7 @@ export default function Garaza() {
               {urejanje ? '✓ Končaj' : '⇅ Uredi'}
             </button>
           )}
-          <button onClick={pojdiDodajAvto}
+          <button onClick={() => pojdiDodajAvto('header')}
             className="bg-[#6c63ff] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
             + Avto
           </button>
@@ -394,7 +399,7 @@ export default function Garaza() {
         </div>
       )}
 
-      {limitMessage && (
+      {limitMessage && limitAnchor === 'header' && (
         <div className="mx-5 mb-3 rounded-xl border border-[#ef444444] bg-[#ef444418] p-3 text-[#fecaca] text-sm font-semibold">
           {limitMessage}
         </div>
@@ -478,10 +483,15 @@ export default function Garaza() {
             <p className="text-6xl mb-4">🚗</p>
             <p className="text-white font-semibold text-xl mb-2">Tvoja garaža je prazna</p>
             <p className="text-[#5a5a80] text-sm mb-6">Dodaj prvi avto in začni slediti stroškom</p>
-            <button onClick={pojdiDodajAvto}
+            <button onClick={() => pojdiDodajAvto('empty')}
               className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
               + Dodaj avto
             </button>
+            {limitMessage && limitAnchor === 'empty' && (
+              <p className="mt-3 rounded-xl border border-[#ef444444] bg-[#ef444418] p-3 text-sm font-semibold text-[#fecaca]">
+                {limitMessage}
+              </p>
+            )}
           </div>
         </div>
       ) : prikaz === 'grid' ? (
@@ -548,11 +558,16 @@ export default function Garaza() {
             })}
 
             {!urejanje && (
-              <div onClick={pojdiDodajAvto}
+              <div onClick={() => pojdiDodajAvto('grid')}
                 className="aspect-square rounded-xl border-2 border-dashed border-[#2a2a40] flex items-center justify-center cursor-pointer hover:border-[#6c63ff] transition-colors">
                 <div className="text-center">
                   <p className="text-[#3a3a5a] text-2xl">+</p>
                   <p className="text-[#3a3a5a] text-[9px]">Dodaj</p>
+                  {limitMessage && limitAnchor === 'grid' && (
+                    <p className="mx-2 mt-1 rounded-lg bg-[#ef444422] px-2 py-1 text-[9px] font-bold text-[#fecaca]">
+                      {limitMessage}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -681,13 +696,15 @@ export default function Garaza() {
           })}
 
           {!urejanje && (
-            <div onClick={pojdiDodajAvto}
+            <div onClick={() => pojdiDodajAvto('list')}
               className="relative cursor-pointer overflow-hidden flex items-center justify-center border-t border-[#1a1a28]"
               style={{ height: '10vh', minHeight: '70px' }}>
               <div className="absolute inset-0 bg-[#080810]" />
               <div className="relative flex items-center gap-2">
                 <span className="text-[#3a3a5a] text-2xl">+</span>
-                <span className="text-[#3a3a5a] text-sm">Dodaj avto</span>
+                <span className={`text-sm ${limitMessage && limitAnchor === 'list' ? 'text-[#fecaca] font-semibold' : 'text-[#3a3a5a]'}`}>
+                  {limitMessage && limitAnchor === 'list' ? limitMessage : 'Dodaj avto'}
+                </span>
               </div>
             </div>
           )}

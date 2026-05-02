@@ -33,6 +33,7 @@ function getClientContext() {
       garageDisplay: storedSettings.prikazGaraze,
       desktopColumns: storedSettings.desktopStolpci,
       mobileGridColumns: storedSettings.mobileGridStolpci,
+      currency: storedSettings.valuta,
     } : null,
   }
 }

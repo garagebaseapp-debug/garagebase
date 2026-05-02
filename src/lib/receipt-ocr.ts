@@ -5,6 +5,7 @@ export type ReceiptScanResult = {
   total?: string
   station?: string
   description?: string
+  fuelType?: '95' | '100' | 'diesel'
 }
 
 const toNumber = (value: string) => {
@@ -75,8 +76,17 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
     .filter(Boolean)
 
   const allText = lines.join('\n')
+  const allLower = allText.toLowerCase()
   const result: ReceiptScanResult = {}
   result.date = normalizeDate(allText)
+
+  if (/(diesel|dizel|plinsko olje|diesel fuel|gas oil)/i.test(allText)) {
+    result.fuelType = 'diesel'
+  } else if (/(bencin\s*100|petrol\s*100|super\s*100|100\s*okt|premium\s*100|eurosuper\s*100)/i.test(allText)) {
+    result.fuelType = '100'
+  } else if (/(bencin\s*95|petrol\s*95|super\s*95|95\s*okt|eurosuper|gasoline|unleaded)/i.test(allText) || (allLower.includes('bencin') && !allLower.includes('100'))) {
+    result.fuelType = '95'
+  }
 
   const liters = findBestNumber(
     lines,

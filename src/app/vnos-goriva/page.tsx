@@ -46,11 +46,13 @@ export default function VnosGoriva() {
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrAllowed, setOcrAllowed] = useState(false)
+  const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const postajRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
   const jeNaknaden = datum < danes
   const cenaSkupaj = litri && cenaNaLiter ? (parseFloat(litri) * parseFloat(cenaNaLiter)).toFixed(2) : ''
+  const currencySymbol = valuta === 'USD' ? '$' : '€'
 
   const tipiGoriva: FuelType[] = [
     { value: '95', title: '95', label: tx('Bencin 95', 'Petrol 95'), color: 'bg-[#16a34a]', border: 'border-[#16a34a]', text: 'text-[#16a34a]', activeBg: '#16a34a18' },
@@ -73,6 +75,13 @@ export default function VnosGoriva() {
         isAdmin = !!adminRow
       }
       setOcrAllowed(isAdmin)
+
+      try {
+        const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+        setValuta(settings.valuta === 'USD' ? 'USD' : 'EUR')
+      } catch {
+        setValuta('EUR')
+      }
 
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
@@ -229,6 +238,7 @@ export default function VnosGoriva() {
     if (result.liters) setLitri(result.liters)
     if (result.pricePerLiter) setCenaNaLiter(result.pricePerLiter)
     if (result.station) setPostaja(result.station)
+    if (result.fuelType) setTipGoriva(result.fuelType)
     setOcrMessage(tx('Podatki so prebrani. Pred shranjevanjem jih še enkrat preveri.', 'Data was read. Check it once more before saving.'))
     trackEvent('receipt_text_applied', {
       carId,
@@ -238,6 +248,7 @@ export default function VnosGoriva() {
       hasPricePerLiter: !!result.pricePerLiter,
       hasTotal: !!result.total,
       hasStation: !!result.station,
+      hasFuelType: !!result.fuelType,
     })
   }
 

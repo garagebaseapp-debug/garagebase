@@ -63,6 +63,7 @@ export default function Nastavitve() {
   const [avtocomplete, setAvtocomplete] = useState(true)
   const [datumFormat, setDatumFormat] = useState('dd.mm.yyyy')
   const [enotaRazdalje, setEnotaRazdalje] = useState<'km' | 'mi'>('km')
+  const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const [tema, setTema] = useState('temna')
   const [notifikacije, setNotifikacije] = useState<'neznano' | 'dovoljeno' | 'zavrnjeno'>('neznano')
   const [notifikacijeLoading, setNotifikacijeLoading] = useState(false)
@@ -99,6 +100,14 @@ export default function Nastavitve() {
 
   const showSection = (section: string) => settingsView === 'vse' || settingsView === section
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
+
+  const fontOptions = [
+    { value: 85, title: tx('Zelo majhno', 'Very small'), desc: tx('Največ prostora', 'Most space') },
+    { value: 100, title: tx('Majhno', 'Small'), desc: tx('Privzeto', 'Default') },
+    { value: 140, title: tx('Srednje', 'Medium'), desc: tx('Lažje branje', 'Easier reading') },
+    { value: 200, title: tx('Veliko', 'Large'), desc: tx('Za slabši vid', 'For lower vision') },
+    { value: 300, title: tx('Zelo veliko', 'Very large'), desc: tx('Največja pisava', 'Largest text') },
+  ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) return Math.min(300, Math.max(85, value))
@@ -142,6 +151,7 @@ export default function Nastavitve() {
       desktopColumns: values.desktopStolpci || desktopStolpci,
       mobileGridColumns: values.mobileGridStolpci || mobileGridStolpci,
       cardFontPercent: values.garazaPisava || garazaPisava,
+      currency: values.valuta || valuta,
       autocomplete: values.avtocomplete !== undefined ? values.avtocomplete : avtocomplete,
       appLockEnabled: localStorage.getItem('garagebase_app_lock_enabled') === 'true',
       gridSettings: values.gridNastavitve || gridNastavitve,
@@ -195,6 +205,7 @@ export default function Nastavitve() {
         setAvtocomplete(n.avtocomplete !== false)
         setDatumFormat(n.datumFormat || 'dd.mm.yyyy')
         setEnotaRazdalje(n.enotaRazdalje === 'mi' ? 'mi' : 'km')
+        setValuta(n.valuta === 'USD' ? 'USD' : 'EUR')
         setTema(n.tema || 'temna')
         if (n.notificationSettings) setNotificationSettings({ ...defaultNotificationSettings, ...n.notificationSettings })
         if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
@@ -444,7 +455,7 @@ export default function Nastavitve() {
   const shrani = () => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat, enotaRazdalje, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
+    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat, enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     applyFontSize(pisava)
@@ -1048,6 +1059,23 @@ export default function Nastavitve() {
               ))}
             </div>
           </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold text-white">{tx('Valuta', 'Currency')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'EUR', label: '€ EUR', desc: tx('Evro', 'Euro') },
+                { value: 'USD', label: '$ USD', desc: tx('Ameriški dolar', 'US dollar') },
+              ].map((item) => (
+                <button key={item.value} type="button" onClick={() => setValuta(item.value as 'EUR' | 'USD')}
+                  className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${
+                    valuta === item.value ? 'border-[#f59e0b66] bg-[#f59e0b22] text-[#fbbf24]' : 'border-[#1e1e32] bg-[#13131f] text-[#5a5a80]'
+                  }`}>
+                  <span className="block">{item.label}</span>
+                  <span className="mt-1 block text-xs opacity-75">{item.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1084,20 +1112,23 @@ export default function Nastavitve() {
             {Math.round(pisava)}%
           </div>
         </div>
-        <input
-          type="range"
-          min="85"
-          max="300"
-          step="1"
-          value={pisava}
-          onInput={(e) => spremeniPisavo(Number((e.target as HTMLInputElement).value))}
-          onChange={(e) => spremeniPisavo(Number(e.target.value))}
-          className="w-full accent-[#6c63ff]"
-        />
-        <div className="mt-1 flex justify-between text-xs text-[#3a3a5a]">
-          <span>{tx('Manjša', 'Smaller')}</span>
-          <span>{tx('Privzeto', 'Default')}</span>
-          <span>{tx('Večja', 'Larger')}</span>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+          {fontOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => spremeniPisavo(option.value)}
+              className={`rounded-xl border px-3 py-3 text-left transition-all ${
+                pisava === option.value
+                  ? 'border-[#6c63ff] bg-[#6c63ff22] text-[#a09aff] shadow-[0_0_18px_rgba(108,99,255,0.18)]'
+                  : 'border-[#1e1e32] bg-[#13131f] text-[#5a5a80] hover:border-[#6c63ff55]'
+              }`}
+            >
+              <span className="block text-sm font-black">{option.title}</span>
+              <span className="mt-1 block text-xs">{option.desc}</span>
+              <span className="mt-2 inline-flex rounded-lg bg-black/20 px-2 py-1 text-[11px] font-bold">{option.value}%</span>
+            </button>
+          ))}
         </div>
       </div>
 
