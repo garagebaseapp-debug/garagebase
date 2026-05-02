@@ -19,6 +19,28 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
+function isSamePushKey(subscription: PushSubscription, vapidPublicKey: string) {
+  const currentKey = subscription.options?.applicationServerKey
+  if (!currentKey) return false
+  const nextKey = urlBase64ToUint8Array(vapidPublicKey)
+  const current = new Uint8Array(currentKey)
+  if (current.length !== nextKey.length) return false
+  return current.every((value, index) => value === nextKey[index])
+}
+
+async function getFreshPushSubscription(registration: ServiceWorkerRegistration, vapidPublicKey: string) {
+  let subscription = await registration.pushManager.getSubscription()
+  if (subscription && !isSamePushKey(subscription, vapidPublicKey)) {
+    await subscription.unsubscribe()
+    subscription = null
+  }
+
+  return subscription || await registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+  })
+}
+
 const defaultNotificationSettings = {
   enabled: true,
   dateReminders: true,
@@ -211,11 +233,7 @@ export default function Nastavitve() {
 
       const registration = await navigator.serviceWorker.register('/sw.js')
       const readyRegistration = await navigator.serviceWorker.ready
-      const existingSubscription = await readyRegistration.pushManager.getSubscription()
-      const subscription = existingSubscription || await readyRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-      })
+      const subscription = await getFreshPushSubscription(readyRegistration, vapidPublicKey)
       await shraniPushSubscriptionNaServer(subscription, notificationSettings)
       setNotifikacije('dovoljeno')
       setMessage('✅ Obvestila so vklopljena!')
@@ -291,11 +309,7 @@ export default function Nastavitve() {
 
       await navigator.serviceWorker.register('/sw.js')
       const registration = await navigator.serviceWorker.ready
-      const existingSubscription = await registration.pushManager.getSubscription()
-      const subscription = existingSubscription || await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-      })
+      const subscription = await getFreshPushSubscription(registration, vapidPublicKey)
 
       await shraniPushSubscriptionNaServer(subscription, notificationSettings)
       const { data: sessionData } = await supabase.auth.getSession()
@@ -365,9 +379,10 @@ export default function Nastavitve() {
       localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, notificationSettings: nextSettings }))
       trackEvent('notification_settings_changed', nextSettings)
       if (notifikacije === 'dovoljeno') {
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        if (!vapidPublicKey) throw new Error('Push kljuci niso nastavljeni.')
         const registration = await navigator.serviceWorker.ready
-        const subscription = await registration.pushManager.getSubscription()
-        if (!subscription) throw new Error('Telefon nima aktivne push povezave. Najprej klikni Vklopi obvestila.')
+        const subscription = await getFreshPushSubscription(registration, vapidPublicKey)
         await shraniPushSubscriptionNaServer(subscription, nextSettings)
       }
       setNotificationSaveState('saved')
