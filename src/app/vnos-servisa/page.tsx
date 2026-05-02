@@ -271,7 +271,7 @@ export default function VnosServisa() {
 
     if (error) { setMessage(tx('Napaka: ', 'Error: ') + error.message); setLoading(false); return }
 
-    await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    await supabase.from('cars').update({ km_trenutni: Math.max(zadnjiKm, vneseniKm) }).eq('id', carId)
     trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
     await ustvariServisniOpomnik(vneseniKm)
 

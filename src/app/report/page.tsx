@@ -146,6 +146,8 @@ const pdfCopy = {
     fuelLog: 'Evidenca goriva',
     type: 'Tip',
     litersStation: 'Litri - Postaja',
+    importedHistory: 'UVOZENA ZGODOVINA',
+    importedFrom: 'uvozeno iz',
     extraCosts: 'Dodatni stroski',
     category: 'Kategorija',
     description: 'Opis',
@@ -196,6 +198,8 @@ const pdfCopy = {
     fuelLog: 'Fuel log',
     type: 'Type',
     litersStation: 'Liters - Station',
+    importedHistory: 'IMPORTED HISTORY',
+    importedFrom: 'imported from',
     extraCosts: 'Additional costs',
     category: 'Category',
     description: 'Description',
@@ -215,6 +219,13 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = servisi.some((s: any) => s.foto_url) || gorivo.some((g: any) => g.receipt_url) || expenses.some((e: any) => e.receipt_url)
   const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
+  const importLabel = (row: any) => {
+    if (!row.source_owner_label?.includes('import |')) return ''
+    const [source, stamp] = row.source_owner_label.split(' import | ')
+    const date = stamp ? new Date(stamp) : null
+    const dateText = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(locale) : ''
+    return ` [${copy.importedHistory}: ${copy.importedFrom} ${source}${dateText ? ` ${dateText}` : ''}]`
+  }
   const trustLabel = (row: any) => {
     if (row.verification_level === 'strong') return copy.trustStrong
     if (row.verification_level === 'photo') return copy.trustPhoto
@@ -395,7 +406,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
                 <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
 </Text>
-                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}</Text>
+                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}{importLabel(g)}</Text>
                 <Text style={styles.gCena}>{money(g.cena_skupaj)}</Text>
                 <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
                 <Text style={styles.gTrust}>{trustLabel(g)}</Text>

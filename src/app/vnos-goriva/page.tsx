@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { useLanguage } from '@/lib/i18n'
+import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
 
 type FuelType = {
   value: string
@@ -34,6 +35,7 @@ export default function VnosGoriva() {
   const [carId, setCarId] = useState('')
   const [avti, setAvti] = useState<any[]>([])
   const [zadnjiKm, setZadnjiKm] = useState(0)
+  const [kmReady, setKmReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [postajeHistory, setPostajeHistory] = useState<string[]>([])
@@ -53,7 +55,7 @@ export default function VnosGoriva() {
   const danes = new Date().toISOString().split('T')[0]
   const jeNaknaden = datum < danes
   const cenaSkupaj = litri && cenaNaLiter ? (parseFloat(litri) * parseFloat(cenaNaLiter)).toFixed(2) : ''
-  const currencySymbol = valuta === 'USD' ? '$' : '€'
+  const currencySymbol = formatCurrencySymbol(valuta)
 
   const tipiGoriva: FuelType[] = [
     { value: '95', title: '95', label: tx('Bencin 95', 'Petrol 95'), color: 'bg-[#16a34a]', border: 'border-[#16a34a]', text: 'text-[#16a34a]', activeBg: '#16a34a18' },
@@ -92,6 +94,7 @@ export default function VnosGoriva() {
       setAvti(data)
       const izbrani = data.find((a: any) => a.id === carParam) || data[0]
       setCarId(izbrani.id)
+      setKmReady(false)
       await Promise.all([
         naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0),
         naloziPostaje(data.map((a: any) => a.id)),
@@ -118,6 +121,16 @@ export default function VnosGoriva() {
       supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
     ])
     setZadnjiKm(Math.max(kmAvta, servisData?.[0]?.km || 0, gorivoData?.[0]?.km || 0))
+    setKmReady(true)
+  }
+
+  const sveziMinimalniKm = async (id: string) => {
+    const [{ data: avtoData }, { data: servisData }, { data: gorivoData }] = await Promise.all([
+      supabase.from('cars').select('km_trenutni').eq('id', id).maybeSingle(),
+      supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+      supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+    ])
+    return Math.max(avtoData?.km_trenutni || 0, servisData?.[0]?.km || 0, gorivoData?.[0]?.km || 0)
   }
 
   const naloziPostaje = async (carIds: string[]) => {
@@ -139,6 +152,7 @@ export default function VnosGoriva() {
     setCarId(noviId)
     const avto = avti.find((a: any) => a.id === noviId)
     if (!avto) return
+    setKmReady(false)
     await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
     if (avto.gorivo === 'Diesel') setTipGoriva('diesel')
     else if (avto.gorivo === 'Bencin') setTipGoriva('95')
@@ -206,14 +220,14 @@ export default function VnosGoriva() {
       }`}
       aria-label={tx('Glasovni vnos', 'Voice input')}
     >
-      🎤
+      MIC
     </button>
   )
 
   const preberiRacunIzDatoteke = async (file: File) => {
     if (!ocrAllowed) {
       setOcrMessage(tx(
-        'AI branje računov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
+        'AI branje racunov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
         'AI receipt reading is currently in internal testing. Public launch is planned for 2027.'
       ))
       trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
@@ -221,7 +235,7 @@ export default function VnosGoriva() {
     }
 
     setOcrLoading(true)
-    setOcrMessage('')
+    setOcrMessage(tx('Berem sliko računa...', 'Reading receipt photo...'))
     trackEvent('receipt_scan_clicked', { carId, type: 'fuel' })
     try {
       const text = await readReceiptTextFromImage(file)
@@ -230,7 +244,7 @@ export default function VnosGoriva() {
       trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
     } catch (error: any) {
       trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
-      setOcrMessage(`${error.message} ${tx('Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
+      setOcrMessage(`${error.message} ${tx('Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
     } finally {
       setOcrLoading(false)
     }
@@ -239,6 +253,11 @@ export default function VnosGoriva() {
   const dodajRacun = async (event: any) => {
     const file = event.target.files?.[0]
     if (!file) return
+    await pripraviInPreberiRacun(file)
+    event.target.value = ''
+  }
+
+  const pripraviInPreberiRacun = async (file: File) => {
     setMessage('')
     let preparedFile = file
     try {
@@ -254,13 +273,25 @@ export default function VnosGoriva() {
         })
       }
     } catch (error: any) {
-      setMessage(error.message || tx('Slike računa ni bilo mogoče pripraviti.', 'Receipt photo could not be prepared.'))
+      setMessage(error.message || tx('Slike racuna ni bilo mogoce pripraviti.', 'Receipt photo could not be prepared.'))
       return
     }
     setOcrText('')
     setOcrMessage('')
     await preberiRacunIzDatoteke(preparedFile)
   }
+
+  useEffect(() => {
+    const handleWindowPaste = async (event: ClipboardEvent) => {
+      const imageItem = Array.from(event.clipboardData?.items || []).find((item) => item.type.startsWith('image/'))
+      const file = imageItem?.getAsFile()
+      if (!file) return
+      event.preventDefault()
+      await pripraviInPreberiRacun(file)
+    }
+    window.addEventListener('paste', handleWindowPaste)
+    return () => window.removeEventListener('paste', handleWindowPaste)
+  }, [ocrAllowed, carId])
 
   const uporabiPrebranTekst = (text: string) => {
     const result = parseReceiptText(text)
@@ -269,7 +300,7 @@ export default function VnosGoriva() {
     if (result.pricePerLiter) setCenaNaLiter(result.pricePerLiter)
     if (result.station) setPostaja(result.station)
     if (result.fuelType) setTipGoriva(result.fuelType)
-    setOcrMessage(tx('Podatki so prebrani. Pred shranjevanjem jih še enkrat preveri.', 'Data was read. Check it once more before saving.'))
+    setOcrMessage(tx('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.', 'Data was read. Check it once more before saving.'))
     trackEvent('receipt_text_applied', {
       carId,
       type: 'fuel',
@@ -285,14 +316,14 @@ export default function VnosGoriva() {
   const preberiRacun = async () => {
     if (!ocrAllowed) {
       setOcrMessage(tx(
-        'AI branje računov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
+        'AI branje racunov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
         'AI receipt reading is currently in internal testing. Public launch is planned for 2027.'
       ))
       trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
       return
     }
     if (!racun) {
-      setOcrMessage(tx('Najprej dodaj ali slikaj račun.', 'First add or take a receipt photo.'))
+      setOcrMessage(tx('Najprej dodaj ali slikaj racun.', 'First add or take a receipt photo.'))
       return
     }
 
@@ -312,14 +343,20 @@ export default function VnosGoriva() {
   }
 
   const shrani = async () => {
+    if (!kmReady) {
+      setMessage(tx('Počakaj, da se naložijo zadnji kilometri vozila.', 'Wait until the latest vehicle mileage is loaded.'))
+      return
+    }
     if (!km || !litri) {
       setMessage(tx('Km in litri sta obvezna!', 'Mileage and liters are required!'))
       return
     }
 
     const vneseniKm = parseInt(km)
-    if (vneseniKm < zadnjiKm) {
-      setMessage(`⚠️ ${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${zadnjiKm.toLocaleString()} km!`)
+    const sveziKm = await sveziMinimalniKm(carId)
+    if (vneseniKm < sveziKm) {
+      setZadnjiKm(sveziKm)
+      setMessage(`${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${sveziKm.toLocaleString()} km!`)
       return
     }
 
@@ -359,9 +396,9 @@ export default function VnosGoriva() {
       return
     }
 
-    await supabase.from('cars').update({ km_trenutni: vneseniKm }).eq('id', carId)
+    await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId)
     trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl, verificationLevel: 'basic' })
-    setMessage(tx('✅ Tankanje uspešno shranjeno!', '✅ Fill-up saved successfully!'))
+    setMessage(tx('Tankanje uspesno shranjeno!', 'Fill-up saved successfully!'))
     setTimeout(() => {
       window.location.href = `/zgodovina-goriva?car=${carId}`
     }, 1000)
@@ -377,8 +414,8 @@ export default function VnosGoriva() {
 
       {poslusam && (
         <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
-          <span className="text-xl animate-pulse">🎤</span>
-          <p className="text-[#ef4444] text-sm font-semibold">{tx('Poslušam... govori zdaj', 'Listening... speak now')}</p>
+          <span className="text-xl animate-pulse">MIC</span>
+          <p className="text-[#ef4444] text-sm font-semibold">{tx('Poslusam... govori zdaj', 'Listening... speak now')}</p>
         </div>
       )}
 
@@ -433,7 +470,7 @@ export default function VnosGoriva() {
           {jeNaknaden && (
             <div className="mt-2 p-2 rounded-lg bg-[#3ecfcf22] border border-[#3ecfcf44]">
               <p className="text-[#3ecfcf] text-xs">
-                ⚠️ {tx('Naknaden vnos - zabeleženo bo kdaj je bilo dejansko vneseno', 'Backdated entry - the actual entry time will be recorded')}
+                {tx('Naknaden vnos - zabelezen bo cas dejanskega vnosa', 'Backdated entry - the actual entry time will be recorded')}
               </p>
             </div>
           )}
@@ -441,14 +478,14 @@ export default function VnosGoriva() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {zadnjiKm.toLocaleString()} km)</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {kmReady ? `${zadnjiKm.toLocaleString()} km` : tx('nalagam...', 'loading...')})</span>
           </label>
           <div className="flex gap-2">
             <input
               type="number"
               value={km}
               onChange={(event) => setKm(event.target.value)}
-              placeholder={`${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}`}
+              placeholder={kmReady ? `${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}` : tx('nalagam zadnje km...', 'loading latest mileage...')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
                 km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
               }`}
@@ -457,7 +494,7 @@ export default function VnosGoriva() {
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ {tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">{tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {zadnjiKm.toLocaleString()} km!</p>
             </div>
           )}
         </div>
@@ -500,7 +537,7 @@ export default function VnosGoriva() {
         )}
 
         <div ref={postajRef} className="relative">
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Postaja (po želji)', 'Station (optional)')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Postaja (po zelji)', 'Station (optional)')}</label>
           <div className="flex gap-2">
             <input
               type="text"
@@ -532,7 +569,7 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Scan računa', 'Receipt scan')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Scan racuna', 'Receipt scan')}</label>
           <input ref={receiptInputRef} type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
           <button
             type="button"
@@ -545,17 +582,17 @@ export default function VnosGoriva() {
             }`}
           >
             {ocrLoading
-              ? tx('Berem račun...', 'Reading receipt...')
+              ? tx('Berem racun...', 'Reading receipt...')
               : ocrAllowed
-                ? tx('📷 Scan računa', '📷 Scan receipt')
-                : tx('AI scan računov - prihaja v 2027', 'AI receipt scan - coming in 2027')}
+                ? tx('Scan racuna', 'Scan receipt')
+                : tx('AI scan racunov - prihaja v 2027', 'AI receipt scan - coming in 2027')}
           </button>
           <label className="mt-3 block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
             <input type="file" accept="image/*" onChange={dodajRacun} className="hidden" />
             {racunPreview ? (
-              <img src={racunPreview} alt={tx('Račun', 'Receipt')} className="w-full max-h-56 object-contain rounded-lg" />
+              <img src={racunPreview} alt={tx('Racun', 'Receipt')} className="w-full max-h-56 object-contain rounded-lg" />
             ) : (
-              <span className="text-[#3ecfcf] font-semibold">{tx('Ali izberi sliko računa iz galerije', 'Or choose a receipt photo from gallery')}</span>
+              <span className="text-[#3ecfcf] font-semibold">{tx('Ali izberi sliko racuna iz galerije', 'Or choose a receipt photo from gallery')}</span>
             )}
           </label>
 
@@ -594,11 +631,11 @@ export default function VnosGoriva() {
             {!ocrAllowed && (
               <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
                 <p className="text-[#f59e0b] text-xs font-bold">
-                  {tx('AI/OCR branje računov je zaklenjeno za beta uporabnike.', 'AI/OCR receipt reading is locked for beta users.')}
+                  {tx('AI/OCR branje racunov je zaklenjeno za beta uporabnike.', 'AI/OCR receipt reading is locked for beta users.')}
                 </p>
                 <p className="text-[#f8c873] text-xs mt-1">
                   {tx(
-                    'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Ročni vnos in shranjevanje slike računa delujeta normalno.',
+                    'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Rocni vnos in shranjevanje slike racuna delujeta normalno.',
                     'The feature is in internal testing and is planned for public launch in 2027. Manual entry and receipt photo storage work normally.'
                   )}
                 </p>
@@ -611,7 +648,7 @@ export default function VnosGoriva() {
                   value={ocrText}
                   onChange={(event) => setOcrText(event.target.value)}
                   placeholder={tx(
-                    'Če avtomatsko branje ni podprto, prilepi tekst računa sem...',
+                    'Ce avtomatsko branje ni podprto, prilepi tekst racuna sem...',
                     'If automatic reading is not supported, paste receipt text here...'
                   )}
                   rows={3}
@@ -627,13 +664,17 @@ export default function VnosGoriva() {
               </>
             )}
 
-            {ocrMessage && <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>}
+            {ocrMessage && (
+              <div className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] p-3">
+                <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>
+              </div>
+            )}
           </div>
         </div>
 
         {message && (
           <div className={`p-3 rounded-xl text-sm border ${
-            message.includes('✅') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
+            message.includes('uspesno') || message.includes('successfully') ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]' : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
           }`}>
             {message}
           </div>
@@ -641,10 +682,10 @@ export default function VnosGoriva() {
 
         <button
           onClick={shrani}
-          disabled={loading}
+          disabled={loading || !kmReady}
           className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2"
         >
-          {loading ? tx('Shranjevanje...', 'Saving...') : `${tx('Shrani tankanje', 'Save fill-up')} →`}
+          {loading ? tx('Shranjevanje...', 'Saving...') : `${tx('Shrani tankanje', 'Save fill-up')} ->`}
         </button>
       </div>
 
@@ -652,3 +693,4 @@ export default function VnosGoriva() {
     </div>
   )
 }
+

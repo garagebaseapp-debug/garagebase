@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { useLanguage } from '@/lib/i18n'
 
 export default function ZgodovinaGoriva() {
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const [vnosi, setVnosi] = useState<any[]>([])
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -26,7 +29,13 @@ export default function ZgodovinaGoriva() {
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
       setAvto(avtoData)
       const { data: gorivo } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true })
-      setVnosi(gorivo || [])
+      const fuelRows = gorivo || []
+      const maxFuelKm = fuelRows.reduce((max: number, row: any) => row.km && row.km > max ? row.km : max, 0)
+      if (avtoData?.id && maxFuelKm > (avtoData.km_trenutni || 0)) {
+        await supabase.from('cars').update({ km_trenutni: maxFuelKm }).eq('id', avtoData.id)
+        setAvto({ ...avtoData, km_trenutni: maxFuelKm })
+      }
+      setVnosi(fuelRows)
       setLoading(false)
     }
     init()
@@ -49,10 +58,22 @@ export default function ZgodovinaGoriva() {
 
   const izracunajPorabo = (index: number) => {
     const trenutni = vnosi[index]
-    const prejsnjiKm = index === 0 ? (avto?.km_trenutni || 0) : vnosi[index - 1].km
+    if (index === 0) return null
+    const prejsnjiKm = vnosi[index - 1].km
     const kmRazlika = trenutni.km - prejsnjiKm
     if (kmRazlika <= 0) return null
     return (trenutni.litri / kmRazlika) * 100
+  }
+
+  const importInfo = (label?: string | null) => {
+    if (!label?.includes('import |')) return null
+    const [source, stamp] = label.split(' import | ')
+    const date = stamp ? new Date(stamp) : null
+    return {
+      key: `${source}-${stamp}`,
+      source,
+      dateText: date && !Number.isNaN(date.getTime()) ? date.toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '',
+    }
   }
 
   const skupajLitrov = vnosi.reduce((sum, v) => sum + (v.litri || 0), 0)
@@ -85,7 +106,7 @@ export default function ZgodovinaGoriva() {
 
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
-      <p className="text-[#5a5a80]">Nalaganje...</p>
+      <p className="text-[#5a5a80]">{tx('Nalaganje...', 'Loading...')}</p>
     </div>
   )
 
@@ -102,24 +123,30 @@ export default function ZgodovinaGoriva() {
       {vnosi.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Litrov</p>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Litrov', 'Liters')}</p>
             <p className="text-white font-bold text-lg">{skupajLitrov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> L</span></p>
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj</p>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
           <p className="text-white font-bold text-lg">{skupajEurov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> {znakValute}</span></p>
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Tankanij</p>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Tankanij', 'Fill-ups')}</p>
             <p className="text-white font-bold text-lg">{vnosi.length}</p>
           </div>
         </div>
       )}
 
-      <button onClick={() => window.location.href = `/vnos-goriva?car=${avto?.id}`}
-        className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors mb-6">
-        + Dodaj tankanje
-      </button>
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <button onClick={() => window.location.href = `/vnos-goriva?car=${avto?.id}`}
+          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
+          + {tx('Dodaj tankanje', 'Add fill-up')}
+        </button>
+        <button onClick={() => window.location.href = `/uvoz-podatkov?car=${avto?.id}`}
+          className="w-full bg-[#22c55e22] border border-[#22c55e66] text-[#4ade80] font-semibold py-3 rounded-xl transition-colors">
+          {tx('Uvozi CSV', 'Import CSV')}
+        </button>
+      </div>
 
       {vnosi.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
@@ -134,9 +161,20 @@ export default function ZgodovinaGoriva() {
             const tipIkona = tipGorivaIkona(vnos.tip_goriva)
             const preostalo = preostaliCas(vnos.created_at)
             const jeUredi = uredi === vnos.id
+            const info = importInfo(vnos.source_owner_label)
+            const previousInfo = reversedIndex > 0 ? importInfo([...vnosi].reverse()[reversedIndex - 1]?.source_owner_label) : null
+            const showImportNote = info && info.key !== previousInfo?.key
 
             return (
               <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+                {showImportNote && (
+                  <div className="mb-3 rounded-xl border border-[#22c55e55] bg-[#22c55e14] px-3 py-2">
+                    <p className="text-[#4ade80] text-xs font-bold">{tx('Uvožena zgodovina', 'Imported history')}</p>
+                    <p className="text-[#86efac] text-xs mt-0.5">
+                      {tx('Vir', 'Source')}: {info.source}{info.dateText ? ` · ${tx('uvoženo', 'imported')}: ${info.dateText}` : ''}
+                    </p>
+                  </div>
+                )}
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2">
                     {tipIkona && (
@@ -176,27 +214,27 @@ export default function ZgodovinaGoriva() {
                       <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
                     </div>
                     <div>
-                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Datum</label>
+                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">{tx('Datum', 'Date')}</label>
                       <input type="date" value={editData.datum}
                         onChange={e => setEditData({ ...editData, datum: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Litri</label>
+                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">{tx('Litri', 'Liters')}</label>
                         <input type="number" value={editData.litri}
                           onChange={e => setEditData({ ...editData, litri: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                       <div>
-                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Cena/L</label>
+                        <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">{tx('Cena/L', 'Price/L')}</label>
                         <input type="number" value={editData.cena_na_liter}
                           onChange={e => setEditData({ ...editData, cena_na_liter: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">Postaja</label>
+                      <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">{tx('Postaja', 'Station')}</label>
                       <input type="text" value={editData.postaja}
                         onChange={e => setEditData({ ...editData, postaja: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
@@ -217,17 +255,17 @@ export default function ZgodovinaGoriva() {
                 {!jeUredi && (
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-[#13131f] rounded-xl p-2.5">
-                      <p className="text-[#5a5a80] text-xs mb-1">Litri</p>
+                      <p className="text-[#5a5a80] text-xs mb-1">{tx('Litri', 'Liters')}</p>
                       <p className="text-white font-semibold text-sm">{vnos.litri} L</p>
                     </div>
                     {vnos.cena_na_liter && (
                       <div className="bg-[#13131f] rounded-xl p-2.5">
-                        <p className="text-[#5a5a80] text-xs mb-1">Cena/L</p>
+                        <p className="text-[#5a5a80] text-xs mb-1">{tx('Cena/L', 'Price/L')}</p>
                         <p className="text-white font-semibold text-sm">{vnos.cena_na_liter} {znakValute}</p>
                       </div>
                     )}
                     <div className={`rounded-xl p-2.5 ${poraba ? 'bg-[#6c63ff22] border border-[#6c63ff33]' : 'bg-[#13131f]'}`}>
-                      <p className="text-[#5a5a80] text-xs mb-1">Poraba</p>
+                      <p className="text-[#5a5a80] text-xs mb-1">{tx('Poraba', 'Consumption')}</p>
                       <p className={`font-semibold text-sm ${poraba ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>
                         {poraba ? `${poraba.toFixed(1)} L/100` : '—'}
                       </p>
@@ -240,7 +278,7 @@ export default function ZgodovinaGoriva() {
                     onClick={() => window.open(vnos.receipt_url, '_blank')}
                     className="mt-2 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
                   >
-                    Odpri racun
+                    {tx('Odpri racun', 'Open receipt')}
                   </button>
                 )}
               </div>

@@ -307,6 +307,8 @@ export default function UvozPodatkov() {
       if (importType === 'fuel') {
         const { data: existing } = await supabase.from('fuel_logs').select('datum,km,cena_skupaj,postaja').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
+        const importSource = isDrivvo ? 'Drivvo' : 'CSV'
+        const importStamp = new Date().toISOString()
         const rows = previewRows.map(row => ({
           car_id: carId,
           datum: row.date,
@@ -317,6 +319,7 @@ export default function UvozPodatkov() {
           postaja: row.station || row.description,
           tip_goriva: row.fuelType,
           verification_level: 'basic',
+          source_owner_label: `${importSource} import | ${importStamp}`,
         })).filter(row => {
           const duplicate = existingKeys.has(duplicateKey(row))
           if (duplicate) skipped++
@@ -376,7 +379,9 @@ export default function UvozPodatkov() {
 
       const maxKm = previewRows.reduce((max, row) => row.km && row.km > max ? row.km : max, 0)
       if (maxKm > 0) {
-        const { error } = await supabase.from('cars').update({ km_trenutni: maxKm }).eq('id', carId)
+        const { data: currentCar } = await supabase.from('cars').select('km_trenutni').eq('id', carId).maybeSingle()
+        const safeKm = Math.max(currentCar?.km_trenutni || 0, maxKm)
+        const { error } = await supabase.from('cars').update({ km_trenutni: safeKm }).eq('id', carId)
         if (error) throw error
       }
       trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic' })

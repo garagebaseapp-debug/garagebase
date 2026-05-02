@@ -12,7 +12,7 @@ export const getCurrencyFromSettings = (): GarageBaseCurrency => {
   }
 }
 
-export const currencySymbol = (currency: GarageBaseCurrency) => currency === 'USD' ? '$' : '€'
+export const currencySymbol = (currency: GarageBaseCurrency) => currency === 'USD' ? '$' : '\u20ac'
 
 export const formatMoney = (value?: number | null, currency: GarageBaseCurrency = 'EUR', decimals = 2) => {
   if (typeof value !== 'number' || Number.isNaN(value)) return '-'

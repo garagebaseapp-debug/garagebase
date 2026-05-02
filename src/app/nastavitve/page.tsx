@@ -979,23 +979,6 @@ export default function Nastavitve() {
           className="mt-3 w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
           Uvoz iz drugih app
         </button>
-        <button
-          onClick={() => isAdmin && (window.location.href = '/vnos-goriva')}
-          disabled={!isAdmin}
-          className={`mt-3 w-full font-semibold py-3 rounded-xl transition-colors ${
-            isAdmin
-              ? 'bg-[#f59e0b22] border border-[#f59e0b66] text-[#fbbf24] hover:bg-[#f59e0b33]'
-              : 'bg-[#2a2a4018] border border-[#2a2a40] text-[#5a5a80] cursor-not-allowed'
-          }`}>
-          {jezik === 'en' ? 'Receipt scan' : 'Scan računov'}
-        </button>
-        {!isAdmin && (
-          <p className="mt-2 text-xs text-[#5a5a80]">
-            {jezik === 'en'
-              ? 'AI receipt scanning is planned for public launch in 2027. Manual entry and receipt photo storage already work.'
-              : 'AI skeniranje računov je planirano za javni zagon v letu 2027. Ročni vnos in shranjevanje slike računa že delujeta.'}
-          </p>
-        )}
       </div>
 
       {/* Način uporabe */}
