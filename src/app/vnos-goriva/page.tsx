@@ -184,7 +184,7 @@ export default function VnosGoriva() {
 
   const MicButton = ({ polje }: { polje: string }) => (
     <button type="button" onClick={() => glasovniVnos(polje)}
-      className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
+      className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
         poslusam === polje
           ? 'bg-[#ef4444] text-white animate-pulse'
           : 'bg-[#13131f] border border-[#2a2a40] text-[#5a5a80] hover:border-[#6c63ff] hover:text-[#6c63ff]'
@@ -320,17 +320,16 @@ export default function VnosGoriva() {
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
-      <div className="mx-auto w-full max-w-md">
 
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
-        <h1 className="text-2xl font-bold text-white">⛽ {tx('Vnos goriva', 'Fuel entry')}</h1>
+        <h1 className="text-xl font-bold text-white">⛽ {tx('Vnos goriva', 'Fuel entry')}</h1>
       </div>
 
       {poslusam && (
         <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
           <span className="text-xl animate-pulse">🎤</span>
-          <p className="text-[#ef4444] text-base font-semibold">{tx('Poslusam... govori zdaj', 'Listening... speak now')}</p>
+          <p className="text-[#ef4444] text-sm font-semibold">{tx('Poslusam... govori zdaj', 'Listening... speak now')}</p>
         </div>
       )}
 
@@ -338,9 +337,9 @@ export default function VnosGoriva() {
 
         {avti.length > 1 && (
           <div>
-            <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select value={carId} onChange={e => menjavaAvta(e.target.value)}
-              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-4 text-white text-base outline-none focus:border-[#6c63ff] transition-colors">
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors">
               {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
@@ -348,12 +347,12 @@ export default function VnosGoriva() {
 
         {/* Tip goriva */}
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-3 block">{tx('Tip goriva', 'Fuel type')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">{tx('Tip goriva', 'Fuel type')}</label>
           <div className="grid grid-cols-3 gap-3">
             {tipiGoriva.map((tip) => (
               <button key={tip.vrednost} type="button"
                 onClick={() => setTipGoriva(tipGoriva === tip.vrednost ? '' : tip.vrednost)}
-                className={`relative py-5 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                className={`relative py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
                   tipGoriva === tip.vrednost
                     ? `${tip.barvaBorder} bg-opacity-20`
                     : 'border-[#1e1e32] bg-[#13131f]'
@@ -361,10 +360,10 @@ export default function VnosGoriva() {
                 style={tipGoriva === tip.vrednost ? {
                   backgroundColor: tip.vrednost === 'diesel' ? '#1a1a1a' : tip.vrednost === '95' ? '#16a34a15' : '#2563eb15'
                 } : {}}>
-                <div className={`w-10 h-10 rounded-lg ${tip.barva} flex items-center justify-center`}>
-                  <span className="text-white font-bold text-base">{tip.naziv}</span>
+                <div className={`w-8 h-8 rounded-lg ${tip.barva} flex items-center justify-center`}>
+                  <span className="text-white font-bold text-sm">{tip.naziv}</span>
                 </div>
-                <span className={`text-sm font-semibold mt-1 ${tipGoriva === tip.vrednost ? tip.barvaText : 'text-[#5a5a80]'}`}>
+                <span className={`text-xs font-semibold mt-1 ${tipGoriva === tip.vrednost ? tip.barvaText : 'text-[#5a5a80]'}`}>
                   {tip.opis}
                 </span>
               </button>
@@ -374,9 +373,9 @@ export default function VnosGoriva() {
 
         {/* Datum */}
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">{tx('Datum', 'Date')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Datum', 'Date')}</label>
           <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
-            className={`w-full bg-[#13131f] border rounded-xl px-4 py-4 text-white text-base outline-none transition-colors ${
+            className={`w-full bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
               jeNaknaden ? 'border-[#6c63ff]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
             }`} />
           {jeNaknaden && (
@@ -388,13 +387,13 @@ export default function VnosGoriva() {
 
         {/* Kilometri */}
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
             {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {zadnjiKm.toLocaleString()} km)</span>
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
               placeholder={`${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}`}
-              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-4 text-white text-base outline-none transition-colors ${
+              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
                 km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#6c63ff]'
               }`} />
             <MicButton polje="km" />
@@ -408,20 +407,20 @@ export default function VnosGoriva() {
 
         {/* Litri */}
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">{tx('Litri', 'Liters')} *</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Litri', 'Liters')} *</label>
           <div className="flex gap-2">
             <input type="number" step="0.01" value={litri} onChange={e => setLitri(e.target.value)} placeholder={tx('npr. 52.4', 'e.g. 52.4')}
-              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-4 text-white text-base outline-none focus:border-[#6c63ff] transition-colors" />
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             <MicButton polje="litri" />
           </div>
         </div>
 
         {/* Cena na liter */}
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} (€)</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} (€)</label>
           <div className="flex gap-2">
             <input type="number" step="0.001" value={cenaNaLiter} onChange={e => setCenaNaLiter(e.target.value)} placeholder={tx('npr. 1.489', 'e.g. 1.489')}
-              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-4 text-white text-base outline-none focus:border-[#6c63ff] transition-colors" />
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             <MicButton polje="cena" />
           </div>
         </div>
@@ -436,7 +435,7 @@ export default function VnosGoriva() {
 
         {/* Postaja */}
         <div ref={postajRef} className="relative">
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">{tx('Postaja (po zelji)', 'Station (optional)')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Postaja (po zelji)', 'Station (optional)')}</label>
           <div className="flex gap-2">
             <input type="text" value={postaja}
               onChange={e => handlePostajaChange(e.target.value)}
@@ -448,7 +447,7 @@ export default function VnosGoriva() {
                 }
               }}
               placeholder={tx('npr. OMV Ljubljana', 'e.g. OMV Ljubljana')}
-              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-4 text-white text-base outline-none focus:border-[#6c63ff] transition-colors" />
+              className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             <MicButton polje="postaja" />
           </div>
           {showSuggestions && (
@@ -464,7 +463,7 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-sm uppercase tracking-wider mb-2 block">
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
             {tx('Slika racuna', 'Receipt photo')}
           </label>
           <label className="block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#6c63ff66] transition-colors">
@@ -472,14 +471,14 @@ export default function VnosGoriva() {
             {racunPreview ? (
               <img src={racunPreview} alt={tx('Racun', 'Receipt')} className="w-full max-h-56 object-contain rounded-lg" />
             ) : (
-              <span className="text-[#a09aff] text-base font-semibold">{tx('Dodaj/slikaj racun', 'Add/take receipt photo')}</span>
+              <span className="text-[#a09aff] font-semibold">{tx('Dodaj/slikaj racun', 'Add/take receipt photo')}</span>
             )}
           </label>
 
           <div className="mt-3 space-y-3">
             <div className={racunPreview ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
               <button type="button" onClick={preberiRacun} disabled={ocrLoading}
-                className={`rounded-xl px-3 py-3 text-base font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
+                className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'}`}>
                 {ocrLoading
                   ? (jeEn ? 'Reading...' : 'Berem...')
                   : ocrAllowed
@@ -488,7 +487,7 @@ export default function VnosGoriva() {
               </button>
               {racunPreview && (
                 <button type="button" onClick={() => { setRacun(null); setRacunPreview(''); setOcrText(''); setOcrMessage('') }}
-                  className="rounded-xl border border-[#ef444455] px-3 py-3 text-base font-semibold text-[#ef4444]">
+                  className="rounded-xl border border-[#ef444455] px-3 py-2 text-sm font-semibold text-[#ef4444]">
                   {tx('Odstrani sliko', 'Remove photo')}
                 </button>
               )}
@@ -514,15 +513,15 @@ export default function VnosGoriva() {
                 onChange={e => setOcrText(e.target.value)}
                 placeholder={jeEn ? 'If automatic reading is not supported, paste receipt text here...' : 'Če avtomatsko branje ni podprto, prilepi tekst računa sem...'}
                 rows={3}
-                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors resize-none"
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-[#6c63ff] transition-colors resize-none"
               />
               <button type="button" onClick={() => uporabiPrebranTekst(ocrText)}
-                className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-3 text-base font-semibold text-[#3ecfcf]">
+                className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]">
                 {jeEn ? 'Use text' : 'Uporabi tekst'}
               </button>
               </>
             )}
-              {ocrMessage && <p className="text-[#a09aff] text-sm leading-relaxed">{ocrMessage}</p>}
+              {ocrMessage && <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>}
             </div>
         </div>
 
@@ -533,12 +532,11 @@ export default function VnosGoriva() {
         )}
 
         <button onClick={shrani} disabled={loading}
-          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white text-base font-semibold py-4 rounded-xl transition-colors disabled:opacity-50 mt-2">
+          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2">
           {loading ? tx('Shranjevanje...', 'Saving...') : tx('Shrani tankanje', 'Save fill-up') + ' →'}
         </button>
       </div>
 
-      </div>
       <HomeButton />
     </div>
   )
