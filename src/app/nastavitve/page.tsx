@@ -101,7 +101,7 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const normalizeFontPercent = (value: any) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return Math.min(135, Math.max(85, value))
+    if (typeof value === 'number' && Number.isFinite(value)) return Math.min(200, Math.max(85, value))
     const legacy: Record<string, number> = { mala: 90, normalna: 100, velika: 120 }
     return legacy[value] || 100
   }
@@ -122,7 +122,7 @@ export default function Nastavitve() {
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
     const rootPx = 16 * (percent / 100)
-    document.documentElement.style.fontSize = `${Math.min(22, Math.max(14, rootPx))}px`
+    document.documentElement.style.fontSize = `${Math.min(32, Math.max(14, rootPx))}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
   }
 
@@ -1081,7 +1081,7 @@ export default function Nastavitve() {
         <input
           type="range"
           min="85"
-          max="135"
+          max="200"
           step="5"
           value={pisava}
           onChange={(e) => {

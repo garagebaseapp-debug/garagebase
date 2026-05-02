@@ -68,7 +68,7 @@ export default function RootLayout({
               const legacy = { mala: 90, normalna: 100, velika: 120 };
               const raw = n.pisava;
               const percent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
-              const rootPx = Math.min(22, Math.max(14, 16 * (percent / 100)));
+              const rootPx = Math.min(32, Math.max(14, 16 * (percent / 100)));
               document.documentElement.style.fontSize = rootPx + 'px';
               document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
             }
