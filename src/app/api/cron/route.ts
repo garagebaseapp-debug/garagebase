@@ -82,12 +82,12 @@ function shouldRunForSendTime(sendTime: string) {
   const currentMinute = Number(parts.find((part) => part.type === 'minute')?.value || 0)
 
   if (!Number.isFinite(wantedHour) || !Number.isFinite(wantedMinute)) {
-    return currentHour === 8 && currentMinute < 5
+    return currentHour === 8 && currentMinute < 20
   }
 
   const wantedTotal = wantedHour * 60 + wantedMinute
   const currentTotal = currentHour * 60 + currentMinute
-  return currentTotal >= wantedTotal && currentTotal < wantedTotal + 5
+  return currentTotal >= wantedTotal && currentTotal < wantedTotal + 20
 }
 
 async function sendPush(subscription: any, title: string, body: string) {
@@ -148,6 +148,11 @@ export async function GET(req: Request) {
     }).format(new Date())
     let poslano = 0
     let pregledano = 0
+    let uporabnikov = 0
+    let naprav = 0
+    let preskocenoCas = 0
+    let preskocenoIzklopljeno = 0
+    let napakePosiljanja = 0
 
     const userReminders = new Map<string, any[]>()
     for (const op of opomniki) {
@@ -174,17 +179,27 @@ export async function GET(req: Request) {
     for (const [userId, reminders] of userReminders.entries()) {
       const subs = uniqueSubscriptions(subsByUser.get(userId) || [])
       if (subs.length === 0) continue
+      uporabnikov++
+      naprav += subs.length
 
       for (const sub of subs) {
         const settings: NotificationSettings = {
           ...defaultNotificationSettings,
           ...(sub.notification_settings || {}),
         }
-        if (!settings.enabled || !shouldRunForSendTime(settings.sendTime)) continue
+        if (!settings.enabled) {
+          preskocenoIzklopljeno++
+          continue
+        }
+        if (!shouldRunForSendTime(settings.sendTime)) {
+          preskocenoCas++
+          continue
+        }
 
         const state: NotificationState = sub.notification_state || {}
         const messages: string[] = []
         let changedState = false
+        let delivered = false
 
         for (const op of reminders) {
           const avtoNaziv = `${op.cars?.znamka || ''} ${op.cars?.model || ''}`.trim()
@@ -274,12 +289,14 @@ export async function GET(req: Request) {
               buildSummary(messages)
             )
             poslano++
+            delivered = true
           } catch (e) {
             console.error('Napaka pri posiljanju povzetka:', e)
+            napakePosiljanja++
           }
         }
 
-        if (changedState) {
+        if (changedState && (messages.length === 0 || delivered)) {
           await supabase
             .from('push_subscriptions')
             .update({
@@ -291,7 +308,17 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, poslano, pregledano })
+    return NextResponse.json({
+      success: true,
+      poslano,
+      pregledano,
+      uporabnikov,
+      naprav,
+      preskocenoCas,
+      preskocenoIzklopljeno,
+      napakePosiljanja,
+      timezone: 'Europe/Ljubljana',
+    })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
