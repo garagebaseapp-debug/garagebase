@@ -48,6 +48,7 @@ export default function VnosGoriva() {
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrAllowed, setOcrAllowed] = useState(false)
+  const [adminCheckDone, setAdminCheckDone] = useState(false)
   const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const postajRef = useRef<HTMLDivElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
@@ -73,11 +74,26 @@ export default function VnosGoriva() {
 
       const email = user.email?.toLowerCase() || ''
       let isAdmin = adminEmails.includes(email)
-      if (!isAdmin) {
-        const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
-        isAdmin = !!adminRow
+      try {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const jwt = sessionData.session?.access_token
+        if (jwt) {
+          const response = await fetch('/api/admin/check', {
+            headers: { Authorization: `Bearer ${jwt}` },
+          })
+          if (response.ok) {
+            const result = await response.json()
+            isAdmin = isAdmin || Boolean(result.isAdmin)
+          }
+        }
+      } catch {
+        if (!isAdmin) {
+          const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
+          isAdmin = !!adminRow
+        }
       }
       setOcrAllowed(isAdmin)
+      setAdminCheckDone(true)
 
       try {
         const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
@@ -227,8 +243,8 @@ export default function VnosGoriva() {
   const preberiRacunIzDatoteke = async (file: File) => {
     if (!ocrAllowed) {
       setOcrMessage(tx(
-        'AI branje racunov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
-        'AI receipt reading is currently in internal testing. Public launch is planned for 2027.'
+        'Slika racuna je dodana. Avtomatsko branje je trenutno odklenjeno samo adminu za testiranje. Javni zagon je planiran v letu 2027.',
+        'Receipt photo is added. Automatic reading is currently unlocked only for admin testing. Public launch is planned for 2027.'
       ))
       trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
       return
@@ -295,12 +311,16 @@ export default function VnosGoriva() {
 
   const uporabiPrebranTekst = (text: string) => {
     const result = parseReceiptText(text)
+    const found: string[] = []
     if (result.date) setDatum(result.date)
-    if (result.liters) setLitri(result.liters)
-    if (result.pricePerLiter) setCenaNaLiter(result.pricePerLiter)
-    if (result.station) setPostaja(result.station)
-    if (result.fuelType) setTipGoriva(result.fuelType)
-    setOcrMessage(tx('Podatki so prebrani. Pred shranjevanjem jih se enkrat preveri.', 'Data was read. Check it once more before saving.'))
+    if (result.date) found.push(tx('datum', 'date'))
+    if (result.liters) { setLitri(result.liters); found.push(tx('litri', 'liters')) }
+    if (result.pricePerLiter) { setCenaNaLiter(result.pricePerLiter); found.push(tx('cena na liter', 'price per liter')) }
+    if (result.station) { setPostaja(result.station); found.push(tx('postaja', 'station')) }
+    if (result.fuelType) { setTipGoriva(result.fuelType); found.push(tx('tip goriva', 'fuel type')) }
+    setOcrMessage(found.length > 0
+      ? `${tx('Prebrano', 'Read')}: ${found.join(', ')}. ${tx('Kilometrov na racunu ponavadi ni, zato jih vnesi rocno. Pred shranjevanjem vse se enkrat preveri.', 'Fuel receipts usually do not contain mileage, so enter it manually. Check everything once more before saving.')}`
+      : tx('Iz slike nisem prepoznal uporabnih podatkov. Poskusi svetlejso sliko ali prilepi tekst racuna spodaj.', 'I could not recognize usable data from the image. Try a brighter photo or paste the receipt text below.'))
     trackEvent('receipt_text_applied', {
       carId,
       type: 'fuel',
@@ -316,8 +336,12 @@ export default function VnosGoriva() {
   const preberiRacun = async () => {
     if (!ocrAllowed) {
       setOcrMessage(tx(
-        'AI branje racunov je trenutno v internem testiranju. Javni zagon je planiran v letu 2027.',
-        'AI receipt reading is currently in internal testing. Public launch is planned for 2027.'
+        racun
+          ? 'Slika racuna je dodana. Avtomatsko branje je trenutno odklenjeno samo adminu za testiranje. Rocni vnos in shranjevanje slike delujeta normalno.'
+          : 'Najprej dodaj sliko racuna. Avtomatsko branje je trenutno odklenjeno samo adminu za testiranje.',
+        racun
+          ? 'Receipt photo is added. Automatic reading is currently unlocked only for admin testing. Manual entry and photo storage work normally.'
+          : 'First add a receipt photo. Automatic reading is currently unlocked only for admin testing.'
       ))
       trackEvent('receipt_scan_locked_clicked', { carId, type: 'fuel' })
       return
@@ -585,7 +609,9 @@ export default function VnosGoriva() {
               ? tx('Berem racun...', 'Reading receipt...')
               : ocrAllowed
                 ? tx('Scan racuna', 'Scan receipt')
-                : tx('AI scan racunov - prihaja v 2027', 'AI receipt scan - coming in 2027')}
+                : adminCheckDone
+                  ? tx('Dodaj/slikaj racun', 'Add/take receipt photo')
+                  : tx('Preverjam dostop...', 'Checking access...')}
           </button>
           <label className="mt-3 block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
             <input type="file" accept="image/*" onChange={dodajRacun} className="hidden" />
@@ -610,7 +636,7 @@ export default function VnosGoriva() {
                   ? tx('Berem...', 'Reading...')
                   : ocrAllowed
                     ? tx('Ponovno preberi sliko', 'Read photo again')
-                    : tx('AI scan - prihaja v 2027', 'AI scan - coming in 2027')}
+                    : tx('AI scan je zaklenjen', 'AI scan is locked')}
               </button>
               {racunPreview && (
                 <button

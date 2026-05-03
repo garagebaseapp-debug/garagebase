@@ -11,7 +11,7 @@ export type ReceiptScanResult = {
 const toNumber = (value: string) => {
   const cleaned = value
     .replace(/\s/g, '')
-    .replace(/[€]/g, '')
+    .replace(/[€$]/g, '')
     .replace(/eur/gi, '')
     .replace(/(?<=\d)[.](?=\d{3}\b)/g, '')
     .replace(',', '.')
@@ -27,7 +27,7 @@ const normalizeDate = (value: string) => {
   const match = iso || eu
   if (!match) return undefined
   const yearRaw = iso ? match[1] : match[3]
-  const monthRaw = iso ? match[2] : match[2]
+  const monthRaw = match[2]
   const dayRaw = iso ? match[3] : match[1]
   const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw
   return `${year}-${monthRaw.padStart(2, '0')}-${dayRaw.padStart(2, '0')}`
@@ -35,8 +35,8 @@ const normalizeDate = (value: string) => {
 
 const numbersFrom = (line: string) =>
   Array.from(line.matchAll(/\d{1,4}(?:[.\s]\d{3})*(?:[,.]\d{1,3})?|\d+(?:[,.]\d{1,3})?/g))
-    .map((m) => toNumber(m[0]))
-    .filter((n): n is number => n !== null)
+    .map((match) => toNumber(match[0]))
+    .filter((number): number is number => number !== null)
 
 const scoreLine = (line: string, positive: RegExp[], negative: RegExp[] = []) => {
   const lower = line.toLowerCase()
@@ -45,7 +45,7 @@ const scoreLine = (line: string, positive: RegExp[], negative: RegExp[] = []) =>
   return plus - minus
 }
 
-const findBestNumber = (lines: string[], positive: RegExp[], range: (n: number) => boolean) => {
+const findBestNumber = (lines: string[], positive: RegExp[], range: (number: number) => boolean) => {
   const candidates = lines.flatMap((line, index) => {
     const score = scoreLine(line, positive, [/dav/, /ddv/, /tax/, /terminal/, /kartica/, /card/, /racun st/, /change/])
     return numbersFrom(line)
@@ -63,7 +63,7 @@ const findStation = (lines: string[]) => {
   if (known) return known.replace(/\s+/g, ' ').substring(0, 60)
 
   return lines.find((line) =>
-    /^[A-ZČŠŽĆĐ0-9 .,&-]{4,}$/.test(line)
+    /^[A-ZČŠŽĆĐ0-9 .,&-]{4,}$/i.test(line)
     && !/\d{5,}/.test(line)
     && !/(racun|račun|ddv|dav|terminal|kartica|eur|total|skupaj)/i.test(line)
   )?.replace(/\s+/g, ' ').substring(0, 60)
@@ -91,19 +91,19 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
   const liters = findBestNumber(
     lines,
     [/\bl\b/, /lit/, /liter/, /kolicina/, /količina/, /quantity/, /qty/],
-    (n) => n > 0.5 && n < 250
+    (number) => number > 0.5 && number < 250
   )
   if (liters) result.liters = toDecimalString(liters, 2)
 
   const pricePerLiter = findBestNumber(
     lines,
-    [/eur\/l/, /€\/l/, /cena\/l/, /price\/l/, /ppu/, /\bl\b/],
-    (n) => n > 0.5 && n < 5
+    [/eur\/l/, /€\/l/, /\$\/l/, /cena\/l/, /price\/l/, /ppu/, /\bl\b/],
+    (number) => number > 0.5 && number < 5
   )
   if (pricePerLiter) result.pricePerLiter = toDecimalString(pricePerLiter, 3)
 
   const totalLines = lines.filter((line) =>
-    /(skupaj|znesek|total|amount|placilo|plačilo|za placilo|za plačilo|eur|€)/i.test(line)
+    /(skupaj|znesek|total|amount|placilo|plačilo|za placilo|za plačilo|eur|€|\$)/i.test(line)
   )
   const totals = totalLines.flatMap((line, index) =>
     numbersFrom(line)
@@ -111,7 +111,7 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
       .map((value) => ({
         value,
         index,
-        score: scoreLine(line, [/skupaj/, /total/, /amount/, /za placilo/, /za plačilo/, /eur/, /€/], [/dav/, /ddv/, /tax/]),
+        score: scoreLine(line, [/skupaj/, /total/, /amount/, /za placilo/, /za plačilo/, /eur/, /€/, /\$/], [/dav/, /ddv/, /tax/]),
       }))
   )
   const total = totals.sort((a, b) => b.score - a.score || b.index - a.index || b.value - a.value)[0]?.value
@@ -131,7 +131,7 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
 export const readReceiptTextFromImage = async (file: File): Promise<string> => {
   const win = window as any
   if (!win.TextDetector) {
-    throw new Error('OCR is not supported in this browser. Ta brskalnik ne podpira avtomatskega branja teksta iz slike.')
+    throw new Error('Ta brskalnik ne podpira avtomatskega branja teksta iz slike.')
   }
   const bitmap = await createImageBitmap(file)
   const detector = new win.TextDetector()
