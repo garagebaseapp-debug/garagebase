@@ -7,7 +7,8 @@ import { trackEvent } from '@/lib/analytics'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
-type ImportType = 'fuel' | 'service' | 'expense'
+type ImportType = 'drivvo' | 'fuel' | 'service' | 'expense'
+type ImportKind = 'fuel' | 'service' | 'expense'
 type Language = 'sl' | 'en'
 
 type Mapping = {
@@ -23,6 +24,8 @@ type Mapping = {
 }
 
 type PreviewRow = {
+  kind: ImportKind
+  source: string
   date: string
   km: number | null
   description: string
@@ -32,6 +35,14 @@ type PreviewRow = {
   station: string
   category: string
   fuelType: string | null
+  fullTank?: string
+  consumption?: string
+  distance?: number | null
+  driver?: string
+  reason?: string
+  payment?: string
+  notes?: string
+  importDetails?: string
 }
 
 type ParsedSection = {
@@ -129,6 +140,59 @@ const normalizeFuelType = (value?: string | null) => {
   return value || null
 }
 
+const classifySection = (sectionName: string): ImportKind => {
+  const normalized = normalizeText(sectionName)
+  if (normalized.includes('refuelling') || normalized.includes('refueling') || normalized.includes('fuel') || normalized.includes('tank')) return 'fuel'
+  if (normalized.includes('service') || normalized.includes('servis') || normalized.includes('maintenance')) return 'service'
+  return 'expense'
+}
+
+const normalizeCategory = (value?: string | null) => {
+  const normalized = normalizeText(value || '')
+  if (normalized.includes('vinjeta') || normalized.includes('vignette')) return 'vinjeta'
+  if (normalized.includes('registr')) return 'registracija'
+  if (normalized.includes('zavar') || normalized.includes('insurance')) return 'zavarovanje'
+  if (normalized.includes('gume') || normalized.includes('tire') || normalized.includes('tyre')) return 'gume'
+  if (normalized.includes('tehnic') || normalized.includes('inspection')) return 'tehnicni'
+  if (normalized.includes('lizing') || normalized.includes('leasing')) return 'lizing'
+  if (normalized.includes('servis') || normalized.includes('service') || normalized.includes('repair')) return 'servis'
+  return value || 'uvoz'
+}
+
+const asText = (value?: string | number | null) => (value === undefined || value === null ? '' : String(value).trim())
+
+const joinDetails = (details: Array<[string, string | number | null | undefined]>) =>
+  details
+    .map(([label, value]) => [label, asText(value)] as [string, string])
+    .filter(([, value]) => value && value !== '0' && value !== '0 L/100km' && value !== 'No')
+    .map(([label, value]) => `${label}: ${value}`)
+    .join(' | ')
+
+const withImportNote = (base: string, details: string) => {
+  if (!details) return base
+  return base ? `${base} [Drivvo: ${details}]` : `[Drivvo: ${details}]`
+}
+
+const hashToUuid = (value: string) => {
+  let h1 = 0xdeadbeef
+  let h2 = 0x41c6ce57
+  let h3 = 0x9e3779b9
+  let h4 = 0x85ebca6b
+  for (let i = 0; i < value.length; i++) {
+    const ch = value.charCodeAt(i)
+    h1 = Math.imul(h1 ^ ch, 2654435761)
+    h2 = Math.imul(h2 ^ ch, 1597334677)
+    h3 = Math.imul(h3 ^ ch, 2246822507)
+    h4 = Math.imul(h4 ^ ch, 3266489909)
+  }
+  h1 = (Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)) >>> 0
+  h2 = (Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)) >>> 0
+  h3 = (Math.imul(h3 ^ (h3 >>> 16), 2246822507) ^ Math.imul(h4 ^ (h4 >>> 13), 3266489909)) >>> 0
+  h4 = (Math.imul(h4 ^ (h4 >>> 16), 2246822507) ^ Math.imul(h3 ^ (h3 >>> 13), 3266489909)) >>> 0
+  const hex = [h1, h2, h3, h4].map(part => part.toString(16).padStart(8, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
+}
+
 const findHeader = (headers: string[], options: string[]) => {
   const normalized = headers.map(normalizeText)
   const index = normalized.findIndex((header) => options.some((option) => header.includes(normalizeText(option))))
@@ -195,28 +259,73 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
 const sectionToRows = (section: ParsedSection, importType: ImportType, language: Language): PreviewRow[] => {
   const map = autoMapping(section.headers)
   const fallbackDescription = language === 'en' ? 'Import from Drivvo' : 'Uvoz iz Drivvo'
-  const sectionName = normalizeText(section.name)
-  const isFuelSection = sectionName.includes('refuelling') || sectionName.includes('refueling') || sectionName.includes('fuel')
-  const isExpenseSection = sectionName.includes('expense')
+  const kind = classifySection(section.name)
+  const isFuelSection = kind === 'fuel'
+  const isExpenseSection = kind === 'expense'
+  const isServiceSection = kind === 'service'
   const valueAt = (row: Record<string, string>, index: number, mappedHeader?: string) => {
     if (mappedHeader && row[mappedHeader]) return row[mappedHeader]
     const header = section.headers[index]
     return header ? row[header] || '' : ''
   }
 
-  return section.records.map((row) => ({
-    date: parseDate(isFuelSection || isExpenseSection ? valueAt(row, 1, map.date) : row[map.date]),
-    km: toNumber(isFuelSection || isExpenseSection ? valueAt(row, 0, map.km) : row[map.km]),
-    description: isExpenseSection
-      ? valueAt(row, 3, map.category) || valueAt(row, 8, map.description) || fallbackDescription
-      : row[map.description] || row[map.category] || fallbackDescription,
-    amount: toNumber(isFuelSection ? valueAt(row, 4, map.amount) : isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
-    liters: toNumber(isFuelSection ? valueAt(row, 5, map.liters) : row[map.liters]),
-    pricePerLiter: toNumber(isFuelSection ? valueAt(row, 3, map.pricePerLiter) : row[map.pricePerLiter]),
-    station: isFuelSection ? valueAt(row, 19, map.station) : row[map.station] || '',
-    category: isExpenseSection ? valueAt(row, 3, map.category) || 'uvoz' : row[map.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
-    fuelType: normalizeFuelType(isFuelSection ? valueAt(row, 2, map.fuelType) : row[map.fuelType]),
-  })).filter(row => row.date)
+  return section.records.map((row) => {
+    const date = parseDate(isFuelSection || isExpenseSection ? valueAt(row, 1, map.date) : row[map.date])
+    const km = toNumber(isFuelSection || isExpenseSection ? valueAt(row, 0, map.km) : row[map.km])
+    const fullTank = isFuelSection ? valueAt(row, 6) : ''
+    const consumption = isFuelSection ? valueAt(row, 17) : ''
+    const distance = isFuelSection ? toNumber(valueAt(row, 18)) : null
+    const station = isFuelSection ? valueAt(row, 19, map.station) : row[map.station] || ''
+    const driver = isFuelSection ? valueAt(row, 20) : isExpenseSection ? valueAt(row, 5) : ''
+    const reason = isFuelSection ? valueAt(row, 21) : isExpenseSection ? valueAt(row, 6) : ''
+    const payment = isFuelSection ? valueAt(row, 22) : isExpenseSection ? valueAt(row, 7) : ''
+    const notes = isFuelSection ? valueAt(row, 23) : isExpenseSection ? valueAt(row, 8, map.description) : row[map.description] || ''
+    const rawCategory = isExpenseSection ? valueAt(row, 3, map.category) : row[map.category]
+    const description = isFuelSection
+      ? (notes || station || fallbackDescription)
+      : isExpenseSection
+        ? rawCategory || notes || fallbackDescription
+        : row[map.description] || row[map.category] || fallbackDescription
+    const importDetails = isFuelSection
+      ? joinDetails([
+          [language === 'en' ? 'Full tank' : 'Poln tank', fullTank],
+          [language === 'en' ? 'Consumption' : 'Poraba', consumption],
+          [language === 'en' ? 'Distance' : 'Razdalja', distance ? `${distance} km` : ''],
+          [language === 'en' ? 'Driver' : 'Voznik', driver],
+          [language === 'en' ? 'Reason' : 'Razlog', reason],
+          [language === 'en' ? 'Payment' : 'Placilo', payment],
+          [language === 'en' ? 'Note' : 'Opomba', notes],
+        ])
+      : joinDetails([
+          [language === 'en' ? 'Mileage' : 'Kilometri', km ? `${km} km` : ''],
+          [language === 'en' ? 'Driver' : 'Voznik', driver],
+          [language === 'en' ? 'Reason' : 'Razlog', reason],
+          [language === 'en' ? 'Payment' : 'Placilo', payment],
+          [language === 'en' ? 'Note' : 'Opomba', notes],
+        ])
+
+    return {
+      kind: importType === 'service' ? 'service' : kind,
+      source: 'Drivvo',
+      date,
+      km,
+      description,
+      amount: toNumber(isFuelSection ? valueAt(row, 4, map.amount) : isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
+      liters: toNumber(isFuelSection ? valueAt(row, 5, map.liters) : row[map.liters]),
+      pricePerLiter: toNumber(isFuelSection ? valueAt(row, 3, map.pricePerLiter) : row[map.pricePerLiter]),
+      station,
+      category: isExpenseSection ? normalizeCategory(rawCategory) : row[map.category] || (isServiceSection ? 'servis' : isFuelSection ? 'gorivo' : 'uvoz'),
+      fuelType: normalizeFuelType(isFuelSection ? valueAt(row, 2, map.fuelType) : row[map.fuelType]),
+      fullTank,
+      consumption,
+      distance,
+      driver,
+      reason,
+      payment,
+      notes,
+      importDetails,
+    }
+  }).filter(row => row.date)
 }
 
 export default function UvozPodatkov() {
@@ -259,7 +368,7 @@ export default function UvozPodatkov() {
   const drivvoSections = useMemo(() => isDrivvo ? parseSectionedCsv(csv) : [], [csv, isDrivvo])
 
   const activeDrivvoSection = useMemo(() => {
-    if (!isDrivvo) return null
+    if (!isDrivvo || importType === 'drivvo') return null
     const wanted = importType === 'fuel'
       ? ['refuelling', 'refueling', 'fuel']
       : importType === 'expense'
@@ -268,29 +377,42 @@ export default function UvozPodatkov() {
     return drivvoSections.find(section => wanted.some(name => normalizeText(section.name).includes(normalizeText(name)))) || null
   }, [drivvoSections, importType, isDrivvo])
 
+  const drivvoRows = useMemo(() => {
+    if (!isDrivvo) return []
+    return drivvoSections.flatMap(section => sectionToRows(section, classifySection(section.name), language))
+  }, [drivvoSections, isDrivvo, language])
+
   useEffect(() => {
     if (!isDrivvo && parsed.headers.length > 0) setMapping(autoMapping(parsed.headers))
   }, [parsed.headers.join('|'), isDrivvo])
 
-  const previewRows = useMemo(() => {
+  const previewRows = useMemo<PreviewRow[]>(() => {
+    if (importType === 'drivvo') return drivvoRows
     if (activeDrivvoSection) return sectionToRows(activeDrivvoSection, importType, language)
 
-    return parsed.records.map((row) => ({
-      date: parseDate(row[mapping.date]),
-      km: toNumber(row[mapping.km]),
-      description: row[mapping.description] || row[mapping.category] || tx('Uvoz iz druge aplikacije', 'Import from another app'),
-      amount: toNumber(row[mapping.amount]),
-      liters: toNumber(row[mapping.liters]),
-      pricePerLiter: toNumber(row[mapping.pricePerLiter]),
-      station: row[mapping.station] || '',
-      category: row[mapping.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
-      fuelType: row[mapping.fuelType] || null,
-    })).filter(row => row.date)
-  }, [activeDrivvoSection, parsed.records, mapping, importType, language])
+    return parsed.records.map((row) => {
+      const kind: ImportKind = importType === 'service' ? 'service' : importType === 'expense' ? 'expense' : 'fuel'
+      return {
+        kind,
+        source: 'CSV',
+        date: parseDate(row[mapping.date]),
+        km: toNumber(row[mapping.km]),
+        description: row[mapping.description] || row[mapping.category] || tx('Uvoz iz druge aplikacije', 'Import from another app'),
+        amount: toNumber(row[mapping.amount]),
+        liters: toNumber(row[mapping.liters]),
+        pricePerLiter: toNumber(row[mapping.pricePerLiter]),
+        station: row[mapping.station] || '',
+        category: row[mapping.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
+        fuelType: row[mapping.fuelType] || null,
+      }
+    }).filter(row => row.date)
+  }, [activeDrivvoSection, drivvoRows, parsed.records, mapping, importType, language])
 
   const handleFile = async (file?: File) => {
     if (!file) return
-    setCsv(await file.text())
+    const text = await file.text()
+    setCsv(text)
+    if (text.trimStart().startsWith('##')) setImportType('drivvo')
     setMessage('')
   }
 
@@ -300,77 +422,90 @@ export default function UvozPodatkov() {
     setMessage('')
 
     try {
-      const duplicateKey = (row: any) => [row.datum, row.km || '', row.cena_skupaj || row.cena || row.znesek || '', row.postaja || row.servis || row.opis || ''].join('|').toLowerCase()
+      const importStamp = new Date().toISOString()
+      const importSource = isDrivvo ? 'Drivvo' : 'CSV'
+      const importedLabel = (source?: string) => `${source || importSource} import | ${importStamp}`
+      const duplicateKey = (row: any) =>
+        [row.source_entry_id || '', row.datum, row.km || '', row.cena_skupaj || row.cena || row.znesek || '', row.postaja || row.servis || row.opis || ''].join('|').toLowerCase()
+      const sourceEntryId = (kind: ImportKind, row: PreviewRow) =>
+        hashToUuid(`${carId}|${row.source || importSource}|${kind}|${row.date}|${row.km || ''}|${row.amount || ''}|${row.liters || ''}|${row.station || ''}|${row.description || ''}`)
       let skipped = 0
-      let inserted = 0
+      const filterUniqueRows = <T extends Record<string, any>>(rows: T[], existingKeys: Set<string>) => {
+        const importKeys = new Set<string>()
+        return rows.filter(row => {
+          const key = duplicateKey(row)
+          const duplicate = existingKeys.has(key) || importKeys.has(key)
+          if (duplicate) skipped++
+          else importKeys.add(key)
+          return !duplicate
+        })
+      }
+      const insertedByType = { fuel: 0, service: 0, expense: 0 }
 
-      if (importType === 'fuel') {
-        const { data: existing } = await supabase.from('fuel_logs').select('datum,km,cena_skupaj,postaja').eq('car_id', carId)
+      const fuelRows = previewRows.filter(row => row.kind === 'fuel')
+      if (fuelRows.length) {
+        const { data: existing } = await supabase.from('fuel_logs').select('datum,km,cena_skupaj,postaja,source_entry_id').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
-        const importSource = isDrivvo ? 'Drivvo' : 'CSV'
-        const importStamp = new Date().toISOString()
-        const rows = previewRows.map(row => ({
+        const rows = filterUniqueRows(fuelRows.map(row => ({
           car_id: carId,
           datum: row.date,
           km: row.km,
           litri: row.liters,
           cena_na_liter: row.pricePerLiter,
           cena_skupaj: row.amount,
-          postaja: row.station || row.description,
+          postaja: withImportNote(row.station || row.description, row.importDetails || ''),
           tip_goriva: row.fuelType,
           verification_level: 'basic',
-          source_owner_label: `${importSource} import | ${importStamp}`,
-        })).filter(row => {
-          const duplicate = existingKeys.has(duplicateKey(row))
-          if (duplicate) skipped++
-          return !duplicate
-        })
-        inserted = rows.length
+          source_owner_label: importedLabel(row.source),
+          source_entry_id: sourceEntryId('fuel', row),
+          locked_at: importStamp,
+        })), existingKeys)
+        insertedByType.fuel = rows.length
         if (rows.length) {
           const { error } = await supabase.from('fuel_logs').insert(rows)
           if (error) throw error
         }
       }
 
-      if (importType === 'service') {
-        const { data: existing } = await supabase.from('service_logs').select('datum,km,cena,servis,opis').eq('car_id', carId)
+      const serviceRows = previewRows.filter(row => row.kind === 'service')
+      if (serviceRows.length) {
+        const { data: existing } = await supabase.from('service_logs').select('datum,km,cena,servis,opis,source_entry_id').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
-        const rows = previewRows.map(row => ({
+        const rows = filterUniqueRows(serviceRows.map(row => ({
           car_id: carId,
           datum: row.date,
           km: row.km,
-          opis: row.description,
+          opis: withImportNote(row.description, row.importDetails || ''),
           servis: row.station || null,
           cena: row.amount,
           verification_level: 'basic',
-        })).filter(row => {
-          const duplicate = existingKeys.has(duplicateKey(row))
-          if (duplicate) skipped++
-          return !duplicate
-        })
-        inserted = rows.length
+          source_owner_label: importedLabel(row.source),
+          source_entry_id: sourceEntryId('service', row),
+          locked_at: importStamp,
+        })), existingKeys)
+        insertedByType.service = rows.length
         if (rows.length) {
           const { error } = await supabase.from('service_logs').insert(rows)
           if (error) throw error
         }
       }
 
-      if (importType === 'expense') {
-        const { data: existing } = await supabase.from('expenses').select('datum,znesek,kategorija,opis').eq('car_id', carId)
+      const expenseRows = previewRows.filter(row => row.kind === 'expense')
+      if (expenseRows.length) {
+        const { data: existing } = await supabase.from('expenses').select('datum,znesek,kategorija,opis,source_entry_id').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
-        const rows = previewRows.map(row => ({
+        const rows = filterUniqueRows(expenseRows.map(row => ({
           car_id: carId,
           datum: row.date,
           kategorija: row.category || 'uvoz',
-          opis: row.description,
+          opis: withImportNote(row.description, row.importDetails || ''),
           znesek: row.amount || 0,
           verification_level: 'basic',
-        })).filter(row => {
-          const duplicate = existingKeys.has(duplicateKey(row))
-          if (duplicate) skipped++
-          return !duplicate
-        })
-        inserted = rows.length
+          source_owner_label: importedLabel(row.source),
+          source_entry_id: sourceEntryId('expense', row),
+          locked_at: importStamp,
+        })), existingKeys)
+        insertedByType.expense = rows.length
         if (rows.length) {
           const { error } = await supabase.from('expenses').insert(rows)
           if (error) throw error
@@ -384,8 +519,12 @@ export default function UvozPodatkov() {
         const { error } = await supabase.from('cars').update({ km_trenutni: safeKm }).eq('id', carId)
         if (error) throw error
       }
-      trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic' })
-      setMessage(tx(`Uvozeno ${inserted} zapisov. Preskoceno podvojenih: ${skipped}.`, `Imported ${inserted} records. Skipped duplicates: ${skipped}.`))
+      const inserted = insertedByType.fuel + insertedByType.service + insertedByType.expense
+      trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic', insertedByType })
+      setMessage(tx(
+        `Uvozeno ${inserted} zapisov: gorivo ${insertedByType.fuel}, servisi ${insertedByType.service}, stroski ${insertedByType.expense}. Preskoceno podvojenih: ${skipped}.`,
+        `Imported ${inserted} records: fuel ${insertedByType.fuel}, services ${insertedByType.service}, costs ${insertedByType.expense}. Skipped duplicates: ${skipped}.`
+      ))
     } catch (error: any) {
       setMessage(error.message?.includes('verification_level')
         ? tx('Najprej v Supabase zazeni migracijo za zaupanje/prenos, potem poskusi znova.', 'First run the trust/transfer migration in Supabase, then try again.')
@@ -407,10 +546,22 @@ export default function UvozPodatkov() {
   )
 
   const typeLabel = (type: ImportType) => {
+    if (type === 'drivvo') return tx('Drivvo vse', 'Drivvo all')
     if (type === 'fuel') return tx('Gorivo', 'Fuel')
     if (type === 'service') return tx('Servis', 'Service')
     return tx('Stroski', 'Costs')
   }
+
+  const kindLabel = (kind: ImportKind) => {
+    if (kind === 'fuel') return tx('Gorivo', 'Fuel')
+    if (kind === 'service') return tx('Servis', 'Service')
+    return tx('Stroski', 'Costs')
+  }
+
+  const previewCounts = previewRows.reduce((acc, row) => {
+    acc[row.kind] += 1
+    return acc
+  }, { fuel: 0, service: 0, expense: 0 } as Record<ImportKind, number>)
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -432,8 +583,8 @@ export default function UvozPodatkov() {
           <p className="mt-2 text-[#7b7ba6] text-xs">{tx('Uvoz bo shranjen samo na izbrano vozilo.', 'The import will be saved only to the selected vehicle.')}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
-          {(['fuel', 'service', 'expense'] as ImportType[]).map(type => (
+        <div className="grid grid-cols-2 gap-2">
+          {(['drivvo', 'fuel', 'service', 'expense'] as ImportType[]).map(type => (
             <button key={type} onClick={() => setImportType(type)}
               className={`rounded-xl border px-3 py-3 text-sm font-bold ${importType === type ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#7b7ba6]'}`}>
               {typeLabel(type)}
@@ -451,7 +602,12 @@ export default function UvozPodatkov() {
           <div className="rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf14] p-3">
             <p className="text-[#3ecfcf] text-sm font-bold">{tx('Drivvo CSV prepoznan', 'Drivvo CSV detected')}</p>
             <p className="text-[#b7f7f7] text-xs mt-1">
-              {activeDrivvoSection
+              {importType === 'drivvo'
+                ? tx(
+                    `Uvozil bom vse najdene sekcije: gorivo ${previewCounts.fuel}, servisi ${previewCounts.service}, stroski ${previewCounts.expense}.`,
+                    `I will import all detected sections: fuel ${previewCounts.fuel}, services ${previewCounts.service}, costs ${previewCounts.expense}.`
+                  )
+                : activeDrivvoSection
                 ? tx(`Berem sekcijo: ${activeDrivvoSection.name}.`, `Reading section: ${activeDrivvoSection.name}.`)
                 : tx('Za izbrano vrsto ni najdene sekcije. Poskusi Gorivo ali Stroski.', 'No section found for the selected type. Try Fuel or Costs.')}
             </p>
@@ -489,8 +645,14 @@ export default function UvozPodatkov() {
           <div className="max-h-56 overflow-auto flex flex-col gap-2">
             {previewRows.slice(0, 8).map((row, index) => (
               <div key={index} className="rounded-xl bg-[#0f0f1a] border border-[#1e1e32] p-3">
-                <p className="text-white text-sm font-bold">{row.date} - {row.description}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-white text-sm font-bold">{row.date} - {row.description}</p>
+                  <span className="shrink-0 rounded-full bg-[#6c63ff22] border border-[#6c63ff55] px-2 py-1 text-[10px] font-black text-[#a09aff]">
+                    {kindLabel(row.kind)}
+                  </span>
+                </div>
                 <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? `${row.km.toLocaleString()} km` : tx('brez km', 'no mileage')} | {row.amount ? formatMoney(row.amount, valuta) : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
+                {row.importDetails && <p className="mt-2 text-[#5a5a80] text-[11px] leading-relaxed">{row.importDetails}</p>}
               </div>
             ))}
             {previewRows.length === 0 && <p className="text-[#7b7ba6] text-sm">{tx('Ni prepoznanih vrstic. Preveri datum stolpec ali izbrano sekcijo.', 'No rows detected. Check the date column or selected section.')}</p>}
