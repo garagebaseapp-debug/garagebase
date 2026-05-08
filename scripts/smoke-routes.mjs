@@ -19,6 +19,7 @@ const requiredPaths = [
   'src/app/uvoz-podatkov/page.tsx',
   'src/app/zgodovina-goriva/page.tsx',
   'src/app/api/cron/route.ts',
+  'src/app/api/health/route.ts',
   'src/app/api/push/route.ts',
   'src/app/api/delete-account/route.ts',
   'SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql',

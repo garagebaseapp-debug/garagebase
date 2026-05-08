@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:smoke": "node scripts/smoke-routes.mjs",
+    "prelaunch": "npm run test:smoke && node scripts/prelaunch-check.mjs && npm run build",
     "check": "npm run test:smoke && npm run build"
   },
   "dependencies": {

@@ -4,7 +4,7 @@ Ta dokument je kratek proces pred vsakim vecjim push/deployem.
 
 ## Preden gre na live
 
-1. `npm run check`
+1. `npm run prelaunch`
 2. Preveri, da admin panel nima novih kriticnih napak.
 3. Lokalno ali na staging preveri:
    - prijava/registracija
@@ -16,15 +16,16 @@ Ta dokument je kratek proces pred vsakim vecjim push/deployem.
    - QR scan
    - nastavitve
    - push test, samo admin
-4. Ce je sprememba v bazi, najprej zaženi SQL na staging bazi.
+4. Ce je sprememba v bazi, najprej zazeni SQL na staging bazi.
 5. Sele potem deploy na production.
 
 ## Po deployu
 
 1. Odpri `getgaragebase.com`.
-2. Preveri `/login`, `/garaza`, `/nastavitve`, `/admin`.
-3. V adminu preveri `Napake v sistemu`.
-4. Ce se pojavi vec napak po deployu, naredi rollback v Vercel.
+2. Odpri `/api/health` in preveri, da je `ok: true`.
+3. Preveri `/login`, `/garaza`, `/nastavitve`, `/admin`.
+4. V adminu preveri `Napake v sistemu`.
+5. Ce se pojavi vec napak po deployu, naredi rollback v Vercel.
 
 ## Pravilo
 
