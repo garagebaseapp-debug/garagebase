@@ -336,6 +336,7 @@ export default function UvozPodatkov() {
   const [mapping, setMapping] = useState<Mapping>(emptyMapping)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [lastImportCounts, setLastImportCounts] = useState<Record<ImportKind, number> | null>(null)
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
 
@@ -414,12 +415,14 @@ export default function UvozPodatkov() {
     setCsv(text)
     if (text.trimStart().startsWith('##')) setImportType('drivvo')
     setMessage('')
+    setLastImportCounts(null)
   }
 
   const importData = async () => {
     if (!carId || previewRows.length === 0) return
     setLoading(true)
     setMessage('')
+    setLastImportCounts(null)
 
     try {
       const importStamp = new Date().toISOString()
@@ -521,11 +524,16 @@ export default function UvozPodatkov() {
       }
       const inserted = insertedByType.fuel + insertedByType.service + insertedByType.expense
       trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic', insertedByType })
+      localStorage.removeItem('garagebase_garaza_cache')
+      localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
+      localStorage.removeItem('garagebase_stroski_garaza_cache')
+      setLastImportCounts(insertedByType)
       setMessage(tx(
         `Uvozeno ${inserted} zapisov: gorivo ${insertedByType.fuel}, servisi ${insertedByType.service}, stroski ${insertedByType.expense}. Preskoceno podvojenih: ${skipped}.`,
         `Imported ${inserted} records: fuel ${insertedByType.fuel}, services ${insertedByType.service}, costs ${insertedByType.expense}. Skipped duplicates: ${skipped}.`
       ))
     } catch (error: any) {
+      setLastImportCounts(null)
       setMessage(error.message?.includes('verification_level')
         ? tx('Najprej v Supabase zazeni migracijo za zaupanje/prenos, potem poskusi znova.', 'First run the trust/transfer migration in Supabase, then try again.')
         : tx('Uvoz ni uspel: ', 'Import failed: ') + (error.message || tx('neznana napaka', 'unknown error')))
@@ -659,12 +667,42 @@ export default function UvozPodatkov() {
           </div>
         </div>
 
+        <div className="rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf12] p-4">
+          <p className="text-[#3ecfcf] text-sm font-black">{tx('Varna uvozna sled', 'Safe import trail')}</p>
+          <p className="mt-1 text-[#b7f7f7] text-xs leading-relaxed">
+            {tx(
+              'Zapisi se shranijo na izbrano vozilo kot Basic import, dobijo casovni zig in podvojeni vnosi se preskocijo.',
+              'Records are saved to the selected vehicle as a Basic import, get a timestamp, and duplicate entries are skipped.'
+            )}
+          </p>
+        </div>
+
         <button onClick={importData} disabled={loading || !carId || previewRows.length === 0}
           className="w-full bg-[#6c63ff] text-white font-semibold py-3 rounded-xl disabled:opacity-50">
           {loading ? tx('Uvazam...', 'Importing...') : tx(`Uvozi ${previewRows.length} zapisov`, `Import ${previewRows.length} records`)}
         </button>
 
-        {message && <p className="rounded-xl border border-[#6c63ff44] bg-[#6c63ff18] p-3 text-sm text-[#a09aff]">{message}</p>}
+        {message && (
+          <div className="rounded-xl border border-[#6c63ff44] bg-[#6c63ff18] p-3 text-sm text-[#a09aff] space-y-3">
+            <p>{message}</p>
+            {lastImportCounts && (
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => window.location.href = `/zgodovina-goriva?car=${carId}`}
+                  className="rounded-lg border border-[#3ecfcf55] bg-[#3ecfcf14] px-2 py-2 text-xs font-bold text-[#3ecfcf]">
+                  {tx('Gorivo', 'Fuel')} {lastImportCounts.fuel}
+                </button>
+                <button onClick={() => window.location.href = `/zgodovina-servisa?car=${carId}`}
+                  className="rounded-lg border border-[#f59e0b55] bg-[#f59e0b14] px-2 py-2 text-xs font-bold text-[#f59e0b]">
+                  {tx('Servisi', 'Services')} {lastImportCounts.service}
+                </button>
+                <button onClick={() => window.location.href = `/stroski?car=${carId}`}
+                  className="rounded-lg border border-[#6c63ff55] bg-[#6c63ff14] px-2 py-2 text-xs font-bold text-[#c8c4ff]">
+                  {tx('Stroski', 'Costs')} {lastImportCounts.expense}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <HomeButton />

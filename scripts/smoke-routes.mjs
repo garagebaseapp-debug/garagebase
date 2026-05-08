@@ -16,6 +16,8 @@ const requiredPaths = [
   'src/app/admin/page.tsx',
   'src/app/admin-napake/page.tsx',
   'src/app/prijava-napake/page.tsx',
+  'src/app/uvoz-podatkov/page.tsx',
+  'src/app/zgodovina-goriva/page.tsx',
   'src/app/api/cron/route.ts',
   'src/app/api/push/route.ts',
   'src/app/api/delete-account/route.ts',

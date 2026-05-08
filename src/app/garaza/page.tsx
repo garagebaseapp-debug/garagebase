@@ -22,6 +22,7 @@ export default function Garaza() {
   const [prikaz, setPrikaz] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
+  const [liteCarId, setLiteCarId] = useState('')
   const [garazaPisava, setGarazaPisava] = useState(100)
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
@@ -55,7 +56,10 @@ export default function Garaza() {
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed.avti)) setAvti(parsed.avti)
+          if (Array.isArray(parsed.avti)) {
+            setAvti(parsed.avti)
+            if (parsed.avti[0]?.id) setLiteCarId(prev => prev || parsed.avti[0].id)
+          }
           if (parsed.opomniki) setOpomniki(parsed.opomniki)
         } catch {}
       }
@@ -91,6 +95,7 @@ export default function Garaza() {
         cars = fallback || []
       }
       setAvti(cars)
+      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
 
       let opomnikMap: { [key: string]: any[] } = {}
       if (cars.length > 0) {
@@ -135,6 +140,7 @@ export default function Garaza() {
       }
       const cars = data || []
       setAvti(cars)
+      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
       if (cars.length > 0) {
         const ids = cars.map((avto: any) => avto.id)
         const { data: opData } = await supabase.from('reminders').select('*').in('car_id', ids).order('datum', { ascending: true })
@@ -219,13 +225,15 @@ export default function Garaza() {
     setAvti(prev => prev.map(a => a.id === carId ? { ...a, archive_reminder_dismissed_until: until.toISOString() } : a))
   }
 
-  const prviAvto = avti[0]
+  const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
+  const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
   const pojdiNaVnos = (pot: string) => {
-    if (!prviAvto) {
+    const targetAvto = liteAvto || avti[0]
+    if (!targetAvto) {
       window.location.href = '/dodaj-avto'
       return
     }
-    window.location.href = `${pot}?car=${prviAvto.id}`
+    window.location.href = `${pot}?car=${targetAvto.id}`
   }
 
   const onDragStart = (index: number) => setDragIndex(index)
@@ -438,46 +446,81 @@ export default function Garaza() {
         </p>
       )}
 
-      {nacin === 'lite' && avti.length > 0 && !urejanje && (
+      {showLiteHome && (
         <div className="px-5 pb-4">
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 space-y-4"
+            style={{ '--gb-card-font-scale': garazaPisava / 100 } as any}>
             <div className="flex items-start justify-between gap-3 mb-3">
               <div>
-                <p className="text-white font-bold text-base">Hitri vnos</p>
-                <p className="text-[#5a5a80] text-xs mt-0.5">Lite nacin za najpogostejse akcije</p>
+                <p className="text-white font-bold text-[calc(18px*var(--gb-card-font-scale,1))]">{tx('Hitri vnos', 'Quick entry')}</p>
+                <p className="text-[#8a8ab0] text-[calc(12px*var(--gb-card-font-scale,1))] mt-0.5">
+                  {tx('Lite nacin prikaze samo najpogostejse akcije.', 'Lite mode shows only the most common actions.')}
+                </p>
               </div>
               <button onClick={() => window.location.href = '/nastavitve'}
                 className="bg-[#13131f] border border-[#1e1e32] text-[#8080a0] text-xs font-semibold px-3 py-2 rounded-xl">
-                Nastavitve
+                {tx('Nastavitve', 'Settings')}
               </button>
+            </div>
+            <div className="rounded-2xl border border-[#2a2a40] bg-[#13131f] p-3">
+              <p className="text-[#8a8ab0] text-xs uppercase tracking-wider mb-2">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {avti.map((avto: any) => (
+                  <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
+                    className={`shrink-0 rounded-xl border px-3 py-2 text-left min-w-[140px] ${
+                      liteAvto?.id === avto.id
+                        ? 'border-[#6c63ff] bg-[#6c63ff22] text-white'
+                        : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8ab0]'
+                    }`}>
+                    <span className="block text-sm font-black truncate">{avto.znamka} {avto.model}</span>
+                    <span className="block text-xs mt-0.5 text-[#3ecfcf]">{avto.km_trenutni ? `${Number(avto.km_trenutni).toLocaleString()} km` : tx('brez km', 'no mileage')}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <button onClick={() => pojdiNaVnos('/vnos-goriva')}
                 className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-xl py-4 px-3 text-left font-bold">
                 <span className="block text-2xl mb-1">⛽</span>
-                Vnos goriva
+                {tx('Vnos goriva', 'Fuel entry')}
               </button>
               <button onClick={() => pojdiNaVnos('/vnos-servisa')}
                 className="bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] rounded-xl py-4 px-3 text-left font-bold">
                 <span className="block text-2xl mb-1">🔧</span>
-                Servis
+                {tx('Servis', 'Service')}
               </button>
               <button onClick={() => pojdiNaVnos('/vnos-stroska')}
                 className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] rounded-xl py-4 px-3 text-left font-bold">
                 <span className="block text-2xl mb-1">📊</span>
-                Strosek
+                {tx('Strosek', 'Cost')}
               </button>
               <button onClick={() => pojdiNaVnos('/opomniki')}
                 className="bg-[#16a34a22] border border-[#16a34a66] text-[#4ade80] rounded-xl py-4 px-3 text-left font-bold">
                 <span className="block text-2xl mb-1">🔔</span>
-                Opomnik
+                {tx('Opomnik', 'Reminder')}
               </button>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => window.location.href = `/dashboard?car=${liteAvto?.id}`}
+                className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-3 text-sm font-bold text-white disabled:opacity-50"
+                disabled={!liteAvto?.id}>
+                {tx('Odpri pregled', 'Open overview')}
+              </button>
+              <button onClick={() => pojdiDodajAvto('lite')}
+                className="rounded-xl border border-dashed border-[#6c63ff66] bg-[#6c63ff11] px-3 py-3 text-sm font-bold text-[#a09aff]">
+                + {tx('Dodaj vozilo', 'Add vehicle')}
+              </button>
+            </div>
+            {limitMessage && limitAnchor === 'lite' && (
+              <p className="rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-base font-black leading-snug text-[#fecaca] shadow-lg shadow-[#ef444422]">
+                {limitMessage}
+              </p>
+            )}
           </div>
         </div>
       )}
 
-      {!loading && avti.length === 0 ? (
+      {showLiteHome ? null : !loading && avti.length === 0 ? (
         <div className="flex-1 flex items-center justify-center px-5">
           <div className="text-center">
             <p className="text-6xl mb-4">🚗</p>
