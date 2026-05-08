@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { trackEvent } from '@/lib/analytics'
-import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 
@@ -145,7 +145,7 @@ export default function VnosStroska() {
         })
       }
     } catch (error: any) {
-      setMessage(error.message || 'Slike racuna ni bilo mogoce pripraviti.')
+      setMessage(imageCompressionErrorText(error, jeEn ? 'en' : 'sl'))
       return
     }
     setOcrText('')

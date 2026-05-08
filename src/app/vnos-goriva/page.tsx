@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
-import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { useLanguage } from '@/lib/i18n'
 import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
@@ -289,7 +289,7 @@ export default function VnosGoriva() {
         })
       }
     } catch (error: any) {
-      setMessage(error.message || tx('Slike racuna ni bilo mogoce pripraviti.', 'Receipt photo could not be prepared.'))
+      setMessage(imageCompressionErrorText(error, language))
       return
     }
     setOcrText('')

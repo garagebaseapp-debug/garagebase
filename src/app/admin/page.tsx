@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 type StatCard = {
   label: string
@@ -218,19 +219,13 @@ export default function AdminPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user?.email) {
+      const adminCheck = await checkCurrentUserAdmin()
+      if (!adminCheck.user?.email) {
         window.location.href = '/'
         return
       }
 
-      const { data: adminRow, error: adminError } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', user.email)
-        .maybeSingle()
-
-      if (adminError || !adminRow) {
+      if (!adminCheck.isAdmin) {
         setIsAdmin(false)
         setMessage(tx('Ta racun nima admin dostopa.', 'This account does not have admin access.'))
         setLoading(false)

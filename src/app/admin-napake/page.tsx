@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 const statuses = [
   { value: 'new', sl: 'Novo', en: 'New', color: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf18] border-[#3ecfcf55]' },
@@ -33,13 +34,12 @@ export default function AdminNapakePage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const adminCheck = await checkCurrentUserAdmin()
+      if (!adminCheck.user) {
         window.location.href = '/'
         return
       }
-      const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', user.email).maybeSingle()
-      if (!adminRow) {
+      if (!adminCheck.isAdmin) {
         setMessage(tx('Ta račun nima admin dostopa.', 'This account does not have admin access.'))
         setLoading(false)
         return

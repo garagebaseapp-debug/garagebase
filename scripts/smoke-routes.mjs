@@ -22,6 +22,7 @@ const requiredPaths = [
   'SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql',
   'SUPABASE_MIGRACIJA_BUG_REPORTS.sql',
   'SUPABASE_MIGRACIJA_ERROR_LOGGING.sql',
+  'SUPABASE_MIGRACIJA_STABILNOST_HITROST_PUSH.sql',
 ]
 
 const missing = requiredPaths.filter((file) => !existsSync(join(root, file)))

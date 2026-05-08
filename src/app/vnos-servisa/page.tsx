@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
-import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 
@@ -131,7 +131,7 @@ export default function VnosServisa() {
         }
       })
     } catch (error: any) {
-      setMessage(error.message || tx('Slike racuna ni bilo mogoce pripraviti.', 'Receipt photos could not be prepared.'))
+      setMessage(imageCompressionErrorText(error, language))
     }
   }
 
@@ -157,7 +157,7 @@ export default function VnosServisa() {
         })
       }
     } catch (error: any) {
-      setMessage(error.message || tx('Slike stevca ni bilo mogoce pripraviti.', 'Odometer photo could not be prepared.'))
+      setMessage(imageCompressionErrorText(error, language))
       return
     }
   }

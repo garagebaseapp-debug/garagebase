@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 const statusOptions = [
   { value: 'new', sl: 'Novo', en: 'New', color: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf18] border-[#3ecfcf55]' },
@@ -41,9 +42,14 @@ export default function AdminFeedbackPage() {
 
   useEffect(() => {
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const adminCheck = await checkCurrentUserAdmin()
+      if (!adminCheck.user) {
         window.location.href = '/'
+        return
+      }
+      if (!adminCheck.isAdmin) {
+        setMessage(tx('Ta racun nima admin dostopa.', 'This account does not have admin access.'))
+        setLoading(false)
         return
       }
       await loadFeedback()

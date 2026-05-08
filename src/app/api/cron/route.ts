@@ -102,10 +102,64 @@ async function sendPush(subscription: any, title: string, body: string) {
   )
 }
 
+async function recordPushSuccess(userId: string, endpoint?: string) {
+  if (!endpoint) return
+  try {
+    await supabase
+      .from('push_subscriptions')
+      .update({
+        last_success_at: new Date().toISOString(),
+        last_error_at: null,
+        last_error: null,
+        fail_count: 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('subscription->>endpoint', endpoint)
+  } catch {
+    // Optional observability columns may not exist until the stability SQL is run.
+  }
+}
+
+async function recordPushFailure(userId: string, endpoint: string | undefined, error: any) {
+  if (!endpoint) return
+  const statusCode = Number(error?.statusCode || 0)
+  if (statusCode === 404 || statusCode === 410) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('subscription->>endpoint', endpoint)
+    return
+  }
+
+  try {
+    await supabase
+      .from('push_subscriptions')
+      .update({
+        last_error_at: new Date().toISOString(),
+        last_error: String(error?.body || error?.message || 'push_send_failed').slice(0, 500),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+      .eq('subscription->>endpoint', endpoint)
+  } catch {
+    // Optional observability columns may not exist until the stability SQL is run.
+  }
+}
+
 function uniqueSubscriptions(subs: any[]) {
   return Array.from(
     new Map(subs.map((sub) => [sub.subscription?.endpoint, sub])).values()
   )
+}
+
+function chunkArray<T>(items: T[], size: number) {
+  const chunks: T[][] = []
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size))
+  }
+  return chunks
 }
 
 function buildSummary(items: string[]) {
@@ -146,13 +200,6 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { data: opomniki, error: remindersError } = await supabase
-      .from('reminders')
-      .select('*, cars(znamka, model, user_id, km_trenutni)')
-
-    if (remindersError) throw remindersError
-    if (!opomniki) return NextResponse.json({ success: true, poslano: 0 })
-
     const today = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'Europe/Ljubljana',
       year: 'numeric',
@@ -167,6 +214,57 @@ export async function GET(req: Request) {
     let preskocenoIzklopljeno = 0
     let napakePosiljanja = 0
 
+    const { data: allSubs, error: subsError } = await supabase
+      .from('push_subscriptions')
+      .select('user_id, subscription, notification_settings, notification_state')
+
+    if (subsError) throw subsError
+
+    const dueSubs: any[] = []
+    for (const sub of uniqueSubscriptions(allSubs || [])) {
+      const settings: NotificationSettings = {
+        ...defaultNotificationSettings,
+        ...(sub.notification_settings || {}),
+      }
+      if (!settings.enabled) {
+        preskocenoIzklopljeno++
+        continue
+      }
+      if (!shouldRunForSendTime(settings.sendTime)) {
+        preskocenoCas++
+        continue
+      }
+      dueSubs.push({ ...sub, notification_settings: settings })
+    }
+
+    const dueUserIds = Array.from(new Set(dueSubs.map((sub) => sub.user_id).filter(Boolean)))
+    naprav = dueSubs.length
+
+    if (dueUserIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        poslano: 0,
+        pregledano: 0,
+        uporabnikov: 0,
+        naprav,
+        preskocenoCas,
+        preskocenoIzklopljeno,
+        napakePosiljanja: 0,
+        timezone: 'Europe/Ljubljana',
+      })
+    }
+
+    const opomniki: any[] = []
+    for (const userIdBatch of chunkArray(dueUserIds, 200)) {
+      const { data: reminderBatch, error: remindersError } = await supabase
+        .from('reminders')
+        .select('id, tip, datum, km_opomnik, cars!inner(znamka, model, user_id, km_trenutni)')
+        .in('cars.user_id', userIdBatch)
+
+      if (remindersError) throw remindersError
+      opomniki.push(...(reminderBatch || []))
+    }
+
     const userReminders = new Map<string, any[]>()
     for (const op of opomniki) {
       const userId = op.cars?.user_id
@@ -174,39 +272,34 @@ export async function GET(req: Request) {
       userReminders.set(userId, [...(userReminders.get(userId) || []), op])
     }
 
-    const userIds = Array.from(userReminders.keys())
-    if (userIds.length === 0) return NextResponse.json({ success: true, poslano: 0, pregledano: 0 })
-
-    const { data: allSubs, error: subsError } = await supabase
-      .from('push_subscriptions')
-      .select('user_id, subscription, notification_settings, notification_state')
-      .in('user_id', userIds)
-
-    if (subsError) throw subsError
+    uporabnikov = userReminders.size
+    if (uporabnikov === 0) {
+      return NextResponse.json({
+        success: true,
+        poslano: 0,
+        pregledano: 0,
+        uporabnikov: 0,
+        naprav,
+        preskocenoCas,
+        preskocenoIzklopljeno,
+        napakePosiljanja: 0,
+        timezone: 'Europe/Ljubljana',
+      })
+    }
 
     const subsByUser = new Map<string, any[]>()
-    for (const sub of allSubs || []) {
+    for (const sub of dueSubs) {
       subsByUser.set(sub.user_id, [...(subsByUser.get(sub.user_id) || []), sub])
     }
 
     for (const [userId, reminders] of userReminders.entries()) {
       const subs = uniqueSubscriptions(subsByUser.get(userId) || [])
       if (subs.length === 0) continue
-      uporabnikov++
-      naprav += subs.length
 
       for (const sub of subs) {
         const settings: NotificationSettings = {
           ...defaultNotificationSettings,
           ...(sub.notification_settings || {}),
-        }
-        if (!settings.enabled) {
-          preskocenoIzklopljeno++
-          continue
-        }
-        if (!shouldRunForSendTime(settings.sendTime)) {
-          preskocenoCas++
-          continue
         }
 
         const state: NotificationState = sub.notification_state || {}
@@ -301,22 +394,27 @@ export async function GET(req: Request) {
               `GarageBase - ${messages.length} opomnikov`,
               buildSummary(messages)
             )
+            await recordPushSuccess(userId, sub.subscription?.endpoint)
             poslano++
             delivered = true
           } catch (e) {
             console.error('Napaka pri posiljanju povzetka:', e)
+            await recordPushFailure(userId, sub.subscription?.endpoint, e)
             napakePosiljanja++
           }
         }
 
         if (changedState && (messages.length === 0 || delivered)) {
-          await supabase
+          let updateQuery = supabase
             .from('push_subscriptions')
             .update({
               notification_state: state,
               updated_at: new Date().toISOString(),
             })
             .eq('user_id', userId)
+          const endpoint = sub.subscription?.endpoint
+          if (endpoint) updateQuery = updateQuery.eq('subscription->>endpoint', endpoint)
+          await updateQuery
         }
       }
     }

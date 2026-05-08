@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
-import { compressImageFile, uploadImageProfiles } from '@/lib/image-compress'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
+import { getStoredLanguage } from '@/lib/i18n'
 
 export default function NastavitveAvta() {
   const [avto, setAvto] = useState<any>(null)
@@ -54,6 +55,7 @@ export default function NastavitveAvta() {
   }
 
   const standardniTipi = ['avto', 'motor', 'kombi', 'tovornjak', 'plovilo']
+  const imageError = (error: unknown) => imageCompressionErrorText(error, getStoredLanguage() === 'en' ? 'en' : 'sl')
 
   useEffect(() => {
     const init = async () => {
@@ -108,7 +110,7 @@ export default function NastavitveAvta() {
     try {
       preparedFile = (await compressImageFile(file, uploadImageProfiles.vehicle)).file
     } catch (error: any) {
-      setMessage(error.message || 'Slike ni bilo mogoce pripraviti.')
+      setMessage(imageError(error))
       setUploadingSlika(false)
       return
     }
@@ -135,7 +137,7 @@ export default function NastavitveAvta() {
       try {
         preparedFile = (await compressImageFile(file, uploadImageProfiles.document)).file
       } catch (error: any) {
-        setMessage(error.message || 'Slike homologacije ni bilo mogoce pripraviti.')
+        setMessage(imageError(error))
         setUploadingHomologacija(false)
         return
       }
