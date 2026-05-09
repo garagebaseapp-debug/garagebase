@@ -7,6 +7,7 @@ import { createTransferToken, scanUrl, transferExpiresAt } from '@/lib/transfer'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { distanceUnitLabel, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import QRCode from 'qrcode'
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
@@ -207,10 +208,12 @@ const pdfCopy = {
   },
 } as const
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR' }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: any) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const money = (value?: number | null) => typeof value === 'number' ? `${value.toFixed(2)} ${currencySymbol(currency)}` : '-'
+  const unitLabel = distanceUnitLabel(distanceUnit as DistanceUnit)
+  const distance = (value?: number | null) => typeof value === 'number' ? `${value.toLocaleString(locale)} ${unitLabel}` : '-'
   const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
   const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
@@ -254,7 +257,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             {privacy.showPlate !== false && avto.tablica && <Text style={styles.carInfo}>{copy.plate}: {privacy.maskPlate === false ? avto.tablica.toUpperCase() : maskPlate(avto.tablica)}</Text>}
             {privacy.showVin !== false && avto.vin && <Text style={styles.carInfo}>VIN: {privacy.maskVin === false ? avto.vin : maskVin(avto.vin)}</Text>}
             {privacy.showFuel !== false && avto.gorivo && <Text style={styles.carInfo}>{copy.fuel}: {avto.gorivo}</Text>}
-            {privacy.showKm !== false && avto.km_trenutni && <Text style={styles.carInfo}>{copy.currentKm}: {avto.km_trenutni.toLocaleString()} km</Text>}
+            {privacy.showKm !== false && avto.km_trenutni && <Text style={styles.carInfo}>{copy.currentKm}: {distance(avto.km_trenutni)}</Text>}
             <Text style={styles.reportDate}>{copy.generated}: {danes}</Text>
           </View>
         </View>
@@ -295,7 +298,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.currentKm.toUpperCase()}</Text>
-              <Text style={styles.statValue}>{privacy.showKm !== false ? (avto.km_trenutni?.toLocaleString() || '-') : '-'}</Text>
+              <Text style={styles.statValue}>{privacy.showKm !== false ? distance(avto.km_trenutni) : '-'}</Text>
             </View>
           </View>
         </View>
@@ -361,7 +364,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             <Text style={styles.sectionTitle}>{copy.serviceBook}</Text>
             <View style={styles.tableHeader}>
               <Text style={styles.sDateH}>{copy.date}</Text>
-              <Text style={styles.sKmH}>{copy.km}</Text>
+              <Text style={styles.sKmH}>{unitLabel}</Text>
               <Text style={styles.sOpisH}>{copy.work}</Text>
               <Text style={styles.sCenaH}>{copy.price}</Text>
               <Text style={styles.sRacunH}>{copy.receipt}</Text>
@@ -370,7 +373,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             {servisi.map((s: any, i: number) => (
               <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.sKm}>{s.km?.toLocaleString()}</Text>
+                <Text style={styles.sKm}>{distance(s.km)}</Text>
                 <Text style={styles.sOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 55)}{s.servis ? ` (${s.servis})` : ''}</Text>
                 <Text style={styles.sCena}>{money(s.cena)}</Text>
                 <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
@@ -392,7 +395,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             <Text style={styles.sectionTitle}>{copy.fuelLog}</Text>
             <View style={styles.tableHeader}>
               <Text style={styles.gDateH}>{copy.date}</Text>
-              <Text style={styles.gKmH}>{copy.km}</Text>
+              <Text style={styles.gKmH}>{unitLabel}</Text>
               <Text style={styles.gTipH}>{copy.type}</Text>
               <Text style={styles.gOpisH}>{copy.litersStation}</Text>
               <Text style={styles.gCenaH}>{copy.price}</Text>
@@ -402,7 +405,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             {gorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.gKm}>{g.km?.toLocaleString()}</Text>
+                <Text style={styles.gKm}>{distance(g.km)}</Text>
                 <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
 </Text>
@@ -472,6 +475,7 @@ export default function Report() {
   const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([])
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [privacy, setPrivacy] = useState({
     showPlate: true,
     maskPlate: true,
@@ -575,6 +579,7 @@ export default function Report() {
       const currentLanguage = getStoredLanguage()
       setLanguage(currentLanguage)
       setValuta(getCurrencyFromSettings())
+      setEnotaRazdalje(getDistanceUnitFromSettings())
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
@@ -765,7 +770,7 @@ export default function Report() {
 
       {ready && (
         <PDFDownloadLink
-          document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} privacy={privacy} currency={valuta} />}
+          document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} privacy={privacy} currency={valuta} distanceUnit={enotaRazdalje} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
           {({ loading: pdfLoading }) => (
             <button onClick={() => trackEvent('report_pdf_download', { carId: avto?.id, includeVerifyQr, includeImportQr, includeVehicleImage, includeReceiptImages, includeServices, includeFuel, includeExpenses, expenseCategories: selectedExpenseCategories, privacy })} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-4 rounded-xl transition-colors flex items-center justify-center gap-3 text-lg">

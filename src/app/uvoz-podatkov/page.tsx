@@ -138,6 +138,7 @@ const toNumber = (value?: string) => {
     .replace(/\s/g, '')
     .replace('EUR', '')
     .replace('€', '')
+    .replace('$', '')
     .replace(',', '.')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
@@ -186,6 +187,34 @@ const normalizeCategory = (value?: string | null) => {
   if (normalized.includes('lizing') || normalized.includes('leasing')) return 'lizing'
   if (normalized.includes('servis') || normalized.includes('service') || normalized.includes('repair')) return 'servis'
   return value || 'uvoz'
+}
+
+const optionalImportColumns = new Set([
+  'verification_level',
+  'source_owner_label',
+  'source_entry_id',
+  'imported_at',
+  'locked_at',
+  'verified_document_url',
+])
+
+const missingOptionalImportColumn = (error: unknown) => {
+  const message = String((error as { message?: string } | null)?.message || '')
+  return message.includes('schema cache') && message.includes('Could not find')
+}
+
+const stripOptionalImportColumns = (rows: Array<Record<string, unknown>>) =>
+  rows.map(row => Object.fromEntries(
+    Object.entries(row).filter(([key]) => !optionalImportColumns.has(key))
+  ))
+
+const insertImportRows = async (table: 'fuel_logs' | 'service_logs' | 'expenses', rows: Array<Record<string, unknown>>) => {
+  if (!rows.length) return
+  const { error } = await supabase.from(table).insert(rows)
+  if (!error) return
+  if (!missingOptionalImportColumn(error)) throw error
+  const retry = await supabase.from(table).insert(stripOptionalImportColumns(rows))
+  if (retry.error) throw retry.error
 }
 
 const asText = (value?: string | number | null) => (value === undefined || value === null ? '' : String(value).trim())
@@ -476,10 +505,7 @@ export default function UvozPodatkov() {
           source_owner_label: importedLabel(row.source),
         })), existingKeys)
         insertedByType.fuel = rows.length
-        if (rows.length) {
-          const { error } = await supabase.from('fuel_logs').insert(rows)
-          if (error) throw error
-        }
+        await insertImportRows('fuel_logs', rows)
       }
 
       const serviceRows = previewRows.filter(row => row.kind === 'service')
@@ -497,10 +523,7 @@ export default function UvozPodatkov() {
           source_owner_label: importedLabel(row.source),
         })), existingKeys)
         insertedByType.service = rows.length
-        if (rows.length) {
-          const { error } = await supabase.from('service_logs').insert(rows)
-          if (error) throw error
-        }
+        await insertImportRows('service_logs', rows)
       }
 
       const expenseRows = previewRows.filter(row => row.kind === 'expense')
@@ -517,10 +540,7 @@ export default function UvozPodatkov() {
           source_owner_label: importedLabel(row.source),
         })), existingKeys)
         insertedByType.expense = rows.length
-        if (rows.length) {
-          const { error } = await supabase.from('expenses').insert(rows)
-          if (error) throw error
-        }
+        await insertImportRows('expenses', rows)
       }
 
       const maxKm = previewRows.reduce((max, row) => row.km && row.km > max ? row.km : max, 0)
@@ -542,9 +562,7 @@ export default function UvozPodatkov() {
       ))
     } catch (error: any) {
       setLastImportCounts(null)
-      setMessage(error.message?.includes('verification_level')
-        ? tx('Najprej v Supabase zazeni migracijo za zaupanje/prenos, potem poskusi znova.', 'First run the trust/transfer migration in Supabase, then try again.')
-        : tx('Uvoz ni uspel: ', 'Import failed: ') + (error.message || tx('neznana napaka', 'unknown error')))
+      setMessage(tx('Uvoz ni uspel: ', 'Import failed: ') + (error.message || tx('neznana napaka', 'unknown error')))
     } finally {
       setLoading(false)
     }

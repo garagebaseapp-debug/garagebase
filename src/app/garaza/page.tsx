@@ -281,7 +281,7 @@ export default function Garaza() {
     const rdeca = (minDni !== Infinity && minDni <= 7) || (minKm !== Infinity && minKm <= 500)
     const rumena = (minDni !== Infinity && minDni <= 30) || (minKm !== Infinity && minKm <= 1500)
 
-    if (rdeca) return 'rdeča'
+    if (rdeca) return 'rdeca'
     if (rumena) return 'rumena'
     if (minDni !== Infinity || minKm !== Infinity) return 'zelena'
     if (ops.length > 0) return 'zelena'
@@ -289,16 +289,14 @@ export default function Garaza() {
   }
 
   const barvaBorder = (barva: string | null) => {
-    if (barva?.startsWith('rde')) return 'border-[#ef4444]'
-    if (barva === 'rdeča') return 'border-[#ef4444]'
+    if (barva === 'rdeca') return 'border-[#ef4444]'
     if (barva === 'rumena') return 'border-[#f59e0b]'
     if (barva === 'zelena') return 'border-[#16a34a]'
     return 'border-[#2a2a40]'
   }
 
   const litePriorityStyle = (barva: string | null) => {
-    if (barva?.startsWith('rde')) return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
-    if (barva === 'rdeÄŤa') return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
+    if (barva === 'rdeca') return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
     if (barva === 'rumena') return { border: 'border-[#f59e0b]', dot: 'bg-[#f59e0b]', glow: 'shadow-[#f59e0b33]' }
     if (barva === 'zelena') return { border: 'border-[#16a34a]', dot: 'bg-[#16a34a]', glow: 'shadow-[#16a34a33]' }
     return { border: 'border-[#2a2a40]', dot: 'bg-[#5a5a80]', glow: 'shadow-transparent' }
