@@ -293,6 +293,13 @@ export default function Garaza() {
     return 'border-[#2a2a40]'
   }
 
+  const litePriorityStyle = (barva: string | null) => {
+    if (barva === 'rdeÄŤa') return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
+    if (barva === 'rumena') return { border: 'border-[#f59e0b]', dot: 'bg-[#f59e0b]', glow: 'shadow-[#f59e0b33]' }
+    if (barva === 'zelena') return { border: 'border-[#16a34a]', dot: 'bg-[#16a34a]', glow: 'shadow-[#16a34a33]' }
+    return { border: 'border-[#2a2a40]', dot: 'bg-[#5a5a80]', glow: 'shadow-transparent' }
+  }
+
   const opomnikBarva = (vrednost: number, tip: 'dni' | 'km') => {
     const rdecaMeja = tip === 'dni' ? 7 : 500
     const rumenaMeja = tip === 'dni' ? 30 : 1500
@@ -471,17 +478,31 @@ export default function Garaza() {
             <div className="rounded-2xl border border-[#2a2a40] bg-[#13131f] p-3">
               <p className="text-[#8a8ab0] text-xs uppercase tracking-wider mb-2">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {avti.map((avto: any) => (
-                  <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
-                    className={`shrink-0 rounded-xl border px-3 py-2 text-left min-w-[140px] ${
-                      liteAvto?.id === avto.id
-                        ? 'border-[#6c63ff] bg-[#6c63ff22] text-white'
-                        : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8ab0]'
-                    }`}>
-                    <span className="block text-sm font-black truncate">{avto.znamka} {avto.model}</span>
-                    <span className="block text-xs mt-0.5 text-[#3ecfcf]">{avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : tx('brez km', 'no mileage')}</span>
-                  </button>
-                ))}
+                {avti.map((avto: any) => {
+                  const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
+                  const selected = liteAvto?.id === avto.id
+                  return (
+                    <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
+                      className={`relative shrink-0 rounded-xl border-2 ${priority.border} ${priority.glow} px-2 py-2 text-left min-w-[118px] shadow-md transition-all ${
+                        selected
+                          ? 'bg-[#6c63ff22] text-white ring-2 ring-[#6c63ff88]'
+                          : 'bg-[#0f0f1a] text-[#8a8ab0]'
+                      }`}>
+                      <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/40 shadow`} />
+                      <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
+                        {avto.slika_url ? (
+                          <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                            loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
+                            {avto.znamka} {avto.model}
+                          </span>
+                        )}
+                      </span>
+                      <span className="block max-w-[100px] truncate text-sm font-black">{avto.znamka} {avto.model}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">

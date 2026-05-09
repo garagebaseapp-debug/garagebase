@@ -112,6 +112,26 @@ const normalizeText = (value: string) =>
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, '')
 
+const cleanCsvMarker = (value: string) => {
+  let cleaned = value.replace(/^\uFEFF/, '').trim()
+  if ((cleaned.startsWith('"') && cleaned.endsWith('"')) || (cleaned.startsWith("'") && cleaned.endsWith("'"))) {
+    cleaned = cleaned.slice(1, -1).trim()
+  }
+  return cleaned
+}
+
+const firstCsvLine = (csv: string) =>
+  csv.split(/\r?\n/).find(line => cleanCsvMarker(line)) || ''
+
+const looksLikeDrivvoCsv = (csv: string) => {
+  const first = cleanCsvMarker(firstCsvLine(csv))
+  if (first.startsWith('##')) return true
+  const firstBlock = csv.split(/\r?\n/).slice(0, 4).join(' ')
+  const normalized = normalizeText(firstBlock)
+  return normalized.includes('refuelling') ||
+    (normalized.includes('datum') && normalized.includes('gorivo') && normalized.includes('volumen'))
+}
+
 const toNumber = (value?: string) => {
   if (!value) return null
   const cleaned = value
@@ -213,7 +233,7 @@ const autoMapping = (headers: string[]): Mapping => ({
 })
 
 const parseFlatCsv = (csv: string) => {
-  const lines = csv.split(/\r?\n/).filter(line => line.trim())
+  const lines = csv.split(/\r?\n/).filter(line => cleanCsvMarker(line))
   if (lines.length === 0) return { headers: [] as string[], records: [] as Record<string, string>[] }
   const separator = detectSeparator(lines[0])
   const headers = splitCsvLine(lines[0], separator)
@@ -232,10 +252,11 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
 
   for (const rawLine of csv.split(/\r?\n/)) {
     const line = rawLine.trim()
+    const marker = cleanCsvMarker(line)
     if (!line) continue
 
-    if (line.startsWith('##')) {
-      current = { name: line.replace(/^##/, '').trim(), headers: [], records: [] }
+    if (marker.startsWith('##')) {
+      current = { name: marker.replace(/^##/, '').trim(), headers: [], records: [] }
       sections.push(current)
       waitingForHeader = true
       continue
@@ -366,7 +387,7 @@ export default function UvozPodatkov() {
     init()
   }, [])
 
-  const isDrivvo = csv.trimStart().startsWith('##')
+  const isDrivvo = looksLikeDrivvoCsv(csv)
 
   const parsed = useMemo(() => parseFlatCsv(csv), [csv])
   const drivvoSections = useMemo(() => isDrivvo ? parseSectionedCsv(csv) : [], [csv, isDrivvo])
@@ -383,8 +404,11 @@ export default function UvozPodatkov() {
 
   const drivvoRows = useMemo(() => {
     if (!isDrivvo) return []
+    if (drivvoSections.length === 0 && parsed.headers.length > 0) {
+      return sectionToRows({ name: 'Refuelling', headers: parsed.headers, records: parsed.records }, 'fuel', language, enotaRazdalje)
+    }
     return drivvoSections.flatMap(section => sectionToRows(section, classifySection(section.name), language, enotaRazdalje))
-  }, [drivvoSections, isDrivvo, language, enotaRazdalje])
+  }, [drivvoSections, isDrivvo, parsed.headers, parsed.records, language, enotaRazdalje])
 
   useEffect(() => {
     if (!isDrivvo && parsed.headers.length > 0) setMapping(autoMapping(parsed.headers))
@@ -416,7 +440,7 @@ export default function UvozPodatkov() {
     if (!file) return
     const text = await file.text()
     setCsv(text)
-    if (text.trimStart().startsWith('##')) setImportType('drivvo')
+    if (looksLikeDrivvoCsv(text)) setImportType('drivvo')
     setMessage('')
     setLastImportCounts(null)
   }
