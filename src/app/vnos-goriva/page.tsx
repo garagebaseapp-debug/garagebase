@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
-import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
+import { isReceiptImageOcrSupported, parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
 import { useLanguage } from '@/lib/i18n'
 import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
+import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 type FuelType = {
   value: string
@@ -50,6 +51,7 @@ export default function VnosGoriva() {
   const [ocrAllowed, setOcrAllowed] = useState(false)
   const [adminCheckDone, setAdminCheckDone] = useState(false)
   const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const postajRef = useRef<HTMLDivElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
@@ -98,8 +100,10 @@ export default function VnosGoriva() {
       try {
         const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
         setValuta(settings.valuta === 'USD' ? 'USD' : 'EUR')
+        setEnotaRazdalje(settings.enotaRazdalje === 'mi' ? 'mi' : 'km')
       } catch {
         setValuta('EUR')
+        setEnotaRazdalje(getDistanceUnitFromSettings())
       }
 
       const params = new URLSearchParams(window.location.search)
@@ -260,7 +264,13 @@ export default function VnosGoriva() {
       trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
     } catch (error: any) {
       trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
-      setOcrMessage(`${error.message} ${tx('Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
+      const unsupported = error?.code === 'TEXT_DETECTOR_UNSUPPORTED' || error?.message === 'TEXT_DETECTOR_UNSUPPORTED'
+      setOcrMessage(unsupported
+        ? tx(
+            'Ta brskalnik trenutno ne podpira branja teksta iz slike. Za admin test prilepi tekst racuna v rocno polje spodaj; javni AI scan ostane zaklenjen do 2027.',
+            'This browser does not currently support text detection from images. For admin testing, paste the receipt text into the manual field below; public AI scan remains locked until 2027.'
+          )
+        : `${error.message} ${tx('Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
     } finally {
       setOcrLoading(false)
     }
@@ -275,10 +285,8 @@ export default function VnosGoriva() {
 
   const pripraviInPreberiRacun = async (file: File) => {
     setMessage('')
-    let preparedFile = file
     try {
       const result = await compressImageFile(file, uploadImageProfiles.receipt)
-      preparedFile = result.file
       setRacun(result.file)
       setRacunPreview(URL.createObjectURL(result.file))
       if (result.changed) {
@@ -293,8 +301,20 @@ export default function VnosGoriva() {
       return
     }
     setOcrText('')
-    setOcrMessage('')
-    await preberiRacunIzDatoteke(preparedFile)
+    setOcrMessage(ocrAllowed
+      ? isReceiptImageOcrSupported()
+        ? tx(
+            'Slika je pripravljena. Klikni "Preberi racun" za admin OCR test ali po potrebi vnesi tekst rocno.',
+            'Photo is ready. Click "Read receipt" for the admin OCR test or enter the text manually if needed.'
+          )
+        : tx(
+            'Slika je shranjena kot dokazilo. Ta brskalnik trenutno ne podpira OCR iz slike; za admin test prilepi tekst racuna rocno.',
+            'Photo is saved as proof. This browser does not currently support image OCR; paste the receipt text manually for admin testing.'
+          )
+      : tx(
+          'Slika racuna bo shranjena kot dokazilo. AI branje racunov bo javno odklenjeno v letu 2027.',
+          'The receipt photo will be saved as proof. AI receipt reading will be publicly unlocked in 2027.'
+        ))
   }
 
   useEffect(() => {
@@ -380,7 +400,7 @@ export default function VnosGoriva() {
     const sveziKm = await sveziMinimalniKm(carId)
     if (vneseniKm < sveziKm) {
       setZadnjiKm(sveziKm)
-      setMessage(`${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${sveziKm.toLocaleString()} km!`)
+      setMessage(`${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${formatDistance(sveziKm, enotaRazdalje)}!`)
       return
     }
 
@@ -502,14 +522,14 @@ export default function VnosGoriva() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {kmReady ? `${zadnjiKm.toLocaleString()} km` : tx('nalagam...', 'loading...')})</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {kmReady ? formatDistance(zadnjiKm, enotaRazdalje) : tx('nalagam...', 'loading...')})</span>
           </label>
           <div className="flex gap-2">
             <input
               type="number"
               value={km}
               onChange={(event) => setKm(event.target.value)}
-              placeholder={kmReady ? `${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}` : tx('nalagam zadnje km...', 'loading latest mileage...')}
+              placeholder={kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
                 km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
               }`}
@@ -518,7 +538,7 @@ export default function VnosGoriva() {
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">{tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">{tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {formatDistance(zadnjiKm, enotaRazdalje)}!</p>
             </div>
           )}
         </div>
@@ -593,52 +613,45 @@ export default function VnosGoriva() {
         </div>
 
         <div>
-          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Scan racuna', 'Receipt scan')}</label>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Racun', 'Receipt')}</label>
           <input ref={receiptInputRef} type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
-          <button
-            type="button"
-            onClick={() => (ocrAllowed ? receiptInputRef.current?.click() : preberiRacun())}
-            disabled={ocrLoading}
-            className={`w-full rounded-xl border px-4 py-4 text-center font-bold transition-colors disabled:opacity-60 ${
-              ocrAllowed
-                ? 'bg-[#3ecfcf18] border-[#3ecfcf66] text-[#3ecfcf] hover:bg-[#3ecfcf28]'
-                : 'bg-[#f59e0b14] border-[#f59e0b55] text-[#f59e0b]'
-            }`}
-          >
-            {ocrLoading
-              ? tx('Berem racun...', 'Reading receipt...')
-              : ocrAllowed
-                ? tx('Scan racuna', 'Scan receipt')
-                : adminCheckDone
-                  ? tx('Dodaj/slikaj racun', 'Add/take receipt photo')
-                  : tx('Preverjam dostop...', 'Checking access...')}
-          </button>
-          <label className="mt-3 block bg-[#13131f] border border-dashed border-[#2a2a40] rounded-xl p-4 text-center cursor-pointer hover:border-[#3ecfcf66] transition-colors">
-            <input type="file" accept="image/*" onChange={dodajRacun} className="hidden" />
-            {racunPreview ? (
+          {!racunPreview ? (
+            <button
+              type="button"
+              onClick={() => receiptInputRef.current?.click()}
+              disabled={ocrLoading || !adminCheckDone}
+              className={`w-full rounded-xl border px-4 py-4 text-center font-bold transition-colors disabled:opacity-60 ${
+                ocrAllowed
+                  ? 'bg-[#3ecfcf18] border-[#3ecfcf66] text-[#3ecfcf] hover:bg-[#3ecfcf28]'
+                  : 'bg-[#f59e0b14] border-[#f59e0b55] text-[#f59e0b]'
+              }`}
+            >
+              {ocrLoading
+                ? tx('Berem racun...', 'Reading receipt...')
+                : ocrAllowed
+                  ? tx('Slikaj racun za test', 'Take receipt photo for testing')
+                  : adminCheckDone
+                    ? tx('Dodaj sliko racuna', 'Add receipt photo')
+                    : tx('Preverjam dostop...', 'Checking access...')}
+            </button>
+          ) : (
+            <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
               <img src={racunPreview} alt={tx('Racun', 'Receipt')} className="w-full max-h-56 object-contain rounded-lg" />
-            ) : (
-              <span className="text-[#3ecfcf] font-semibold">{tx('Ali izberi sliko racuna iz galerije', 'Or choose a receipt photo from gallery')}</span>
-            )}
-          </label>
-
-          <div className="mt-3 space-y-3">
-            <div className={racunPreview ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-1 gap-2'}>
-              <button
-                type="button"
-                onClick={preberiRacun}
-                disabled={ocrLoading}
-                className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
-                  ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'
-                }`}
-              >
-                {ocrLoading
-                  ? tx('Berem...', 'Reading...')
-                  : ocrAllowed
-                    ? tx('Ponovno preberi sliko', 'Read photo again')
-                    : tx('AI scan je zaklenjen', 'AI scan is locked')}
-              </button>
-              {racunPreview && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={preberiRacun}
+                  disabled={ocrLoading}
+                  className={`rounded-xl px-3 py-2 text-sm font-semibold disabled:opacity-50 ${
+                    ocrAllowed ? 'bg-[#6c63ff] text-white' : 'bg-[#2a2a40] text-[#a09aff] border border-[#6c63ff55]'
+                  }`}
+                >
+                  {ocrLoading
+                    ? tx('Berem...', 'Reading...')
+                    : ocrAllowed
+                      ? tx('Preberi racun', 'Read receipt')
+                      : tx('AI scan prihaja v 2027', 'AI scan coming in 2027')}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -651,51 +664,38 @@ export default function VnosGoriva() {
                 >
                   {tx('Odstrani sliko', 'Remove photo')}
                 </button>
-              )}
+              </div>
             </div>
+          )}
 
-            {!ocrAllowed && (
-              <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-3">
-                <p className="text-[#f59e0b] text-xs font-bold">
-                  {tx('AI/OCR branje racunov je zaklenjeno za beta uporabnike.', 'AI/OCR receipt reading is locked for beta users.')}
-                </p>
-                <p className="text-[#f8c873] text-xs mt-1">
-                  {tx(
-                    'Funkcija je v internem testiranju in je planirana za javni zagon v letu 2027. Rocni vnos in shranjevanje slike racuna delujeta normalno.',
-                    'The feature is in internal testing and is planned for public launch in 2027. Manual entry and receipt photo storage work normally.'
-                  )}
-                </p>
-              </div>
-            )}
+          {ocrAllowed && racunPreview && (
+            <details className="mt-3 rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] p-3">
+              <summary className="cursor-pointer text-sm font-bold text-[#a09aff]">{tx('Rocni tekst racuna', 'Manual receipt text')}</summary>
+              <textarea
+                value={ocrText}
+                onChange={(event) => setOcrText(event.target.value)}
+                placeholder={tx(
+                  'Ce avtomatsko branje ne najde podatkov, prilepi tekst racuna sem...',
+                  'If automatic reading does not find the data, paste the receipt text here...'
+                )}
+                rows={3}
+                className="mt-3 w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-[#3ecfcf] transition-colors resize-none"
+              />
+              <button
+                type="button"
+                onClick={() => uporabiPrebranTekst(ocrText)}
+                className="mt-2 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
+              >
+                {tx('Uporabi tekst', 'Use text')}
+              </button>
+            </details>
+          )}
 
-            {racunPreview && (
-              <>
-                <textarea
-                  value={ocrText}
-                  onChange={(event) => setOcrText(event.target.value)}
-                  placeholder={tx(
-                    'Ce avtomatsko branje ni podprto, prilepi tekst racuna sem...',
-                    'If automatic reading is not supported, paste receipt text here...'
-                  )}
-                  rows={3}
-                  className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs outline-none focus:border-[#3ecfcf] transition-colors resize-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => uporabiPrebranTekst(ocrText)}
-                  className="w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
-                >
-                  {tx('Uporabi tekst', 'Use text')}
-                </button>
-              </>
-            )}
-
-            {ocrMessage && (
-              <div className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] p-3">
-                <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>
-              </div>
-            )}
-          </div>
+          {ocrMessage && (
+            <div className="mt-3 rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] p-3">
+              <p className="text-[#a09aff] text-xs leading-relaxed">{ocrMessage}</p>
+            </div>
+          )}
         </div>
 
         {message && (

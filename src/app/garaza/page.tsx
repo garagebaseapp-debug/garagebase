@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
+import { formatDistance, type DistanceUnit } from '@/lib/units'
 
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
@@ -24,6 +25,7 @@ export default function Garaza() {
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [liteCarId, setLiteCarId] = useState('')
   const [garazaPisava, setGarazaPisava] = useState(100)
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -48,8 +50,12 @@ export default function Garaza() {
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
         setGarazaPisava(n.garazaPisava || 100)
-        if (n.gridNastavitve) setGridNastavitve(prev => ({ ...prev, ...n.gridNastavitve }))
-        if (n.listaNastavitve) setListaNastavitve(prev => ({ ...prev, ...n.listaNastavitve }))
+        setEnotaRazdalje(n.enotaRazdalje === 'mi' ? 'mi' : 'km')
+        const skupneKarticneNastavitve = n.gridNastavitve || n.listaNastavitve
+        if (skupneKarticneNastavitve) {
+          setGridNastavitve(prev => ({ ...prev, ...skupneKarticneNastavitve }))
+          setListaNastavitve(prev => ({ ...prev, ...skupneKarticneNastavitve }))
+        }
       }
 
       const cached = localStorage.getItem('garagebase_garaza_cache')
@@ -345,7 +351,7 @@ export default function Garaza() {
           const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km')
           const tekst = isDatum
             ? `${op.dni} d`
-            : `${op.preostaloKm <= 0 ? '+' + Math.abs(op.preostaloKm) : op.preostaloKm} km`
+            : `${op.preostaloKm <= 0 ? '+' + Math.abs(op.preostaloKm) : op.preostaloKm} ${enotaRazdalje}`
 
           return (
             <div key={`${isDatum ? 'd' : 'k'}-${op.id}`} className={`bg-white/75 border ${barva.border} rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-sm max-w-full`}>
@@ -473,7 +479,7 @@ export default function Garaza() {
                         : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8ab0]'
                     }`}>
                     <span className="block text-sm font-black truncate">{avto.znamka} {avto.model}</span>
-                    <span className="block text-xs mt-0.5 text-[#3ecfcf]">{avto.km_trenutni ? `${Number(avto.km_trenutni).toLocaleString()} km` : tx('brez km', 'no mileage')}</span>
+                    <span className="block text-xs mt-0.5 text-[#3ecfcf]">{avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : tx('brez km', 'no mileage')}</span>
                   </button>
                 ))}
               </div>
@@ -586,7 +592,7 @@ export default function Garaza() {
                       <p className="text-white/60 text-[clamp(calc(8px*var(--gb-card-font-scale,1)),calc((22px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(12px*var(--gb-card-font-scale,1)))] lg:text-[8px]">{avto.gorivo}</p>
                     )}
                     {gridNastavitve.km && avto.km_trenutni && (
-                      <p className="text-[#3ecfcf] text-[clamp(calc(9px*var(--gb-card-font-scale,1)),calc((24px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(13px*var(--gb-card-font-scale,1)))] lg:text-[9px] font-semibold">{avto.km_trenutni.toLocaleString()} km</p>
+                      <p className="text-[#3ecfcf] text-[clamp(calc(9px*var(--gb-card-font-scale,1)),calc((24px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(13px*var(--gb-card-font-scale,1)))] lg:text-[9px] font-semibold">{formatDistance(avto.km_trenutni, enotaRazdalje)}</p>
                     )}
                     {gridNastavitve.tablica && avto.tablica && (
                       <div className="mt-0.5 bg-white rounded px-1 inline-block">
@@ -656,7 +662,7 @@ export default function Garaza() {
                       {[
                         listaNastavitve.letnik && avto.letnik,
                         listaNastavitve.gorivo && avto.gorivo,
-                        listaNastavitve.km && avto.km_trenutni && `${avto.km_trenutni.toLocaleString()} km`
+                        listaNastavitve.km && avto.km_trenutni && formatDistance(avto.km_trenutni, enotaRazdalje)
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>
@@ -715,7 +721,7 @@ export default function Garaza() {
                       {[
                         listaNastavitve.letnik && avto.letnik,
                         listaNastavitve.gorivo && avto.gorivo,
-                        listaNastavitve.km && avto.km_trenutni && `${avto.km_trenutni.toLocaleString()} km`
+                        listaNastavitve.km && avto.km_trenutni && formatDistance(avto.km_trenutni, enotaRazdalje)
                       ].filter(Boolean).join(' · ')}
                     </p>
                   </div>

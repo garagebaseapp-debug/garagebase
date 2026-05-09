@@ -128,10 +128,17 @@ export const parseReceiptText = (text: string): ReceiptScanResult => {
   return result
 }
 
+export const isReceiptImageOcrSupported = () => {
+  if (typeof window === 'undefined') return false
+  return 'TextDetector' in window
+}
+
 export const readReceiptTextFromImage = async (file: File): Promise<string> => {
   const win = window as any
   if (!win.TextDetector) {
-    throw new Error('Ta brskalnik ne podpira avtomatskega branja teksta iz slike.')
+    const error = new Error('TEXT_DETECTOR_UNSUPPORTED')
+    ;(error as any).code = 'TEXT_DETECTOR_UNSUPPORTED'
+    throw error
   }
   const bitmap = await createImageBitmap(file)
   const detector = new win.TextDetector()

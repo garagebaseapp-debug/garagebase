@@ -4,24 +4,30 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { useLanguage } from '@/lib/i18n'
+import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 export default function Stroski() {
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
   const [avto, setAvto] = useState<any>(null)
   const [gorivo, setGorivo] = useState<any[]>([])
   const [servisi, setServisi] = useState<any[]>([])
   const [expenses, setExpenses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'vse' | 'gorivo' | 'servis' | 'ostalo'>('vse')
-  const [grafTip, setGrafTip] = useState<'stolpci' | 'crta' | 'kolac'>('stolpci')
+  const [grafTip, setGrafTip] = useState<'stolpci' | 'crta' | 'kolac' | 'kategorije'>('stolpci')
   const [uredi, setUredi] = useState<string | null>(null)
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
 
   useEffect(() => {
     const init = async () => {
       setValuta(getCurrencyFromSettings())
+      setEnotaRazdalje(getDistanceUnitFromSettings())
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/stroski-garaza'; return }
@@ -102,7 +108,7 @@ export default function Stroski() {
     for (let i = 5; i >= 0; i--) {
       const d = new Date(danes.getFullYear(), danes.getMonth() - i, 1)
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      meseci.push({ kljuc, label: d.toLocaleDateString('sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
+      meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
     }
     gorivo.forEach(v => { if (!v.datum || !v.cena_skupaj) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += v.cena_skupaj })
     servisi.forEach(v => { if (!v.datum || !v.cena) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += v.cena })
@@ -112,6 +118,7 @@ export default function Stroski() {
 
   const meseci = grafMeseci()
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
+  const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
 
   const GrafStolpci = () => (
     <div className="flex items-end justify-between gap-1.5 h-36 px-1">
@@ -163,10 +170,69 @@ export default function Stroski() {
     )
   }
 
+  const GrafKategorije = () => {
+    const w = 300
+    const h = 120
+    const pad = 14
+    const series = [
+      { key: 'gorivo', label: tx('Gorivo', 'Fuel'), color: '#3ecfcf' },
+      { key: 'servis', label: tx('Servis', 'Service'), color: '#f59e0b' },
+      { key: 'ostalo', label: tx('Ostalo', 'Other'), color: '#6c63ff' },
+    ] as const
+    const pointsFor = (key: typeof series[number]['key']) => meseci.map((m, i) => {
+      const x = pad + (i / Math.max(meseci.length - 1, 1)) * (w - pad * 2)
+      const y = h - pad - ((m[key] || 0) / maxKategorija) * (h - pad * 2)
+      return { x, y, value: m[key] || 0 }
+    })
+    const pathFor = (key: typeof series[number]['key']) =>
+      pointsFor(key).map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+
+    return (
+      <div className="w-full">
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '120px' }}>
+          {[0, 1, 2].map((line) => (
+            <line
+              key={line}
+              x1={pad}
+              x2={w - pad}
+              y1={pad + line * ((h - pad * 2) / 2)}
+              y2={pad + line * ((h - pad * 2) / 2)}
+              stroke="#1e1e32"
+              strokeWidth="1"
+            />
+          ))}
+          {series.map((s) => (
+            <g key={s.key}>
+              <path d={pathFor(s.key)} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+              {pointsFor(s.key).map((p, i) => (
+                p.value > 0 ? <circle key={i} cx={p.x} cy={p.y} r="3" fill={s.color} /> : null
+              ))}
+            </g>
+          ))}
+        </svg>
+        <div className="flex justify-between px-2 mt-1">{meseci.map((m, i) => <p key={i} className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>)}</div>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {series.map((s) => (
+            <div key={s.key} className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
+                <p className="text-[#5a5a80] text-[10px] font-bold uppercase">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   const GrafKolac = () => {
-    if (skupajVse === 0) return <div className="flex items-center justify-center h-36"><p className="text-[#5a5a80] text-sm">Ni podatkov</p></div>
+    if (skupajVse === 0) return <div className="flex items-center justify-center h-36"><p className="text-[#5a5a80] text-sm">{tx('Ni podatkov', 'No data')}</p></div>
     const r = 45, cx = 60, cy = 60
-    const segments = [{ vrednost: skupajGorivo, barva: '#3ecfcf', naziv: 'Gorivo' }, { vrednost: skupajServis, barva: '#f59e0b', naziv: 'Servis' }, { vrednost: skupajExpenses, barva: '#6c63ff', naziv: 'Ostalo' }].filter(s => s.vrednost > 0)
+    const segments = [
+      { vrednost: skupajGorivo, barva: '#3ecfcf', naziv: tx('Gorivo', 'Fuel') },
+      { vrednost: skupajServis, barva: '#f59e0b', naziv: tx('Servis', 'Service') },
+      { vrednost: skupajExpenses, barva: '#6c63ff', naziv: tx('Ostalo', 'Other') },
+    ].filter(s => s.vrednost > 0)
     let kot = -90
     const poti = segments.map(s => {
       const delež = s.vrednost / skupajVse
@@ -253,34 +319,42 @@ export default function Stroski() {
       <div className="flex items-center gap-3 mb-6">
         <BackButton href="/stroski-garaza" />
         <div>
-          <h1 className="text-xl font-bold text-white">📊 Stroški</h1>
+          <h1 className="text-xl font-bold text-white">📊 {tx('Stroški', 'Costs')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
         </div>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Skupni stroški</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
         <p className="text-white font-bold text-4xl mb-1">{formatMoney(skupajVse, valuta)}</p>
-        {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/km · {kmPrevozeni.toLocaleString()} km skupaj</p>}
+        {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
         <div className="flex justify-between items-center mb-4">
-          <p className="text-[#5a5a80] text-xs uppercase tracking-wider">{grafTip === 'kolac' ? 'Razmerje stroškov' : 'Zadnjih 6 mesecev'}</p>
+          <p className="text-[#5a5a80] text-xs uppercase tracking-wider">
+            {grafTip === 'kolac'
+              ? tx('Razmerje stroskov', 'Cost split')
+              : grafTip === 'kategorije'
+                ? tx('Trend po rubrikah', 'Category trend')
+                : tx('Zadnjih 6 mesecev', 'Last 6 months')}
+          </p>
           <div className="flex gap-1 bg-[#13131f] rounded-xl p-1">
             <button onClick={() => setGrafTip('stolpci')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'stolpci' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>▌▌▌</button>
             <button onClick={() => setGrafTip('crta')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'crta' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>╱╱</button>
+            <button onClick={() => setGrafTip('kategorije')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'kategorije' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>3L</button>
             <button onClick={() => setGrafTip('kolac')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'kolac' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>◉</button>
           </div>
         </div>
         {grafTip === 'stolpci' && <GrafStolpci />}
         {grafTip === 'crta' && <GrafCrta />}
+        {grafTip === 'kategorije' && <GrafKategorije />}
         {grafTip === 'kolac' && <GrafKolac />}
         {grafTip !== 'kolac' && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-[#1e1e32]">
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#3ecfcf]" /><p className="text-[#5a5a80] text-[10px]">Gorivo</p></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /><p className="text-[#5a5a80] text-[10px]">Servis</p></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#6c63ff]" /><p className="text-[#5a5a80] text-[10px]">Ostalo</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#3ecfcf]" /><p className="text-[#5a5a80] text-[10px]">{tx('Gorivo', 'Fuel')}</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /><p className="text-[#5a5a80] text-[10px]">{tx('Servis', 'Service')}</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#6c63ff]" /><p className="text-[#5a5a80] text-[10px]">{tx('Ostalo', 'Other')}</p></div>
           </div>
         )}
       </div>
@@ -288,19 +362,19 @@ export default function Stroski() {
       <div className="grid grid-cols-3 gap-3 mb-4">
         <button onClick={() => setFilter(filter === 'gorivo' ? 'vse' : 'gorivo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'gorivo' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">⛽</p>
-          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-[#5a5a80]'}`}>Gorivo</p>
+          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-[#5a5a80]'}`}>{tx('Gorivo', 'Fuel')}</p>
           <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{skupajGorivo.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{gorivo.length}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'servis' ? 'vse' : 'servis')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'servis' ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">🔧</p>
-          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-[#5a5a80]'}`}>Servisi</p>
+          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-[#5a5a80]'}`}>{tx('Servisi', 'Services')}</p>
           <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{skupajServis.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{servisi.length}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'ostalo' ? 'vse' : 'ostalo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'ostalo' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">💰</p>
-          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>Ostalo</p>
+          <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>{tx('Ostalo', 'Other')}</p>
           <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{skupajExpenses.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{expenses.length}x</p>
         </button>
@@ -308,20 +382,20 @@ export default function Stroski() {
 
       <button onClick={() => window.location.href = `/vnos-stroska?car=${avto?.id}`}
         className="w-full bg-[#3ecfcf] hover:bg-[#2eb8b8] text-black font-semibold py-3 rounded-xl transition-colors mb-4">
-        + Dodaj strošek
+        + {tx('Dodaj strošek', 'Add expense')}
       </button>
 
       {filter !== 'vse' && (
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[#5a5a80] text-xs uppercase tracking-wider">Filtrirano: {filter === 'gorivo' ? '⛽ Gorivo' : filter === 'servis' ? '🔧 Servisi' : '💰 Ostalo'}</p>
-          <button onClick={() => setFilter('vse')} className="text-[#6c63ff] text-xs">Počisti filter ✕</button>
+          <p className="text-[#5a5a80] text-xs uppercase tracking-wider">{tx('Filtrirano', 'Filtered')}: {filter === 'gorivo' ? tx('Gorivo', 'Fuel') : filter === 'servis' ? tx('Servisi', 'Services') : tx('Ostalo', 'Other')}</p>
+          <button onClick={() => setFilter('vse')} className="text-[#6c63ff] text-xs">{tx('Počisti filter', 'Clear filter')} x</button>
         </div>
       )}
 
       <div className="flex flex-col gap-3">
         {filtrirani.length === 0 ? (
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
-            <p className="text-white font-semibold mb-1">Ni vnosov</p>
+            <p className="text-white font-semibold mb-1">{tx('Ni vnosov', 'No entries')}</p>
           </div>
         ) : (
           filtrirani.map((v) => {
@@ -334,8 +408,8 @@ export default function Stroski() {
                   <div className="flex items-center gap-3">
                     <span className="text-lg">⛽</span>
                     <div>
-                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString('sl-SI')}</p>
-                      <p className="text-[#5a5a80] text-xs">{v.litri} L · {v.km?.toLocaleString()} km{v.postaja ? ` · ${v.postaja}` : ''}</p>
+                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                      <p className="text-[#5a5a80] text-xs">{v.litri} L · {formatDistance(v.km, enotaRazdalje)}{v.postaja ? ` · ${v.postaja}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
@@ -343,7 +417,7 @@ export default function Stroski() {
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, litri: v.litri?.toString(), cena_na_liter: v.cena_na_liter?.toString(), postaja: v.postaja || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
-                        ✏️ Uredi · {preostalo}
+                        {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
                     )}
                   </div>
@@ -354,32 +428,32 @@ export default function Stroski() {
                     onClick={() => window.open(v.receipt_url, '_blank')}
                     className="mt-3 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
                   >
-                    Odpri racun
+                    {tx('Odpri račun', 'Open receipt')}
                   </button>
                 )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
-                    <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
+                    <p className="text-[#f59e0b] text-xs font-semibold">{tx('Urejanje', 'Editing')} · {preostalo}</p>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[#5a5a80] text-xs mb-1 block">Litri</label>
+                        <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Litri', 'Liters')}</label>
                         <input type="number" value={editData.litri} onChange={e => setEditData({ ...editData, litri: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                       <div>
-                        <label className="text-[#5a5a80] text-xs mb-1 block">Cena/L</label>
+                        <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Cena/L', 'Price/L')}</label>
                         <input type="number" value={editData.cena_na_liter} onChange={e => setEditData({ ...editData, cena_na_liter: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[#5a5a80] text-xs mb-1 block">Postaja</label>
+                      <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Postaja', 'Station')}</label>
                       <input type="text" value={editData.postaja} onChange={e => setEditData({ ...editData, postaja: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">Prekliči</button>
-                      <button onClick={() => shraniUrediGorivo(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? 'Shranjujem...' : 'Shrani'}</button>
+                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
+                      <button onClick={() => shraniUrediGorivo(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}
@@ -392,7 +466,7 @@ export default function Stroski() {
                   <div className="flex items-center gap-3">
                     <span className="text-lg">🔧</span>
                     <div>
-                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString('sl-SI')}</p>
+                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
                       <p className="text-[#5a5a80] text-xs">{v.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 35)}{v.servis ? ` · ${v.servis}` : ''}</p>
                     </div>
                   </div>
@@ -401,7 +475,7 @@ export default function Stroski() {
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis?.replace(/\s*\[Naknadno.*?\]/, '') || '', servis: v.servis || '', cena: v.cena?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
-                        ✏️ Uredi · {preostalo}
+                        {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
                     )}
                   </div>
@@ -412,20 +486,20 @@ export default function Stroski() {
                     onClick={() => window.open(String(v.foto_url).split(',')[0], '_blank')}
                     className="mt-3 w-full rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] px-3 py-2 text-sm font-semibold text-[#f59e0b]"
                   >
-                    Odpri racun
+                    {tx('Odpri račun', 'Open receipt')}
                   </button>
                 )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
-                    <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
+                    <p className="text-[#f59e0b] text-xs font-semibold">{tx('Urejanje', 'Editing')} · {preostalo}</p>
                     <div>
-                      <label className="text-[#5a5a80] text-xs mb-1 block">Opis</label>
+                      <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Opis', 'Description')}</label>
                       <textarea value={editData.opis} onChange={e => setEditData({ ...editData, opis: e.target.value })} rows={2}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b] resize-none" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[#5a5a80] text-xs mb-1 block">Servis</label>
+                        <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Servis', 'Service')}</label>
                         <input type="text" value={editData.servis} onChange={e => setEditData({ ...editData, servis: e.target.value })}
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
@@ -436,8 +510,8 @@ export default function Stroski() {
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">Prekliči</button>
-                      <button onClick={() => shraniUrediServis(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? 'Shranjujem...' : 'Shrani'}</button>
+                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
+                      <button onClick={() => shraniUrediServis(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}
@@ -460,7 +534,7 @@ export default function Stroski() {
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis || '', znesek: v.znesek?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
-                        ✏️ Uredi · {preostalo}
+                        {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
                     )}
                   </div>
@@ -471,25 +545,25 @@ export default function Stroski() {
                     onClick={() => window.open(v.receipt_url, '_blank')}
                     className="mt-3 w-full rounded-xl border border-[#a09aff55] bg-[#6c63ff18] px-3 py-2 text-sm font-semibold text-[#a09aff]"
                   >
-                    Odpri racun
+                    {tx('Odpri račun', 'Open receipt')}
                   </button>
                 )}
                 {jeUredi && (
                   <div className="flex flex-col gap-3 mt-3 pt-3 border-t border-[#1e1e32]">
-                    <p className="text-[#f59e0b] text-xs font-semibold">✏️ Urejanje · še {preostalo}</p>
+                    <p className="text-[#f59e0b] text-xs font-semibold">{tx('Urejanje', 'Editing')} · {preostalo}</p>
                     <div>
-                      <label className="text-[#5a5a80] text-xs mb-1 block">Opis</label>
+                      <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Opis', 'Description')}</label>
                       <input type="text" value={editData.opis} onChange={e => setEditData({ ...editData, opis: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
                     <div>
-                      <label className="text-[#5a5a80] text-xs mb-1 block">Znesek ({znakValute})</label>
+                      <label className="text-[#5a5a80] text-xs mb-1 block">{tx('Znesek', 'Amount')} ({znakValute})</label>
                       <input type="number" value={editData.znesek} onChange={e => setEditData({ ...editData, znesek: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">Prekliči</button>
-                      <button onClick={() => shraniUrediExpense(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? 'Shranjujem...' : 'Shrani'}</button>
+                      <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
+                      <button onClick={() => shraniUrediExpense(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}

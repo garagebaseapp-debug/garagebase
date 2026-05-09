@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
+import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -32,6 +33,7 @@ export default function VnosServisa() {
   const [intervalDni, setIntervalDni] = useState('')
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -42,6 +44,7 @@ export default function VnosServisa() {
   useEffect(() => {
     setLanguage(getStoredLanguage())
     setValuta(getCurrencyFromSettings())
+    setEnotaRazdalje(getDistanceUnitFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -253,7 +256,7 @@ export default function VnosServisa() {
     if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
     const vneseniKm = parseInt(km)
     if (vneseniKm < zadnjiKm) {
-      setMessage(`⚠️ ${tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} ${zadnjiKm.toLocaleString()} km!`)
+      setMessage(`⚠️ ${tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} ${formatDistance(zadnjiKm, enotaRazdalje)}!`)
       return
     }
     setLoading(true)
@@ -362,17 +365,17 @@ export default function VnosServisa() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {zadnjiKm.toLocaleString()} km)</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {formatDistance(zadnjiKm, enotaRazdalje)})</span>
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
-              placeholder={`${tx('najmanj', 'at least')} ${zadnjiKm.toLocaleString()}`}
+              placeholder={`${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}`}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
             <MicButton polje="km" />
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ {tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {zadnjiKm.toLocaleString()} km!</p>
+              <p className="text-[#ef4444] text-xs">⛔ {tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {formatDistance(zadnjiKm, enotaRazdalje)}!</p>
             </div>
           )}
         </div>
@@ -393,18 +396,18 @@ export default function VnosServisa() {
               {tx('Odstrani sliko stevca', 'Remove odometer photo')}
             </button>
           )}
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <div className="rounded-xl border border-[#5a5a8044] bg-[#5a5a8018] p-2 text-center">
-              <p className="text-[11px] font-black text-white">Basic</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Brez slike', 'No photo')}</p>
+          <div className="mt-3 grid grid-cols-3 gap-3">
+            <div className="flex min-h-[82px] flex-col justify-center rounded-xl border border-[#5a5a8044] bg-[#5a5a8018] p-3 text-center">
+              <p className="text-sm font-black text-white">Basic</p>
+              <p className="mt-1 text-[11px] leading-snug text-[#9a9ab8]">{tx('Brez slike', 'No photo')}</p>
             </div>
-            <div className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] p-2 text-center">
-              <p className="text-[11px] font-black text-[#3ecfcf]">Photo</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Slika stevca', 'Odometer photo')}</p>
+            <div className="flex min-h-[82px] flex-col justify-center rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] p-3 text-center">
+              <p className="text-sm font-black text-[#3ecfcf]">Photo</p>
+              <p className="mt-1 text-[11px] leading-snug text-[#9a9ab8]">{tx('Slika stevca', 'Odometer photo')}</p>
             </div>
-            <div className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] p-2 text-center">
-              <p className="text-[11px] font-black text-[#f59e0b]">Strong</p>
-              <p className="mt-1 text-[9px] leading-tight text-[#9a9ab8]">{tx('Stevec + racun', 'Odometer + receipt')}</p>
+            <div className="flex min-h-[82px] flex-col justify-center rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] p-3 text-center">
+              <p className="text-sm font-black text-[#f59e0b]">Strong</p>
+              <p className="mt-1 text-[11px] leading-snug text-[#9a9ab8]">{tx('Stevec + racun', 'Odometer + receipt')}</p>
             </div>
           </div>
         </div>

@@ -59,12 +59,14 @@ export default function RootLayout({
           
           // Theme and app font size
           const nastavitve = localStorage.getItem('garagebase_nastavitve');
+          const publicFontPaths = new Set(['/', '/login', '/registracija']);
+          const shouldUseAppFont = !publicFontPaths.has(window.location.pathname);
           if (nastavitve) {
             const n = JSON.parse(nastavitve);
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            if (n.pisava) {
+            if (n.pisava && shouldUseAppFont) {
               const legacy = { mala: 90, normalna: 100, velika: 120 };
               const raw = n.pisava;
               const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
@@ -72,6 +74,9 @@ export default function RootLayout({
               const rootPx = Math.min(48, Math.max(14, 16 * (percent / 100)));
               document.documentElement.style.fontSize = rootPx + 'px';
               document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
+            } else if (!shouldUseAppFont) {
+              document.documentElement.style.fontSize = '16px';
+              document.documentElement.style.setProperty('--gb-app-font-scale', '1');
             }
           }
         `}} />

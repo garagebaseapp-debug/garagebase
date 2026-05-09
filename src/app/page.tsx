@@ -9,10 +9,16 @@ export default function LandingPage() {
 
   useEffect(() => {
     document.body.classList.add('landing')
+    const previousFontSize = document.documentElement.style.fontSize
+    const previousScale = document.documentElement.style.getPropertyValue('--gb-app-font-scale')
+    document.documentElement.style.fontSize = '16px'
+    document.documentElement.style.setProperty('--gb-app-font-scale', '1')
     const handleScroll = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', handleScroll)
     return () => {
       document.body.classList.remove('landing')
+      document.documentElement.style.fontSize = previousFontSize
+      if (previousScale) document.documentElement.style.setProperty('--gb-app-font-scale', previousScale)
       window.removeEventListener('scroll', handleScroll)
     }
   }, [])

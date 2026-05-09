@@ -6,6 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 type ImportType = 'drivvo' | 'fuel' | 'service' | 'expense'
 type ImportKind = 'fuel' | 'service' | 'expense'
@@ -256,7 +257,7 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
   return sections.filter(section => section.headers.length > 0)
 }
 
-const sectionToRows = (section: ParsedSection, importType: ImportType, language: Language): PreviewRow[] => {
+const sectionToRows = (section: ParsedSection, importType: ImportType, language: Language, distanceUnit: DistanceUnit = 'km'): PreviewRow[] => {
   const map = autoMapping(section.headers)
   const fallbackDescription = language === 'en' ? 'Import from Drivvo' : 'Uvoz iz Drivvo'
   const kind = classifySection(section.name)
@@ -290,14 +291,14 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
       ? joinDetails([
           [language === 'en' ? 'Full tank' : 'Poln tank', fullTank],
           [language === 'en' ? 'Consumption' : 'Poraba', consumption],
-          [language === 'en' ? 'Distance' : 'Razdalja', distance ? `${distance} km` : ''],
+          [language === 'en' ? 'Distance' : 'Razdalja', distance ? formatDistance(distance, distanceUnit) : ''],
           [language === 'en' ? 'Driver' : 'Voznik', driver],
           [language === 'en' ? 'Reason' : 'Razlog', reason],
           [language === 'en' ? 'Payment' : 'Placilo', payment],
           [language === 'en' ? 'Note' : 'Opomba', notes],
         ])
       : joinDetails([
-          [language === 'en' ? 'Mileage' : 'Kilometri', km ? `${km} km` : ''],
+          [language === 'en' ? 'Mileage' : 'Kilometri', km ? formatDistance(km, distanceUnit) : ''],
           [language === 'en' ? 'Driver' : 'Voznik', driver],
           [language === 'en' ? 'Reason' : 'Razlog', reason],
           [language === 'en' ? 'Payment' : 'Placilo', payment],
@@ -339,12 +340,14 @@ export default function UvozPodatkov() {
   const [lastImportCounts, setLastImportCounts] = useState<Record<ImportKind, number> | null>(null)
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
     setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
     setValuta(getCurrencyFromSettings())
+    setEnotaRazdalje(getDistanceUnitFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -380,8 +383,8 @@ export default function UvozPodatkov() {
 
   const drivvoRows = useMemo(() => {
     if (!isDrivvo) return []
-    return drivvoSections.flatMap(section => sectionToRows(section, classifySection(section.name), language))
-  }, [drivvoSections, isDrivvo, language])
+    return drivvoSections.flatMap(section => sectionToRows(section, classifySection(section.name), language, enotaRazdalje))
+  }, [drivvoSections, isDrivvo, language, enotaRazdalje])
 
   useEffect(() => {
     if (!isDrivvo && parsed.headers.length > 0) setMapping(autoMapping(parsed.headers))
@@ -389,7 +392,7 @@ export default function UvozPodatkov() {
 
   const previewRows = useMemo<PreviewRow[]>(() => {
     if (importType === 'drivvo') return drivvoRows
-    if (activeDrivvoSection) return sectionToRows(activeDrivvoSection, importType, language)
+    if (activeDrivvoSection) return sectionToRows(activeDrivvoSection, importType, language, enotaRazdalje)
 
     return parsed.records.map((row) => {
       const kind: ImportKind = importType === 'service' ? 'service' : importType === 'expense' ? 'expense' : 'fuel'
@@ -407,7 +410,7 @@ export default function UvozPodatkov() {
         fuelType: row[mapping.fuelType] || null,
       }
     }).filter(row => row.date)
-  }, [activeDrivvoSection, drivvoRows, parsed.records, mapping, importType, language])
+  }, [activeDrivvoSection, drivvoRows, parsed.records, mapping, importType, language, enotaRazdalje])
 
   const handleFile = async (file?: File) => {
     if (!file) return
@@ -461,7 +464,6 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           source_entry_id: sourceEntryId('fuel', row),
-          locked_at: importStamp,
         })), existingKeys)
         insertedByType.fuel = rows.length
         if (rows.length) {
@@ -484,7 +486,6 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           source_entry_id: sourceEntryId('service', row),
-          locked_at: importStamp,
         })), existingKeys)
         insertedByType.service = rows.length
         if (rows.length) {
@@ -506,7 +507,6 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           source_entry_id: sourceEntryId('expense', row),
-          locked_at: importStamp,
         })), existingKeys)
         insertedByType.expense = rows.length
         if (rows.length) {
@@ -659,7 +659,7 @@ export default function UvozPodatkov() {
                     {kindLabel(row.kind)}
                   </span>
                 </div>
-                <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? `${row.km.toLocaleString()} km` : tx('brez km', 'no mileage')} | {row.amount ? formatMoney(row.amount, valuta) : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
+                <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? formatDistance(row.km, enotaRazdalje) : tx('brez km', 'no mileage')} | {row.amount ? formatMoney(row.amount, valuta) : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
                 {row.importDetails && <p className="mt-2 text-[#5a5a80] text-[11px] leading-relaxed">{row.importDetails}</p>}
               </div>
             ))}

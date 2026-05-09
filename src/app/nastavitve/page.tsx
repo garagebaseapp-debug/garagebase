@@ -1223,7 +1223,13 @@ export default function Nastavitve() {
                 <div key={item.key} className="flex justify-between items-center">
                   <p className="text-white text-sm">{item.naziv}</p>
                   <button
-                    onClick={() => setGridNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    onClick={() => {
+                      setGridNastavitve((prev: any) => {
+                        const nextValue = !prev[item.key]
+                        setListaNastavitve((listPrev: any) => ({ ...listPrev, [item.key]: nextValue }))
+                        return { ...prev, [item.key]: nextValue }
+                      })
+                    }}
                     className={`w-10 h-5 rounded-full transition-all relative ${
                       gridNastavitve[item.key as keyof typeof gridNastavitve] ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
                     }`}>
@@ -1235,7 +1241,13 @@ export default function Nastavitve() {
               ))}
             </div>
             {gridNastavitve.opomnik && (
-              <OpomnikFilter nastavitve={gridNastavitve} setNastavitve={setGridNastavitve} />
+              <OpomnikFilter nastavitve={gridNastavitve} setNastavitve={(updater: any) => {
+                setGridNastavitve((prev: any) => {
+                  const next = typeof updater === 'function' ? updater(prev) : updater
+                  setListaNastavitve((listPrev: any) => ({ ...listPrev, ...next }))
+                  return next
+                })
+              }} />
             )}
           </div>
         )}
@@ -1255,7 +1267,13 @@ export default function Nastavitve() {
                 <div key={item.key} className="flex justify-between items-center">
                   <p className="text-white text-sm">{item.naziv}</p>
                   <button
-                    onClick={() => setListaNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+                    onClick={() => {
+                      setListaNastavitve((prev: any) => {
+                        const nextValue = !prev[item.key]
+                        setGridNastavitve((gridPrev: any) => ({ ...gridPrev, [item.key]: nextValue }))
+                        return { ...prev, [item.key]: nextValue }
+                      })
+                    }}
                     className={`w-10 h-5 rounded-full transition-all relative ${
                       listaNastavitve[item.key as keyof typeof listaNastavitve] ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'
                     }`}>
@@ -1267,7 +1285,13 @@ export default function Nastavitve() {
               ))}
             </div>
             {listaNastavitve.opomnik && (
-              <OpomnikFilter nastavitve={listaNastavitve} setNastavitve={setListaNastavitve} />
+              <OpomnikFilter nastavitve={listaNastavitve} setNastavitve={(updater: any) => {
+                setListaNastavitve((prev: any) => {
+                  const next = typeof updater === 'function' ? updater(prev) : updater
+                  setGridNastavitve((gridPrev: any) => ({ ...gridPrev, ...next }))
+                  return next
+                })
+              }} />
             )}
           </div>
         )}
