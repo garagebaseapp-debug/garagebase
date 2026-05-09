@@ -262,6 +262,7 @@ export default function Garaza() {
 
   const barvaOpomnika = (carId: string, avtoKm: number) => {
     const ops = opomniki[carId] || []
+    if (ops.length === 0) return null
     let minDni = Infinity
     let minKm = Infinity
 
@@ -270,8 +271,8 @@ export default function Garaza() {
         const dni = Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
         if (dni < minDni) minDni = dni
       }
-      if (op.km_opomnik && avtoKm) {
-        const preostalo = op.km_opomnik - avtoKm
+      if (op.km_opomnik !== null && op.km_opomnik !== undefined && op.km_opomnik !== '') {
+        const preostalo = Number(op.km_opomnik) - (Number(avtoKm) || 0)
         if (preostalo < minKm) minKm = preostalo
       }
     }
@@ -283,10 +284,12 @@ export default function Garaza() {
     if (rdeca) return 'rdeča'
     if (rumena) return 'rumena'
     if (minDni !== Infinity || minKm !== Infinity) return 'zelena'
+    if (ops.length > 0) return 'zelena'
     return null
   }
 
   const barvaBorder = (barva: string | null) => {
+    if (barva?.startsWith('rde')) return 'border-[#ef4444]'
     if (barva === 'rdeča') return 'border-[#ef4444]'
     if (barva === 'rumena') return 'border-[#f59e0b]'
     if (barva === 'zelena') return 'border-[#16a34a]'
@@ -294,6 +297,7 @@ export default function Garaza() {
   }
 
   const litePriorityStyle = (barva: string | null) => {
+    if (barva?.startsWith('rde')) return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
     if (barva === 'rdeÄŤa') return { border: 'border-[#ef4444]', dot: 'bg-[#ef4444]', glow: 'shadow-[#ef444433]' }
     if (barva === 'rumena') return { border: 'border-[#f59e0b]', dot: 'bg-[#f59e0b]', glow: 'shadow-[#f59e0b33]' }
     if (barva === 'zelena') return { border: 'border-[#16a34a]', dot: 'bg-[#16a34a]', glow: 'shadow-[#16a34a33]' }

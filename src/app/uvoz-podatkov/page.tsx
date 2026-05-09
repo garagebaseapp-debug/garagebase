@@ -148,7 +148,15 @@ const parseDate = (value?: string) => {
   const trimmed = value.trim()
   const iso = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
   if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`
-  const eu = trimmed.match(/^(\d{1,2})[.\/-]\s*(\d{1,2})[.\/-]\s*(\d{4})/)
+  const slash = trimmed.match(/^(\d{1,2})\/\s*(\d{1,2})\/\s*(\d{4})/)
+  if (slash) {
+    const first = Number(slash[1])
+    const second = Number(slash[2])
+    const day = first > 12 ? first : second
+    const month = first > 12 ? second : first
+    return `${slash[3]}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+  const eu = trimmed.match(/^(\d{1,2})[.-]\s*(\d{1,2})[.-]\s*(\d{4})/)
   if (eu) return `${eu[3]}-${eu[2].padStart(2, '0')}-${eu[1].padStart(2, '0')}`
   return trimmed
 }
@@ -194,26 +202,6 @@ const withImportNote = (base: string, details: string) => {
   return base ? `${base} [Drivvo: ${details}]` : `[Drivvo: ${details}]`
 }
 
-const hashToUuid = (value: string) => {
-  let h1 = 0xdeadbeef
-  let h2 = 0x41c6ce57
-  let h3 = 0x9e3779b9
-  let h4 = 0x85ebca6b
-  for (let i = 0; i < value.length; i++) {
-    const ch = value.charCodeAt(i)
-    h1 = Math.imul(h1 ^ ch, 2654435761)
-    h2 = Math.imul(h2 ^ ch, 1597334677)
-    h3 = Math.imul(h3 ^ ch, 2246822507)
-    h4 = Math.imul(h4 ^ ch, 3266489909)
-  }
-  h1 = (Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909)) >>> 0
-  h2 = (Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909)) >>> 0
-  h3 = (Math.imul(h3 ^ (h3 >>> 16), 2246822507) ^ Math.imul(h4 ^ (h4 >>> 13), 3266489909)) >>> 0
-  h4 = (Math.imul(h4 ^ (h4 >>> 16), 2246822507) ^ Math.imul(h3 ^ (h3 >>> 13), 3266489909)) >>> 0
-  const hex = [h1, h2, h3, h4].map(part => part.toString(16).padStart(8, '0')).join('')
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
-}
-
 const findHeader = (headers: string[], options: string[]) => {
   const normalized = headers.map(normalizeText)
   const index = normalized.findIndex((header) => options.some((option) => header.includes(normalizeText(option))))
@@ -256,7 +244,8 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
     if (!line) continue
 
     if (marker.startsWith('##')) {
-      current = { name: marker.replace(/^##/, '').trim(), headers: [], records: [] }
+      const sectionCell = splitCsvLine(marker, detectSeparator(marker))[0] || marker
+      current = { name: sectionCell.replace(/^##/, '').trim(), headers: [], records: [] }
       sections.push(current)
       waitingForHeader = true
       continue
@@ -456,9 +445,7 @@ export default function UvozPodatkov() {
       const importSource = isDrivvo ? 'Drivvo' : 'CSV'
       const importedLabel = (source?: string) => `${source || importSource} import | ${importStamp}`
       const duplicateKey = (row: any) =>
-        [row.source_entry_id || '', row.datum, row.km || '', row.cena_skupaj || row.cena || row.znesek || '', row.postaja || row.servis || row.opis || ''].join('|').toLowerCase()
-      const sourceEntryId = (kind: ImportKind, row: PreviewRow) =>
-        hashToUuid(`${carId}|${row.source || importSource}|${kind}|${row.date}|${row.km || ''}|${row.amount || ''}|${row.liters || ''}|${row.station || ''}|${row.description || ''}`)
+        [row.datum, row.km || '', row.cena_skupaj || row.cena || row.znesek || '', row.postaja || row.servis || row.opis || row.kategorija || ''].join('|').toLowerCase()
       let skipped = 0
       const filterUniqueRows = <T extends Record<string, any>>(rows: T[], existingKeys: Set<string>) => {
         const importKeys = new Set<string>()
@@ -474,7 +461,7 @@ export default function UvozPodatkov() {
 
       const fuelRows = previewRows.filter(row => row.kind === 'fuel')
       if (fuelRows.length) {
-        const { data: existing } = await supabase.from('fuel_logs').select('datum,km,cena_skupaj,postaja,source_entry_id').eq('car_id', carId)
+        const { data: existing } = await supabase.from('fuel_logs').select('datum,km,cena_skupaj,postaja').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
         const rows = filterUniqueRows(fuelRows.map(row => ({
           car_id: carId,
@@ -487,7 +474,6 @@ export default function UvozPodatkov() {
           tip_goriva: row.fuelType,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
-          source_entry_id: sourceEntryId('fuel', row),
         })), existingKeys)
         insertedByType.fuel = rows.length
         if (rows.length) {
@@ -498,7 +484,7 @@ export default function UvozPodatkov() {
 
       const serviceRows = previewRows.filter(row => row.kind === 'service')
       if (serviceRows.length) {
-        const { data: existing } = await supabase.from('service_logs').select('datum,km,cena,servis,opis,source_entry_id').eq('car_id', carId)
+        const { data: existing } = await supabase.from('service_logs').select('datum,km,cena,servis,opis').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
         const rows = filterUniqueRows(serviceRows.map(row => ({
           car_id: carId,
@@ -509,7 +495,6 @@ export default function UvozPodatkov() {
           cena: row.amount,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
-          source_entry_id: sourceEntryId('service', row),
         })), existingKeys)
         insertedByType.service = rows.length
         if (rows.length) {
@@ -520,7 +505,7 @@ export default function UvozPodatkov() {
 
       const expenseRows = previewRows.filter(row => row.kind === 'expense')
       if (expenseRows.length) {
-        const { data: existing } = await supabase.from('expenses').select('datum,znesek,kategorija,opis,source_entry_id').eq('car_id', carId)
+        const { data: existing } = await supabase.from('expenses').select('datum,znesek,kategorija,opis').eq('car_id', carId)
         const existingKeys = new Set((existing || []).map(duplicateKey))
         const rows = filterUniqueRows(expenseRows.map(row => ({
           car_id: carId,
@@ -530,7 +515,6 @@ export default function UvozPodatkov() {
           znesek: row.amount || 0,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
-          source_entry_id: sourceEntryId('expense', row),
         })), existingKeys)
         insertedByType.expense = rows.length
         if (rows.length) {
