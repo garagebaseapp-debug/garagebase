@@ -208,27 +208,40 @@ const pdfCopy = {
   },
 } as const
 
+const reportKm = (row: any) => Number(row?.km ?? row?.kilometri ?? row?.km_trenutni ?? 0) || 0
+
+const sortReportRows = (rows: any[] = []) =>
+  [...(rows || [])].sort((a, b) => {
+    const kmDiff = reportKm(a) - reportKm(b)
+    if (kmDiff !== 0) return kmDiff
+    const dateA = new Date(a?.datum || a?.created_at || 0).getTime() || 0
+    const dateB = new Date(b?.datum || b?.created_at || 0).getTime() || 0
+    return dateA - dateB
+  })
+
+const cleanReportText = (value?: string | null) =>
+  String(value || '')
+    .replace(/\s*\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)[^\]]*\]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
 const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: any) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
+  const sortedServisi = sortReportRows(servisi)
+  const sortedGorivo = sortReportRows(gorivo)
+  const sortedExpenses = sortReportRows(expenses)
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const money = (value?: number | null) => typeof value === 'number' ? `${value.toFixed(2)} ${currencySymbol(currency)}` : '-'
   const unitLabel = distanceUnitLabel(distanceUnit as DistanceUnit)
   const distance = (value?: number | null) => typeof value === 'number' ? `${value.toLocaleString(locale)} ${unitLabel}` : '-'
-  const skupajGorivo = gorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
-  const skupajServis = servisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
-  const skupajExpenses = expenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
+  const skupajGorivo = sortedGorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
+  const skupajServis = sortedServisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
+  const skupajExpenses = sortedExpenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
-  const skupajLitrov = gorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
+  const skupajLitrov = sortedGorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
-  const imaPrivonke = servisi.some((s: any) => s.foto_url) || gorivo.some((g: any) => g.receipt_url) || expenses.some((e: any) => e.receipt_url)
-  const imaPrenesene = servisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || gorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || expenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
-  const importLabel = (row: any) => {
-    if (!row.source_owner_label?.includes('import |')) return ''
-    const [source, stamp] = row.source_owner_label.split(' import | ')
-    const date = stamp ? new Date(stamp) : null
-    const dateText = date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(locale) : ''
-    return ` [${copy.importedHistory}: ${copy.importedFrom} ${source}${dateText ? ` ${dateText}` : ''}]`
-  }
+  const imaPrivonke = sortedServisi.some((s: any) => s.foto_url) || sortedGorivo.some((g: any) => g.receipt_url) || sortedExpenses.some((e: any) => e.receipt_url)
+  const imaPrenesene = sortedServisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || sortedGorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || sortedExpenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
   const trustLabel = (row: any) => {
     if (row.verification_level === 'strong') return copy.trustStrong
     if (row.verification_level === 'photo') return copy.trustPhoto
@@ -290,11 +303,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.serviceCount}</Text>
-              <Text style={styles.statValue}>{servisi.length}</Text>
+              <Text style={styles.statValue}>{sortedServisi.length}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.fuelCount}</Text>
-              <Text style={styles.statValue}>{gorivo.length}</Text>
+              <Text style={styles.statValue}>{sortedGorivo.length}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.currentKm.toUpperCase()}</Text>
@@ -359,7 +372,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
           </View>
         )}
         {/* Servisna knjiga */}
-        {servisi.length > 0 && (
+        {sortedServisi.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.serviceBook}</Text>
             <View style={styles.tableHeader}>
@@ -370,11 +383,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.sRacunH}>{copy.receipt}</Text>
               <Text style={styles.sTrustH}>{copy.trust}</Text>
             </View>
-            {servisi.map((s: any, i: number) => (
+            {sortedServisi.map((s: any, i: number) => (
               <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
                 <Text style={styles.sKm}>{distance(s.km)}</Text>
-                <Text style={styles.sOpis}>{s.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 55)}{s.servis ? ` (${s.servis})` : ''}</Text>
+                <Text style={styles.sOpis}>{cleanReportText(s.opis).substring(0, 55)}{cleanReportText(s.servis) ? ` (${cleanReportText(s.servis)})` : ''}</Text>
                 <Text style={styles.sCena}>{money(s.cena)}</Text>
                 <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
                 <Text style={styles.sTrust}>{trustLabel(s)}</Text>
@@ -390,7 +403,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         )}
 
         {/* Gorivo */}
-        {gorivo.length > 0 && (
+        {sortedGorivo.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.fuelLog}</Text>
             <View style={styles.tableHeader}>
@@ -402,14 +415,14 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.gRacunH}>{copy.receipt}</Text>
               <Text style={styles.gTrustH}>{copy.trust}</Text>
             </View>
-            {gorivo.map((g: any, i: number) => (
+            {sortedGorivo.map((g: any, i: number) => (
               <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
                 <Text style={styles.gKm}>{distance(g.km)}</Text>
                 <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
 </Text>
-                <Text style={styles.gOpis}>{g.litri} L{g.postaja ? ` - ${g.postaja}` : ''}{importLabel(g)}</Text>
+                <Text style={styles.gOpis}>{g.litri} L{cleanReportText(g.postaja) ? ` - ${cleanReportText(g.postaja)}` : ''}</Text>
                 <Text style={styles.gCena}>{money(g.cena_skupaj)}</Text>
                 <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
                 <Text style={styles.gTrust}>{trustLabel(g)}</Text>
@@ -420,7 +433,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         )}
 
         {/* Dodatni stroski */}
-        {expenses.length > 0 && (
+        {sortedExpenses.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.extraCosts}</Text>
             <View style={styles.tableHeader}>
@@ -431,11 +444,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.eRacunH}>{copy.receipt}</Text>
               <Text style={styles.eTrustH}>{copy.trust}</Text>
             </View>
-            {expenses.map((e: any, i: number) => (
+            {sortedExpenses.map((e: any, i: number) => (
               <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
                 <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.eKat}>{e.kategorija}</Text>
-                <Text style={styles.eOpis}>{String(e.opis || '-').replace('[Prejsnji lastnik]', '[PREJSNJI]')}</Text>
+                <Text style={styles.eKat}>{cleanReportText(e.kategorija) || '-'}</Text>
+                <Text style={styles.eOpis}>{cleanReportText(e.opis) || '-'}</Text>
                 <Text style={styles.eCena}>{money(e.znesek)}</Text>
                 <Text style={styles.eRacun}>{e.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
                 <Text style={styles.eTrust}>{trustLabel(e)}</Text>
@@ -635,6 +648,9 @@ export default function Report() {
     gorivoForReport.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
     expensesForReport.reduce((s, v) => s + (v.znesek || 0), 0)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const sortedServisi = sortReportRows(servisi)
+  const sortedGorivo = sortReportRows(gorivo)
+  const sortedExpenses = sortReportRows(expenses)
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -652,17 +668,17 @@ export default function Report() {
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <span className="text-white text-sm">🔧 {tx('Servisov', 'Services')}</span>
-            <span className="text-[#6c63ff] font-bold">{servisi.length}</span>
+            <span className="text-[#6c63ff] font-bold">{sortedServisi.length}</span>
           </div>
           <button onClick={() => setIncludeServices(!includeServices)}
             className={`rounded-xl border px-3 py-2 text-left ${includeServices ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
             <p className="text-white text-sm font-semibold">{includeServices ? '[x]' : '[ ]'} {tx('Servisi', 'Services')}</p>
-            <p className="text-[#5a5a80] text-xs mt-1">{tx('Servisna knjiga', 'Service book')}: {servisi.length} {tx('zapisov', 'records')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Servisna knjiga', 'Service book')}: {sortedServisi.length} {tx('zapisov', 'records')}</p>
           </button>
           <button onClick={() => setIncludeFuel(!includeFuel)}
             className={`rounded-xl border px-3 py-2 text-left ${includeFuel ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
             <p className="text-white text-sm font-semibold">{includeFuel ? '[x]' : '[ ]'} {tx('Gorivo / tankanja', 'Fuel / fill-ups')}</p>
-            <p className="text-[#5a5a80] text-xs mt-1">{tx('Vkljuci', 'Include')} {gorivo.length} {tx('tankanj samo ce zelis podrobno porocilo.', 'fill-ups only if you want a detailed report.')}</p>
+            <p className="text-[#5a5a80] text-xs mt-1">{tx('Vkljuci', 'Include')} {sortedGorivo.length} {tx('tankanj samo ce zelis podrobno porocilo.', 'fill-ups only if you want a detailed report.')}</p>
           </button>
           <button onClick={() => setIncludeExpenses(!includeExpenses)}
             className={`rounded-xl border px-3 py-2 text-left ${includeExpenses ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#13131f] border-[#1e1e32]'}`}>
@@ -684,7 +700,7 @@ export default function Report() {
           )}
           <div className="hidden">
             <span className="text-white text-sm">⛽ {tx('Tankanij', 'Fill-ups')}</span>
-            <span className="text-[#6c63ff] font-bold">{gorivo.length}</span>
+            <span className="text-[#6c63ff] font-bold">{sortedGorivo.length}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-white text-sm">💰 {tx('Dodatnih stroskov', 'Additional costs')}</span>
@@ -705,7 +721,7 @@ export default function Report() {
         </div>
       </div>
 
-      {(servisi.some(s => s.foto_url) || gorivo.some(g => g.receipt_url) || expenses.some(e => e.receipt_url)) && (
+      {(servisi.some(s => s.foto_url) || sortedGorivo.some(g => g.receipt_url) || sortedExpenses.some(e => e.receipt_url)) && (
         <div className="bg-[#6c63ff11] border border-[#6c63ff33] rounded-xl p-4 mb-4">
           <p className="text-[#a09aff] text-xs">
             {tx('To vozilo ima prilozene slike racunov. V PDF reportu so oznacene z [ DA ] - za ogled originalnih slik zahtevaj dostop v GarageBase aplikaciji na getgaragebase.com', 'This vehicle has attached receipt photos. In the PDF report they are marked with [ YES ] - ask for access in the GarageBase app to view the original photos at getgaragebase.com')}

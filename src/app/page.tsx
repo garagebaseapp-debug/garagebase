@@ -187,7 +187,7 @@ export default function LandingPage() {
         <img
           src="/landing-garagebase.png"
           alt={t.alt}
-          className="absolute inset-0 h-full w-full object-cover object-[66%_62%] lg:object-[center_64%]"
+          className="absolute inset-0 h-full w-full object-cover object-[66%_68%] lg:object-[center_72%]"
         />
         <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07070d]/80 to-transparent" />

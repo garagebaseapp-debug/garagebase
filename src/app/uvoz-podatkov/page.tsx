@@ -198,23 +198,36 @@ const optionalImportColumns = new Set([
   'verified_document_url',
 ])
 
-const missingOptionalImportColumn = (error: unknown) => {
+const getMissingSchemaColumn = (error: unknown) => {
   const message = String((error as { message?: string } | null)?.message || '')
-  return message.includes('schema cache') && message.includes('Could not find')
+  if (!message.includes('schema cache') || !message.includes('Could not find')) return null
+  const match = message.match(/'([^']+)' column of '([^']+)'/)
+  return match?.[1] || null
 }
 
-const stripOptionalImportColumns = (rows: Array<Record<string, unknown>>) =>
+const stripImportColumns = (rows: Array<Record<string, unknown>>, columns: Set<string>) =>
   rows.map(row => Object.fromEntries(
-    Object.entries(row).filter(([key]) => !optionalImportColumns.has(key))
+    Object.entries(row).filter(([key]) => !columns.has(key))
   ))
 
 const insertImportRows = async (table: 'fuel_logs' | 'service_logs' | 'expenses', rows: Array<Record<string, unknown>>) => {
   if (!rows.length) return
-  const { error } = await supabase.from(table).insert(rows)
-  if (!error) return
-  if (!missingOptionalImportColumn(error)) throw error
-  const retry = await supabase.from(table).insert(stripOptionalImportColumns(rows))
-  if (retry.error) throw retry.error
+
+  let rowsForInsert = rows
+  const removedColumns = new Set<string>()
+
+  for (let attempt = 0; attempt <= optionalImportColumns.size; attempt += 1) {
+    const { error } = await supabase.from(table).insert(rowsForInsert)
+    if (!error) return
+
+    const missingColumn = getMissingSchemaColumn(error)
+    if (!missingColumn || !optionalImportColumns.has(missingColumn) || removedColumns.has(missingColumn)) {
+      throw error
+    }
+
+    removedColumns.add(missingColumn)
+    rowsForInsert = stripImportColumns(rows, removedColumns)
+  }
 }
 
 const asText = (value?: string | number | null) => (value === undefined || value === null ? '' : String(value).trim())
@@ -227,8 +240,8 @@ const joinDetails = (details: Array<[string, string | number | null | undefined]
     .join(' | ')
 
 const withImportNote = (base: string, details: string) => {
-  if (!details) return base
-  return base ? `${base} [Drivvo: ${details}]` : `[Drivvo: ${details}]`
+  const cleanBase = asText(base)
+  return cleanBase || asText(details)
 }
 
 const findHeader = (headers: string[], options: string[]) => {
@@ -250,7 +263,7 @@ const autoMapping = (headers: string[]): Mapping => ({
 })
 
 const parseFlatCsv = (csv: string) => {
-  const lines = csv.split(/\r?\n/).filter(line => cleanCsvMarker(line))
+  const lines = csv.split(/\r?\n/).map(line => line.replace(/^\uFEFF/, '')).filter(line => cleanCsvMarker(line))
   if (lines.length === 0) return { headers: [] as string[], records: [] as Record<string, string>[] }
   const separator = detectSeparator(lines[0])
   const headers = splitCsvLine(lines[0], separator)
@@ -268,7 +281,7 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
   let waitingForHeader = false
 
   for (const rawLine of csv.split(/\r?\n/)) {
-    const line = rawLine.trim()
+    const line = rawLine.replace(/^\uFEFF/, '').trim()
     const marker = cleanCsvMarker(line)
     if (!line) continue
 
