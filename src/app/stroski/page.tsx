@@ -8,6 +8,10 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
+const numericValue = (value: unknown) => {
+  const parsed = Number(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
 
 export default function Stroski() {
   const { language } = useLanguage()
@@ -26,6 +30,7 @@ export default function Stroski() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -59,6 +64,15 @@ export default function Stroski() {
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
+      await naloziStroske(carId)
+    }
+    init()
+    const timer = setInterval(() => setCas(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const naloziStroske = async (carId: string) => {
+      setRefreshing(true)
       const started = performance.now()
       const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
         supabase.from('cars').select('*').eq('id', carId).single(),
@@ -74,13 +88,18 @@ export default function Stroski() {
       setServisi(servisData)
       setExpenses(expensesData)
       localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, savedAt: Date.now() }))
+      localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
+        fuelCost: gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0),
+        serviceCost: servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0),
+        expenseCost: expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0),
+        fuelLiters: gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0),
+        fuelRows: gorivoData.length,
+        savedAt: Date.now(),
+      }))
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       setLoading(false)
-    }
-    init()
-    const timer = setInterval(() => setCas(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
+      setRefreshing(false)
+  }
 
   useEffect(() => {
     setVisibleCostCount(COST_LIST_SIZE)
@@ -96,9 +115,9 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const skupajGorivo = gorivo.reduce((sum, v) => sum + (v.cena_skupaj || 0), 0)
-  const skupajServis = servisi.reduce((sum, v) => sum + (v.cena || 0), 0)
-  const skupajExpenses = expenses.reduce((sum, v) => sum + (v.znesek || 0), 0)
+  const skupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
+  const skupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
+  const skupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
@@ -324,12 +343,24 @@ export default function Stroski() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
         <BackButton href="/stroski-garaza" />
         <div>
           <h1 className="text-xl font-bold text-white">📊 {tx('Stroški', 'Costs')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
         </div>
+      </div>
+
+        {avto?.id && (
+          <button
+            onClick={() => naloziStroske(avto.id)}
+            disabled={refreshing}
+            className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-3 py-2 text-xs font-bold text-[#a09aff] disabled:opacity-50"
+          >
+            {refreshing ? tx('Osvezujem...', 'Refreshing...') : tx('Osvezi', 'Refresh')}
+          </button>
+        )}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">

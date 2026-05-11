@@ -260,6 +260,14 @@ export default function Dashboard() {
         }
       } catch {}
     }
+    const cachedStats = localStorage.getItem(`garagebase_vehicle_stats_${carId}`)
+    if (cachedStats) {
+      try {
+        const parsed = JSON.parse(cachedStats)
+        const cachedCostTotal = numberValue(parsed.fuelCost) + numberValue(parsed.serviceCost) + numberValue(parsed.expenseCost)
+        if (cachedCostTotal > 0) setStroski({ garageBase: cachedCostTotal, imported: 0, total: cachedCostTotal, naKm: null })
+      } catch {}
+    }
 
     const started = performance.now()
     const [opRes] = await Promise.all([
