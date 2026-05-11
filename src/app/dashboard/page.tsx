@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2210'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2230'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -64,6 +64,17 @@ const statsHasData = (stats: any) => {
     numberValue(stats.costs?.expense) +
     numberValue(stats.costs?.total)
   return rowCount > 0 || costTotal > 0 || numberValue(stats.liters) > 0
+}
+
+const apiDebugText = (payload: any) => {
+  const debug = payload?.debug
+  if (!debug) return `api:${payload?.source || 'stats'}`
+  const selected = debug.selected
+  const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
+  const otherRows = Array.isArray(debug.userCarsWithRows)
+    ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numberValue(car.fuel) + numberValue(car.service) + numberValue(car.expense), 0)
+    : 0
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const isImportedDashboardRow = (row: any) => {
@@ -368,12 +379,12 @@ export default function Dashboard() {
             liters: numberValue(stats.liters),
             cost: numberValue(stats.costs?.total),
           })
-          setDebugStatsSource(`api:${payload.source || 'stats'}`)
+          setDebugStatsSource(apiDebugText(payload))
           setPoraba(nextPoraba)
           setStroski(nextStroski)
           return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
         } else {
-          source = `api-empty:${payload?.error || 'no-values'}`
+          source = payload?.debug ? `${apiDebugText(payload)} empty` : `api-empty:${payload?.error || 'no-values'}`
           console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
         }
       } catch (error) {

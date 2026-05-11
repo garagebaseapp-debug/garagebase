@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-2210'
+const STROSKI_BUILD = 'stroski-2026-05-11-2230'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -41,6 +41,17 @@ const statsHasRealValues = (stats: any) => {
     numericValue(stats.consumption?.garageBase) > 0 ||
     numericValue(stats.consumption?.imported) > 0 ||
     numericValue(stats.consumption?.total) > 0
+}
+
+const apiDebugText = (payload: any) => {
+  const debug = payload?.debug
+  if (!debug) return `api:${payload?.source || 'stats'}`
+  const selected = debug.selected
+  const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
+  const otherRows = Array.isArray(debug.userCarsWithRows)
+    ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
+    : 0
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const fuelCostValue = (row: any) => {
@@ -185,7 +196,7 @@ export default function Stroski() {
       let gorivoData = gorivoRes.data || []
       let servisData = servisRes.data || []
       let expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
-      const nextDebugSource = [
+      let nextDebugSource = [
         `q:${gorivoRes.count ?? gorivoData.length}/${servisRes.count ?? servisData.length}/${expensesRes.count ?? expensesData.length}`,
         `loaded:${gorivoData.length}/${servisData.length}/${expensesData.length}`,
         gorivoRes.error?.message || servisRes.error?.message || expensesRes.error?.message || 'ok',
@@ -228,13 +239,17 @@ export default function Stroski() {
           if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
             nextServerStats = payload.stats
             setServerStats(nextServerStats)
+            nextDebugSource = `${nextDebugSource} | ${apiDebugText(payload)}`
           } else {
+            nextDebugSource = `${nextDebugSource} | ${payload?.debug ? `${apiDebugText(payload)} empty` : `api-empty:${payload?.error || 'no-values'}`}`
             console.warn('[GarageBase costs] server statistics failed', payload?.error)
           }
         } catch (error) {
+          nextDebugSource = `${nextDebugSource} | api-error`
           console.warn('[GarageBase costs] server statistics unavailable', error)
         }
       }
+      setDebugSource(nextDebugSource)
       const nextSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, nextServerStats)
       setLoadedSummary(nextSummary)
       setCostSnapshot({

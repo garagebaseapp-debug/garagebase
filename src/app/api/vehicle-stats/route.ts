@@ -6,6 +6,18 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const rowCounts = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) => ({
+  fuel: rowSet.fuelRows.length,
+  service: rowSet.serviceRows.length,
+  expense: rowSet.expenseRows.length,
+})
+
+const hasRows = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) =>
+  rowSet.fuelRows.length > 0 || rowSet.serviceRows.length > 0 || rowSet.expenseRows.length > 0
+
 export async function GET(req: NextRequest) {
   if (!supabaseUrl || !anonKey) {
     return NextResponse.json(
@@ -52,29 +64,76 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'car_not_found' }, { status: 404 })
   }
 
-  const [fuelRes, serviceRes, expenseRes] = await Promise.all([
-    dataClient.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
-    dataClient.from('service_logs').select('*').eq('car_id', carId),
-    dataClient.from('expenses').select('*').eq('car_id', carId),
-  ])
+  const fetchRows = async (client: any, label: string) => {
+    const [fuelRes, serviceRes, expenseRes] = await Promise.all([
+      client.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
+      client.from('service_logs').select('*').eq('car_id', carId),
+      client.from('expenses').select('*').eq('car_id', carId),
+    ])
 
-  if (fuelRes.error || serviceRes.error || expenseRes.error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: fuelRes.error?.message || serviceRes.error?.message || expenseRes.error?.message,
-      },
-      { status: 500 }
-    )
+    return {
+      label,
+      error: fuelRes.error?.message || serviceRes.error?.message || expenseRes.error?.message || null,
+      fuelRows: fuelRes.data || [],
+      serviceRows: serviceRes.data || [],
+      expenseRows: (expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba'),
+    }
   }
 
-  const fuelRows = fuelRes.data || []
-  const serviceRows = serviceRes.data || []
-  const expenseRows = (expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba')
+  const primaryRows = await fetchRows(dataClient, canUseServiceRole ? 'service-role' : 'user-rls')
+  let fallbackRows: Awaited<ReturnType<typeof fetchRows>> | null = null
+  let selectedRows = primaryRows
+
+  if (primaryRows.error) {
+    return NextResponse.json({ ok: false, error: primaryRows.error }, { status: 500 })
+  }
+
+  if (canUseServiceRole && !hasRows(primaryRows)) {
+    fallbackRows = await fetchRows(userClient, 'user-rls')
+    if (fallbackRows.error) {
+      return NextResponse.json({ ok: false, error: fallbackRows.error }, { status: 500 })
+    }
+    if (hasRows(fallbackRows)) selectedRows = fallbackRows
+  }
+
+  let userCarCounts: Array<{ id: string; name: string; fuel: number; service: number; expense: number }> = []
+  if (!hasRows(selectedRows)) {
+    const { data: carsForUser } = await dataClient
+      .from('cars')
+      .select('id,znamka,model')
+      .eq('user_id', userData.user.id)
+
+    const carIds = (carsForUser || []).map((userCar: any) => userCar.id).filter(Boolean)
+    if (carIds.length > 0) {
+      const [allFuelRes, allServiceRes, allExpenseRes] = await Promise.all([
+        dataClient.from('fuel_logs').select('id,car_id').in('car_id', carIds),
+        dataClient.from('service_logs').select('id,car_id').in('car_id', carIds),
+        dataClient.from('expenses').select('id,car_id,kategorija').in('car_id', carIds),
+      ])
+
+      userCarCounts = (carsForUser || []).map((userCar: any) => {
+        const expenses = (allExpenseRes.data || []).filter((row: any) => row.car_id === userCar.id && row.kategorija !== 'km_sprememba')
+        return {
+          id: userCar.id,
+          name: [userCar.znamka, userCar.model].filter(Boolean).join(' '),
+          fuel: (allFuelRes.data || []).filter((row: any) => row.car_id === userCar.id).length,
+          service: (allServiceRes.data || []).filter((row: any) => row.car_id === userCar.id).length,
+          expense: expenses.length,
+        }
+      }).filter((count: any) => count.fuel > 0 || count.service > 0 || count.expense > 0)
+    }
+  }
 
   return NextResponse.json({
     ok: true,
-    source: canUseServiceRole ? 'service-role' : 'user-rls',
-    stats: buildVehicleStats(fuelRows, serviceRows, expenseRows, car),
+    source: selectedRows.label,
+    debug: {
+      requestedCarId: carId,
+      primary: { label: primaryRows.label, ...rowCounts(primaryRows) },
+      fallback: fallbackRows ? { label: fallbackRows.label, ...rowCounts(fallbackRows) } : null,
+      selected: { label: selectedRows.label, ...rowCounts(selectedRows) },
+      userCarsWithRows: userCarCounts.slice(0, 12),
+    },
+    stats: buildVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car),
   })
 }
