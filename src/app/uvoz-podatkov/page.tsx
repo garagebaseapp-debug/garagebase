@@ -248,8 +248,10 @@ const parseDate = (value?: string) => {
   }
   const eu = trimmed.match(/^(\d{1,2})[.-]\s*(\d{1,2})[.-]\s*(\d{4})/)
   if (eu) return `${eu[3]}-${eu[2].padStart(2, '0')}-${eu[1].padStart(2, '0')}`
-  return trimmed
+  return ''
 }
+
+const isValidImportDate = (value?: string) => /^\d{4}-\d{2}-\d{2}$/.test(value || '')
 
 const normalizeFuelType = (value?: string | null) => {
   const normalized = normalizeText(value || '')
@@ -440,7 +442,7 @@ const parseHeaderlessDrivvoFuelCsv = (csv: string): ParsedSection | null => {
     .map(line => cleanCsvMarker(line))
     .filter(line => line && !line.startsWith('##'))
     .map(line => splitCsvLine(line, detectSeparator(line)))
-    .filter(values => toNumber(values[0]) !== null && Boolean(parseDate(values[1])))
+    .filter(values => toNumber(values[0]) !== null && isValidImportDate(parseDate(values[1])))
     .map(values => drivvoFuelHeaders.reduce((row, header, index) => ({ ...row, [header]: values[index] || '' }), {} as Record<string, string>))
 
   return records.length ? { name: 'Refuelling', headers: drivvoFuelHeaders, records } : null
@@ -529,7 +531,7 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
       notes,
       importDetails,
     }
-  }).filter(row => row.date)
+  }).filter(row => isValidImportDate(row.date))
 }
 
 export default function UvozPodatkov() {
@@ -630,7 +632,7 @@ export default function UvozPodatkov() {
         category: row[mapping.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
         fuelType: row[mapping.fuelType] || null,
       }
-    }).filter(row => row.date)
+    }).filter(row => isValidImportDate(row.date))
   }, [activeDrivvoSection, drivvoRows, headerlessDrivvoFuel, isDrivvo, parsed.records, mapping, importType, language, enotaRazdalje])
 
   const handleFile = async (file?: File) => {
