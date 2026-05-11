@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2055'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2115'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -168,7 +168,11 @@ const readCostTotalsCache = (carId: string) => {
       numberValue(parsed?.garageBaseFuelCost) > 0 ||
       numberValue(parsed?.importedFuelCost) > 0 ||
       numberValue(parsed?.fuelRows) > 0
-    return hasValue ? parsed : null
+    if (hasValue) return parsed
+    const garageRaw = localStorage.getItem('garagebase_stroski_garaza_cache')
+    const garageParsed = garageRaw ? JSON.parse(garageRaw) : null
+    const garageTotal = numberValue(garageParsed?.stroski?.[carId])
+    return garageTotal > 0 ? { fuelCost: garageTotal, garageBaseFuelCost: garageTotal, fuelRows: 0 } : null
   } catch {
     return null
   }

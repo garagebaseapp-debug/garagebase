@@ -1,6 +1,6 @@
 'use client'
 
-export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2055'
+export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2115'
 
 export const clearVehicleDataCaches = (carId?: string | null) => {
   if (typeof window === 'undefined' || !carId) return
@@ -23,15 +23,12 @@ export const ensureVehicleStatsCacheVersion = (version: string) => {
   const prefixes = [
     'garagebase_dashboard_cache_',
     'garagebase_vehicle_stats_',
-    'garagebase_stroski_cache_',
-    'garagebase_cost_totals_',
-    'garagebase_fuel_history_cache_',
   ]
 
   for (let index = localStorage.length - 1; index >= 0; index--) {
     const key = localStorage.key(index)
     if (!key) continue
-    if (key === 'garagebase_stroski_garaza_cache' || prefixes.some((prefix) => key.startsWith(prefix))) {
+    if (prefixes.some((prefix) => key.startsWith(prefix))) {
       localStorage.removeItem(key)
     }
   }

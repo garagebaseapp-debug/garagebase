@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-2055'
+const STROSKI_BUILD = 'stroski-2026-05-11-2115'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -76,7 +76,11 @@ const readCostTotalsCache = (carId?: string) => {
       numericValue(parsed?.garageBaseFuelCost) > 0 ||
       numericValue(parsed?.importedFuelCost) > 0 ||
       numericValue(parsed?.fuelRows) > 0
-    return hasValue ? parsed : null
+    if (hasValue) return parsed
+    const garageRaw = localStorage.getItem('garagebase_stroski_garaza_cache')
+    const garageParsed = garageRaw ? JSON.parse(garageRaw) : null
+    const garageTotal = numericValue(garageParsed?.stroski?.[carId])
+    return garageTotal > 0 ? { fuelCost: garageTotal, garageBaseFuelCost: garageTotal, fuelRows: 0 } : null
   } catch {
     return null
   }
