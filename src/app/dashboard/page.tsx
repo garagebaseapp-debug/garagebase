@@ -21,7 +21,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1755'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1810'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -167,6 +167,20 @@ const readCostTotalsCache = (carId: string) => {
   }
 }
 
+const readVehicleStatsCache = (carId: string) => {
+  try {
+    const raw = localStorage.getItem(`garagebase_vehicle_stats_${carId}`)
+    const parsed = raw ? JSON.parse(raw) : null
+    const total =
+      numberValue(parsed?.costs?.total) ||
+      (numberValue(parsed?.fuelCost) + numberValue(parsed?.serviceCost) + numberValue(parsed?.expenseCost))
+    if (total <= 0 && !parsed?.consumption) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
   const [aktivniAvto, setAktivniAvto] = useState<any>(null)
@@ -293,6 +307,7 @@ export default function Dashboard() {
   const naloziStatistikoVozila = async (carId: string, kmStart: number = 0, kmObVnosu: number = 0) => {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
+    const cachedStats = readVehicleStatsCache(carId)
 
     if (token) {
       try {
@@ -339,6 +354,35 @@ export default function Dashboard() {
       } catch (error) {
         console.warn('[GarageBase dashboard] server statistics unavailable', error)
       }
+    }
+
+    if (cachedStats?.costs || cachedStats?.consumption) {
+      const cachedCostTotal =
+        numberValue(cachedStats?.costs?.total) ||
+        (numberValue(cachedStats?.fuelCost) + numberValue(cachedStats?.serviceCost) + numberValue(cachedStats?.expenseCost))
+      const cachedPoraba = cachedStats?.consumption
+        ? {
+            garageBase: cachedStats.consumption.garageBase ?? null,
+            imported: cachedStats.consumption.imported ?? null,
+            total: cachedStats.consumption.total ?? null,
+          }
+        : emptyConsumption
+      const cachedStroski = {
+        garageBase: numberValue(cachedStats?.costs?.garageBase) || cachedCostTotal,
+        imported: numberValue(cachedStats?.costs?.imported),
+        total: cachedCostTotal,
+        naKm: cachedStats?.costs?.naKm ?? null,
+      }
+      setDebugStats({
+        fuel: numberValue(cachedStats?.fuelRows),
+        service: 0,
+        expense: 0,
+        liters: numberValue(cachedStats?.fuelLiters),
+        cost: cachedCostTotal,
+      })
+      if (cachedPoraba.total !== null || cachedPoraba.garageBase !== null || cachedPoraba.imported !== null) setPoraba(cachedPoraba)
+      setStroski(cachedStroski)
+      return { poraba: cachedPoraba, stroski: cachedStroski, fuelRows: [] }
     }
 
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
