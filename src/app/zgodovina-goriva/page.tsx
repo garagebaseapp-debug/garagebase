@@ -78,7 +78,8 @@ export default function ZgodovinaGoriva() {
     }
   }
 
-  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || importInfo(vnos.source_owner_label))
+  const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && Number(vnos.litri || 0) === 0 && Number(vnos.cena_skupaj || 0) === 0
+  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || importInfo(vnos.source_owner_label) || jeNepopolnUvoz(vnos))
   const editable = (vnos: any) => jeUvozen(vnos) || Boolean(preostaliCas(vnos.created_at))
 
   const refreshVnosi = async () => {
@@ -119,7 +120,12 @@ export default function ZgodovinaGoriva() {
     const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
     if (!ok) return
     setSaving(true)
-    await supabase.from('fuel_logs').delete().eq('id', id).eq('car_id', avto.id)
+    const { error } = await supabase.from('fuel_logs').delete().eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     setSelectedImported(prev => prev.filter(item => item !== id))
     await refreshVnosi()
     setUredi(null)
@@ -146,7 +152,12 @@ export default function ZgodovinaGoriva() {
     ))
     if (!ok) return
     setSaving(true)
-    await supabase.from('fuel_logs').delete().in('id', ids).eq('car_id', avto.id)
+    const { error } = await supabase.from('fuel_logs').delete().eq('car_id', avto.id).in('id', ids)
+    if (error) {
+      window.alert(tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     setSelectedImported([])
     await refreshVnosi()
     setSaving(false)
@@ -157,6 +168,10 @@ export default function ZgodovinaGoriva() {
       if (prev) setSelectedImported([])
       return !prev
     })
+  }
+
+  const pocistiUrejanje = () => {
+    setEditData({ ...editData, litri: '', cena_na_liter: '', postaja: '' })
   }
 
   if (loading) return (
@@ -231,6 +246,19 @@ export default function ZgodovinaGoriva() {
         </div>
       )}
 
+      {vnosi.length > 0 && (
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[#22c55e55] bg-[#22c55e10] px-4 py-3">
+            <p className="text-sm font-black text-[#15803d]">{tx('Uvozena zgodovina', 'Imported history')}</p>
+            <p className="text-xs text-[#166534]">{tx('CSV/prenos ali stari nepopolni uvozi.', 'CSV/transfer or old incomplete imports.')}</p>
+          </div>
+          <div className="rounded-2xl border border-[#6c63ff55] bg-[#6c63ff10] px-4 py-3">
+            <p className="text-sm font-black text-[#6c63ff]">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
+            <p className="text-xs text-[#5a5a80]">{tx('Zapisi, ki jih uporabnik vnese v aplikaciji.', 'Records entered by the user in the app.')}</p>
+          </div>
+        </div>
+      )}
+
       {vnosi.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
           <p className="text-4xl mb-3">⛽</p>
@@ -244,18 +272,19 @@ export default function ZgodovinaGoriva() {
             const tipIkona = tipGorivaIkona(vnos.tip_goriva)
             const preostalo = preostaliCas(vnos.created_at)
             const jeUredi = uredi === vnos.id
-            const info = importInfo(vnos.source_owner_label)
+            const info = importInfo(vnos.source_owner_label) || (jeNepopolnUvoz(vnos) ? { key: `incomplete-${vnos.id}`, source: tx('Nepopoln uvoz', 'Incomplete import'), dateText: '' } : null)
             const isImported = jeUvozen(vnos)
+            const isIncompleteImport = jeNepopolnUvoz(vnos)
             const previousInfo = reversedIndex > 0 ? importInfo([...vnosi].reverse()[reversedIndex - 1]?.source_owner_label) : null
-            const showImportNote = info && info.key !== previousInfo?.key
+            const showImportNote = isImported && (isIncompleteImport || (info && info.key !== previousInfo?.key))
 
             return (
-              <div key={vnos.id} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
+              <div key={vnos.id} className={`rounded-2xl p-4 ${isImported ? 'bg-[#f0fdf4] border border-[#22c55e66]' : 'bg-white border border-[#dce3ff]'}`}>
                 {showImportNote && (
-                  <div className="mb-3 rounded-xl border border-[#22c55e55] bg-[#22c55e14] px-3 py-2">
+                  <div className="mb-3 rounded-xl border border-[#22c55e55] bg-[#dcfce7] px-3 py-2">
                     <p className="text-[#4ade80] text-xs font-bold">{tx('Uvožena zgodovina', 'Imported history')}</p>
-                    <p className="text-[#86efac] text-xs mt-0.5">
-                      {tx('Vir', 'Source')}: {info.source}{info.dateText ? ` · ${tx('uvoženo', 'imported')}: ${info.dateText}` : ''}
+                    <p className="text-[#166534] text-xs mt-0.5">
+                      {tx('Vir', 'Source')}: {info?.source}{info?.dateText ? ` · ${tx('uvoženo', 'imported')}: ${info?.dateText}` : ''}
                     </p>
                   </div>
                 )}

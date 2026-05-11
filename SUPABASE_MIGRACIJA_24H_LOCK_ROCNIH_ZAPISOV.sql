@@ -36,6 +36,14 @@ begin
     return coalesce(new, old);
   end if;
 
+  -- Old CSV imports before import_batch_id existed may have been saved as empty
+  -- fuel rows. Keep them removable so users can clean bad imports.
+  if TG_TABLE_NAME = 'fuel_logs'
+     and coalesce(old.litri, 0) = 0
+     and coalesce(old.cena_skupaj, 0) = 0 then
+    return coalesce(new, old);
+  end if;
+
   created_value := coalesce(old.created_at, now());
 
   if created_value < now() - interval '24 hours' then
