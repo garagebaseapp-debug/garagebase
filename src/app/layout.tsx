@@ -1,19 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AppLock } from "@/lib/app-lock";
 import { GlobalTranslator } from "@/lib/i18n";
 import { AppAnalytics } from "@/lib/app-analytics";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "GarageBase",
@@ -34,7 +23,7 @@ export default function RootLayout({
   return (
     <html
       lang="sl"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full antialiased"
     >
       <head>
         <link rel="manifest" href="/manifest.json" />

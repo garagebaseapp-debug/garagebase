@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test:smoke": "node scripts/smoke-routes.mjs",
-    "prelaunch": "npm run test:smoke && node scripts/prelaunch-check.mjs && npm run build",
-    "check": "npm run test:smoke && npm run build"
+    "test:i18n": "node scripts/check-i18n.mjs",
+    "production:check": "node scripts/check-production.mjs",
+    "prelaunch": "npm run test:smoke && npm run test:i18n && node scripts/prelaunch-check.mjs && npm run build",
+    "check": "npm run test:smoke && npm run test:i18n && npm run build"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

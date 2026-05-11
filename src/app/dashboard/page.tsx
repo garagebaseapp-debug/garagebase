@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
+import { getStoredLanguage, type Language } from '@/lib/i18n'
 
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
@@ -14,6 +15,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [jezik, setJezik] = useState<Language>('sl')
+  const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
+  const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
+  const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
 
   useEffect(() => {
@@ -26,8 +31,10 @@ export default function Dashboard() {
           jeLite = settings.nacin === 'lite'
           setNacin(jeLite ? 'lite' : 'full')
           setValuta(settings.valuta === 'USD' ? 'USD' : 'EUR')
+          setJezik(settings.jezik === 'en' || settings.language === 'en' ? 'en' : getStoredLanguage())
         } catch {}
       }
+      if (!settingsRaw) setJezik(getStoredLanguage())
       const params = new URLSearchParams(window.location.search)
       const carIdFromUrl = params.get('car')
       const cached = localStorage.getItem('garagebase_garaza_cache')
@@ -63,7 +70,7 @@ export default function Dashboard() {
           : cars[0]
         setAktivniAvto(izbrani)
         setLoading(false)
-        if (jeLite) await naloziLitePodatke(izbrani.id)
+        if (jeLite) await naloziLitePodatke(cars.map((a: any) => a.id), izbrani.id)
         else await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
       console.info(`[GarageBase speed] dashboard cars ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
@@ -72,28 +79,51 @@ export default function Dashboard() {
     init()
   }, [])
 
-  const naloziLitePodatke = async (carId: string) => {
-    const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
-    if (cached) {
+  const naloziLitePodatke = async (carIds: string[] | string, activeCarId?: string) => {
+    const ids = Array.isArray(carIds) ? carIds : [carIds]
+    const selectedId = activeCarId || ids[0]
+    const cachedGrouped: Record<string, any[]> = {}
+
+    ids.forEach((id) => {
+      const cached = localStorage.getItem(`garagebase_dashboard_cache_${id}`)
+      if (!cached) return
       try {
         const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
+        if (Array.isArray(parsed.opomniki)) cachedGrouped[id] = parsed.opomniki
       } catch {}
+    })
+
+    if (Object.keys(cachedGrouped).length > 0) {
+      setLiteOpomnikiPoAvtu((prev) => ({ ...prev, ...cachedGrouped }))
+      if (selectedId && cachedGrouped[selectedId]) setOpomniki(cachedGrouped[selectedId])
     }
 
+    if (ids.length === 0) return
     const started = performance.now()
     const { data } = await supabase
       .from('reminders')
       .select('*')
-      .eq('car_id', carId)
+      .in('car_id', ids)
       .order('datum', { ascending: true })
 
-    const opData = data || []
-    setOpomniki(opData)
-    localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, savedAt: Date.now() }))
-    console.info(`[GarageBase speed] lite dashboard ${Math.round(performance.now() - started)}ms`)
-  }
+    const grouped: Record<string, any[]> = {}
+    ;(data || []).forEach((op: any) => {
+      if (!op.car_id) return
+      if (!grouped[op.car_id]) grouped[op.car_id] = []
+      grouped[op.car_id].push(op)
+    })
 
+    const completeGrouped: Record<string, any[]> = {}
+    ids.forEach((id) => {
+      const opData = grouped[id] || []
+      completeGrouped[id] = opData
+      localStorage.setItem(`garagebase_dashboard_cache_${id}`, JSON.stringify({ opomniki: opData, savedAt: Date.now() }))
+    })
+
+    setLiteOpomnikiPoAvtu(completeGrouped)
+    if (selectedId) setOpomniki(completeGrouped[selectedId] || [])
+    console.info(`[GarageBase speed] lite dashboard ${Math.round(performance.now() - started)}ms, cars ${ids.length}`)
+  }
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
     const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
     if (cached) {
@@ -144,8 +174,13 @@ export default function Dashboard() {
   }
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
-    if (nacin === 'lite') await naloziLitePodatke(avto.id)
-    else await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
+    if (nacin === 'lite') {
+      const cachedOpomniki = liteOpomnikiPoAvtu[avto.id]
+      if (cachedOpomniki) setOpomniki(cachedOpomniki)
+      else await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
+    } else {
+      await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
+    }
   }
 
   const dniDo = (datum: string) => {
@@ -185,86 +220,151 @@ export default function Dashboard() {
     return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
   }
 
-  const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
-  const tipNaziv: any = { registracija: 'Registracija', vinjeta: 'Vinjeta', tehnicni: 'Tehnični pregled', servis: 'Servis', zavarovanje: 'Zavarovanje', gume: 'Gume' }
-
+  type LiteStatus = 'grey' | 'green' | 'orange' | 'red'
+  const liteStatusRank: Record<LiteStatus, number> = { grey: 0, green: 1, orange: 2, red: 3 }
+  const liteStatusStyle: Record<LiteStatus, { border: string; bg: string; text: string; ring: string }> = {
+    grey: { border: 'border-[#343446]', bg: 'bg-[#141421]', text: 'text-[#a0a0b8]', ring: 'ring-[#343446]' },
+    green: { border: 'border-[#22c55e]', bg: 'bg-[#22c55e14]', text: 'text-[#4ade80]', ring: 'ring-[#22c55e]' },
+    orange: { border: 'border-[#f59e0b]', bg: 'bg-[#f59e0b14]', text: 'text-[#fbbf24]', ring: 'ring-[#f59e0b]' },
+    red: { border: 'border-[#ef4444]', bg: 'bg-[#ef444414]', text: 'text-[#f87171]', ring: 'ring-[#ef4444]' },
+  }
+  const tipBadge: Record<string, string> = { registracija: 'REG', vinjeta: 'VIN', tehnicni: 'TEH', servis: 'SRV', zavarovanje: 'ZAV', gume: 'GUM' }
+  const tipIkona: Record<string, string> = {
+    registracija: '📋',
+    vinjeta: '🛣️',
+    tehnicni: '🔍',
+    servis: '🔧',
+    zavarovanje: '🛡️',
+    gume: '⚫',
+    drugo: '✏️',
+  }
+  const tipNaziv: Record<string, string> = {
+    registracija: tx('Registracija', 'Registration'),
+    vinjeta: tx('Vinjeta', 'Vignette'),
+    tehnicni: tx('Tehnični pregled', 'Roadworthiness test'),
+    servis: tx('Servis', 'Service'),
+    zavarovanje: tx('Zavarovanje', 'Insurance'),
+    gume: tx('Gume', 'Tires'),
+    drugo: tx('Drugo', 'Other'),
+  }
+  const liteTipNaziv = (tip?: string) => tipNaziv[tip || ''] || tip || tx('Opomnik', 'Reminder')
+  const statusZaOpomnik = (op: any, avto: any): LiteStatus => {
+    const dni = dniDo(op.datum)
+    const km = op.km_opomnik && avto?.km_trenutni ? op.km_opomnik - avto.km_trenutni : null
+    if ((dni !== null && dni <= 7) || (km !== null && km <= 500)) return 'red'
+    if ((dni !== null && dni <= 30) || (km !== null && km <= 1500)) return 'orange'
+    if (dni !== null || km !== null) return 'green'
+    return 'grey'
+  }
+  const statusZaAvto = (avto: any): LiteStatus => {
+    const list = liteOpomnikiPoAvtu[avto.id] || []
+    if (list.length === 0) return 'grey'
+    return list.reduce((worst: LiteStatus, op: any) => {
+      const next = statusZaOpomnik(op, avto)
+      return liteStatusRank[next] > liteStatusRank[worst] ? next : worst
+    }, 'green')
+  }
+  const statusOznaka = (status: LiteStatus) => {
+    if (status === 'red') return tx('Nujni opomniki', 'Urgent reminders')
+    if (status === 'orange') return tx('Kmalu zapade', 'Due soon')
+    if (status === 'green') return tx('V redu', 'All good')
+    return tx('Brez opomnikov', 'No reminders')
+  }
   const nujniOpomniki = opomniki
     .map((op) => ({ ...op, dni: dniDo(op.datum), km: op.km_opomnik ? kmDo(op.km_opomnik) : null }))
     .sort((a, b) => Math.min(a.dni ?? 9999, a.km ?? 999999) - Math.min(b.dni ?? 9999, b.km ?? 999999))
     .slice(0, 3)
 
   if (nacin === 'lite' && aktivniAvto) {
+    const aktivniStatus = statusZaAvto(aktivniAvto)
+    const aktivnoIme = `${aktivniAvto.znamka || ''} ${aktivniAvto.model || ''}`.trim() || tx('Vozilo', 'Vehicle')
+    const prikazOpomnikov = opomniki.slice(0, 4)
+
     return (
       <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <BackButton href="/garaza" />
           <div>
             <h1 className="text-xl font-bold text-white">Lite</h1>
-            <p className="text-[#5a5a80] text-xs">Hitri pregled vozila</p>
+            <p className="text-[#8a8aa6] text-sm">{tx('Hitri način za vsakdanjo uporabo', 'Quick mode for daily use')}</p>
           </div>
         </div>
 
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-          {avti.map((avto) => (
-            <button key={avto.id} onClick={() => preklopAvto(avto)}
-              className={`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold border ${
-                aktivniAvto?.id === avto.id ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]' : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80]'
-              }`}>
-              {avto.znamka} {avto.model}
-            </button>
-          ))}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {avti.map((avto) => {
+            const status = statusZaAvto(avto)
+            const active = aktivniAvto?.id === avto.id
+            const ime = `${avto.znamka || ''} ${avto.model || ''}`.trim() || tx('Vozilo', 'Vehicle')
+            return (
+              <button
+                key={avto.id}
+                onClick={() => preklopAvto(avto)}
+                className={`rounded-2xl border p-1.5 text-left transition-all ${liteStatusStyle[status].border} ${liteStatusStyle[status].bg} ${active ? `ring-2 ${liteStatusStyle[status].ring}` : ''}`}
+                aria-label={ime}
+              >
+                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#11111d]">
+                  {avto.slika_url ? (
+                    <img src={avto.slika_url} alt={ime} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-white">{ime}</div>
+                  )}
+                </div>
+                <p className="mt-1 truncate px-1 text-[11px] font-bold text-white">{ime}</p>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl overflow-hidden mb-4">
-          {aktivniAvto.slika_url && (
-            <img src={aktivniAvto.slika_url} alt={`${aktivniAvto.znamka} ${aktivniAvto.model}`}
-              loading="eager" decoding="async" className="w-full h-44 object-cover" />
-          )}
+        <div className={`rounded-2xl border overflow-hidden mb-4 ${liteStatusStyle[aktivniStatus].border} bg-[#0f0f1a]`}>
+          {(aktivniAvto.slika_url || aktivniAvto.slika) && <img src={aktivniAvto.slika_url || aktivniAvto.slika} alt={aktivnoIme} loading="lazy" decoding="async" className="h-40 w-full object-cover" />}
           <div className="p-5">
-            <h2 className="text-white font-black text-2xl leading-tight">
-              {aktivniAvto.znamka.charAt(0).toUpperCase() + aktivniAvto.znamka.slice(1)} {aktivniAvto.model.toUpperCase()}
-            </h2>
-            <p className="text-[#5a5a80] mt-1">
-              {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.km_trenutni && `${aktivniAvto.km_trenutni.toLocaleString()} km`].filter(Boolean).join(' · ')}
-            </p>
+            <p className={`mb-2 text-xs font-black uppercase tracking-wider ${liteStatusStyle[aktivniStatus].text}`}>{statusOznaka(aktivniStatus)}</p>
+            <h2 className="text-2xl font-black text-white">{aktivnoIme}</h2>
+            <p className="mt-1 text-sm text-[#a0a0b8]">{[aktivniAvto.letnik, aktivniAvto.gorivo].filter(Boolean).join(' - ')}</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <button onClick={() => window.location.href = `/vnos-goriva?car=${aktivniAvto.id}`} className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-2xl p-5 text-left font-bold">
-            <span className="block text-3xl mb-2">⛽</span>Vnos goriva
-          </button>
-          <button onClick={() => window.location.href = `/vnos-servisa?car=${aktivniAvto.id}`} className="bg-[#f59e0b22] border border-[#f59e0b66] text-[#f59e0b] rounded-2xl p-5 text-left font-bold">
-            <span className="block text-3xl mb-2">🔧</span>Servis
-          </button>
-          <button onClick={() => window.location.href = `/vnos-stroska?car=${aktivniAvto.id}`} className="bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] rounded-2xl p-5 text-left font-bold">
-            <span className="block text-3xl mb-2">📊</span>Strosek
-          </button>
-          <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`} className="bg-[#16a34a22] border border-[#16a34a66] text-[#4ade80] rounded-2xl p-5 text-left font-bold">
-            <span className="block text-3xl mb-2">🔔</span>Opomnik
-          </button>
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          <a href={`/vnos-goriva?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#6c5cff] p-4 text-center font-black text-white shadow-lg shadow-[#6c5cff33]">
+            <span className="block text-xs uppercase text-white/70">{tx('Gorivo', 'Fuel')}</span>
+            + {tx('Tankanje', 'Fill-up')}
+          </a>
+          <a href={`/vnos-servisa?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#f59e0b] p-4 text-center font-black text-white shadow-lg shadow-[#f59e0b22]">
+            <span className="block text-xs uppercase text-white/70">{tx('Servis', 'Service')}</span>
+            + {tx('Servis', 'Service')}
+          </a>
+          <a href={`/vnos-stroska?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#20c7c7] p-4 text-center font-black text-[#061014]">
+            <span className="block text-xs uppercase text-[#061014]/60">{tx('Stroški', 'Costs')}</span>
+            + {tx('Strošek', 'Expense')}
+          </a>
+          <a href={`/opomniki?car=${aktivniAvto.id}`} className="rounded-2xl border border-[#2d2d44] bg-[#141421] p-4 text-center font-black text-white">
+            <span className="block text-xs uppercase text-white/50">{tx('Opomniki', 'Reminders')}</span>
+            + {tx('Opomnik', 'Reminder')}
+          </a>
         </div>
 
-        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
-          <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Najblizji opomniki</p>
-          {nujniOpomniki.length === 0 ? (
-            <p className="text-[#5a5a80] text-sm">Ni aktivnih opomnikov.</p>
+        <div className="rounded-2xl border border-[#202033] bg-[#0f0f1a] p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-wider text-[#8a8aa6]">{tx('Najbližji opomniki', 'Closest reminders')}</h3>
+            <span className="text-xs text-[#6d6d86]">{opomniki.length}</span>
+          </div>
+          {prikazOpomnikov.length === 0 ? (
+            <p className="rounded-xl border border-[#303040] bg-[#141421] p-4 text-sm font-bold text-[#a0a0b8]">{tx('To vozilo še nima opomnikov.', 'This vehicle has no reminders yet.')}</p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {nujniOpomniki.map((op) => {
-                const b = skupnaBarva(op.dni, op.km)
+            <div className="space-y-2">
+              {prikazOpomnikov.map((op: any) => {
+                const status = statusZaOpomnik(op, aktivniAvto)
+                const dni = dniDo(op.datum)
+                const km = op.km_opomnik && aktivniAvto?.km_trenutni ? op.km_opomnik - aktivniAvto.km_trenutni : null
+                const vrednost = dni !== null ? `${dni} d` : km !== null ? `${km} km` : '-'
                 return (
-                  <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3 flex items-center justify-between gap-3`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
-                      <div className="min-w-0">
-                        <p className="text-white text-sm font-semibold truncate">{tipNaziv[op.tip] || op.tip}</p>
-                        <p className="text-[#5a5a80] text-xs">{op.datum ? new Date(op.datum).toLocaleDateString('sl-SI') : 'Km opomnik'}</p>
-                      </div>
+                  <div key={op.id} className={`flex items-center gap-3 rounded-xl border p-3 ${liteStatusStyle[status].border} ${liteStatusStyle[status].bg}`}>
+                    <span className={`min-w-11 rounded-lg border px-2 py-1 text-center text-[10px] font-black ${liteStatusStyle[status].border} ${liteStatusStyle[status].text}`}>{tipBadge[op.tip] || 'REM'}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black text-white">{liteTipNaziv(op.tip)}</p>
+                      <p className="truncate text-xs text-[#8a8aa6]">{op.datum ? new Date(op.datum).toLocaleDateString(datumLocale) : tx('KM opomnik', 'Mileage reminder')}</p>
                     </div>
-                    <p className={`${b.text} font-black text-lg whitespace-nowrap`}>
-                      {op.dni !== null ? `${op.dni} d` : op.km !== null ? `${op.km} km` : '-'}
-                    </p>
+                    <span className={`text-sm font-black ${liteStatusStyle[status].text}`}>{vrednost}</span>
                   </div>
                 )
               })}
@@ -276,7 +376,6 @@ export default function Dashboard() {
       </div>
     )
   }
-
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
