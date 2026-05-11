@@ -144,6 +144,30 @@ const toNumber = (value?: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+const numberFromRow = (
+  row: Record<string, string>,
+  headers: string[],
+  mappedHeader: string | undefined,
+  fallbackIndexes: number[],
+  fallbackNames: string[],
+) => {
+  const candidates: string[] = []
+  if (mappedHeader && row[mappedHeader]) candidates.push(row[mappedHeader])
+  for (const name of fallbackNames) {
+    const header = findHeader(headers, [name])
+    if (header && row[header]) candidates.push(row[header])
+  }
+  for (const index of fallbackIndexes) {
+    const header = headers[index]
+    if (header && row[header]) candidates.push(row[header])
+  }
+  for (const candidate of candidates) {
+    const value = toNumber(candidate)
+    if (value !== null) return value
+  }
+  return null
+}
+
 const parseDate = (value?: string) => {
   if (!value) return ''
   const trimmed = value.trim()
@@ -193,6 +217,7 @@ const optionalImportColumns = new Set([
   'verification_level',
   'source_owner_label',
   'source_entry_id',
+  'import_batch_id',
   'imported_at',
   'locked_at',
   'verified_document_url',
@@ -339,6 +364,18 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
       : isExpenseSection
         ? rawCategory || notes || fallbackDescription
         : row[map.description] || row[map.category] || fallbackDescription
+    const fuelAmount = isFuelSection
+      ? numberFromRow(row, section.headers, map.amount, [4], ['total', 'amount', 'cost', 'znesek', 'skupaj'])
+      : null
+    const fuelPricePerLiter = isFuelSection
+      ? numberFromRow(row, section.headers, map.pricePerLiter, [3], ['price/l', 'price per liter', 'cena/l', 'cena na liter'])
+      : null
+    const fuelLiters = isFuelSection
+      ? numberFromRow(row, section.headers, map.liters, [5], ['liters', 'litres', 'litri', 'volume', 'volumen', 'quantity', 'kolicina'])
+      : null
+    const calculatedLiters = fuelLiters === null && fuelAmount && fuelPricePerLiter
+      ? Math.round((fuelAmount / fuelPricePerLiter) * 100) / 100
+      : fuelLiters
     const importDetails = isFuelSection
       ? joinDetails([
           [language === 'en' ? 'Full tank' : 'Poln tank', fullTank],
@@ -363,9 +400,9 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
       date,
       km,
       description,
-      amount: toNumber(isFuelSection ? valueAt(row, 4, map.amount) : isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
-      liters: toNumber(isFuelSection ? valueAt(row, 5, map.liters) : row[map.liters]),
-      pricePerLiter: toNumber(isFuelSection ? valueAt(row, 3, map.pricePerLiter) : row[map.pricePerLiter]),
+      amount: isFuelSection ? fuelAmount : toNumber(isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
+      liters: isFuelSection ? calculatedLiters : toNumber(row[map.liters]),
+      pricePerLiter: isFuelSection ? fuelPricePerLiter : toNumber(row[map.pricePerLiter]),
       station,
       category: isExpenseSection ? normalizeCategory(rawCategory) : row[map.category] || (isServiceSection ? 'servis' : isFuelSection ? 'gorivo' : 'uvoz'),
       fuelType: normalizeFuelType(isFuelSection ? valueAt(row, 2, map.fuelType) : row[map.fuelType]),
@@ -390,6 +427,8 @@ export default function UvozPodatkov() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [lastImportCounts, setLastImportCounts] = useState<Record<ImportKind, number> | null>(null)
+  const [lastImportBatchId, setLastImportBatchId] = useState('')
+  const [undoLoading, setUndoLoading] = useState(false)
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
@@ -474,6 +513,7 @@ export default function UvozPodatkov() {
     if (looksLikeDrivvoCsv(text)) setImportType('drivvo')
     setMessage('')
     setLastImportCounts(null)
+    setLastImportBatchId('')
   }
 
   const importData = async () => {
@@ -484,6 +524,9 @@ export default function UvozPodatkov() {
 
     try {
       const importStamp = new Date().toISOString()
+      const importBatchId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `import-${Date.now()}-${Math.random().toString(16).slice(2)}`
       const importSource = isDrivvo ? 'Drivvo' : 'CSV'
       const importedLabel = (source?: string) => `${source || importSource} import | ${importStamp}`
       const duplicateKey = (row: any) =>
@@ -516,6 +559,7 @@ export default function UvozPodatkov() {
           tip_goriva: row.fuelType,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
+          import_batch_id: importBatchId,
         })), existingKeys)
         insertedByType.fuel = rows.length
         await insertImportRows('fuel_logs', rows)
@@ -534,6 +578,7 @@ export default function UvozPodatkov() {
           cena: row.amount,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
+          import_batch_id: importBatchId,
         })), existingKeys)
         insertedByType.service = rows.length
         await insertImportRows('service_logs', rows)
@@ -551,6 +596,7 @@ export default function UvozPodatkov() {
           znesek: row.amount || 0,
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
+          import_batch_id: importBatchId,
         })), existingKeys)
         insertedByType.expense = rows.length
         await insertImportRows('expenses', rows)
@@ -569,6 +615,7 @@ export default function UvozPodatkov() {
       localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
       localStorage.removeItem('garagebase_stroski_garaza_cache')
       setLastImportCounts(insertedByType)
+      setLastImportBatchId(inserted > 0 ? importBatchId : '')
       setMessage(tx(
         `Uvozeno ${inserted} zapisov: gorivo ${insertedByType.fuel}, servisi ${insertedByType.service}, stroski ${insertedByType.expense}. Preskoceno podvojenih: ${skipped}.`,
         `Imported ${inserted} records: fuel ${insertedByType.fuel}, services ${insertedByType.service}, costs ${insertedByType.expense}. Skipped duplicates: ${skipped}.`
@@ -578,6 +625,42 @@ export default function UvozPodatkov() {
       setMessage(tx('Uvoz ni uspel: ', 'Import failed: ') + (error.message || tx('neznana napaka', 'unknown error')))
     } finally {
       setLoading(false)
+    }
+  }
+
+  const undoLastImport = async () => {
+    if (!carId || !lastImportBatchId || !lastImportCounts) return
+    const confirmed = window.confirm(tx(
+      'Razveljavim zadnji uvoz za izbrano vozilo? Izbrisani bodo samo zapisi iz tega uvoza.',
+      'Undo the last import for the selected vehicle? Only records from this import will be deleted.'
+    ))
+    if (!confirmed) return
+
+    setUndoLoading(true)
+    setMessage('')
+    try {
+      const [fuelResult, serviceResult, expenseResult] = await Promise.all([
+        supabase.from('fuel_logs').delete().eq('car_id', carId).eq('import_batch_id', lastImportBatchId),
+        supabase.from('service_logs').delete().eq('car_id', carId).eq('import_batch_id', lastImportBatchId),
+        supabase.from('expenses').delete().eq('car_id', carId).eq('import_batch_id', lastImportBatchId),
+      ])
+      const error = fuelResult.error || serviceResult.error || expenseResult.error
+      if (error) throw error
+
+      trackEvent('external_import_undone', { importBatchId: lastImportBatchId, counts: lastImportCounts })
+      localStorage.removeItem('garagebase_garaza_cache')
+      localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
+      localStorage.removeItem('garagebase_stroski_garaza_cache')
+      setLastImportCounts(null)
+      setLastImportBatchId('')
+      setMessage(tx('Zadnji uvoz je razveljavljen.', 'The last import has been undone.'))
+    } catch (error: any) {
+      setMessage(tx(
+        'Razveljavitev ni uspela. Preveri, da je zagnana migracija za import_batch_id.',
+        'Undo failed. Check that the import_batch_id migration has been run.'
+      ) + ` ${error.message || ''}`)
+    } finally {
+      setUndoLoading(false)
     }
   }
 
@@ -699,6 +782,12 @@ export default function UvozPodatkov() {
                   </span>
                 </div>
                 <p className="text-[#7b7ba6] text-xs mt-1">{row.km ? formatDistance(row.km, enotaRazdalje) : tx('brez km', 'no mileage')} | {row.amount ? formatMoney(row.amount, valuta) : tx('brez zneska', 'no amount')} | {row.station || row.category}</p>
+                {row.kind === 'fuel' && (
+                  <p className="mt-1 text-xs font-semibold text-[#3ecfcf]">
+                    {tx('Litri', 'Liters')}: {row.liters ?? tx('ni podatka', 'missing')} {row.liters ? 'L' : ''}
+                    {row.pricePerLiter ? ` | ${tx('Cena/L', 'Price/L')}: ${formatMoney(row.pricePerLiter, valuta)}` : ''}
+                  </p>
+                )}
                 {row.importDetails && <p className="mt-2 text-[#5a5a80] text-[11px] leading-relaxed">{row.importDetails}</p>}
               </div>
             ))}
@@ -739,6 +828,12 @@ export default function UvozPodatkov() {
                   {tx('Stroski', 'Costs')} {lastImportCounts.expense}
                 </button>
               </div>
+            )}
+            {lastImportBatchId && (
+              <button onClick={undoLastImport} disabled={undoLoading}
+                className="w-full rounded-lg border border-[#ef444455] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5] disabled:opacity-60">
+                {undoLoading ? tx('Razveljavljam...', 'Undoing...') : tx('Razveljavi zadnji uvoz', 'Undo last import')}
+              </button>
             )}
           </div>
         )}

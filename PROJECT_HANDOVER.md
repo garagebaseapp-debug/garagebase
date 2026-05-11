@@ -94,6 +94,8 @@ Te datoteke je treba zagnati v Supabase SQL Editorju, ce se projekt seli na novo
 - `SUPABASE_MIGRACIJA_ZAUPANJE_PRENOS.sql`
 - `SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql`
 - `SUPABASE_MIGRACIJA_RLS_OSNOVNI_PODATKI.sql`
+- `SUPABASE_MIGRACIJA_UVOZ_BATCH_ROLLBACK.sql`
+- `SUPABASE_MIGRACIJA_ADMIN_UPORABNIKI_PAKETI.sql`
 
 Priporocilo: ob vecjem lansiranju naredi eno zdruzeno migracijo ali urejen migracijski sistem.
 

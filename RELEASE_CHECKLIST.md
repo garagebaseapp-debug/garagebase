@@ -18,6 +18,8 @@ Ta dokument je kratek proces pred vsakim vecjim push/deployem.
    - nastavitve
    - push test, samo admin
 4. Ce je sprememba v bazi, najprej zazeni SQL na staging bazi.
+   - Za CSV razveljavitev mora biti zagnan `SUPABASE_MIGRACIJA_UVOZ_BATCH_ROLLBACK.sql`.
+   - Za admin pakete/uporabnike mora biti zagnan `SUPABASE_MIGRACIJA_ADMIN_UPORABNIKI_PAKETI.sql`.
 5. Sele potem deploy na production.
 
 ## Po deployu

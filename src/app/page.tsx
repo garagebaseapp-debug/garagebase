@@ -118,6 +118,94 @@ const qrCells = [
   '000100010001',
 ]
 
+const FeatureVisual = ({ kind, language }: { kind: string, language: Language }) => {
+  if (kind === 'report') {
+    return (
+      <div className="mt-5 rounded-xl border border-[#6c63ff33] bg-[#080810] p-4">
+        <div className="relative mx-auto w-[180px]">
+          <div className="absolute inset-0 translate-x-4 -translate-y-3 rotate-3 rounded-md border border-white/10 bg-white/80 shadow-lg" />
+          <div className="relative rotate-[-2deg] overflow-hidden rounded-md bg-white p-3 text-[#151527] shadow-[0_18px_38px_rgba(0,0,0,0.35)]">
+            <div className="flex items-start justify-between border-b border-[#e7e8f6] pb-2">
+              <div>
+                <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
+                <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">
+                  {language === 'en' ? 'Verified report' : 'Preverjeno porocilo'}
+                </p>
+              </div>
+              <div className="h-7 w-10 rounded bg-[#eef2ff]" />
+            </div>
+            <p className="mt-2 text-[9px] font-black">Volvo XC90</p>
+            <p className="text-[7px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
+            <div className="mt-2 grid grid-cols-3 gap-1">
+              {['8', '96', '12'].map((value, index) => (
+                <div key={index} className="rounded bg-[#f5f6ff] p-1 text-center text-[9px] font-black">{value}</div>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#8b5cf633] bg-[#f8f7ff] p-2">
+              <div className="grid h-10 w-10 shrink-0 grid-cols-12 gap-[1px] rounded border border-[#3ecfcf] bg-white p-1">
+                {qrCells.flatMap((row, rowIndex) =>
+                  row.split('').map((cell, colIndex) => (
+                    <span key={`${rowIndex}-${colIndex}`} className={cell === '1' ? 'bg-[#151527]' : 'bg-white'} />
+                  )),
+                )}
+              </div>
+              <p className="text-[7px] font-bold leading-tight text-[#34344a]">
+                {language === 'en' ? 'QR checks whether the PDF matches the database record.' : 'QR preveri, ali je PDF enak zapisu v bazi.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (kind === 'mobile' || kind === 'vehicles') {
+    const cars = ['XC90', 'Golf', 'Clio']
+    return (
+      <div className="mt-5 flex h-36 items-end justify-center gap-3 rounded-xl border border-[#3ecfcf33] bg-[#080810] p-4">
+        <div className="h-28 w-20 rounded-[18px] border border-white/14 bg-[#111827] p-2 shadow-xl">
+          <div className="mb-2 h-1 w-8 rounded-full bg-white/20 mx-auto" />
+          <div className="space-y-1.5">
+            {(kind === 'vehicles' ? cars : ['Fuel', 'Service', 'PDF']).map((item, index) => (
+              <div key={item} className={`rounded-lg p-1.5 text-[8px] font-black ${index === 0 ? 'bg-[#6c63ff]' : 'bg-[#1f2937] text-white/80'}`}>
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="hidden h-24 w-36 rounded-xl border border-white/14 bg-[#111827] p-3 shadow-xl sm:block">
+          <div className="mb-2 h-2 w-16 rounded-full bg-[#3ecfcf]" />
+          <div className="grid grid-cols-2 gap-2">
+            {(kind === 'vehicles' ? cars.slice(0, 2) : ['App', 'Report']).map((item) => (
+              <div key={item} className="rounded-lg bg-[#1f2937] p-2 text-[9px] font-black text-white/86">{item}</div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const icons = kind === 'fuel'
+    ? ['L', 'EUR', 'km']
+    : kind === 'service'
+      ? ['Wrench', 'PDF', 'km']
+      : kind === 'reminders'
+        ? ['30d', 'km', '!']
+        : ['AI', 'OCR', '2027']
+
+  return (
+    <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-[#1e1e32] bg-[#080810] p-4">
+      {icons.map((icon, index) => (
+        <div key={icon} className={`flex h-16 items-center justify-center rounded-xl text-xs font-black ${
+          index === 0 ? 'bg-[#3ecfcf22] text-[#3ecfcf]' : index === 1 ? 'bg-[#6c63ff22] text-[#a09aff]' : 'bg-[#f59e0b22] text-[#fbbf24]'
+        }`}>
+          {icon}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
   const { language } = useLanguage()
@@ -183,18 +271,18 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <section className="relative min-h-screen overflow-hidden bg-[#07070d]">
+      <section className="relative min-h-[92svh] overflow-hidden bg-[#07070d]">
         <img
           src="/landing-garagebase.png"
           alt={t.alt}
-          className="absolute inset-0 h-full w-full object-cover object-[66%_68%] lg:object-[center_72%]"
+          className="absolute inset-0 h-full w-full object-cover object-[66%_62%] lg:object-[center_66%]"
         />
         <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07070d]/80 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center px-5 pb-24 pt-32 sm:px-8">
-          <div className="landing-copy w-full max-w-[560px] lg:mb-10">
+        <div className="relative z-10 mx-auto flex min-h-[92svh] max-w-7xl items-center px-5 pb-14 pt-24 sm:px-8 lg:pb-16 lg:pt-28">
+          <div className="landing-copy w-full max-w-[560px]">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/16 bg-black/24 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#ddd8ff]">{t.badge}</span>
@@ -241,45 +329,14 @@ export default function LandingPage() {
             <h2 className="text-3xl font-black md:text-5xl">{t.featuresTitle}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {t.features.map((feature) => (
+            {t.features.map((feature, index) => (
               <div key={feature.title} className="rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-6 transition-colors hover:border-[#8b5cf666]">
                 <p className="mb-2 text-lg font-bold text-white">{feature.title}</p>
                 <p className="text-sm leading-relaxed text-[#8a8aa8]">{feature.text}</p>
-                {feature.report && (
-                  <div className="mt-5 rounded-xl border border-[#6c63ff33] bg-[#080810] p-4">
-                    <div className="relative mx-auto w-[180px]">
-                      <div className="absolute inset-0 translate-x-4 -translate-y-3 rotate-3 rounded-md border border-white/10 bg-white/80 shadow-lg" />
-                      <div className="relative rotate-[-2deg] overflow-hidden rounded-md bg-white p-3 text-[#151527] shadow-[0_18px_38px_rgba(0,0,0,0.35)]">
-                        <div className="flex items-start justify-between border-b border-[#e7e8f6] pb-2">
-                          <div>
-                            <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
-                            <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">Verified report</p>
-                          </div>
-                          <div className="h-7 w-10 rounded bg-[#eef2ff]" />
-                        </div>
-                        <p className="mt-2 text-[9px] font-black">Volvo XC90</p>
-                        <p className="text-[7px] text-[#7a8096]">2018 - Diesel - 178.900 km</p>
-                        <div className="mt-2 grid grid-cols-3 gap-1">
-                          {['8', '96', '12'].map((value, index) => (
-                            <div key={index} className="rounded bg-[#f5f6ff] p-1 text-center text-[9px] font-black">{value}</div>
-                          ))}
-                        </div>
-                        <div className="mt-2 flex items-center gap-2 rounded-lg border border-[#8b5cf633] bg-[#f8f7ff] p-2">
-                          <div className="grid h-10 w-10 shrink-0 grid-cols-12 gap-[1px] rounded border border-[#3ecfcf] bg-white p-1">
-                            {qrCells.flatMap((row, rowIndex) =>
-                              row.split('').map((cell, colIndex) => (
-                                <span key={`${rowIndex}-${colIndex}`} className={cell === '1' ? 'bg-[#151527]' : 'bg-white'} />
-                              )),
-                            )}
-                          </div>
-                          <p className="text-[7px] font-bold leading-tight text-[#34344a]">
-                            {language === 'en' ? 'QR checks whether the PDF matches the database record.' : 'QR preveri, ali je PDF enak zapisu v bazi.'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <FeatureVisual
+                  kind={feature.report ? 'report' : index === 0 ? 'fuel' : index === 1 ? 'service' : index === 2 ? 'reminders' : index === 4 ? 'mobile' : index === 5 ? 'vehicles' : 'scan'}
+                  language={language}
+                />
               </div>
             ))}
           </div>

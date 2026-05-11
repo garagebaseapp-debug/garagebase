@@ -13,6 +13,14 @@ type StatCard = {
   color: string
 }
 
+type AdminUser = {
+  id: string
+  email: string
+  created_at?: string
+  last_sign_in_at?: string | null
+  plan?: any
+}
+
 const statusLabel: Record<string, { sl: string; en: string }> = {
   new: { sl: 'Novo', en: 'New' },
   planned: { sl: 'Planirano', en: 'Planned' },
@@ -207,9 +215,15 @@ export default function AdminPage() {
   const [topFeedbackTerms, setTopFeedbackTerms] = useState<any[]>([])
   const [recentErrors, setRecentErrors] = useState<any[]>([])
   const [plans, setPlans] = useState<any[]>([])
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [userSearch, setUserSearch] = useState('')
+  const [usersLoading, setUsersLoading] = useState(false)
   const [planEmail, setPlanEmail] = useState('')
   const [planName, setPlanName] = useState('max')
   const [planNote, setPlanNote] = useState('')
+  const [planSource, setPlanSource] = useState('manual')
+  const [billingStatus, setBillingStatus] = useState('free_open')
+  const [paidConfirm, setPaidConfirm] = useState('')
   const [planSaving, setPlanSaving] = useState(false)
   const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
   const [settingsStats, setSettingsStats] = useState<any[]>([])
@@ -233,7 +247,7 @@ export default function AdminPage() {
       }
 
       setIsAdmin(true)
-      await loadAdminData()
+      await Promise.all([loadAdminData(), loadAdminUsers()])
       setLoading(false)
     }
     init()
@@ -418,6 +432,37 @@ export default function AdminPage() {
     }
   }
 
+  const loadAdminUsers = async (search = userSearch) => {
+    setUsersLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch(`/api/admin/users?search=${encodeURIComponent(search.trim())}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: 'no-store',
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'users_failed')
+      setAdminUsers(result.users || [])
+      if (Array.isArray(result.plans)) setPlans(result.plans.slice(0, 8))
+    } catch (error: any) {
+      setMessage(tx('Uporabnikov ni bilo mogoce naloziti.', 'Could not load users.') + ` ${error.message || ''}`)
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const selectAdminUser = (user: AdminUser) => {
+    setPlanEmail(user.email)
+    setPlanName(user.plan?.plan || 'max')
+    setPlanNote(user.plan?.note || '')
+    setPlanSource(user.plan?.source || 'manual')
+    setBillingStatus(user.plan?.billing_status || 'free_open')
+    setPaidConfirm('')
+  }
+
   const statCards: StatCard[] = useMemo(() => [
     { label: tx('Aktivni danes', 'Active today'), value: stats.activeToday || 0, hint: tx('uporabniki danes', 'users today'), color: 'text-[#4ade80]' },
     { label: tx('Aktivni 7 dni', 'Active 7 days'), value: stats.active7 || 0, hint: tx('zadnji teden', 'last week'), color: 'text-[#3ecfcf]' },
@@ -443,22 +488,40 @@ export default function AdminPage() {
       setMessage(tx('Vnesi email uporabnika.', 'Enter the user email.'))
       return
     }
+    const existing = plans.find((plan) => String(plan.email).toLowerCase() === email)
+    const protectedPaid = existing && (existing.locked === true || existing.source === 'paid' || existing.billing_status === 'paid_active')
+    if (protectedPaid && paidConfirm.trim().toUpperCase() !== 'PLACILO') {
+      setMessage(tx('Za placljivega uporabnika najprej vpisi PLACILO v potrditveno polje.', 'For a paid user, type PLACILO in the confirmation field first.'))
+      return
+    }
     setPlanSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
-    const { error } = await supabase.from('user_plans').upsert({
-      email,
-      plan: planName,
-      note: planNote || null,
-      updated_by: user?.id || null,
-      updated_at: new Date().toISOString(),
-    })
-    if (error) {
-      setMessage(tx('Paketa ni bilo mogoce shraniti.', 'Could not save the plan.') + ` ${error.message}`)
-    } else {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          email,
+          plan: planName,
+          note: planNote,
+          source: planSource,
+          billingStatus,
+          confirmPaidChange: paidConfirm.trim().toUpperCase() === 'PLACILO',
+        }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'plan_save_failed')
       setMessage(tx('Paket je shranjen.', 'Plan saved.'))
       setPlanEmail('')
       setPlanNote('')
-      await loadAdminData()
+      setPaidConfirm('')
+      await Promise.all([loadAdminData(), loadAdminUsers()])
+    } catch (error: any) {
+      setMessage(tx('Paketa ni bilo mogoce shraniti.', 'Could not save the plan.') + ` ${error.message || ''}`)
     }
     setPlanSaving(false)
   }
@@ -762,7 +825,38 @@ export default function AdminPage() {
 
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Paketi uporabnikov', 'User packages')}</h2>
-          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Za prvih 6 mesecev lahko vsem pustis max, posameznikom pa rocno nastavis paket.', 'For the first 6 months you can keep max open, while manually assigning plans to individuals.')}</p>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Trenutno je app odprta, tu pa pripravljas pakete za cas po promociji.', 'The app is currently open; this prepares plans for after the promotion.')}</p>
+          <div className="mb-4 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
+            <div className="flex gap-2">
+              <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder={tx('Poisci email uporabnika', 'Search user email')}
+                className="min-w-0 flex-1 rounded-xl border border-[#1e1e32] bg-[#0f0f1a] px-4 py-3 text-white outline-none focus:border-[#6c63ff]" />
+              <button onClick={() => loadAdminUsers(userSearch)} disabled={usersLoading}
+                className="rounded-xl bg-[#3ecfcf] px-4 py-3 text-xs font-black text-[#071112] disabled:opacity-60">
+                {usersLoading ? tx('Iskanje...', 'Searching...') : tx('Poisci', 'Search')}
+              </button>
+            </div>
+            <div className="mt-3 max-h-44 overflow-auto">
+              {adminUsers.length === 0 ? (
+                <p className="rounded-xl bg-[#0f0f1a] p-3 text-xs text-[#5a5a80]">
+                  {tx('Ni nalozenih uporabnikov ali pa se niso ustvarili dogodkov.', 'No loaded users or no users have created events yet.')}
+                </p>
+              ) : adminUsers.map((user) => (
+                <button key={user.id} onClick={() => selectAdminUser(user)}
+                  className="mb-2 w-full rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-3 text-left transition-colors hover:border-[#6c63ff66]">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-sm font-bold text-white">{user.email}</p>
+                    <span className="shrink-0 rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">
+                      {user.plan?.plan || 'max'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#5a5a80]">
+                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI') : tx('Brez prijave', 'No sign-in')}
+                    {user.plan?.source ? ` · ${user.plan.source}` : ''}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid gap-2 mb-4">
             <input value={planEmail} onChange={(e) => setPlanEmail(e.target.value)} placeholder="email@example.com"
               className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]" />
@@ -773,8 +867,27 @@ export default function AdminPage() {
               <option value="max">max</option>
               <option value="business">business</option>
             </select>
+            <select value={planSource} onChange={(e) => setPlanSource(e.target.value)}
+              className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]">
+              <option value="manual">{tx('rocno / promocija', 'manual / promotion')}</option>
+              <option value="promo">{tx('promocija', 'promotion')}</option>
+              <option value="paid">{tx('placilo', 'paid')}</option>
+            </select>
+            <select value={billingStatus} onChange={(e) => setBillingStatus(e.target.value)}
+              className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]">
+              <option value="free_open">{tx('odprto do promocije', 'open during promotion')}</option>
+              <option value="trial">{tx('testno obdobje', 'trial')}</option>
+              <option value="paid_active">{tx('aktivno placilo', 'active payment')}</option>
+              <option value="past_due">{tx('placilo zamuja', 'past due')}</option>
+            </select>
             <input value={planNote} onChange={(e) => setPlanNote(e.target.value)} placeholder={tx('Opomba, npr. prijatelj testira', 'Note, e.g. friend testing')}
               className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-white outline-none focus:border-[#6c63ff]" />
+            {(plans.find((plan) => String(plan.email).toLowerCase() === planEmail.trim().toLowerCase())?.locked ||
+              plans.find((plan) => String(plan.email).toLowerCase() === planEmail.trim().toLowerCase())?.source === 'paid' ||
+              plans.find((plan) => String(plan.email).toLowerCase() === planEmail.trim().toLowerCase())?.billing_status === 'paid_active') && (
+              <input value={paidConfirm} onChange={(e) => setPaidConfirm(e.target.value)} placeholder={tx('Za spremembo placljivega uporabnika vpisi PLACILO', 'To change a paid user, type PLACILO')}
+                className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-3 text-[#fca5a5] outline-none focus:border-[#ef4444]" />
+            )}
             <button onClick={savePlan} disabled={planSaving}
               className="rounded-xl bg-[#6c63ff] py-3 font-semibold text-white disabled:opacity-60">
               {planSaving ? tx('Shranjujem...', 'Saving...') : tx('Shrani paket', 'Save plan')}
@@ -788,7 +901,7 @@ export default function AdminPage() {
               <div key={plan.email} className="flex items-center justify-between gap-3 rounded-xl bg-[#13131f] p-3">
                 <div>
                   <p className="text-white text-sm font-semibold">{plan.email}</p>
-                  <p className="text-[#5a5a80] text-xs">{plan.note || '-'}</p>
+                  <p className="text-[#5a5a80] text-xs">{plan.note || '-'} {plan.source ? `· ${plan.source}` : ''}</p>
                 </div>
                 <span className="rounded-full bg-[#3ecfcf22] px-3 py-1 text-xs font-black text-[#3ecfcf]">{plan.plan}</span>
               </div>

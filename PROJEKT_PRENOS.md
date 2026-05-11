@@ -112,6 +112,8 @@ git push
 - `public/manifest.json` - PWA manifest
 - `vercel.json` - Vercel cron nastavitev
 - `SUPABASE_MIGRACIJA_RLS_OSNOVNI_PODATKI.sql` - RLS pravila za osnovne uporabniske podatke
+- `SUPABASE_MIGRACIJA_UVOZ_BATCH_ROLLBACK.sql` - batch oznaka za razveljavitev CSV/Drivvo uvoza
+- `SUPABASE_MIGRACIJA_ADMIN_UPORABNIKI_PAKETI.sql` - admin paketna polja za promocijo/placila in audit sprememb
 
 ## Kaj mora biti shranjeno v password managerju
 

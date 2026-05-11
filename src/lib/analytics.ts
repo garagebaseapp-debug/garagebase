@@ -82,6 +82,7 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
       car_id: metadata.carId || metadata.car_id || null,
       metadata: {
         ...metadata,
+        userEmail: user.email?.toLowerCase() || null,
         appVersion: APP_VERSION,
         releaseChannel: RELEASE_CHANNEL,
       },
