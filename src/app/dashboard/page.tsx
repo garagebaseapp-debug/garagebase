@@ -214,43 +214,11 @@ export default function Dashboard() {
     }
 
     const started = performance.now()
-    const loadFuelRows = async () => {
-      const detailed = await supabase
-        .from('fuel_logs')
-        .select('km,litri,cena_skupaj,import_batch_id,source_owner_label,postaja')
-        .eq('car_id', carId)
-        .order('km', { ascending: true })
-      if (!detailed.error) return detailed
-      console.warn('[GarageBase dashboard] fuel detailed select failed, using fallback', detailed.error.message)
-      return supabase
-        .from('fuel_logs')
-        .select('km,litri,cena_skupaj,postaja')
-        .eq('car_id', carId)
-        .order('km', { ascending: true })
-    }
-    const loadServiceRows = async () => {
-      const detailed = await supabase
-        .from('service_logs')
-        .select('cena,import_batch_id,source_owner_label,opis')
-        .eq('car_id', carId)
-      if (!detailed.error) return detailed
-      console.warn('[GarageBase dashboard] service detailed select failed, using fallback', detailed.error.message)
-      return supabase.from('service_logs').select('cena,opis').eq('car_id', carId)
-    }
-    const loadExpenseRows = async () => {
-      const detailed = await supabase
-        .from('expenses')
-        .select('znesek,import_batch_id,source_owner_label,kategorija,opis')
-        .eq('car_id', carId)
-      if (!detailed.error) return detailed
-      console.warn('[GarageBase dashboard] expense detailed select failed, using fallback', detailed.error.message)
-      return supabase.from('expenses').select('znesek,kategorija,opis').eq('car_id', carId)
-    }
     const [opRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
       supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
-      loadFuelRows(),
-      loadServiceRows(),
-      loadExpenseRows(),
+      supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
+      supabase.from('service_logs').select('*').eq('car_id', carId),
+      supabase.from('expenses').select('*').eq('car_id', carId),
     ])
 
     const opData = opRes.data || []
