@@ -10,6 +10,7 @@
     "test:smoke": "node scripts/smoke-routes.mjs",
     "test:i18n": "node scripts/check-i18n.mjs",
     "production:check": "node scripts/check-production.mjs",
+    "monitor:errors": "node scripts/check-admin-errors.mjs",
     "prelaunch": "npm run test:smoke && npm run test:i18n && node scripts/prelaunch-check.mjs && npm run build",
     "check": "npm run test:smoke && npm run test:i18n && npm run build"
   },

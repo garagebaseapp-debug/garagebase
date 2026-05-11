@@ -75,7 +75,9 @@ Te vrednosti morajo biti nastavljene lokalno v `.env.local` in na Vercel projekt
 - Cron API: `src/app/api/cron/route.ts`
 - Supabase client: `src/lib/supabase.ts`
 - Prevodi: `src/lib/i18n.tsx`
+- Pravila za prevode: `TRANSLATION_GUIDE.md`
 - Analytics: `src/lib/analytics.ts`
+- Admin monitoring skripta: `scripts/check-admin-errors.mjs`
 - QR prenos helper: `src/lib/transfer.ts`
 - OCR helper: `src/lib/receipt-ocr.ts`
 

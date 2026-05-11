@@ -22,6 +22,8 @@ const requiredPaths = [
   'src/app/api/health/route.ts',
   'src/app/api/push/route.ts',
   'src/app/api/delete-account/route.ts',
+  'TRANSLATION_GUIDE.md',
+  'scripts/check-admin-errors.mjs',
   'SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql',
   'SUPABASE_MIGRACIJA_BUG_REPORTS.sql',
   'SUPABASE_MIGRACIJA_ERROR_LOGGING.sql',

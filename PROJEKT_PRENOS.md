@@ -106,6 +106,8 @@ git push
 - `src/app/api/cron/route.ts` - dnevno preverjanje opomnikov
 - `src/app/api/push/route.ts` - testno / ročno pošiljanje push obvestil
 - `src/lib/supabase.ts` - Supabase povezava
+- `TRANSLATION_GUIDE.md` - pravila za slovenske/angleske tekste
+- `scripts/check-admin-errors.mjs` - pregled zadnjih produkcijskih napak, ce je nastavljen service role key
 - `public/sw.js` - service worker za PWA/push
 - `public/manifest.json` - PWA manifest
 - `vercel.json` - Vercel cron nastavitev

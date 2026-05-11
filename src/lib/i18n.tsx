@@ -456,3 +456,10 @@ export function useLanguage() {
   const t = (key: LabelKey) => labels[key]?.[language] || labels[key]?.sl || key
   return { language, t }
 }
+
+export function useTx() {
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const locale = language === 'en' ? 'en-US' : 'sl-SI'
+  return { language, tx, locale }
+}

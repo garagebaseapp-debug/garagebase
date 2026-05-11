@@ -6,6 +6,7 @@ Ta dokument je kratek proces pred vsakim vecjim push/deployem.
 
 1. `npm run prelaunch` preveri smoke test, prevode, osnovne release pogoje in build.
 2. Preveri, da admin panel nima novih kriticnih napak.
+   - Ce ima lokalni `.env.local` nastavljen `SUPABASE_SERVICE_ROLE_KEY`, lahko zazenes `npm run monitor:errors`.
 3. Lokalno ali na staging preveri:
    - prijava/registracija
    - dodaj vozilo
