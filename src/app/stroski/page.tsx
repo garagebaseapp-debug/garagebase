@@ -8,10 +8,23 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1500'
+const STROSKI_BUILD = 'stroski-2026-05-11-1535'
 const numericValue = (value: unknown) => {
   const parsed = Number(String(value ?? '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const statsHasData = (stats: any) => {
+  if (!stats) return false
+  const rowCount =
+    numericValue(stats.rows?.fuel) +
+    numericValue(stats.rows?.service) +
+    numericValue(stats.rows?.expense)
+  const costTotal =
+    numericValue(stats.costs?.fuel) +
+    numericValue(stats.costs?.service) +
+    numericValue(stats.costs?.expense)
+  return rowCount > 0 || costTotal > 0
 }
 
 export default function Stroski() {
@@ -61,7 +74,7 @@ export default function Stroski() {
           if (Array.isArray(parsed.gorivo)) setGorivo(parsed.gorivo)
           if (Array.isArray(parsed.servisi)) setServisi(parsed.servisi)
           if (Array.isArray(parsed.expenses)) setExpenses(parsed.expenses)
-          if (parsed.serverStats) setServerStats(parsed.serverStats)
+          if (statsHasData(parsed.serverStats)) setServerStats(parsed.serverStats)
         } catch {}
       }
 
@@ -84,9 +97,20 @@ export default function Stroski() {
         supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true }),
       ])
       setAvto(avtoRes.data)
-      const gorivoData = gorivoRes.data || []
-      const servisData = servisRes.data || []
-      const expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      let gorivoData = gorivoRes.data || []
+      let servisData = servisRes.data || []
+      let expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      if (gorivoData.length === 0 && servisData.length === 0 && expensesData.length === 0) {
+        try {
+          const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
+          const parsed = cached ? JSON.parse(cached) : null
+          if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
+            gorivoData = parsed.gorivo || []
+            servisData = parsed.servisi || []
+            expensesData = parsed.expenses || []
+          }
+        } catch {}
+      }
       setGorivo(gorivoData)
       setServisi(servisData)
       setExpenses(expensesData)
@@ -100,7 +124,7 @@ export default function Stroski() {
             cache: 'no-store',
           })
           const payload = await response.json()
-          if (response.ok && payload?.ok && payload?.stats) {
+          if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
             nextServerStats = payload.stats
             setServerStats(nextServerStats)
           } else {
@@ -141,9 +165,10 @@ export default function Stroski() {
   const lokalnoSkupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
   const lokalnoSkupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
   const lokalnoSkupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
-  const skupajGorivo = serverStats ? numericValue(serverStats.costs?.fuel) : lokalnoSkupajGorivo
-  const skupajServis = serverStats ? numericValue(serverStats.costs?.service) : lokalnoSkupajServis
-  const skupajExpenses = serverStats ? numericValue(serverStats.costs?.expense) : lokalnoSkupajExpenses
+  const useServerStats = statsHasData(serverStats)
+  const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : lokalnoSkupajGorivo
+  const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : lokalnoSkupajServis
+  const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : lokalnoSkupajExpenses
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null

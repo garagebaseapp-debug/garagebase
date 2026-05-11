@@ -21,11 +21,25 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1500'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1535'
 
 const numberValue = (value: unknown) => {
   const parsed = Number(String(value ?? '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const statsHasData = (stats: any) => {
+  if (!stats) return false
+  const rowCount =
+    numberValue(stats.rows?.fuel) +
+    numberValue(stats.rows?.service) +
+    numberValue(stats.rows?.expense)
+  const costTotal =
+    numberValue(stats.costs?.fuel) +
+    numberValue(stats.costs?.service) +
+    numberValue(stats.costs?.expense) +
+    numberValue(stats.costs?.total)
+  return rowCount > 0 || costTotal > 0 || numberValue(stats.liters) > 0
 }
 
 const isImportedDashboardRow = (row: any) => {
@@ -206,7 +220,7 @@ export default function Dashboard() {
           cache: 'no-store',
         })
         const payload = await response.json()
-        if (response.ok && payload?.ok && payload?.stats) {
+        if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
           const stats = payload.stats
           const nextPoraba = {
             garageBase: stats.consumption?.garageBase ?? null,
@@ -266,9 +280,20 @@ export default function Dashboard() {
       console.warn('[GarageBase dashboard] statistics fetch failed', fuelRes.error?.message, serviceRes.error?.message, expenseRes.error?.message)
     }
 
-    const fuelRows = fuelRes.data || []
-    const serviceRows = serviceRes.data || []
-    const expenseRows = expenseRes.data || []
+    let fuelRows = fuelRes.data || []
+    let serviceRows = serviceRes.data || []
+    let expenseRows = expenseRes.data || []
+    if (fuelRows.length === 0 && serviceRows.length === 0 && expenseRows.length === 0) {
+      try {
+        const cachedCosts = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
+        const parsed = cachedCosts ? JSON.parse(cachedCosts) : null
+        if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
+          fuelRows = parsed.gorivo || []
+          serviceRows = parsed.servisi || []
+          expenseRows = parsed.expenses || []
+        }
+      } catch {}
+    }
     const debugLiters = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.litri), 0)
     const debugFuelCost = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0)
     const debugServiceCost = serviceRows.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
