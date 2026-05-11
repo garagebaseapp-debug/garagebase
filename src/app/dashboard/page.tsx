@@ -197,16 +197,16 @@ export default function Dashboard() {
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       supabase
         .from('fuel_logs')
-        .select('km,litri,cena_skupaj,postaja')
+        .select('km,litri,cena_skupaj')
         .eq('car_id', carId)
         .order('km', { ascending: true }),
       supabase
         .from('service_logs')
-        .select('cena,opis')
+        .select('cena')
         .eq('car_id', carId),
       supabase
         .from('expenses')
-        .select('znesek,kategorija,opis')
+        .select('znesek')
         .eq('car_id', carId),
     ])
 
@@ -217,22 +217,16 @@ export default function Dashboard() {
     const fuelRows = fuelRes.data || []
     const serviceRows = serviceRes.data || []
     const expenseRows = expenseRes.data || []
-    const importedFuel = fuelRows.filter(isImportedDashboardRow)
-    const garageBaseFuel = fuelRows.filter((row: any) => !isImportedDashboardRow(row))
+    const importedFuel: any[] = []
+    const garageBaseFuel = fuelRows
     const nextPoraba = {
       garageBase: dashboardConsumption(garageBaseFuel),
       imported: dashboardConsumption(importedFuel),
       total: dashboardConsumption(fuelRows),
     }
     const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
-    const garageBaseCosts =
-      costOf(garageBaseFuel, 'cena_skupaj') +
-      costOf(serviceRows.filter((row: any) => !isImportedDashboardRow(row)), 'cena') +
-      costOf(expenseRows.filter((row: any) => !isImportedDashboardRow(row)), 'znesek')
-    const importedCosts =
-      costOf(importedFuel, 'cena_skupaj') +
-      costOf(serviceRows.filter(isImportedDashboardRow), 'cena') +
-      costOf(expenseRows.filter(isImportedDashboardRow), 'znesek')
+    const garageBaseCosts = costOf(garageBaseFuel, 'cena_skupaj') + costOf(serviceRows, 'cena') + costOf(expenseRows, 'znesek')
+    const importedCosts = 0
     const totalCosts = garageBaseCosts + importedCosts
     const kmPrevozeni = kmStart - kmObVnosu
     const nextStroski = {
@@ -268,15 +262,11 @@ export default function Dashboard() {
     }
 
     const started = performance.now()
-    const [opRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
+    const [opRes] = await Promise.all([
       supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
-      supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
-      supabase.from('service_logs').select('*').eq('car_id', carId),
-      supabase.from('expenses').select('*').eq('car_id', carId),
     ])
 
     const opData = opRes.data || []
-    const gorivoData = gorivoRes.data || []
     setOpomniki(opData)
 
     const stats = await naloziStatistikoVozila(carId, avtoKmStart, kmObVnosu)
