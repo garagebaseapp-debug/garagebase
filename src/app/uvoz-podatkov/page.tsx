@@ -560,11 +560,10 @@ export default function UvozPodatkov() {
     init()
   }, [])
 
-  const isDrivvo = looksLikeDrivvoCsv(csv)
-
   const parsed = useMemo(() => parseFlatCsv(csv), [csv])
+  const headerlessDrivvoFuel = useMemo(() => parseHeaderlessDrivvoFuelCsv(csv), [csv])
+  const isDrivvo = looksLikeDrivvoCsv(csv) || Boolean(headerlessDrivvoFuel)
   const drivvoSections = useMemo(() => isDrivvo ? parseSectionedCsv(csv) : [], [csv, isDrivvo])
-  const headerlessDrivvoFuel = useMemo(() => isDrivvo ? parseHeaderlessDrivvoFuelCsv(csv) : null, [csv, isDrivvo])
 
   const activeDrivvoSection = useMemo(() => {
     if (!isDrivvo || importType === 'drivvo') return null
@@ -627,7 +626,7 @@ export default function UvozPodatkov() {
     if (!file) return
     const text = await file.text()
     setCsv(text)
-    if (looksLikeDrivvoCsv(text)) setImportType('drivvo')
+    if (looksLikeDrivvoCsv(text) || parseHeaderlessDrivvoFuelCsv(text)) setImportType('drivvo')
     setMessage('')
     setLastImportCounts(null)
     setLastImportBatchId('')
@@ -863,7 +862,11 @@ export default function UvozPodatkov() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('CSV podatki', 'CSV data')}</label>
-          <textarea value={csv} onChange={e => setCsv(e.target.value)} rows={8}
+          <textarea value={csv} onChange={e => {
+            const nextCsv = e.target.value
+            setCsv(nextCsv)
+            if (looksLikeDrivvoCsv(nextCsv) || parseHeaderlessDrivvoFuelCsv(nextCsv)) setImportType('drivvo')
+          }} rows={8}
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-xs font-mono outline-none focus:border-[#6c63ff]" />
         </div>
 
