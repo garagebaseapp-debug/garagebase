@@ -21,7 +21,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1735'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1745'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -140,6 +140,21 @@ const combineConsumptionSegments = (segments: Array<{ average: number | null; di
   const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
   if (known.length === 0) return null
   return known.reduce((sum, value) => sum + value, 0) / known.length
+}
+
+const readCostCache = (carId: string) => {
+  const keys = [`garagebase_stroski_cache_${carId}`, `garagebase_fuel_history_cache_${carId}`]
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key)
+      const parsed = raw ? JSON.parse(raw) : null
+      const gorivo = Array.isArray(parsed?.gorivo) ? parsed.gorivo : Array.isArray(parsed?.rows) ? parsed.rows : []
+      const servisi = Array.isArray(parsed?.servisi) ? parsed.servisi : []
+      const expenses = Array.isArray(parsed?.expenses) ? parsed.expenses : []
+      if (gorivo.length || servisi.length || expenses.length) return { gorivo, servisi, expenses }
+    } catch {}
+  }
+  return null
 }
 
 export default function Dashboard() {
@@ -341,12 +356,11 @@ export default function Dashboard() {
     let expenseRows = expenseRes.data || []
     if (fuelRows.length === 0 && serviceRows.length === 0 && expenseRows.length === 0) {
       try {
-        const cachedCosts = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
-        const parsed = cachedCosts ? JSON.parse(cachedCosts) : null
-        if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
-          fuelRows = parsed.gorivo || []
-          serviceRows = parsed.servisi || []
-          expenseRows = parsed.expenses || []
+        const cached = readCostCache(carId)
+        if (cached) {
+          fuelRows = cached.gorivo
+          serviceRows = cached.servisi
+          expenseRows = cached.expenses
         }
       } catch {}
     }

@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1735'
+const STROSKI_BUILD = 'stroski-2026-05-11-1745'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -83,6 +83,21 @@ const costValueFor = (row: any) => {
   return numericValue(row?.znesek)
 }
 
+const readCostCache = (carId: string) => {
+  const keys = [`garagebase_stroski_cache_${carId}`, `garagebase_fuel_history_cache_${carId}`]
+  for (const key of keys) {
+    try {
+      const raw = localStorage.getItem(key)
+      const parsed = raw ? JSON.parse(raw) : null
+      const gorivo = Array.isArray(parsed?.gorivo) ? parsed.gorivo : Array.isArray(parsed?.rows) ? parsed.rows : []
+      const servisi = Array.isArray(parsed?.servisi) ? parsed.servisi : []
+      const expenses = Array.isArray(parsed?.expenses) ? parsed.expenses : []
+      if (gorivo.length || servisi.length || expenses.length) return { gorivo, servisi, expenses, serverStats: parsed?.serverStats }
+    } catch {}
+  }
+  return null
+}
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
@@ -125,15 +140,12 @@ export default function Stroski() {
         } catch {}
       }
 
-      const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
+      const cached = readCostCache(carId)
       if (cached) {
-        try {
-          const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed.gorivo)) setGorivo(parsed.gorivo)
-          if (Array.isArray(parsed.servisi)) setServisi(parsed.servisi)
-          if (Array.isArray(parsed.expenses)) setExpenses(parsed.expenses)
-          if (statsHasData(parsed.serverStats)) setServerStats(parsed.serverStats)
-        } catch {}
+        setGorivo(cached.gorivo)
+        setServisi(cached.servisi)
+        setExpenses(cached.expenses)
+        if (statsHasRealValues(cached.serverStats)) setServerStats(cached.serverStats)
       }
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -165,12 +177,11 @@ export default function Stroski() {
       ].join(' · '))
       if (gorivoData.length === 0 && servisData.length === 0 && expensesData.length === 0) {
         try {
-          const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`) || localStorage.getItem(`garagebase_fuel_history_cache_${carId}`)
-          const parsed = cached ? JSON.parse(cached) : null
-          if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.rows) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
-            gorivoData = parsed.gorivo || parsed.rows || []
-            servisData = parsed.servisi || []
-            expensesData = parsed.expenses || []
+          const cached = readCostCache(carId)
+          if (cached) {
+            gorivoData = cached.gorivo
+            servisData = cached.servisi
+            expensesData = cached.expenses
           }
         } catch {}
       }
