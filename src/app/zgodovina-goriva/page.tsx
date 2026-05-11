@@ -6,6 +6,8 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 
+const PAGE_SIZE = 50
+
 export default function ZgodovinaGoriva() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
@@ -19,6 +21,10 @@ export default function ZgodovinaGoriva() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [selectedImported, setSelectedImported] = useState<string[]>([])
   const [bulkEditMode, setBulkEditMode] = useState(false)
+  const [carId, setCarId] = useState('')
+  const [totalCount, setTotalCount] = useState(0)
+  const [summary, setSummary] = useState({ liters: 0, amount: 0 })
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -26,17 +32,28 @@ export default function ZgodovinaGoriva() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
-      const carId = params.get('car')
-      if (!carId) { window.location.href = '/garaza'; return }
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
+      const selectedCarId = params.get('car')
+      if (!selectedCarId) { window.location.href = '/garaza'; return }
+      setCarId(selectedCarId)
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).single()
       setAvto(avtoData)
-      const { data: gorivo } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true })
+      const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
+        supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).range(0, PAGE_SIZE - 1),
+        supabase.from('fuel_logs').select('litri,cena_skupaj').eq('car_id', selectedCarId),
+        supabase.from('fuel_logs').select('km').eq('car_id', selectedCarId).order('km', { ascending: false }).limit(1),
+      ])
+      const gorivo = gorivoRes.data || []
       const fuelRows = gorivo || []
-      const maxFuelKm = fuelRows.reduce((max: number, row: any) => row.km && row.km > max ? row.km : max, 0)
+      const maxFuelKm = maxKmRes.data?.[0]?.km || 0
       if (avtoData?.id && maxFuelKm > (avtoData.km_trenutni || 0)) {
         await supabase.from('cars').update({ km_trenutni: maxFuelKm }).eq('id', avtoData.id)
         setAvto({ ...avtoData, km_trenutni: maxFuelKm })
       }
+      setTotalCount(gorivoRes.count || fuelRows.length)
+      setSummary({
+        liters: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.litri || 0), 0),
+        amount: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0),
+      })
       setVnosi(fuelRows)
       setLoading(false)
     }
@@ -60,8 +77,9 @@ export default function ZgodovinaGoriva() {
 
   const izracunajPorabo = (index: number) => {
     const trenutni = vnosi[index]
-    if (index === 0) return null
-    const prejsnjiKm = vnosi[index - 1].km
+    const prejsnji = vnosi[index + 1]
+    if (!prejsnji) return null
+    const prejsnjiKm = prejsnji.km
     const kmRazlika = trenutni.km - prejsnjiKm
     if (kmRazlika <= 0) return null
     return (trenutni.litri / kmRazlika) * 100
@@ -83,12 +101,31 @@ export default function ZgodovinaGoriva() {
   const editable = (vnos: any) => jeUvozen(vnos) || Boolean(preostaliCas(vnos.created_at))
 
   const refreshVnosi = async () => {
-    const { data: gorivo } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('km', { ascending: true })
+    const [gorivoRes, summaryRes] = await Promise.all([
+      supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
+      supabase.from('fuel_logs').select('litri,cena_skupaj').eq('car_id', avto.id),
+    ])
+    const gorivo = gorivoRes.data || []
     setVnosi(gorivo || [])
+    setTotalCount(gorivoRes.count || gorivo.length || 0)
+    setSummary({
+      liters: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.litri || 0), 0),
+      amount: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0),
+    })
   }
 
-  const skupajLitrov = vnosi.reduce((sum, v) => sum + (v.litri || 0), 0)
-  const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena_skupaj || 0), 0)
+  const loadMore = async () => {
+    if (!carId || loadingMore || vnosi.length >= totalCount) return
+    setLoadingMore(true)
+    const from = vnosi.length
+    const to = from + PAGE_SIZE - 1
+    const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: false }).range(from, to)
+    setVnosi(prev => [...prev, ...(data || [])])
+    setLoadingMore(false)
+  }
+
+  const skupajLitrov = summary.liters
+  const skupajEurov = summary.amount
   const znakValute = currencySymbol(valuta)
 
   const tipGorivaIkona = (tip: string) => {
@@ -202,7 +239,7 @@ export default function ZgodovinaGoriva() {
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Tankanij', 'Fill-ups')}</p>
-            <p className="text-white font-bold text-lg">{vnosi.length}</p>
+            <p className="text-white font-bold text-lg">{totalCount || vnosi.length}</p>
           </div>
         </div>
       )}
@@ -266,8 +303,7 @@ export default function ZgodovinaGoriva() {
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {[...vnosi].reverse().map((vnos, reversedIndex) => {
-            const index = vnosi.length - 1 - reversedIndex
+          {vnosi.map((vnos, index) => {
             const poraba = izracunajPorabo(index)
             const tipIkona = tipGorivaIkona(vnos.tip_goriva)
             const preostalo = preostaliCas(vnos.created_at)
@@ -275,7 +311,7 @@ export default function ZgodovinaGoriva() {
             const info = importInfo(vnos.source_owner_label) || (jeNepopolnUvoz(vnos) ? { key: `incomplete-${vnos.id}`, source: tx('Nepopoln uvoz', 'Incomplete import'), dateText: '' } : null)
             const isImported = jeUvozen(vnos)
             const isIncompleteImport = jeNepopolnUvoz(vnos)
-            const previousInfo = reversedIndex > 0 ? importInfo([...vnosi].reverse()[reversedIndex - 1]?.source_owner_label) : null
+            const previousInfo = index > 0 ? importInfo(vnosi[index - 1]?.source_owner_label) : null
             const showImportNote = isImported && (isIncompleteImport || (info && info.key !== previousInfo?.key))
 
             return (
@@ -410,6 +446,12 @@ export default function ZgodovinaGoriva() {
               </div>
             )
           })}
+          {vnosi.length < totalCount && (
+            <button onClick={loadMore} disabled={loadingMore}
+              className="mt-2 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-bold text-[#a09aff] disabled:opacity-50">
+              {loadingMore ? tx('Nalaganje...', 'Loading...') : tx(`Nalozi se ${Math.min(PAGE_SIZE, totalCount - vnosi.length)} zapisov`, `Load ${Math.min(PAGE_SIZE, totalCount - vnosi.length)} more records`)}
+            </button>
+          )}
         </div>
       )}
       <HomeButton />

@@ -6,6 +6,8 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 
+const PAGE_SIZE = 50
+
 export default function ZgodovinaServisa() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
@@ -19,6 +21,10 @@ export default function ZgodovinaServisa() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [selectedImported, setSelectedImported] = useState<string[]>([])
   const [bulkEditMode, setBulkEditMode] = useState(false)
+  const [carId, setCarId] = useState('')
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalAmount, setTotalAmount] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -26,12 +32,18 @@ export default function ZgodovinaServisa() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
-      const carId = params.get('car')
-      if (!carId) { window.location.href = '/garaza'; return }
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
+      const selectedCarId = params.get('car')
+      if (!selectedCarId) { window.location.href = '/garaza'; return }
+      setCarId(selectedCarId)
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).single()
       setAvto(avtoData)
-      const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: false })
-      setVnosi(servisi || [])
+      const [servisiRes, summaryRes] = await Promise.all([
+        supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
+        supabase.from('service_logs').select('cena').eq('car_id', selectedCarId),
+      ])
+      setVnosi(servisiRes.data || [])
+      setTotalCount(servisiRes.count || servisiRes.data?.length || 0)
+      setTotalAmount((summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena || 0), 0))
       setLoading(false)
     }
     init()
@@ -49,8 +61,14 @@ export default function ZgodovinaServisa() {
   const editable = (vnos: any) => jeUvozen(vnos) || !jeZaklenjen(vnos)
 
   const refreshVnosi = async () => {
-    const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: false })
+    const [servisiRes, summaryRes] = await Promise.all([
+      supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
+      supabase.from('service_logs').select('cena').eq('car_id', avto.id),
+    ])
+    const servisi = servisiRes.data || []
     setVnosi(servisi || [])
+    setTotalCount(servisiRes.count || servisi.length || 0)
+    setTotalAmount((summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena || 0), 0))
   }
 
   const preostaliCas = (vnos: any) => {
@@ -63,7 +81,17 @@ export default function ZgodovinaServisa() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena || 0), 0)
+  const loadMore = async () => {
+    if (!carId || loadingMore || vnosi.length >= totalCount) return
+    setLoadingMore(true)
+    const from = vnosi.length
+    const to = from + PAGE_SIZE - 1
+    const { data } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: false }).range(from, to)
+    setVnosi(prev => [...prev, ...(data || [])])
+    setLoadingMore(false)
+  }
+
+  const skupajEurov = totalAmount
   const znakValute = currencySymbol(valuta)
   const trustBadge = (vnos: any) => {
     if (vnos.verification_level === 'strong') return { label: 'Strong', cls: 'bg-[#16a34a22] border-[#16a34a55] text-[#4ade80]' }
@@ -154,7 +182,7 @@ export default function ZgodovinaServisa() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj servisov</p>
-            <p className="text-white font-bold text-xl">{vnosi.length}</p>
+            <p className="text-white font-bold text-xl">{totalCount || vnosi.length}</p>
           </div>
           <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Skupaj strošek</p>
@@ -337,6 +365,12 @@ export default function ZgodovinaServisa() {
               </div>
             )
           })}
+          {vnosi.length < totalCount && (
+            <button onClick={loadMore} disabled={loadingMore}
+              className="mt-2 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-bold text-[#a09aff] disabled:opacity-50">
+              {loadingMore ? tx('Nalaganje...', 'Loading...') : tx(`Nalozi se ${Math.min(PAGE_SIZE, totalCount - vnosi.length)} zapisov`, `Load ${Math.min(PAGE_SIZE, totalCount - vnosi.length)} more records`)}
+            </button>
+          )}
         </div>
       )}
 

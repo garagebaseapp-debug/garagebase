@@ -7,6 +7,8 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSe
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
+const COST_LIST_SIZE = 60
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
@@ -23,6 +25,7 @@ export default function Stroski() {
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
+  const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
 
   useEffect(() => {
     const init = async () => {
@@ -78,6 +81,10 @@ export default function Stroski() {
     const timer = setInterval(() => setCas(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    setVisibleCostCount(COST_LIST_SIZE)
+  }, [filter])
   const preostaliCas = (createdAt: string) => {
     const ustvarjen = new Date(createdAt).getTime()
     const konec = ustvarjen + 24 * 60 * 60 * 1000
@@ -312,6 +319,7 @@ export default function Stroski() {
   ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
+  const vidniVnosi = filtrirani.slice(0, visibleCostCount)
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -398,7 +406,7 @@ export default function Stroski() {
             <p className="text-white font-semibold mb-1">{tx('Ni vnosov', 'No entries')}</p>
           </div>
         ) : (
-          filtrirani.map((v) => {
+          vidniVnosi.map((v) => {
             const preostalo = preostaliCas(v.created_at)
             const jeUredi = uredi === v.id
 
@@ -570,6 +578,12 @@ export default function Stroski() {
               </div>
             )
           })
+        )}
+        {filtrirani.length > vidniVnosi.length && (
+          <button onClick={() => setVisibleCostCount(count => count + COST_LIST_SIZE)}
+            className="mt-2 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-bold text-[#a09aff]">
+            {tx(`Nalozi se ${Math.min(COST_LIST_SIZE, filtrirani.length - vidniVnosi.length)} zapisov`, `Load ${Math.min(COST_LIST_SIZE, filtrirani.length - vidniVnosi.length)} more records`)}
+          </button>
         )}
       </div>
 
