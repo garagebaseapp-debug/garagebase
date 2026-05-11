@@ -10,6 +10,7 @@ const fallbackAdminEmails = new Set([
   'drazenletsgo@gmail.com',
   'garagebase.app@gmail.com',
 ])
+const allowFallbackAdmins = process.env.NODE_ENV !== 'production' || process.env.GARAGEBASE_ALLOW_FALLBACK_ADMINS === 'true'
 
 export async function GET(req: NextRequest) {
   if (!supabaseUrl || !anonKey) {
@@ -27,11 +28,11 @@ export async function GET(req: NextRequest) {
   const { data: userData, error: userError } = await userClient.auth.getUser()
   const email = userData.user?.email?.toLowerCase() || ''
   if (userError || !email) return NextResponse.json({ isAdmin: false }, { status: 401 })
-  if (fallbackAdminEmails.has(email)) return NextResponse.json({ isAdmin: true })
-  if (!serviceRoleKey) return NextResponse.json({ isAdmin: false })
+  if (serviceRoleKey) {
+    const admin = createClient(supabaseUrl, serviceRoleKey)
+    const { data } = await admin.from('admin_users').select('email').eq('email', email).maybeSingle()
+    if (data) return NextResponse.json({ isAdmin: true })
+  }
 
-  const admin = createClient(supabaseUrl, serviceRoleKey)
-  const { data } = await admin.from('admin_users').select('email').eq('email', email).maybeSingle()
-
-  return NextResponse.json({ isAdmin: Boolean(data) })
+  return NextResponse.json({ isAdmin: allowFallbackAdmins && fallbackAdminEmails.has(email) })
 }

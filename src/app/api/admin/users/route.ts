@@ -10,6 +10,7 @@ const fallbackAdminEmails = new Set([
   'drazenletsgo@gmail.com',
   'garagebase.app@gmail.com',
 ])
+const allowFallbackAdmins = process.env.NODE_ENV !== 'production' || process.env.GARAGEBASE_ALLOW_FALLBACK_ADMINS === 'true'
 
 async function requireAdmin(request: NextRequest) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
@@ -28,7 +29,7 @@ async function requireAdmin(request: NextRequest) {
   if (userError || !user || !email) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
 
   const admin = createClient(supabaseUrl, serviceRoleKey)
-  if (!fallbackAdminEmails.has(email)) {
+  if (!(allowFallbackAdmins && fallbackAdminEmails.has(email))) {
     const { data: adminRow, error: adminError } = await admin
       .from('admin_users')
       .select('email')

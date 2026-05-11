@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { createTransferToken, scanUrl, transferExpiresAt } from '@/lib/transfer'
@@ -548,6 +548,7 @@ export default function Report() {
   const [includeServices, setIncludeServices] = useState(true)
   const [includeFuel, setIncludeFuel] = useState(false)
   const [includeExpenses, setIncludeExpenses] = useState(true)
+  const qrSignatureRef = useRef('')
   const [selectedExpenseCategories, setSelectedExpenseCategories] = useState<string[]>([])
   const [language, setLanguage] = useState<Language>('sl')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -566,6 +567,21 @@ export default function Report() {
 
 
   const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[], reportLanguage: Language) => {
+    const signature = JSON.stringify({
+      carId,
+      includeVerifyQr,
+      includeImportQr,
+      includeVehicleImage,
+      includeReceiptImages,
+      reportLanguage,
+      privacy,
+      services: servisData.map((row: any) => row.id || `${row.datum}-${row.km}`).join('|'),
+      fuel: gorivoData.map((row: any) => row.id || `${row.datum}-${row.km}`).join('|'),
+      expenses: filteredExpenses.map((row: any) => row.id || `${row.datum}-${row.znesek}`).join('|'),
+    })
+    if (qrSignatureRef.current === signature && (verifyQr || !includeVerifyQr) && (importQr || !includeImportQr)) return
+    qrSignatureRef.current = signature
+
     const carSummary = {
       znamka: avtoData?.znamka,
       model: avtoData?.model,
