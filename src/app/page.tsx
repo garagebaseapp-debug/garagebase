@@ -118,7 +118,141 @@ const qrCells = [
   '000100010001',
 ]
 
+const appLabels = {
+  sl: {
+    fuel: 'Gorivo',
+    service: 'Servis',
+    reminders: 'Opomniki',
+    costs: 'Stroski',
+    settings: 'Nastavitve',
+    report: 'Report',
+    km: 'km',
+    active: 'Aktivno',
+  },
+  en: {
+    fuel: 'Fuel',
+    service: 'Service',
+    reminders: 'Reminders',
+    costs: 'Costs',
+    settings: 'Settings',
+    report: 'Report',
+    km: 'mi',
+    active: 'Active',
+  },
+}
+
+const MiniIcon = ({ kind }: { kind: string }) => {
+  const common = 'h-7 w-7'
+  if (kind === 'fuel') {
+    return (
+      <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M9 4h10a2 2 0 0 1 2 2v21H7V6a2 2 0 0 1 2-2Z" fill="#ff4f6d" />
+        <path d="M10 7h8v6h-8V7Z" fill="#f6fbff" />
+        <path d="M21 9h3l3 4v11a2 2 0 0 1-4 0v-6a2 2 0 0 0-2-2" stroke="#ffcf33" strokeWidth="2" strokeLinecap="round" />
+        <path d="M6 27h16" stroke="#f6fbff" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (kind === 'service') {
+    return (
+      <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="m21 5 6 6-4 4-3-3-9 14-5-5 14-9-3-3 4-4Z" fill="#f2efff" />
+        <path d="m7 22 3 3" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (kind === 'reminders') {
+    return (
+      <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 5c-4 0-7 3-7 8v4l-3 5h20l-3-5v-4c0-5-3-8-7-8Z" fill="#ffd056" />
+        <path d="M13 24a3 3 0 0 0 6 0" stroke="#ff7a1a" strokeWidth="2" strokeLinecap="round" />
+        <path d="M16 3v3" stroke="#fff3b0" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    )
+  }
+  if (kind === 'costs') {
+    return (
+      <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect x="7" y="7" width="18" height="20" rx="3" fill="#eef2ff" />
+        <path d="M11 12h10M11 17h10M11 22h5" stroke="#3ecfcf" strokeWidth="2" strokeLinecap="round" />
+        <path d="M9 5h4v4H9V5Zm10 0h4v4h-4V5Z" fill="#ff4f6d" />
+      </svg>
+    )
+  }
+  if (kind === 'settings') {
+    return (
+      <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <path d="M16 10a6 6 0 1 0 0 12 6 6 0 0 0 0-12Zm0-6 2 4 5-1 2 4-3 4 3 4-2 4-5-1-2 4-2-4-5 1-2-4 3-4-3-4 2-4 5 1 2-4Z" fill="#d8d4ff" />
+        <circle cx="16" cy="16" r="3" fill="#6c63ff" />
+      </svg>
+    )
+  }
+  return (
+    <svg className={common} viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 4h10l5 5v19H9V4Z" fill="#f2efff" />
+      <path d="M19 4v6h5" fill="#cbc4ff" />
+      <path d="M12 15h9M12 19h9M12 23h6" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+const MenuTile = ({ kind, label, active = false }: { kind: string, label: string, active?: boolean }) => (
+  <div className={`flex items-center justify-center gap-3 rounded-xl border p-4 ${
+    active
+      ? 'border-[#6c63ff88] bg-[#211a48] text-[#b9b2ff] shadow-[0_0_28px_rgba(108,99,255,0.22)]'
+      : 'border-white/10 bg-[#11111f] text-[#7b7bac]'
+  }`}>
+    <MiniIcon kind={kind} />
+    <span className="text-base font-black">{label}</span>
+  </div>
+)
+
+const VehicleCardMini = ({ name, status, tone }: { name: string, status: string, tone: string }) => (
+  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#11111f] p-2 shadow-[0_12px_28px_rgba(0,0,0,0.35)]">
+    <div className={`absolute inset-0 bg-gradient-to-br ${tone} opacity-55`} />
+    <div className="relative flex items-start justify-between gap-2">
+      <div>
+        <p className="text-[10px] font-black text-white">{name}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/70">42.300 km</p>
+      </div>
+      <span className={`rounded-full px-2 py-1 text-[7px] font-black ${status === 'OK' ? 'bg-[#22c55e] text-[#06140b]' : 'bg-[#ef4444] text-white'}`}>
+        {status}
+      </span>
+    </div>
+    <div className="relative mt-5 h-10 rounded-lg bg-black/22">
+      <div className="absolute bottom-2 left-4 h-3 w-14 rounded-full bg-black/45" />
+      <div className="absolute bottom-4 left-6 h-4 w-20 rounded-[60%_40%_40%_60%] bg-white/22" />
+      <div className="absolute bottom-2 left-8 h-3 w-3 rounded-full bg-[#07070d]" />
+      <div className="absolute bottom-2 left-20 h-3 w-3 rounded-full bg-[#07070d]" />
+    </div>
+  </div>
+)
+
+const AppScreen = ({ compact = false, language }: { compact?: boolean, language: Language }) => {
+  const labels = appLabels[language]
+  const cars = [
+    { name: 'Family SUV', status: 'RED', tone: 'from-[#0ea5e9] to-[#111827]' },
+    { name: 'Driver Moto', status: 'RED', tone: 'from-[#ef4444] to-[#111827]' },
+    { name: 'Adventure ATV', status: 'OK', tone: 'from-[#f59e0b] to-[#111827]' },
+  ]
+  return (
+    <div className="h-full rounded-[22px] bg-[#080810] p-2 text-white">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[10px] font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
+        <span className="rounded-full bg-[#6c63ff] px-2 py-1 text-[7px] font-black">{labels.active}</span>
+      </div>
+      <div className={compact ? 'space-y-1.5' : 'grid grid-cols-2 gap-2'}>
+        {cars.slice(0, compact ? 3 : 4).map((car) => (
+          <VehicleCardMini key={car.name} {...car} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
 const FeatureVisual = ({ kind, language }: { kind: string, language: Language }) => {
+  const labels = appLabels[language]
+
   if (kind === 'report') {
     return (
       <div className="mt-5 rounded-xl border border-[#6c63ff33] bg-[#080810] p-4">
@@ -160,48 +294,43 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   if (kind === 'mobile' || kind === 'vehicles') {
-    const cars = ['XC90', 'Golf', 'Clio']
     return (
-      <div className="mt-5 flex h-36 items-end justify-center gap-3 rounded-xl border border-[#3ecfcf33] bg-[#080810] p-4">
-        <div className="h-28 w-20 rounded-[18px] border border-white/14 bg-[#111827] p-2 shadow-xl">
-          <div className="mb-2 h-1 w-8 rounded-full bg-white/20 mx-auto" />
-          <div className="space-y-1.5">
-            {(kind === 'vehicles' ? cars : ['Fuel', 'Service', 'PDF']).map((item, index) => (
-              <div key={item} className={`rounded-lg p-1.5 text-[8px] font-black ${index === 0 ? 'bg-[#6c63ff]' : 'bg-[#1f2937] text-white/80'}`}>
-                {item}
-              </div>
-            ))}
-          </div>
+      <div className="relative mt-5 h-52 overflow-hidden rounded-xl border border-[#3ecfcf33] bg-[radial-gradient(circle_at_24%_20%,rgba(139,92,246,0.42),transparent_38%),radial-gradient(circle_at_82%_32%,rgba(62,207,207,0.32),transparent_34%),#080810] p-4">
+        <div className="absolute inset-x-8 bottom-3 h-4 rounded-full bg-black/45 blur-md" />
+        <div className={`absolute bottom-5 left-5 rounded-[26px] border border-white/18 bg-[#171724] p-2 shadow-[0_24px_48px_rgba(0,0,0,0.55)] ${kind === 'vehicles' ? 'h-36 w-56 rotate-[-3deg]' : 'h-40 w-52 rotate-[-4deg]'}`}>
+          <AppScreen language={language} />
         </div>
-        <div className="hidden h-24 w-36 rounded-xl border border-white/14 bg-[#111827] p-3 shadow-xl sm:block">
-          <div className="mb-2 h-2 w-16 rounded-full bg-[#3ecfcf]" />
-          <div className="grid grid-cols-2 gap-2">
-            {(kind === 'vehicles' ? cars.slice(0, 2) : ['App', 'Report']).map((item) => (
-              <div key={item} className="rounded-lg bg-[#1f2937] p-2 text-[9px] font-black text-white/86">{item}</div>
-            ))}
-          </div>
+        <div className="absolute bottom-5 right-7 h-40 w-20 rotate-[4deg] rounded-[24px] border border-white/18 bg-[#171724] p-1.5 shadow-[0_24px_48px_rgba(0,0,0,0.6)]">
+          <div className="mx-auto mb-1 h-1 w-7 rounded-full bg-white/20" />
+          <AppScreen compact language={language} />
         </div>
+        {kind === 'vehicles' && (
+          <div className="absolute right-5 top-5 rounded-full border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-1 text-[10px] font-black text-[#9ff7f7]">
+            3 {language === 'en' ? 'vehicles' : 'vozila'}
+          </div>
+        )}
       </div>
     )
   }
 
-  const icons = kind === 'fuel'
-    ? ['L', 'EUR', 'km']
-    : kind === 'service'
-      ? ['Wrench', 'PDF', 'km']
-      : kind === 'reminders'
-        ? ['30d', 'km', '!']
-        : ['AI', 'OCR', '2027']
+  if (kind === 'fuel' || kind === 'service' || kind === 'reminders') {
+    return (
+      <div className="mt-5 grid grid-cols-1 gap-3 rounded-xl border border-[#1e1e32] bg-[#080810] p-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+        <MenuTile kind="fuel" label={labels.fuel} active={kind === 'fuel'} />
+        <MenuTile kind="service" label={labels.service} active={kind === 'service'} />
+        <MenuTile kind="reminders" label={labels.reminders} active={kind === 'reminders'} />
+      </div>
+    )
+  }
 
   return (
-    <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-[#1e1e32] bg-[#080810] p-4">
-      {icons.map((icon, index) => (
-        <div key={icon} className={`flex h-16 items-center justify-center rounded-xl text-xs font-black ${
-          index === 0 ? 'bg-[#3ecfcf22] text-[#3ecfcf]' : index === 1 ? 'bg-[#6c63ff22] text-[#a09aff]' : 'bg-[#f59e0b22] text-[#fbbf24]'
-        }`}>
-          {icon}
-        </div>
-      ))}
+    <div className="mt-5 rounded-xl border border-[#1e1e32] bg-[#080810] p-4">
+      <div className="grid grid-cols-2 gap-3">
+        <MenuTile kind="costs" label={labels.costs} />
+        <MenuTile kind="settings" label={labels.settings} />
+        <MenuTile kind="report" label={labels.report} active />
+        <div className="flex items-center justify-center rounded-xl border border-[#6c63ff55] bg-[#6c63ff16] text-sm font-black text-[#b9b2ff]">AI OCR</div>
+      </div>
     </div>
   )
 }
