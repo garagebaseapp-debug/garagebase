@@ -197,33 +197,33 @@ const MiniIcon = ({ kind }: { kind: string }) => {
 }
 
 const MenuTile = ({ kind, label, active = false }: { kind: string, label: string, active?: boolean }) => (
-  <div className={`flex items-center justify-center gap-3 rounded-xl border p-4 ${
+  <div className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center ${
     active
-      ? 'border-[#6c63ff88] bg-[#211a48] text-[#b9b2ff] shadow-[0_0_28px_rgba(108,99,255,0.22)]'
-      : 'border-white/10 bg-[#11111f] text-[#7b7bac]'
+      ? 'border-[#6c63ff88] bg-[#241a52] text-[#d8d4ff] shadow-[0_0_34px_rgba(108,99,255,0.28)]'
+      : 'border-white/10 bg-[#11111f] text-[#8e8ac0]'
   }`}>
     <MiniIcon kind={kind} />
-    <span className="text-base font-black">{label}</span>
+    <span className="text-sm font-black sm:text-base">{label}</span>
   </div>
 )
 
 const VehicleCardMini = ({ name, status, tone }: { name: string, status: string, tone: string }) => (
-  <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#11111f] p-2 shadow-[0_12px_28px_rgba(0,0,0,0.35)]">
-    <div className={`absolute inset-0 bg-gradient-to-br ${tone} opacity-55`} />
+  <div className="relative min-h-28 overflow-hidden rounded-2xl border border-white/10 bg-[#11111f] p-3 shadow-[0_14px_32px_rgba(0,0,0,0.38)]">
+    <div className={`absolute inset-0 bg-gradient-to-br ${tone} opacity-62`} />
     <div className="relative flex items-start justify-between gap-2">
       <div>
-        <p className="text-[10px] font-black text-white">{name}</p>
-        <p className="mt-0.5 text-[8px] font-bold text-white/70">42.300 km</p>
+        <p className="text-xs font-black leading-tight text-white">{name}</p>
+        <p className="mt-1 text-[10px] font-bold text-white/72">42.300 km</p>
       </div>
-      <span className={`rounded-full px-2 py-1 text-[7px] font-black ${status === 'OK' ? 'bg-[#22c55e] text-[#06140b]' : 'bg-[#ef4444] text-white'}`}>
+      <span className={`rounded-full px-2 py-1 text-[8px] font-black ${status === 'OK' ? 'bg-[#22c55e] text-[#06140b]' : 'bg-[#ef4444] text-white'}`}>
         {status}
       </span>
     </div>
-    <div className="relative mt-5 h-10 rounded-lg bg-black/22">
-      <div className="absolute bottom-2 left-4 h-3 w-14 rounded-full bg-black/45" />
-      <div className="absolute bottom-4 left-6 h-4 w-20 rounded-[60%_40%_40%_60%] bg-white/22" />
-      <div className="absolute bottom-2 left-8 h-3 w-3 rounded-full bg-[#07070d]" />
-      <div className="absolute bottom-2 left-20 h-3 w-3 rounded-full bg-[#07070d]" />
+    <div className="relative mt-6 h-12 rounded-xl bg-black/24">
+      <div className="absolute bottom-3 left-5 h-3 w-16 rounded-full bg-black/45" />
+      <div className="absolute bottom-5 left-7 h-5 w-24 rounded-[60%_40%_42%_58%] bg-white/24" />
+      <div className="absolute bottom-3 left-10 h-4 w-4 rounded-full bg-[#07070d] ring-2 ring-white/16" />
+      <div className="absolute bottom-3 left-24 h-4 w-4 rounded-full bg-[#07070d] ring-2 ring-white/16" />
     </div>
   </div>
 )
@@ -293,32 +293,58 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
     )
   }
 
-  if (kind === 'mobile' || kind === 'vehicles') {
+  if (kind === 'mobile') {
     return (
-      <div className="relative mt-5 h-52 overflow-hidden rounded-xl border border-[#3ecfcf33] bg-[radial-gradient(circle_at_24%_20%,rgba(139,92,246,0.42),transparent_38%),radial-gradient(circle_at_82%_32%,rgba(62,207,207,0.32),transparent_34%),#080810] p-4">
-        <div className="absolute inset-x-8 bottom-3 h-4 rounded-full bg-black/45 blur-md" />
-        <div className={`absolute bottom-5 left-5 rounded-[26px] border border-white/18 bg-[#171724] p-2 shadow-[0_24px_48px_rgba(0,0,0,0.55)] ${kind === 'vehicles' ? 'h-36 w-56 rotate-[-3deg]' : 'h-40 w-52 rotate-[-4deg]'}`}>
-          <AppScreen language={language} />
+      <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[#080810] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <img
+          src="/landing-garagebase.png"
+          alt=""
+          className="absolute inset-0 h-full w-full scale-110 object-cover object-[63%_60%]"
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,8,16,0.12),rgba(8,8,16,0.04),rgba(8,8,16,0.18))]" />
+        <div className="absolute bottom-4 left-4 rounded-full border border-white/14 bg-black/42 px-3 py-1 text-[10px] font-black text-white backdrop-blur-md">
+          {language === 'en' ? 'Phone + tablet ready' : 'Telefon + tablica'}
         </div>
-        <div className="absolute bottom-5 right-7 h-40 w-20 rotate-[4deg] rounded-[24px] border border-white/18 bg-[#171724] p-1.5 shadow-[0_24px_48px_rgba(0,0,0,0.6)]">
-          <div className="mx-auto mb-1 h-1 w-7 rounded-full bg-white/20" />
-          <AppScreen compact language={language} />
-        </div>
-        {kind === 'vehicles' && (
-          <div className="absolute right-5 top-5 rounded-full border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-1 text-[10px] font-black text-[#9ff7f7]">
-            3 {language === 'en' ? 'vehicles' : 'vozila'}
+      </div>
+    )
+  }
+
+  if (kind === 'vehicles') {
+    return (
+      <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[radial-gradient(circle_at_20%_12%,rgba(62,207,207,0.20),transparent_34%),radial-gradient(circle_at_88%_16%,rgba(139,92,246,0.30),transparent_34%),#080810] p-4">
+        <div className="absolute inset-x-12 bottom-4 h-5 rounded-full bg-black/55 blur-lg" />
+        <div className="relative mx-auto h-full max-w-[360px] rotate-[-1deg] rounded-[28px] border border-white/16 bg-[#161625] p-3 shadow-[0_28px_58px_rgba(0,0,0,0.58)]">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
+            <span className="rounded-full bg-[#6c63ff] px-3 py-1 text-[9px] font-black">{labels.active}</span>
           </div>
-        )}
+          <div className="grid grid-cols-2 gap-3">
+            <VehicleCardMini name="Family SUV" status="RED" tone="from-[#0ea5e9] to-[#111827]" />
+            <VehicleCardMini name="Driver Moto" status="RED" tone="from-[#ef4444] to-[#111827]" />
+            <VehicleCardMini name="Adventure ATV" status="OK" tone="from-[#f59e0b] to-[#111827]" />
+            <div className="rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf12] p-3">
+              <p className="text-[10px] font-black text-[#9ff7f7]">3 {language === 'en' ? 'vehicles' : 'vozila'}</p>
+              <div className="mt-4 space-y-2">
+                <div className="h-2 rounded-full bg-[#3ecfcf]" />
+                <div className="h-2 w-3/4 rounded-full bg-[#6c63ff]" />
+                <div className="h-2 w-1/2 rounded-full bg-[#f59e0b]" />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
 
   if (kind === 'fuel' || kind === 'service' || kind === 'reminders') {
     return (
-      <div className="mt-5 grid grid-cols-1 gap-3 rounded-xl border border-[#1e1e32] bg-[#080810] p-4 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl border border-[#1e1e32] bg-[#080810] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
         <MenuTile kind="fuel" label={labels.fuel} active={kind === 'fuel'} />
         <MenuTile kind="service" label={labels.service} active={kind === 'service'} />
         <MenuTile kind="reminders" label={labels.reminders} active={kind === 'reminders'} />
+        <MenuTile kind="costs" label={labels.costs} />
+        <MenuTile kind="settings" label={labels.settings} />
+        <MenuTile kind="report" label={labels.report} />
       </div>
     )
   }
