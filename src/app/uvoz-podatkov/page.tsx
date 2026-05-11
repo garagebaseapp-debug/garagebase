@@ -176,6 +176,47 @@ const numberFromRow = (
   return null
 }
 
+const numbersFromRow = (row: Record<string, string>, headers: string[]) =>
+  headers
+    .map((header, index) => ({ index, header, value: toNumber(row[header]) }))
+    .filter((item): item is { index: number; header: string; value: number } => item.value !== null)
+
+const inferFuelNumbers = (row: Record<string, string>, headers: string[], mapped: {
+  amount: number | null
+  liters: number | null
+  pricePerLiter: number | null
+}) => {
+  let amount = saneAmount(mapped.amount)
+  let liters = saneLiters(mapped.liters)
+  let pricePerLiter = sanePricePerLiter(mapped.pricePerLiter)
+  const numbers = numbersFromRow(row, headers)
+
+  if (liters === null) {
+    const directVolume = numbers.find(item => [5, 4, 6].includes(item.index) && saneLiters(item.value))
+    liters = saneLiters(directVolume?.value ?? null)
+  }
+  if (pricePerLiter === null) {
+    const directPrice = numbers.find(item => [3, 4].includes(item.index) && sanePricePerLiter(item.value))
+    pricePerLiter = sanePricePerLiter(directPrice?.value ?? null)
+  }
+  if (amount === null) {
+    const directAmount = numbers.find(item => [4, 5, 6].includes(item.index) && item.value > 5 && item.value < 20000)
+    amount = saneAmount(directAmount?.value ?? null)
+  }
+
+  if (liters === null && amount && pricePerLiter) {
+    liters = saneLiters(Number((amount / pricePerLiter).toFixed(2)))
+  }
+  if (pricePerLiter === null && amount && liters) {
+    pricePerLiter = sanePricePerLiter(Number((amount / liters).toFixed(3)))
+  }
+  if (amount === null && liters && pricePerLiter) {
+    amount = saneAmount(Number((liters * pricePerLiter).toFixed(2)))
+  }
+
+  return { amount, liters, pricePerLiter }
+}
+
 const parseDate = (value?: string) => {
   if (!value) return ''
   const trimmed = value.trim()
@@ -389,9 +430,11 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
     const fuelLiters = isFuelSection
       ? saneLiters(numberFromRow(row, section.headers, map.liters, [5, 4, 3], literHeaders))
       : null
-    const calculatedLiters = fuelLiters === null && fuelAmount && fuelPricePerLiter
-      ? Math.round((fuelAmount / fuelPricePerLiter) * 100) / 100
-      : fuelLiters
+    const inferredFuel = inferFuelNumbers(row, section.headers, {
+      amount: fuelAmount,
+      liters: fuelLiters,
+      pricePerLiter: fuelPricePerLiter,
+    })
     const importDetails = isFuelSection
       ? joinDetails([
           [language === 'en' ? 'Full tank' : 'Poln tank', fullTank],
@@ -416,9 +459,9 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
       date,
       km,
       description,
-      amount: isFuelSection ? fuelAmount : toNumber(isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
-      liters: isFuelSection ? calculatedLiters : toNumber(row[map.liters]),
-      pricePerLiter: isFuelSection ? fuelPricePerLiter : toNumber(row[map.pricePerLiter]),
+      amount: isFuelSection ? inferredFuel.amount : toNumber(isExpenseSection ? valueAt(row, 2, map.amount) : row[map.amount]),
+      liters: isFuelSection ? inferredFuel.liters : toNumber(row[map.liters]),
+      pricePerLiter: isFuelSection ? inferredFuel.pricePerLiter : toNumber(row[map.pricePerLiter]),
       station,
       category: isExpenseSection ? normalizeCategory(rawCategory) : row[map.category] || (isServiceSection ? 'servis' : isFuelSection ? 'gorivo' : 'uvoz'),
       fuelType: normalizeFuelType(isFuelSection ? valueAt(row, 2, map.fuelType) : row[map.fuelType]),
@@ -515,24 +558,18 @@ export default function UvozPodatkov() {
       const csvPricePerLiter = kind === 'fuel'
         ? sanePricePerLiter(numberFromRow(row, parsed.headers, mapping.pricePerLiter, [], pricePerLiterHeaders))
         : toNumber(row[mapping.pricePerLiter])
-      const finalLiters = kind === 'fuel' && csvLiters === null && csvAmount && csvPricePerLiter
-        ? Number((csvAmount / csvPricePerLiter).toFixed(2))
-        : csvLiters
-      const finalPricePerLiter = kind === 'fuel' && csvPricePerLiter === null && csvAmount && finalLiters
-        ? Number((csvAmount / finalLiters).toFixed(3))
-        : csvPricePerLiter
-      const finalAmount = kind === 'fuel' && csvAmount === null && finalLiters && finalPricePerLiter
-        ? Number((finalLiters * finalPricePerLiter).toFixed(2))
-        : csvAmount
+      const inferredFuel = kind === 'fuel'
+        ? inferFuelNumbers(row, parsed.headers, { amount: csvAmount, liters: csvLiters, pricePerLiter: csvPricePerLiter })
+        : { amount: csvAmount, liters: csvLiters, pricePerLiter: csvPricePerLiter }
       return {
         kind,
         source: 'CSV',
         date: parseDate(row[mapping.date]),
         km: toNumber(row[mapping.km]),
         description: row[mapping.description] || row[mapping.category] || tx('Uvoz iz druge aplikacije', 'Import from another app'),
-        amount: finalAmount,
-        liters: finalLiters,
-        pricePerLiter: finalPricePerLiter,
+        amount: inferredFuel.amount,
+        liters: inferredFuel.liters,
+        pricePerLiter: inferredFuel.pricePerLiter,
         station: row[mapping.station] || '',
         category: row[mapping.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
         fuelType: row[mapping.fuelType] || null,
