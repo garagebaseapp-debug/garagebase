@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1745'
+const STROSKI_BUILD = 'stroski-2026-05-11-1755'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -96,6 +96,17 @@ const readCostCache = (carId: string) => {
     } catch {}
   }
   return null
+}
+
+const readCostTotalsCache = (carId?: string) => {
+  if (!carId) return null
+  try {
+    const raw = localStorage.getItem(`garagebase_cost_totals_${carId}`)
+    const parsed = raw ? JSON.parse(raw) : null
+    return numericValue(parsed?.fuelCost) > 0 ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 export default function Stroski() {
@@ -272,13 +283,15 @@ export default function Stroski() {
   const lokalnoTotal = localTotals.gorivo + localTotals.servis + localTotals.expenses
   const lokalnoGarageBase = Math.max(0, lokalnoTotal - lokalnoImported)
   const useServerStats = statsHasRealValues(serverStats) && allCostRows.length === 0
-  const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : localTotals.gorivo
+  const totalsCache = readCostTotalsCache(avto?.id)
+  const cachedFuelCost = numericValue(totalsCache?.fuelCost)
+  const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : (localTotals.gorivo > 0 ? localTotals.gorivo : cachedFuelCost)
   const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : localTotals.servis
   const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : localTotals.expenses
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
-  const skupajUvoz = useServerStats ? numericValue(serverStats.costs?.imported) : lokalnoImported
-  const skupajGarageBase = useServerStats ? numericValue(serverStats.costs?.garageBase) : lokalnoGarageBase
-  const stGorivo = useServerStats ? numericValue(serverStats.rows?.fuel) : gorivo.length
+  const skupajUvoz = useServerStats ? numericValue(serverStats.costs?.imported) : (lokalnoImported > 0 ? lokalnoImported : numericValue(totalsCache?.importedFuelCost))
+  const skupajGarageBase = useServerStats ? numericValue(serverStats.costs?.garageBase) : (lokalnoGarageBase > 0 ? lokalnoGarageBase : numericValue(totalsCache?.garageBaseFuelCost))
+  const stGorivo = useServerStats ? numericValue(serverStats.rows?.fuel) : (gorivo.length || numericValue(totalsCache?.fuelRows))
   const stServis = useServerStats ? numericValue(serverStats.rows?.service) : servisi.length
   const stOstalo = useServerStats ? numericValue(serverStats.rows?.expense) : expenses.length
   const kmPrevozeni = avto?.km_trenutni || 0

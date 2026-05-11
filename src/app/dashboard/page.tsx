@@ -21,7 +21,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1745'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1755'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -155,6 +155,16 @@ const readCostCache = (carId: string) => {
     } catch {}
   }
   return null
+}
+
+const readCostTotalsCache = (carId: string) => {
+  try {
+    const raw = localStorage.getItem(`garagebase_cost_totals_${carId}`)
+    const parsed = raw ? JSON.parse(raw) : null
+    return numberValue(parsed?.fuelCost) > 0 ? parsed : null
+  } catch {
+    return null
+  }
 }
 
 export default function Dashboard() {
@@ -394,11 +404,15 @@ export default function Dashboard() {
     const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
     const garageBaseCosts = garageBaseFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(garageBaseService, 'cena') + costOf(garageBaseExpense, 'znesek')
     const importedCosts = importedFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(importedService, 'cena') + costOf(importedExpense, 'znesek')
-    const totalCosts = garageBaseCosts + importedCosts
+    const totalsCache = readCostTotalsCache(carId)
+    const cachedFuelCost = numberValue(totalsCache?.fuelCost)
+    const finalGarageBaseCosts = garageBaseCosts > 0 ? garageBaseCosts : numberValue(totalsCache?.garageBaseFuelCost)
+    const finalImportedCosts = importedCosts > 0 ? importedCosts : numberValue(totalsCache?.importedFuelCost)
+    const totalCosts = garageBaseCosts + importedCosts > 0 ? garageBaseCosts + importedCosts : cachedFuelCost
     const kmPrevozeni = kmStart - kmObVnosu
     const nextStroski = {
-      garageBase: garageBaseCosts,
-      imported: importedCosts,
+      garageBase: finalGarageBaseCosts,
+      imported: finalImportedCosts,
       total: totalCosts,
       naKm: kmPrevozeni > 0 ? totalCosts / kmPrevozeni : null,
     }
