@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1920'
+const STROSKI_BUILD = 'stroski-2026-05-11-2015'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -103,6 +103,12 @@ export default function Stroski() {
   const [refreshing, setRefreshing] = useState(false)
   const [serverStats, setServerStats] = useState<any>(null)
   const [debugSource, setDebugSource] = useState('')
+  const [loadedRows, setLoadedRows] = useState<{ gorivo: any[]; servisi: any[]; expenses: any[]; ready: boolean }>({
+    gorivo: [],
+    servisi: [],
+    expenses: [],
+    ready: false,
+  })
 
   useEffect(() => {
     const init = async () => {
@@ -129,6 +135,7 @@ export default function Stroski() {
         setGorivo(cached.gorivo)
         setServisi(cached.servisi)
         setExpenses(cached.expenses)
+        setLoadedRows({ gorivo: cached.gorivo, servisi: cached.servisi, expenses: cached.expenses, ready: true })
         if (statsHasRealValues(cached.serverStats)) setServerStats(cached.serverStats)
       }
 
@@ -172,6 +179,7 @@ export default function Stroski() {
       setGorivo(gorivoData)
       setServisi(servisData)
       setExpenses(expensesData)
+      setLoadedRows({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, ready: true })
       let nextServerStats = null
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
@@ -247,13 +255,17 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
+  const displayGorivo = loadedRows.ready ? loadedRows.gorivo : gorivo
+  const displayServisi = loadedRows.ready ? loadedRows.servisi : servisi
+  const displayExpenses = loadedRows.ready ? loadedRows.expenses : expenses
+
   const allCostRows = [
-    ...gorivo.map(v => ({ ...v, _tip: 'gorivo' })),
-    ...servisi.map(v => ({ ...v, _tip: 'servis' })),
-    ...expenses.map(v => ({ ...v, _tip: 'ostalo' })),
+    ...displayGorivo.map(v => ({ ...v, _tip: 'gorivo' })),
+    ...displayServisi.map(v => ({ ...v, _tip: 'servis' })),
+    ...displayExpenses.map(v => ({ ...v, _tip: 'ostalo' })),
   ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
   const totalsCache = readCostTotalsCache(avto?.id)
-  const liveCostSummary = buildSharedCostSummary(gorivo, servisi, expenses, serverStats)
+  const liveCostSummary = buildSharedCostSummary(displayGorivo, displayServisi, displayExpenses, serverStats)
   const skupajGorivo = liveCostSummary.fuel > 0 ? liveCostSummary.fuel : numericValue(totalsCache?.fuelCost)
   const skupajServis = liveCostSummary.service
   const skupajExpenses = liveCostSummary.expense
@@ -281,9 +293,9 @@ export default function Stroski() {
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
     }
-    gorivo.forEach(v => { const value = fuelCostValue(v); if (!v.datum || !value) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += value })
-    servisi.forEach(v => { if (!v.datum || !numericValue(v.cena)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += numericValue(v.cena) })
-    expenses.forEach(v => { if (!v.datum || !numericValue(v.znesek)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += numericValue(v.znesek) })
+    displayGorivo.forEach(v => { const value = fuelCostValue(v); if (!v.datum || !value) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += value })
+    displayServisi.forEach(v => { if (!v.datum || !numericValue(v.cena)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += numericValue(v.cena) })
+    displayExpenses.forEach(v => { if (!v.datum || !numericValue(v.znesek)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += numericValue(v.znesek) })
     return meseci
   }
 
@@ -458,6 +470,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setGorivo(data || [])
+    setLoadedRows(prev => ({ ...prev, gorivo: data || [], ready: true }))
     clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
@@ -473,6 +486,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setServisi(data || [])
+    setLoadedRows(prev => ({ ...prev, servisi: data || [], ready: true }))
     clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
@@ -487,6 +501,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setExpenses((data || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
+    setLoadedRows(prev => ({ ...prev, expenses: (data || []).filter((e: any) => e.kategorija !== 'km_sprememba'), ready: true }))
     clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
@@ -535,7 +550,7 @@ export default function Stroski() {
         </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
-          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {debugSource}
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {debugSource}
         </p>
       </div>
 

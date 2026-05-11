@@ -22,7 +22,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1920'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2015'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -180,7 +180,11 @@ const readVehicleStatsCache = (carId: string) => {
     const total =
       numberValue(parsed?.costs?.total) ||
       (numberValue(parsed?.fuelCost) + numberValue(parsed?.serviceCost) + numberValue(parsed?.expenseCost))
-    if (total <= 0 && !parsed?.consumption) return null
+    const hasConsumption =
+      numberValue(parsed?.consumption?.garageBase) > 0 ||
+      numberValue(parsed?.consumption?.imported) > 0 ||
+      numberValue(parsed?.consumption?.total) > 0
+    if (total <= 0 && !hasConsumption) return null
     return parsed
   } catch {
     return null
@@ -478,7 +482,8 @@ export default function Dashboard() {
         }
       } catch {}
     }
-    const cachedStats = localStorage.getItem(`garagebase_vehicle_stats_${carId}`)
+    const trustedCachedStats = readVehicleStatsCache(carId)
+    const cachedStats = trustedCachedStats ? JSON.stringify(trustedCachedStats) : null
     if (cachedStats) {
       try {
         const parsed = JSON.parse(cachedStats)
