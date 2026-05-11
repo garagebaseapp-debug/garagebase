@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2230'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2245'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -71,10 +71,12 @@ const apiDebugText = (payload: any) => {
   if (!debug) return `api:${payload?.source || 'stats'}`
   const selected = debug.selected
   const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
+  const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
+  const statsText = statsRows ? ` stats:${statsRows}` : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numberValue(car.fuel) + numberValue(car.service) + numberValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const isImportedDashboardRow = (row: any) => {

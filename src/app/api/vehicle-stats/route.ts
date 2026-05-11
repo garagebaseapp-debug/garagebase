@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { buildVehicleStats } from '@/lib/vehicle-costs'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -17,6 +16,150 @@ const rowCounts = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: a
 
 const hasRows = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) =>
   rowSet.fuelRows.length > 0 || rowSet.serviceRows.length > 0 || rowSet.expenseRows.length > 0
+
+const apiNumberValue = (value: unknown) => {
+  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const apiFuelCostValue = (row: any) => {
+  const direct = apiNumberValue(row?.cena_skupaj)
+  if (direct > 0) return direct
+  const liters = apiNumberValue(row?.litri)
+  const price = apiNumberValue(row?.cena_na_liter)
+  return liters > 0 && price > 0 ? liters * price : 0
+}
+
+const apiImportBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  if (key) buckets[key] = (buckets[key] || 0) + 1
+  return buckets
+}, {})
+
+const apiIsImportedHistoryRow = (row: any, buckets?: Record<string, number>) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.servis || ''} ${row?.kategorija || ''}`
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  return Boolean(
+    row?.import_batch_id ||
+    row?.source_owner_label ||
+    (key && buckets && (buckets[key] || 0) >= 3) ||
+    /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText)
+  )
+}
+
+const apiSplitRowsBySource = (rows: any[]) => {
+  const buckets = apiImportBuckets(rows)
+  const imported: any[] = []
+  const garageBase: any[] = []
+
+  rows.forEach((row) => {
+    if (apiIsImportedHistoryRow(row, buckets)) imported.push(row)
+    else garageBase.push(row)
+  })
+
+  return { imported, garageBase }
+}
+
+const apiCostValueFor = (row: any) => {
+  if (row?._tip === 'gorivo') return apiFuelCostValue(row)
+  if (row?._tip === 'servis') return apiNumberValue(row?.cena)
+  return apiNumberValue(row?.znesek)
+}
+
+const apiImportedConsumptionValue = (row: any) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
+  const match = rawText.match(/(?:Poraba|Consumption|Efficiency)\s*:\s*([0-9]+(?:[,.][0-9]+)?)/i)
+  if (!match) return null
+  const parsed = Number(match[1].replace(',', '.'))
+  return Number.isFinite(parsed) && parsed > 0 && parsed < 100 ? parsed : null
+}
+
+const apiAverageKnownConsumption = (rows: any[]) => {
+  const values = rows.map(apiImportedConsumptionValue).filter((value): value is number => value !== null)
+  if (values.length === 0) return null
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+const apiConsumptionSegment = (rows: any[]) => {
+  const sorted = rows
+    .filter((row) => apiNumberValue(row?.km) > 0 && apiNumberValue(row?.litri) > 0)
+    .sort((a, b) => apiNumberValue(a.km) - apiNumberValue(b.km))
+
+  if (sorted.length < 2) {
+    return { average: apiAverageKnownConsumption(rows), distance: 0, liters: 0 }
+  }
+
+  let distance = 0
+  let liters = 0
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = apiNumberValue(sorted[i].km) - apiNumberValue(sorted[i - 1].km)
+    if (diff <= 0) continue
+    distance += diff
+    liters += apiNumberValue(sorted[i].litri)
+  }
+
+  return {
+    average: distance > 0 ? (liters / distance) * 100 : apiAverageKnownConsumption(rows),
+    distance,
+    liters,
+  }
+}
+
+const apiCombineConsumptionSegments = (segments: Array<{ average: number | null; distance: number; liters: number }>) => {
+  const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
+  const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
+  const liters = measured.reduce((sum, segment) => sum + segment.liters, 0)
+  if (distance > 0) return (liters / distance) * 100
+
+  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
+  if (known.length === 0) return null
+  return known.reduce((sum, value) => sum + value, 0) / known.length
+}
+
+const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: any[], car?: any) => {
+  const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
+  const costRows = [
+    ...fuelRows.map((row) => ({ ...row, _tip: 'gorivo' })),
+    ...serviceRows.map((row) => ({ ...row, _tip: 'servis' })),
+    ...filteredExpenses.map((row) => ({ ...row, _tip: 'ostalo' })),
+  ]
+  const sourceSplit = apiSplitRowsBySource(costRows)
+  const fuelSplit = apiSplitRowsBySource(fuelRows)
+  const garageBaseConsumption = apiConsumptionSegment(fuelSplit.garageBase)
+  const importedConsumption = apiConsumptionSegment(fuelSplit.imported)
+
+  const fuelCost = fuelRows.reduce((sum, row) => sum + apiFuelCostValue(row), 0)
+  const serviceCost = serviceRows.reduce((sum, row) => sum + apiNumberValue(row?.cena), 0)
+  const expenseCost = filteredExpenses.reduce((sum, row) => sum + apiNumberValue(row?.znesek), 0)
+  const totalCost = fuelCost + serviceCost + expenseCost
+  const importedCost = sourceSplit.imported.reduce((sum, row) => sum + apiCostValueFor(row), 0)
+  const garageBaseCost = Math.max(0, totalCost - importedCost)
+  const drivenKm = Math.max(0, apiNumberValue(car?.km_trenutni) - apiNumberValue(car?.km_ob_vnosu))
+
+  return {
+    rows: {
+      fuel: fuelRows.length,
+      service: serviceRows.length,
+      expense: filteredExpenses.length,
+    },
+    liters: fuelRows.reduce((sum, row) => sum + apiNumberValue(row?.litri), 0),
+    costs: {
+      fuel: fuelCost,
+      service: serviceCost,
+      expense: expenseCost,
+      garageBase: garageBaseCost,
+      imported: importedCost,
+      total: totalCost,
+      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
+    },
+    consumption: {
+      garageBase: garageBaseConsumption.average,
+      imported: importedConsumption.average,
+      total: apiCombineConsumptionSegments([garageBaseConsumption, importedConsumption]),
+    },
+  }
+}
 
 export async function GET(req: NextRequest) {
   if (!supabaseUrl || !anonKey) {
@@ -124,6 +267,8 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  const stats = buildApiVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car)
+
   return NextResponse.json({
     ok: true,
     source: selectedRows.label,
@@ -132,8 +277,11 @@ export async function GET(req: NextRequest) {
       primary: { label: primaryRows.label, ...rowCounts(primaryRows) },
       fallback: fallbackRows ? { label: fallbackRows.label, ...rowCounts(fallbackRows) } : null,
       selected: { label: selectedRows.label, ...rowCounts(selectedRows) },
+      statsRows: stats.rows,
+      statsTotal: stats.costs.total,
+      statsLiters: stats.liters,
       userCarsWithRows: userCarCounts.slice(0, 12),
     },
-    stats: buildVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car),
+    stats,
   })
 }

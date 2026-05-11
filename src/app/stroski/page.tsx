@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-2230'
+const STROSKI_BUILD = 'stroski-2026-05-11-2245'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -48,10 +48,12 @@ const apiDebugText = (payload: any) => {
   if (!debug) return `api:${payload?.source || 'stats'}`
   const selected = debug.selected
   const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
+  const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
+  const statsText = statsRows ? ` stats:${statsRows}` : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const fuelCostValue = (row: any) => {
@@ -163,14 +165,6 @@ export default function Stroski() {
         setExpenses(cached.expenses)
         setLoadedRows({ gorivo: cached.gorivo, servisi: cached.servisi, expenses: cached.expenses, ready: true })
         setLoadedSummary(cachedSummary)
-        setCostSnapshot({
-          gorivo: cached.gorivo,
-          servisi: cached.servisi,
-          expenses: cached.expenses,
-          summary: cachedSummary,
-          debug: 'cache',
-          ready: true,
-        })
         if (statsHasRealValues(cached.serverStats)) setServerStats(cached.serverStats)
       }
 

@@ -1,6 +1,6 @@
 'use client'
 
-export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2230'
+export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2245'
 
 export const clearVehicleDataCaches = (carId?: string | null) => {
   if (typeof window === 'undefined' || !carId) return
@@ -23,6 +23,7 @@ export const ensureVehicleStatsCacheVersion = (version: string) => {
   const prefixes = [
     'garagebase_dashboard_cache_',
     'garagebase_vehicle_stats_',
+    'garagebase_stroski_cache_',
   ]
 
   for (let index = localStorage.length - 1; index >= 0; index--) {
