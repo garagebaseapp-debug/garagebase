@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1645'
+const STROSKI_BUILD = 'stroski-2026-05-11-1720'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -26,6 +26,27 @@ const statsHasData = (stats: any) => {
     numericValue(stats.costs?.service) +
     numericValue(stats.costs?.expense)
   return rowCount > 0 || costTotal > 0
+}
+
+const statsHasRealValues = (stats: any) => {
+  if (!stats) return false
+  const costTotal =
+    numericValue(stats.costs?.fuel) +
+    numericValue(stats.costs?.service) +
+    numericValue(stats.costs?.expense) +
+    numericValue(stats.costs?.total)
+  return costTotal > 0 ||
+    numericValue(stats.consumption?.garageBase) > 0 ||
+    numericValue(stats.consumption?.imported) > 0 ||
+    numericValue(stats.consumption?.total) > 0
+}
+
+const fuelCostValue = (row: any) => {
+  const direct = numericValue(row?.cena_skupaj)
+  if (direct > 0) return direct
+  const liters = numericValue(row?.litri)
+  const price = numericValue(row?.cena_na_liter)
+  return liters > 0 && price > 0 ? liters * price : 0
 }
 
 const isImportedCostRow = (row: any) => {
@@ -57,7 +78,7 @@ const splitRowsBySource = (rows: any[]) => {
 }
 
 const costValueFor = (row: any) => {
-  if (row?._tip === 'gorivo') return numericValue(row.cena_skupaj)
+  if (row?._tip === 'gorivo') return fuelCostValue(row)
   if (row?._tip === 'servis') return numericValue(row.cena)
   return numericValue(row?.znesek)
 }
@@ -169,7 +190,7 @@ export default function Stroski() {
             cache: 'no-store',
           })
           const payload = await response.json()
-          if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+          if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
             nextServerStats = payload.stats
             setServerStats(nextServerStats)
           } else {
@@ -180,7 +201,7 @@ export default function Stroski() {
         }
       }
       localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
-      const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0)
+      const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
       const localServiceCost = servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
       const localExpenseCost = expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
       const localFuelLiters = gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0)
@@ -242,7 +263,7 @@ export default function Stroski() {
   const lokalnoImported = splitAllCosts.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const lokalnoTotal = localTotals.gorivo + localTotals.servis + localTotals.expenses
   const lokalnoGarageBase = Math.max(0, lokalnoTotal - lokalnoImported)
-  const useServerStats = statsHasData(serverStats) && allCostRows.length === 0
+  const useServerStats = statsHasRealValues(serverStats) && allCostRows.length === 0
   const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : localTotals.gorivo
   const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : localTotals.servis
   const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : localTotals.expenses
@@ -270,7 +291,7 @@ export default function Stroski() {
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
     }
-    gorivo.forEach(v => { if (!v.datum || !numericValue(v.cena_skupaj)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += numericValue(v.cena_skupaj) })
+    gorivo.forEach(v => { const value = fuelCostValue(v); if (!v.datum || !value) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += value })
     servisi.forEach(v => { if (!v.datum || !numericValue(v.cena)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += numericValue(v.cena) })
     expenses.forEach(v => { if (!v.datum || !numericValue(v.znesek)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += numericValue(v.znesek) })
     return meseci
@@ -605,7 +626,7 @@ export default function Stroski() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#3ecfcf] font-semibold">{formatMoney(v.cena_skupaj, valuta)}</p>
+                    <p className="text-[#3ecfcf] font-semibold">{formatMoney(fuelCostValue(v), valuta)}</p>
                     {preostalo && !jeUredi && (
                       <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, litri: v.litri?.toString(), cena_na_liter: v.cena_na_liter?.toString(), postaja: v.postaja || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">

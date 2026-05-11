@@ -21,12 +21,33 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1615'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1720'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const fuelCostValue = (row: any) => {
+  const direct = numberValue(row?.cena_skupaj)
+  if (direct > 0) return direct
+  const liters = numberValue(row?.litri)
+  const price = numberValue(row?.cena_na_liter)
+  return liters > 0 && price > 0 ? liters * price : 0
+}
+
+const statsHasRealValues = (stats: any) => {
+  if (!stats) return false
+  const costTotal =
+    numberValue(stats.costs?.fuel) +
+    numberValue(stats.costs?.service) +
+    numberValue(stats.costs?.expense) +
+    numberValue(stats.costs?.total)
+  return costTotal > 0 ||
+    numberValue(stats.consumption?.garageBase) > 0 ||
+    numberValue(stats.consumption?.imported) > 0 ||
+    numberValue(stats.consumption?.total) > 0
 }
 
 const statsHasData = (stats: any) => {
@@ -255,7 +276,7 @@ export default function Dashboard() {
           cache: 'no-store',
         })
         const payload = await response.json()
-        if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+        if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
           const stats = payload.stats
           const nextPoraba = {
             garageBase: stats.consumption?.garageBase ?? null,
@@ -330,7 +351,7 @@ export default function Dashboard() {
       } catch {}
     }
     const debugLiters = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.litri), 0)
-    const debugFuelCost = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0)
+    const debugFuelCost = fuelRows.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
     const debugServiceCost = serviceRows.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
     const debugExpenseCost = expenseRows.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
     setDebugStats({
@@ -357,8 +378,8 @@ export default function Dashboard() {
       total: combineConsumptionSegments([garageBaseConsumption, importedConsumption]),
     }
     const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
-    const garageBaseCosts = costOf(garageBaseFuel, 'cena_skupaj') + costOf(garageBaseService, 'cena') + costOf(garageBaseExpense, 'znesek')
-    const importedCosts = costOf(importedFuel, 'cena_skupaj') + costOf(importedService, 'cena') + costOf(importedExpense, 'znesek')
+    const garageBaseCosts = garageBaseFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(garageBaseService, 'cena') + costOf(garageBaseExpense, 'znesek')
+    const importedCosts = importedFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(importedService, 'cena') + costOf(importedExpense, 'znesek')
     const totalCosts = garageBaseCosts + importedCosts
     const kmPrevozeni = kmStart - kmObVnosu
     const nextStroski = {

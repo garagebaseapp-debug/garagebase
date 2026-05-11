@@ -93,6 +93,16 @@ const combineSegments = (segments: Array<{ average: number | null; distance: num
 
 const sumBy = (rows: any[], key: string) => rows.reduce((sum, row) => sum + numberValue(row?.[key]), 0)
 
+const fuelCostValue = (row: any) => {
+  const direct = numberValue(row?.cena_skupaj)
+  if (direct > 0) return direct
+  const liters = numberValue(row?.litri)
+  const price = numberValue(row?.cena_na_liter)
+  return liters > 0 && price > 0 ? liters * price : 0
+}
+
+const sumFuelCost = (rows: any[]) => rows.reduce((sum, row) => sum + fuelCostValue(row), 0)
+
 export async function GET(req: NextRequest) {
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return NextResponse.json(
@@ -166,11 +176,11 @@ export async function GET(req: NextRequest) {
   const garageBaseExpenseRows = splitExpense.garageBase
 
   const importedCost =
-    sumBy(importedFuelRows, 'cena_skupaj') +
+    sumFuelCost(importedFuelRows) +
     sumBy(importedServiceRows, 'cena') +
     sumBy(importedExpenseRows, 'znesek')
   const garageBaseCost =
-    sumBy(garageBaseFuelRows, 'cena_skupaj') +
+    sumFuelCost(garageBaseFuelRows) +
     sumBy(garageBaseServiceRows, 'cena') +
     sumBy(garageBaseExpenseRows, 'znesek')
   const totalCost = importedCost + garageBaseCost
@@ -190,7 +200,7 @@ export async function GET(req: NextRequest) {
       },
       liters: sumBy(fuelRows, 'litri'),
       costs: {
-        fuel: sumBy(fuelRows, 'cena_skupaj'),
+        fuel: sumFuelCost(fuelRows),
         service: sumBy(serviceRows, 'cena'),
         expense: sumBy(expenseRows, 'znesek'),
         garageBase: garageBaseCost,
