@@ -121,7 +121,7 @@ export default function Stroski() {
   const skupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const kmPrevozeni = avto?.km_trenutni || 0
-  const strosekNaKm = kmPrevozeni > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
+  const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
 
   const kategorijaIkona: { [key: string]: string } = {
