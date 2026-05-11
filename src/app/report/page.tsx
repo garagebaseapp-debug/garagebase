@@ -29,6 +29,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#6c63ff', marginBottom: 6, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: '#e0e0e0' },
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
   statBox: { flex: 1, backgroundColor: '#f8f8ff', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  statBoxGarage: { flex: 1, backgroundColor: '#f4f2ff', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#b8b2ff' },
+  statBoxImport: { flex: 1, backgroundColor: '#ecfdf3', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#86efac' },
+  statBoxTotal: { flex: 1, backgroundColor: '#eefafa', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#3ecfcf' },
   statLabel: { fontSize: 7, color: '#888888', marginBottom: 2 },
   statValue: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#111111' },
   tableHeader: { flexDirection: 'row', backgroundColor: '#ebebff', padding: 6, borderRadius: 4, marginBottom: 2 },
@@ -112,6 +115,9 @@ const pdfCopy = {
     generated: 'Generirano',
     costOverview: 'Pregled stroskov',
     totalCosts: 'SKUPAJ STROSKI',
+    garageBaseCosts: 'GARAGEBASE VNOSI',
+    importedCosts: 'UVOZENA ZGODOVINA',
+    totalCostNote: 'Skupni stroski vsebujejo GarageBase vnose in uvozeno zgodovino, ce so te rubrike vkljucene v report.',
     services: 'SERVISI',
     other: 'OSTALO',
     totalLiters: 'SKUPAJ LITROV',
@@ -167,6 +173,9 @@ const pdfCopy = {
     generated: 'Generated',
     costOverview: 'Cost overview',
     totalCosts: 'TOTAL COSTS',
+    garageBaseCosts: 'GARAGEBASE ENTRIES',
+    importedCosts: 'IMPORTED HISTORY',
+    totalCostNote: 'Total costs include GarageBase entries and imported history when those sections are included in the report.',
     services: 'SERVICES',
     other: 'OTHER',
     totalLiters: 'TOTAL LITERS',
@@ -236,6 +245,15 @@ const isImportedReportRow = (row: any) => {
   return Boolean(row?.import_batch_id || row?.source_owner_label || /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText))
 }
 
+const reportRowAmount = (row: any) => Number(row?.cena_skupaj ?? row?.cena ?? row?.znesek ?? 0) || 0
+
+const costBreakdown = (...groups: any[][]) => {
+  const rows = groups.flat()
+  const garageBase = rows.filter((row) => !isImportedReportRow(row)).reduce((sum, row) => sum + reportRowAmount(row), 0)
+  const imported = rows.filter(isImportedReportRow).reduce((sum, row) => sum + reportRowAmount(row), 0)
+  return { garageBase, imported, total: garageBase + imported }
+}
+
 const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: any) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
   const sortedServisi = sortReportRows(servisi)
@@ -249,6 +267,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const skupajServis = sortedServisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
   const skupajExpenses = sortedExpenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
+  const costParts = costBreakdown(sortedServisi, sortedGorivo, sortedExpenses)
   const skupajLitrov = sortedGorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = sortedServisi.some((s: any) => s.foto_url) || sortedGorivo.some((g: any) => g.receipt_url) || sortedExpenses.some((e: any) => e.receipt_url)
@@ -299,10 +318,21 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{copy.costOverview}</Text>
           <View style={styles.statsRow}>
-            <View style={styles.statBox}>
+            <View style={styles.statBoxTotal}>
               <Text style={styles.statLabel}>{copy.totalCosts}</Text>
               <Text style={styles.statValue}>{money(skupajVse)}</Text>
             </View>
+            <View style={styles.statBoxGarage}>
+              <Text style={styles.statLabel}>{copy.garageBaseCosts}</Text>
+              <Text style={styles.statValue}>{money(costParts.garageBase)}</Text>
+            </View>
+            <View style={styles.statBoxImport}>
+              <Text style={styles.statLabel}>{copy.importedCosts}</Text>
+              <Text style={styles.statValue}>{money(costParts.imported)}</Text>
+            </View>
+          </View>
+          <Text style={styles.opomba}>{copy.totalCostNote}</Text>
+          <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.fuel.toUpperCase()}</Text>
               <Text style={styles.statValue}>{money(skupajGorivo)}</Text>
@@ -680,6 +710,7 @@ export default function Report() {
   const totalForReport = servisiForReport.reduce((s, v) => s + (v.cena || 0), 0) +
     gorivoForReport.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
     expensesForReport.reduce((s, v) => s + (v.znesek || 0), 0)
+  const reportCostParts = costBreakdown(servisiForReport, gorivoForReport, expensesForReport)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const sortedServisi = sortReportRows(servisi)
   const sortedGorivo = sortReportRows(gorivo)
@@ -751,6 +782,19 @@ export default function Report() {
               {formatMoney(totalForReport, valuta)}
             </span>
           </div>
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-3 py-2">
+              <p className="text-[#a09aff] text-[10px] font-bold uppercase">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
+              <p className="text-white text-sm font-black">{formatMoney(reportCostParts.garageBase, valuta)}</p>
+            </div>
+            <div className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-3 py-2">
+              <p className="text-[#86efac] text-[10px] font-bold uppercase">{tx('Uvozena zgodovina', 'Imported history')}</p>
+              <p className="text-white text-sm font-black">{formatMoney(reportCostParts.imported, valuta)}</p>
+            </div>
+          </div>
+          <p className="text-[#5a5a80] text-xs">
+            {tx('Skupni znesek zdruzuje rocne GarageBase vnose in uvozene zapise, ki so trenutno vkljuceni v report.', 'The total combines manual GarageBase entries and imported records currently included in the report.')}
+          </p>
         </div>
       </div>
 
