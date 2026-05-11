@@ -252,11 +252,11 @@ const DeviceShowcase = () => (
 )
 
 const VehicleTabletShowcase = () => (
-  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[#080810] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[#080810] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
     <img
       src="/landing-multi-vehicles.png"
       alt=""
-      className="h-full w-full object-cover object-top"
+      className="h-full w-full rounded-xl object-contain object-top"
     />
   </div>
 )
@@ -274,7 +274,7 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
               <div>
                 <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
                 <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">
-                  {language === 'en' ? 'Verified report' : 'Preverjeno porocilo'}
+                  {language === 'en' ? 'GarageBase report' : 'GarageBase porocilo'}
                 </p>
               </div>
               <div className="h-7 w-10 rounded bg-[#eef2ff]" />
@@ -295,7 +295,7 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
                 )}
               </div>
               <p className="text-[7px] font-bold leading-tight text-[#34344a]">
-                {language === 'en' ? 'QR checks whether the PDF matches the database record.' : 'QR preveri, ali je PDF enak zapisu v bazi.'}
+                {language === 'en' ? 'QR opens the digital GarageBase record.' : 'QR odpre digitalni GarageBase zapis.'}
               </p>
             </div>
           </div>
