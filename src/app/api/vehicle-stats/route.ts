@@ -18,16 +18,41 @@ const hasRows = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any
   rowSet.fuelRows.length > 0 || rowSet.serviceRows.length > 0 || rowSet.expenseRows.length > 0
 
 const apiNumberValue = (value: unknown) => {
-  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const raw = String(value ?? '').trim()
+  let normalized = raw
+  const comma = raw.lastIndexOf(',')
+  const dot = raw.lastIndexOf('.')
+  if (comma >= 0 && dot >= 0) {
+    normalized = comma > dot
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+  } else if (comma >= 0) {
+    normalized = raw.replace(',', '.')
+  }
+  const cleaned = normalized.replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const apiFirstNumberValue = (row: any, keys: string[]) => {
+  for (const key of keys) {
+    const value = apiNumberValue(row?.[key])
+    if (value > 0) return value
+  }
+  return 0
+}
+
+const apiFuelLitersValue = (row: any) =>
+  apiFirstNumberValue(row, ['litri', 'liters', 'litres', 'liter', 'volume', 'volumen', 'Volumen', 'kolicina', 'količina', 'quantity', 'qty'])
+
+const apiFuelPriceValue = (row: any) =>
+  apiFirstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
+
 const apiFuelCostValue = (row: any) => {
-  const direct = apiNumberValue(row?.cena_skupaj)
+  const direct = apiFirstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
-  const liters = apiNumberValue(row?.litri)
-  const price = apiNumberValue(row?.cena_na_liter)
+  const liters = apiFuelLitersValue(row)
+  const price = apiFuelPriceValue(row)
   return liters > 0 && price > 0 ? liters * price : 0
 }
 
@@ -83,7 +108,7 @@ const apiAverageKnownConsumption = (rows: any[]) => {
 
 const apiConsumptionSegment = (rows: any[]) => {
   const sorted = rows
-    .filter((row) => apiNumberValue(row?.km) > 0 && apiNumberValue(row?.litri) > 0)
+    .filter((row) => apiNumberValue(row?.km) > 0 && apiFuelLitersValue(row) > 0)
     .sort((a, b) => apiNumberValue(a.km) - apiNumberValue(b.km))
 
   if (sorted.length < 2) {
@@ -96,7 +121,7 @@ const apiConsumptionSegment = (rows: any[]) => {
     const diff = apiNumberValue(sorted[i].km) - apiNumberValue(sorted[i - 1].km)
     if (diff <= 0) continue
     distance += diff
-    liters += apiNumberValue(sorted[i].litri)
+    liters += apiFuelLitersValue(sorted[i])
   }
 
   return {
@@ -143,7 +168,7 @@ const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: 
       service: serviceRows.length,
       expense: filteredExpenses.length,
     },
-    liters: fuelRows.reduce((sum, row) => sum + apiNumberValue(row?.litri), 0),
+    liters: fuelRows.reduce((sum, row) => sum + apiFuelLitersValue(row), 0),
     costs: {
       fuel: fuelCost,
       service: serviceCost,
@@ -268,6 +293,7 @@ export async function GET(req: NextRequest) {
   }
 
   const stats = buildApiVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car)
+  const sampleFuel = selectedRows.fuelRows[0] || null
 
   return NextResponse.json({
     ok: true,
@@ -280,6 +306,14 @@ export async function GET(req: NextRequest) {
       statsRows: stats.rows,
       statsTotal: stats.costs.total,
       statsLiters: stats.liters,
+      sampleFuel: sampleFuel ? {
+        keys: Object.keys(sampleFuel).slice(0, 12),
+        litri: sampleFuel.litri,
+        cena_skupaj: sampleFuel.cena_skupaj,
+        cena_na_liter: sampleFuel.cena_na_liter,
+        computedCost: apiFuelCostValue(sampleFuel),
+        computedLiters: apiFuelLitersValue(sampleFuel),
+      } : null,
       userCarsWithRows: userCarCounts.slice(0, 12),
     },
     stats,

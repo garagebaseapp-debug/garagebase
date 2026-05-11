@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
-import { buildVehicleStats } from '@/lib/vehicle-costs'
+import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
 import { ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 type ConsumptionBreakdown = {
@@ -23,20 +23,27 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2245'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2315'
 
 const numberValue = (value: unknown) => {
-  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const raw = String(value ?? '').trim()
+  let normalized = raw
+  const comma = raw.lastIndexOf(',')
+  const dot = raw.lastIndexOf('.')
+  if (comma >= 0 && dot >= 0) {
+    normalized = comma > dot
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+  } else if (comma >= 0) {
+    normalized = raw.replace(',', '.')
+  }
+  const cleaned = normalized.replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
 const fuelCostValue = (row: any) => {
-  const direct = numberValue(row?.cena_skupaj)
-  if (direct > 0) return direct
-  const liters = numberValue(row?.litri)
-  const price = numberValue(row?.cena_na_liter)
-  return liters > 0 && price > 0 ? liters * price : 0
+  return sharedFuelCostValue(row)
 }
 
 const statsHasRealValues = (stats: any) => {
@@ -73,10 +80,17 @@ const apiDebugText = (payload: any) => {
   const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
   const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
   const statsText = statsRows ? ` stats:${statsRows}` : ''
+  const sumText = debug.statsTotal || debug.statsLiters
+    ? ` sum:${numberValue(debug.statsTotal).toFixed(0)}/${numberValue(debug.statsLiters).toFixed(0)}`
+    : ''
+  const sample = debug.sampleFuel
+  const sampleText = sample
+    ? ` sample:${numberValue(sample.computedCost).toFixed(0)}/${numberValue(sample.computedLiters).toFixed(0)}`
+    : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numberValue(car.fuel) + numberValue(car.service) + numberValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const isImportedDashboardRow = (row: any) => {
@@ -123,7 +137,7 @@ const averageKnownConsumption = (rows: any[]) => {
 
 const consumptionSegment = (rows: any[]) => {
   const sorted = rows
-    .filter((row) => numberValue(row.km) > 0 && numberValue(row.litri) > 0)
+    .filter((row) => numberValue(row.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
   if (sorted.length < 2) {
@@ -136,7 +150,7 @@ const consumptionSegment = (rows: any[]) => {
     const diff = numberValue(sorted[i].km) - numberValue(sorted[i - 1].km)
     if (diff <= 0) continue
     distance += diff
-    liters += numberValue(sorted[i].litri)
+    liters += fuelLitersValue(sorted[i])
   }
 
   return {
@@ -349,7 +363,7 @@ export default function Dashboard() {
           cache: 'no-store',
         })
         const payload = await response.json()
-        if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+        if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
           const stats = payload.stats
           const nextPoraba = {
             garageBase: stats.consumption?.garageBase ?? null,
@@ -385,6 +399,16 @@ export default function Dashboard() {
           setPoraba(nextPoraba)
           setStroski(nextStroski)
           return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
+        } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+          source = `${apiDebugText(payload)} no-values`
+          setDebugStats({
+            fuel: numberValue(payload.stats.rows?.fuel),
+            service: numberValue(payload.stats.rows?.service),
+            expense: numberValue(payload.stats.rows?.expense),
+            liters: numberValue(payload.stats.liters),
+            cost: numberValue(payload.stats.costs?.total),
+          })
+          setDebugStatsSource(source)
         } else {
           source = payload?.debug ? `${apiDebugText(payload)} empty` : `api-empty:${payload?.error || 'no-values'}`
           console.warn('[GarageBase dashboard] server statistics failed', payload?.error)

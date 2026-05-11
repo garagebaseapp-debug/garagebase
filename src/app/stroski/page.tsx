@@ -10,9 +10,20 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-2245'
+const STROSKI_BUILD = 'stroski-2026-05-11-2315'
 const numericValue = (value: unknown) => {
-  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const raw = String(value ?? '').trim()
+  let normalized = raw
+  const comma = raw.lastIndexOf(',')
+  const dot = raw.lastIndexOf('.')
+  if (comma >= 0 && dot >= 0) {
+    normalized = comma > dot
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+  } else if (comma >= 0) {
+    normalized = raw.replace(',', '.')
+  }
+  const cleaned = normalized.replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
@@ -50,17 +61,38 @@ const apiDebugText = (payload: any) => {
   const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
   const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
   const statsText = statsRows ? ` stats:${statsRows}` : ''
+  const sumText = debug.statsTotal || debug.statsLiters
+    ? ` sum:${numericValue(debug.statsTotal).toFixed(0)}/${numericValue(debug.statsLiters).toFixed(0)}`
+    : ''
+  const sample = debug.sampleFuel
+  const sampleText = sample
+    ? ` sample:${numericValue(sample.computedCost).toFixed(0)}/${numericValue(sample.computedLiters).toFixed(0)}`
+    : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
+const firstNumberValue = (row: any, keys: string[]) => {
+  for (const key of keys) {
+    const value = numericValue(row?.[key])
+    if (value > 0) return value
+  }
+  return 0
+}
+
+const fuelLitersValue = (row: any) =>
+  firstNumberValue(row, ['litri', 'liters', 'litres', 'liter', 'volume', 'volumen', 'Volumen', 'kolicina', 'količina', 'quantity', 'qty'])
+
+const fuelPriceValue = (row: any) =>
+  firstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
+
 const fuelCostValue = (row: any) => {
-  const direct = numericValue(row?.cena_skupaj)
+  const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
-  const liters = numericValue(row?.litri)
-  const price = numericValue(row?.cena_na_liter)
+  const liters = fuelLitersValue(row)
+  const price = fuelPriceValue(row)
   return liters > 0 && price > 0 ? liters * price : 0
 }
 
@@ -220,6 +252,11 @@ export default function Stroski() {
         debug: nextDebugSource,
         ready: true,
       })
+      try {
+        localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, savedAt: Date.now() }))
+      } catch (error) {
+        console.warn('[GarageBase costs] early cache write skipped', error)
+      }
       let nextServerStats = null
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
@@ -257,7 +294,7 @@ export default function Stroski() {
       const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
       const localServiceCost = servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
       const localExpenseCost = expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
-      const localFuelLiters = gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0)
+      const localFuelLiters = gorivoData.reduce((sum: number, row: any) => sum + fuelLitersValue(row), 0)
       const hasLocalRows = gorivoData.length > 0 || servisData.length > 0 || expensesData.length > 0
       try {
         localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
@@ -301,9 +338,11 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const displayGorivo = costSnapshot.ready ? costSnapshot.gorivo : gorivo.length > 0 ? gorivo : loadedRows.gorivo
-  const displayServisi = costSnapshot.ready ? costSnapshot.servisi : servisi.length > 0 ? servisi : loadedRows.servisi
-  const displayExpenses = costSnapshot.ready ? costSnapshot.expenses : expenses.length > 0 ? expenses : loadedRows.expenses
+  const renderCache = avto?.id ? readCostCache(avto.id) : null
+  const firstRows = (...sets: any[][]) => sets.find((set) => set.length > 0) || sets[0] || []
+  const displayGorivo = firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, renderCache?.gorivo || [])
+  const displayServisi = firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, renderCache?.servisi || [])
+  const displayExpenses = firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, renderCache?.expenses || [])
 
   const allCostRows = [
     ...displayGorivo.map(v => ({ ...v, _tip: 'gorivo' })),
@@ -318,7 +357,7 @@ export default function Stroski() {
   const rowImportedTotal = rowSourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const rowGarageBaseTotal = Math.max(0, rowTotal - rowImportedTotal)
   const totalsCache = readCostTotalsCache(avto?.id)
-  const liveCostSummary = costSnapshot.ready ? costSnapshot.summary : buildSharedCostSummary(displayGorivo, displayServisi, displayExpenses, serverStats)
+  const liveCostSummary = buildSharedCostSummary(displayGorivo, displayServisi, displayExpenses, serverStats)
   const hasLiveSummary =
     liveCostSummary.total > 0 ||
     liveCostSummary.rows.fuel > 0 ||

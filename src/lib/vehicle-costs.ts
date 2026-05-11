@@ -24,16 +24,41 @@ export type VehicleStats = {
 }
 
 export const numberValue = (value: unknown) => {
-  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const raw = String(value ?? '').trim()
+  let normalized = raw
+  const comma = raw.lastIndexOf(',')
+  const dot = raw.lastIndexOf('.')
+  if (comma >= 0 && dot >= 0) {
+    normalized = comma > dot
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+  } else if (comma >= 0) {
+    normalized = raw.replace(',', '.')
+  }
+  const cleaned = normalized.replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const firstNumberValue = (row: any, keys: string[]) => {
+  for (const key of keys) {
+    const value = numberValue(row?.[key])
+    if (value > 0) return value
+  }
+  return 0
+}
+
+export const fuelLitersValue = (row: any) =>
+  firstNumberValue(row, ['litri', 'liters', 'litres', 'liter', 'volume', 'volumen', 'Volumen', 'kolicina', 'količina', 'quantity', 'qty'])
+
+export const fuelPriceValue = (row: any) =>
+  firstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
+
 export const fuelCostValue = (row: any) => {
-  const direct = numberValue(row?.cena_skupaj)
+  const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
-  const liters = numberValue(row?.litri)
-  const price = numberValue(row?.cena_na_liter)
+  const liters = fuelLitersValue(row)
+  const price = fuelPriceValue(row)
   return liters > 0 && price > 0 ? liters * price : 0
 }
 
@@ -136,7 +161,7 @@ const averageKnownConsumption = (rows: any[]) => {
 
 export const consumptionSegment = (rows: any[]) => {
   const sorted = rows
-    .filter((row) => numberValue(row?.km) > 0 && numberValue(row?.litri) > 0)
+    .filter((row) => numberValue(row?.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
   if (sorted.length < 2) {
@@ -149,7 +174,7 @@ export const consumptionSegment = (rows: any[]) => {
     const diff = numberValue(sorted[i].km) - numberValue(sorted[i - 1].km)
     if (diff <= 0) continue
     distance += diff
-    liters += numberValue(sorted[i].litri)
+    liters += fuelLitersValue(sorted[i])
   }
 
   return {
@@ -202,7 +227,7 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
       service: serviceRows.length,
       expense: filteredExpenses.length,
     },
-    liters: fuelRows.reduce((sum, row) => sum + numberValue(row?.litri), 0),
+    liters: fuelRows.reduce((sum, row) => sum + fuelLitersValue(row), 0),
     costs: {
       fuel: fuelCost,
       service: serviceCost,
