@@ -13,6 +13,14 @@ const fuelNumber = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const fuelCostValue = (row: any) => {
+  const direct = fuelNumber(row?.cena_skupaj)
+  if (direct > 0) return direct
+  const liters = fuelNumber(row?.litri)
+  const price = fuelNumber(row?.cena_na_liter)
+  return liters > 0 && price > 0 ? liters * price : 0
+}
+
 const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
   if (key) buckets[key] = (buckets[key] || 0) + 1
@@ -38,7 +46,7 @@ const isImportedFuelRow = (row: any, buckets?: Record<string, number>) => {
 
 const fuelSummaryFor = (rows: any[]) => ({
   liters: rows.reduce((sum, row) => sum + fuelNumber(row.litri), 0),
-  amount: rows.reduce((sum, row) => sum + fuelNumber(row.cena_skupaj), 0),
+  amount: rows.reduce((sum, row) => sum + fuelCostValue(row), 0),
   count: rows.length,
 })
 
@@ -77,7 +85,7 @@ export default function ZgodovinaGoriva() {
       setAvto(avtoData)
       const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
         supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).range(0, PAGE_SIZE - 1),
-        supabase.from('fuel_logs').select('litri,cena_skupaj,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', selectedCarId),
+        supabase.from('fuel_logs').select('litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', selectedCarId),
         supabase.from('fuel_logs').select('km').eq('car_id', selectedCarId).order('km', { ascending: false }).limit(1),
       ])
       const gorivo = gorivoRes.data || []
@@ -88,7 +96,7 @@ export default function ZgodovinaGoriva() {
         setAvto({ ...avtoData, km_trenutni: maxFuelKm })
       }
       setTotalCount(gorivoRes.count || fuelRows.length)
-      const summaryRows = summaryRes.data || []
+      const summaryRows = (summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : fuelRows) || []
       const buckets = importBuckets(summaryRows)
       const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
       const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
@@ -98,6 +106,8 @@ export default function ZgodovinaGoriva() {
         total: fuelSummaryFor(summaryRows),
       })
       setVnosi(fuelRows)
+      localStorage.setItem(`garagebase_fuel_history_cache_${selectedCarId}`, JSON.stringify({ rows: fuelRows, savedAt: Date.now() }))
+      localStorage.setItem(`garagebase_stroski_cache_${selectedCarId}`, JSON.stringify({ gorivo: fuelRows, savedAt: Date.now() }))
       setLoading(false)
     }
     init()
@@ -147,14 +157,16 @@ export default function ZgodovinaGoriva() {
   const refreshVnosi = async () => {
     const [gorivoRes, summaryRes] = await Promise.all([
       supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
-      supabase.from('fuel_logs').select('litri,cena_skupaj,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', avto.id),
+      supabase.from('fuel_logs').select('litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', avto.id),
     ])
     const gorivo = gorivoRes.data || []
-    const summaryRows = summaryRes.data || []
+    const summaryRows = (summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : gorivo) || []
     const buckets = importBuckets(summaryRows)
     const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
     const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
     setVnosi(gorivo || [])
+    localStorage.setItem(`garagebase_fuel_history_cache_${avto.id}`, JSON.stringify({ rows: gorivo || [], savedAt: Date.now() }))
+    localStorage.setItem(`garagebase_stroski_cache_${avto.id}`, JSON.stringify({ gorivo: gorivo || [], savedAt: Date.now() }))
     setTotalCount(gorivoRes.count || gorivo.length || 0)
     setSummary({
       garageBase: fuelSummaryFor(garageBaseRows),

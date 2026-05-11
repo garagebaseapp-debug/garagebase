@@ -21,7 +21,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1720'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1735'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')

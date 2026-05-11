@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1720'
+const STROSKI_BUILD = 'stroski-2026-05-11-1735'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -148,30 +148,27 @@ export default function Stroski() {
   const naloziStroske = async (carId: string) => {
       setRefreshing(true)
       const started = performance.now()
-      const [avtoRes, gorivoRes, servisRes, expensesRes, gorivoSummaryRes, servisSummaryRes, expensesSummaryRes] = await Promise.all([
+      const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
         supabase.from('cars').select('*').eq('id', carId).single(),
-        supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }),
-        supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }),
-        supabase.from('expenses').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }),
-        supabase.from('fuel_logs').select('id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,tip_goriva,created_at,import_batch_id,source_owner_label,opis').eq('car_id', carId),
-        supabase.from('service_logs').select('id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label').eq('car_id', carId),
-        supabase.from('expenses').select('id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label').eq('car_id', carId),
+        supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
+        supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
+        supabase.from('expenses').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
       ])
       setAvto(avtoRes.data)
-      let gorivoData = (gorivoSummaryRes.data?.length ? gorivoSummaryRes.data : gorivoRes.data) || []
-      let servisData = (servisSummaryRes.data?.length ? servisSummaryRes.data : servisRes.data) || []
-      let expensesData = ((expensesSummaryRes.data?.length ? expensesSummaryRes.data : expensesRes.data) || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      let gorivoData = gorivoRes.data || []
+      let servisData = servisRes.data || []
+      let expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
       setDebugSource([
         `q:${gorivoRes.count ?? gorivoData.length}/${servisRes.count ?? servisData.length}/${expensesRes.count ?? expensesData.length}`,
-        `s:${gorivoSummaryRes.data?.length || 0}/${servisSummaryRes.data?.length || 0}/${expensesSummaryRes.data?.length || 0}`,
-        gorivoRes.error?.message || servisRes.error?.message || expensesRes.error?.message || gorivoSummaryRes.error?.message || servisSummaryRes.error?.message || expensesSummaryRes.error?.message || 'ok',
+        `loaded:${gorivoData.length}/${servisData.length}/${expensesData.length}`,
+        gorivoRes.error?.message || servisRes.error?.message || expensesRes.error?.message || 'ok',
       ].join(' · '))
       if (gorivoData.length === 0 && servisData.length === 0 && expensesData.length === 0) {
         try {
-          const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`)
+          const cached = localStorage.getItem(`garagebase_stroski_cache_${carId}`) || localStorage.getItem(`garagebase_fuel_history_cache_${carId}`)
           const parsed = cached ? JSON.parse(cached) : null
-          if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
-            gorivoData = parsed.gorivo || []
+          if (Array.isArray(parsed?.gorivo) || Array.isArray(parsed?.rows) || Array.isArray(parsed?.servisi) || Array.isArray(parsed?.expenses)) {
+            gorivoData = parsed.gorivo || parsed.rows || []
             servisData = parsed.servisi || []
             expensesData = parsed.expenses || []
           }
