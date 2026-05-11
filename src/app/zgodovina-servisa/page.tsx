@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { useLanguage } from '@/lib/i18n'
 
 export default function ZgodovinaServisa() {
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const [vnosi, setVnosi] = useState<any[]>([])
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -14,6 +17,7 @@ export default function ZgodovinaServisa() {
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [selectedImported, setSelectedImported] = useState<string[]>([])
 
   useEffect(() => {
     const init = async () => {
@@ -40,6 +44,13 @@ export default function ZgodovinaServisa() {
   }
 
   const jeZaklenjen = (vnos: any) => cas >= casZaklepa(vnos)
+  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || vnos.source_owner_label || vnos.opis?.includes('[Prejsnji lastnik]'))
+  const editable = (vnos: any) => jeUvozen(vnos) || !jeZaklenjen(vnos)
+
+  const refreshVnosi = async () => {
+    const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: false })
+    setVnosi(servisi || [])
+  }
 
   const preostaliCas = (vnos: any) => {
     const konec = casZaklepa(vnos)
@@ -61,7 +72,7 @@ export default function ZgodovinaServisa() {
 
   const shraniUredi = async (id: string) => {
     const existing = vnosi.find(v => v.id === id)
-    if (existing && jeZaklenjen(existing)) return
+    if (existing && !editable(existing)) return
     setSaving(true)
     await supabase.from('service_logs').update({
       datum: editData.datum,
@@ -70,9 +81,47 @@ export default function ZgodovinaServisa() {
       cena: editData.cena ? parseFloat(editData.cena) : null,
       edited_at: new Date().toISOString(),
     }).eq('id', id)
-    const { data: servisi } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: false })
-    setVnosi(servisi || [])
+    await refreshVnosi()
     setUredi(null)
+    setSaving(false)
+  }
+
+  const izbrisiVnos = async (id: string) => {
+    const vnos = vnosi.find(v => v.id === id)
+    if (!vnos || !editable(vnos)) return
+    const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
+    if (!ok) return
+    setSaving(true)
+    await supabase.from('service_logs').delete().eq('id', id).eq('car_id', avto.id)
+    setSelectedImported(prev => prev.filter(item => item !== id))
+    await refreshVnosi()
+    setUredi(null)
+    setSaving(false)
+  }
+
+  const toggleImported = (id: string) => {
+    setSelectedImported(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
+  }
+
+  const oznaciVseUvozene = () => {
+    const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
+    const allSelected = importedIds.length > 0 && importedIds.every(id => selectedImported.includes(id))
+    setSelectedImported(allSelected ? [] : importedIds)
+  }
+
+  const izbrisiIzbrane = async () => {
+    const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
+    const ids = selectedImported.filter(id => importedIds.includes(id))
+    if (ids.length === 0) return
+    const ok = window.confirm(tx(
+      `Izbrisem ${ids.length} izbranih uvozenih zapisov? Rocno vneseni zapisi ne bodo izbrisani.`,
+      `Delete ${ids.length} selected imported records? Manual records will not be deleted.`
+    ))
+    if (!ok) return
+    setSaving(true)
+    await supabase.from('service_logs').delete().in('id', ids).eq('car_id', avto.id)
+    setSelectedImported([])
+    await refreshVnosi()
     setSaving(false)
   }
 
@@ -111,6 +160,26 @@ export default function ZgodovinaServisa() {
         + Dodaj servis
       </button>
 
+      {vnosi.some(jeUvozen) && (
+        <div className="mb-4 rounded-2xl border border-[#22c55e44] bg-[#22c55e10] p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-bold text-[#86efac]">
+              {tx('Uvozeni zapisi', 'Imported records')} · {selectedImported.length} {tx('izbranih', 'selected')}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={oznaciVseUvozene}
+                className="rounded-xl border border-[#22c55e66] px-3 py-2 text-xs font-bold text-[#86efac]">
+                {tx('Oznaci vse uvozene', 'Select all imported')}
+              </button>
+              <button onClick={izbrisiIzbrane} disabled={selectedImported.length === 0 || saving}
+                className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5] disabled:opacity-50">
+                {tx('Izbrisi izbrane', 'Delete selected')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {vnosi.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
           <p className="text-4xl mb-3">🔧</p>
@@ -126,6 +195,7 @@ export default function ZgodovinaServisa() {
             const opisBrezOznake = vnos.opis?.replace(/\s*\[Naknadno vnešeno:.*?\]/, '') || ''
             const preostalo = preostaliCas(vnos)
             const isLocked = jeZaklenjen(vnos)
+            const isImported = jeUvozen(vnos)
             const jeUredi = uredi === vnos.id
             const badge = trustBadge(vnos)
 
@@ -140,6 +210,15 @@ export default function ZgodovinaServisa() {
 
                 <div className="flex justify-between items-start mb-2">
                   <div>
+                    {isImported && (
+                      <input
+                        type="checkbox"
+                        checked={selectedImported.includes(vnos.id)}
+                        onChange={() => toggleImported(vnos.id)}
+                        className="mb-2 h-5 w-5 accent-[#22c55e]"
+                        aria-label={tx('Oznaci uvozen zapis', 'Select imported record')}
+                      />
+                    )}
                     <div className="flex items-center gap-2">
                       <p className="text-white font-semibold">
                         {new Date(vnos.datum).toLocaleDateString('sl-SI')}
@@ -159,7 +238,7 @@ export default function ZgodovinaServisa() {
                     {vnos.cena && <span className="text-[#f59e0b] font-bold">{formatMoney(vnos.cena, valuta)}</span>}
                     </div>
                     {/* Gumb uredi z odštevalnikom */}
-                    {preostalo && !jeUredi && !isLocked && (
+                    {editable(vnos) && !jeUredi && (
                       <button onClick={() => {
                         setUredi(vnos.id)
                         setEditData({
@@ -173,7 +252,7 @@ export default function ZgodovinaServisa() {
                         ✏️ Uredi · {preostalo}
                       </button>
                     )}
-                    {isLocked && (
+                    {isLocked && !isImported && (
                       <span className="text-[#4ade80] text-[10px] font-semibold border border-[#16a34a44] bg-[#16a34a18] px-2 py-1 rounded-lg">Zaklenjeno</span>
                     )}
                   </div>
@@ -210,7 +289,11 @@ export default function ZgodovinaServisa() {
                           className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => izbrisiVnos(vnos.id)} disabled={saving}
+                        className="py-2 rounded-xl border border-[#ef444466] bg-[#ef444418] text-[#fca5a5] text-sm disabled:opacity-50">
+                        {tx('Izbrisi', 'Delete')}
+                      </button>
                       <button onClick={() => setUredi(null)}
                         className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">
                         Prekliči

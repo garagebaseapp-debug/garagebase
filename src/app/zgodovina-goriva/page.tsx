@@ -17,6 +17,7 @@ export default function ZgodovinaGoriva() {
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [selectedImported, setSelectedImported] = useState<string[]>([])
 
   useEffect(() => {
     const init = async () => {
@@ -76,6 +77,14 @@ export default function ZgodovinaGoriva() {
     }
   }
 
+  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || importInfo(vnos.source_owner_label))
+  const editable = (vnos: any) => jeUvozen(vnos) || Boolean(preostaliCas(vnos.created_at))
+
+  const refreshVnosi = async () => {
+    const { data: gorivo } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('km', { ascending: true })
+    setVnosi(gorivo || [])
+  }
+
   const skupajLitrov = vnosi.reduce((sum, v) => sum + (v.litri || 0), 0)
   const skupajEurov = vnosi.reduce((sum, v) => sum + (v.cena_skupaj || 0), 0)
   const znakValute = currencySymbol(valuta)
@@ -98,9 +107,47 @@ export default function ZgodovinaGoriva() {
         : null,
       postaja: editData.postaja || null,
     }).eq('id', id)
-    const { data: gorivo } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('km', { ascending: true })
-    setVnosi(gorivo || [])
+    await refreshVnosi()
     setUredi(null)
+    setSaving(false)
+  }
+
+  const izbrisiVnos = async (id: string) => {
+    const vnos = vnosi.find(v => v.id === id)
+    if (!vnos || !editable(vnos)) return
+    const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
+    if (!ok) return
+    setSaving(true)
+    await supabase.from('fuel_logs').delete().eq('id', id).eq('car_id', avto.id)
+    setSelectedImported(prev => prev.filter(item => item !== id))
+    await refreshVnosi()
+    setUredi(null)
+    setSaving(false)
+  }
+
+  const toggleImported = (id: string) => {
+    setSelectedImported(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id])
+  }
+
+  const oznaciVseUvozene = () => {
+    const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
+    const allSelected = importedIds.length > 0 && importedIds.every(id => selectedImported.includes(id))
+    setSelectedImported(allSelected ? [] : importedIds)
+  }
+
+  const izbrisiIzbrane = async () => {
+    const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
+    const ids = selectedImported.filter(id => importedIds.includes(id))
+    if (ids.length === 0) return
+    const ok = window.confirm(tx(
+      `Izbrisem ${ids.length} izbranih uvozenih zapisov? Rocno vneseni zapisi ne bodo izbrisani.`,
+      `Delete ${ids.length} selected imported records? Manual records will not be deleted.`
+    ))
+    if (!ok) return
+    setSaving(true)
+    await supabase.from('fuel_logs').delete().in('id', ids).eq('car_id', avto.id)
+    setSelectedImported([])
+    await refreshVnosi()
     setSaving(false)
   }
 
@@ -148,6 +195,26 @@ export default function ZgodovinaGoriva() {
         </button>
       </div>
 
+      {vnosi.some(jeUvozen) && (
+        <div className="mb-4 rounded-2xl border border-[#22c55e44] bg-[#22c55e10] p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-bold text-[#86efac]">
+              {tx('Uvozeni zapisi', 'Imported records')} · {selectedImported.length} {tx('izbranih', 'selected')}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={oznaciVseUvozene}
+                className="rounded-xl border border-[#22c55e66] px-3 py-2 text-xs font-bold text-[#86efac]">
+                {tx('Oznaci vse uvozene', 'Select all imported')}
+              </button>
+              <button onClick={izbrisiIzbrane} disabled={selectedImported.length === 0 || saving}
+                className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5] disabled:opacity-50">
+                {tx('Izbrisi izbrane', 'Delete selected')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {vnosi.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
           <p className="text-4xl mb-3">⛽</p>
@@ -162,6 +229,7 @@ export default function ZgodovinaGoriva() {
             const preostalo = preostaliCas(vnos.created_at)
             const jeUredi = uredi === vnos.id
             const info = importInfo(vnos.source_owner_label)
+            const isImported = jeUvozen(vnos)
             const previousInfo = reversedIndex > 0 ? importInfo([...vnosi].reverse()[reversedIndex - 1]?.source_owner_label) : null
             const showImportNote = info && info.key !== previousInfo?.key
 
@@ -177,6 +245,15 @@ export default function ZgodovinaGoriva() {
                 )}
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2">
+                    {isImported && (
+                      <input
+                        type="checkbox"
+                        checked={selectedImported.includes(vnos.id)}
+                        onChange={() => toggleImported(vnos.id)}
+                        className="h-5 w-5 accent-[#22c55e]"
+                        aria-label={tx('Oznaci uvozen zapis', 'Select imported record')}
+                      />
+                    )}
                     {tipIkona && (
                       <div className={`w-8 h-8 rounded-lg ${tipIkona.bg} flex items-center justify-center flex-shrink-0`}>
                         <span className={`${tipIkona.text} font-bold text-xs`}>{tipIkona.label}</span>
@@ -190,7 +267,7 @@ export default function ZgodovinaGoriva() {
                   <div className="flex flex-col items-end gap-1">
                     {vnos.cena_skupaj && <span className="text-[#3ecfcf] font-bold">{formatMoney(vnos.cena_skupaj, valuta)}</span>}
                     {/* Gumb uredi z odštevalnikom */}
-                    {preostalo && !jeUredi && (
+                    {editable(vnos) && !jeUredi && (
                       <button onClick={() => {
                         setUredi(vnos.id)
                         setEditData({
@@ -239,7 +316,11 @@ export default function ZgodovinaGoriva() {
                         onChange={e => setEditData({ ...editData, postaja: e.target.value })}
                         className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-3 py-2 text-white text-sm outline-none focus:border-[#f59e0b]" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => izbrisiVnos(vnos.id)} disabled={saving}
+                        className="py-2 rounded-xl border border-[#ef444466] bg-[#ef444418] text-[#fca5a5] text-sm disabled:opacity-50">
+                        {tx('Izbrisi', 'Delete')}
+                      </button>
                       <button onClick={() => setUredi(null)}
                         className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">
                         Prekliči
