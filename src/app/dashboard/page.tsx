@@ -21,6 +21,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1500'
 
 const numberValue = (value: unknown) => {
   const parsed = Number(String(value ?? '').replace(',', '.'))
@@ -82,6 +83,7 @@ export default function Dashboard() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [jezik, setJezik] = useState<Language>('sl')
   const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
+  const [debugStats, setDebugStats] = useState({ fuel: 0, service: 0, expense: 0, liters: 0, cost: 0 })
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -217,6 +219,17 @@ export default function Dashboard() {
     const fuelRows = fuelRes.data || []
     const serviceRows = serviceRes.data || []
     const expenseRows = expenseRes.data || []
+    const debugLiters = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.litri), 0)
+    const debugFuelCost = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0)
+    const debugServiceCost = serviceRows.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
+    const debugExpenseCost = expenseRows.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
+    setDebugStats({
+      fuel: fuelRows.length,
+      service: serviceRows.length,
+      expense: expenseRows.length,
+      liters: debugLiters,
+      cost: debugFuelCost + debugServiceCost + debugExpenseCost,
+    })
     const importedFuel: any[] = []
     const garageBaseFuel = fuelRows
     const nextPoraba = {
@@ -619,6 +632,9 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
+                  <p className="text-[#5a5a80] text-[10px]">
+                    {DASHBOARD_BUILD} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                  </p>
 
                   <div className="grid grid-cols-3 gap-3 mt-auto">
                     <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
@@ -725,6 +741,9 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+                <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]">
+                  {DASHBOARD_BUILD} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                </p>
 
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}

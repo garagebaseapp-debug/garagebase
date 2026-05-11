@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
+const STROSKI_BUILD = 'stroski-2026-05-11-1500'
 const numericValue = (value: unknown) => {
   const parsed = Number(String(value ?? '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
@@ -367,6 +368,9 @@ export default function Stroski() {
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
         <p className="text-white font-bold text-4xl mb-1">{formatMoney(skupajVse, valuta)}</p>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
+        <p className="mt-3 text-[10px] text-[#5a5a80]">
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)}
+        </p>
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
