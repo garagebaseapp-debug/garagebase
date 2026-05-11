@@ -6,9 +6,11 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
+import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1840'
+const STROSKI_BUILD = 'stroski-2026-05-11-1920'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -49,85 +51,6 @@ const fuelCostValue = (row: any) => {
   return liters > 0 && price > 0 ? liters * price : 0
 }
 
-const isImportedCostRow = (row: any) => {
-  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.servis || ''} ${row?.kategorija || ''}`
-  return Boolean(
-    row?.import_batch_id ||
-    row?.source_owner_label ||
-    /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText)
-  )
-}
-
-const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
-  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
-  if (key) buckets[key] = (buckets[key] || 0) + 1
-  return buckets
-}, {})
-
-const splitRowsBySource = (rows: any[]) => {
-  const buckets = importBuckets(rows)
-  const imported: any[] = []
-  const garageBase: any[] = []
-  rows.forEach((row) => {
-    const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
-    const looksLikeBulkImport = key && (buckets[key] || 0) >= 3
-    if (isImportedCostRow(row) || looksLikeBulkImport) imported.push(row)
-    else garageBase.push(row)
-  })
-  return { imported, garageBase }
-}
-
-const costValueFor = (row: any) => {
-  if (row?._tip === 'gorivo') return fuelCostValue(row)
-  if (row?._tip === 'servis') return numericValue(row.cena)
-  return numericValue(row?.znesek)
-}
-
-const buildCostSummary = (gorivoRows: any[], servisRows: any[], expenseRows: any[], stats?: any) => {
-  const rows = [
-    ...gorivoRows.map((row) => ({ ...row, _tip: 'gorivo' })),
-    ...servisRows.map((row) => ({ ...row, _tip: 'servis' })),
-    ...expenseRows.map((row) => ({ ...row, _tip: 'ostalo' })),
-  ]
-  const fuel = gorivoRows.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
-  const service = servisRows.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
-  const expense = expenseRows.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
-  const total = fuel + service + expense
-  const split = splitRowsBySource(rows)
-  const imported = split.imported.reduce((sum, row) => sum + costValueFor(row), 0)
-  const garageBase = Math.max(0, total - imported)
-
-  if (total > 0 || rows.length > 0) {
-    return {
-      fuel,
-      service,
-      expense,
-      total,
-      imported,
-      garageBase,
-      rows: {
-        fuel: gorivoRows.length,
-        service: servisRows.length,
-        expense: expenseRows.length,
-      },
-    }
-  }
-
-  return {
-    fuel: numericValue(stats?.costs?.fuel),
-    service: numericValue(stats?.costs?.service),
-    expense: numericValue(stats?.costs?.expense),
-    total: numericValue(stats?.costs?.total),
-    imported: numericValue(stats?.costs?.imported),
-    garageBase: numericValue(stats?.costs?.garageBase),
-    rows: {
-      fuel: numericValue(stats?.rows?.fuel),
-      service: numericValue(stats?.rows?.service),
-      expense: numericValue(stats?.rows?.expense),
-    },
-  }
-}
-
 const readCostCache = (carId: string) => {
   const keys = [`garagebase_stroski_cache_${carId}`, `garagebase_fuel_history_cache_${carId}`]
   for (const key of keys) {
@@ -148,7 +71,12 @@ const readCostTotalsCache = (carId?: string) => {
   try {
     const raw = localStorage.getItem(`garagebase_cost_totals_${carId}`)
     const parsed = raw ? JSON.parse(raw) : null
-    return numericValue(parsed?.fuelCost) > 0 ? parsed : null
+    const hasValue =
+      numericValue(parsed?.fuelCost) > 0 ||
+      numericValue(parsed?.garageBaseFuelCost) > 0 ||
+      numericValue(parsed?.importedFuelCost) > 0 ||
+      numericValue(parsed?.fuelRows) > 0
+    return hasValue ? parsed : null
   } catch {
     return null
   }
@@ -175,7 +103,6 @@ export default function Stroski() {
   const [refreshing, setRefreshing] = useState(false)
   const [serverStats, setServerStats] = useState<any>(null)
   const [debugSource, setDebugSource] = useState('')
-  const [costSummary, setCostSummary] = useState(() => buildCostSummary([], [], []))
 
   useEffect(() => {
     const init = async () => {
@@ -203,7 +130,6 @@ export default function Stroski() {
         setServisi(cached.servisi)
         setExpenses(cached.expenses)
         if (statsHasRealValues(cached.serverStats)) setServerStats(cached.serverStats)
-        setCostSummary(buildCostSummary(cached.gorivo, cached.servisi, cached.expenses, cached.serverStats))
       }
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -279,7 +205,6 @@ export default function Stroski() {
       const cacheSplit = splitRowsBySource(cacheRows)
       const cacheImported = cacheSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
       const cacheTotal = localFuelCost + localServiceCost + localExpenseCost
-      setCostSummary(buildCostSummary(gorivoData, servisData, expensesData, nextServerStats))
       try {
         localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
       } catch (error) {
@@ -328,15 +253,16 @@ export default function Stroski() {
     ...expenses.map(v => ({ ...v, _tip: 'ostalo' })),
   ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
   const totalsCache = readCostTotalsCache(avto?.id)
-  const skupajGorivo = costSummary.fuel > 0 ? costSummary.fuel : numericValue(totalsCache?.fuelCost)
-  const skupajServis = costSummary.service
-  const skupajExpenses = costSummary.expense
+  const liveCostSummary = buildSharedCostSummary(gorivo, servisi, expenses, serverStats)
+  const skupajGorivo = liveCostSummary.fuel > 0 ? liveCostSummary.fuel : numericValue(totalsCache?.fuelCost)
+  const skupajServis = liveCostSummary.service
+  const skupajExpenses = liveCostSummary.expense
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
-  const skupajUvoz = costSummary.imported > 0 ? costSummary.imported : numericValue(totalsCache?.importedFuelCost)
-  const skupajGarageBase = costSummary.garageBase > 0 ? costSummary.garageBase : numericValue(totalsCache?.garageBaseFuelCost)
-  const stGorivo = costSummary.rows.fuel || numericValue(totalsCache?.fuelRows)
-  const stServis = costSummary.rows.service
-  const stOstalo = costSummary.rows.expense
+  const skupajUvoz = liveCostSummary.imported > 0 ? liveCostSummary.imported : numericValue(totalsCache?.importedFuelCost)
+  const skupajGarageBase = liveCostSummary.garageBase > 0 ? liveCostSummary.garageBase : numericValue(totalsCache?.garageBaseFuelCost)
+  const stGorivo = liveCostSummary.rows.fuel || numericValue(totalsCache?.fuelRows)
+  const stServis = liveCostSummary.rows.service
+  const stOstalo = liveCostSummary.rows.expense
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
@@ -372,7 +298,8 @@ export default function Stroski() {
   const prikazServis = skupajServis > 0 ? skupajServis : graphTotals.servis
   const prikazExpenses = skupajExpenses > 0 ? skupajExpenses : graphTotals.ostalo
   const prikazSkupaj = skupajVse > 0 ? skupajVse : prikazGorivo + prikazServis + prikazExpenses
-  const prikazGarageBase = skupajGarageBase > 0 ? skupajGarageBase : prikazSkupaj
+  const hasSourceBreakdown = skupajGarageBase > 0 || skupajUvoz > 0
+  const prikazGarageBase = hasSourceBreakdown ? skupajGarageBase : prikazSkupaj
   const prikazUvoz = skupajUvoz
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
@@ -531,6 +458,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setGorivo(data || [])
+    clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
   }
@@ -545,6 +473,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setServisi(data || [])
+    clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
   }
@@ -558,6 +487,7 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     setExpenses((data || []).filter((e: any) => e.kategorija !== 'km_sprememba'))
+    clearVehicleDataCaches(avto.id)
     setUredi(null)
     setSaving(false)
   }
@@ -605,7 +535,7 @@ export default function Stroski() {
         </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
-          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)}
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {debugSource}
         </p>
       </div>
 

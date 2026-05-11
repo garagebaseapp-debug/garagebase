@@ -7,6 +7,7 @@ import { trackEvent } from '@/lib/analytics'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 type ImportType = 'drivvo' | 'fuel' | 'service' | 'expense'
 type ImportKind = 'fuel' | 'service' | 'expense'
@@ -741,9 +742,7 @@ export default function UvozPodatkov() {
       const inserted = insertedByType.fuel + insertedByType.service + insertedByType.expense
       trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic', insertedByType })
       localStorage.removeItem('garagebase_garaza_cache')
-      localStorage.removeItem(`garagebase_dashboard_cache_${carId}`)
-      localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
-      localStorage.removeItem('garagebase_stroski_garaza_cache')
+      clearVehicleDataCaches(carId)
       setLastImportCounts(insertedByType)
       setLastImportBatchId(inserted > 0 ? importBatchId : '')
       setMessage(tx(
@@ -779,8 +778,7 @@ export default function UvozPodatkov() {
 
       trackEvent('external_import_undone', { importBatchId: lastImportBatchId, counts: lastImportCounts })
       localStorage.removeItem('garagebase_garaza_cache')
-      localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
-      localStorage.removeItem('garagebase_stroski_garaza_cache')
+      clearVehicleDataCaches(carId)
       setLastImportCounts(null)
       setLastImportBatchId('')
       setMessage(tx('Zadnji uvoz je razveljavljen.', 'The last import has been undone.'))

@@ -8,6 +8,7 @@ import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 export default function VnosStroska() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -233,6 +234,7 @@ export default function VnosStroska() {
     })
 
     if (error) { setMessage('Napaka: ' + error.message); setLoading(false); return }
+    clearVehicleDataCaches(carId)
     trackEvent('expense_saved', { carId, category: finalnaKategorija, hasReceipt: !!receiptUrl })
 
     setMessage('✅ Strošek uspešno shranjen!')

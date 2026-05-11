@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
+import { buildVehicleStats } from '@/lib/vehicle-costs'
 
 type ConsumptionBreakdown = {
   garageBase: number | null
@@ -21,7 +22,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1810'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1920'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -161,7 +162,12 @@ const readCostTotalsCache = (carId: string) => {
   try {
     const raw = localStorage.getItem(`garagebase_cost_totals_${carId}`)
     const parsed = raw ? JSON.parse(raw) : null
-    return numberValue(parsed?.fuelCost) > 0 ? parsed : null
+    const hasValue =
+      numberValue(parsed?.fuelCost) > 0 ||
+      numberValue(parsed?.garageBaseFuelCost) > 0 ||
+      numberValue(parsed?.importedFuelCost) > 0 ||
+      numberValue(parsed?.fuelRows) > 0
+    return hasValue ? parsed : null
   } catch {
     return null
   }
@@ -418,47 +424,34 @@ export default function Dashboard() {
         }
       } catch {}
     }
-    const debugLiters = fuelRows.reduce((sum: number, row: any) => sum + numberValue(row.litri), 0)
-    const debugFuelCost = fuelRows.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
-    const debugServiceCost = serviceRows.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
-    const debugExpenseCost = expenseRows.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
-    setDebugStats({
-      fuel: fuelRows.length,
-      service: serviceRows.length,
-      expense: expenseRows.length,
-      liters: debugLiters,
-      cost: debugFuelCost + debugServiceCost + debugExpenseCost,
+    const directStats = buildVehicleStats(fuelRows, serviceRows, expenseRows, {
+      km_trenutni: kmStart,
+      km_ob_vnosu: kmObVnosu,
     })
-    const splitFuel = splitRowsBySource(fuelRows)
-    const splitService = splitRowsBySource(serviceRows)
-    const splitExpense = splitRowsBySource(expenseRows)
-    const importedFuel = splitFuel.imported
-    const garageBaseFuel = splitFuel.garageBase
-    const importedService = splitService.imported
-    const garageBaseService = splitService.garageBase
-    const importedExpense = splitExpense.imported
-    const garageBaseExpense = splitExpense.garageBase
-    const garageBaseConsumption = consumptionSegment(garageBaseFuel)
-    const importedConsumption = consumptionSegment(importedFuel)
-    const nextPoraba = {
-      garageBase: garageBaseConsumption.average,
-      imported: importedConsumption.average,
-      total: combineConsumptionSegments([garageBaseConsumption, importedConsumption]),
-    }
-    const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
-    const garageBaseCosts = garageBaseFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(garageBaseService, 'cena') + costOf(garageBaseExpense, 'znesek')
-    const importedCosts = importedFuel.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0) + costOf(importedService, 'cena') + costOf(importedExpense, 'znesek')
     const totalsCache = readCostTotalsCache(carId)
     const cachedFuelCost = numberValue(totalsCache?.fuelCost)
-    const finalGarageBaseCosts = garageBaseCosts > 0 ? garageBaseCosts : numberValue(totalsCache?.garageBaseFuelCost)
-    const finalImportedCosts = importedCosts > 0 ? importedCosts : numberValue(totalsCache?.importedFuelCost)
-    const totalCosts = garageBaseCosts + importedCosts > 0 ? garageBaseCosts + importedCosts : cachedFuelCost
-    const kmPrevozeni = kmStart - kmObVnosu
+    const cachedGarageBaseFuelCost = numberValue(totalsCache?.garageBaseFuelCost)
+    const cachedImportedFuelCost = numberValue(totalsCache?.importedFuelCost)
+    const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedFuelCost
+    const finalGarageBaseCost = directStats.costs.garageBase > 0 ? directStats.costs.garageBase : cachedGarageBaseFuelCost || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
+    const finalImportedCost = directStats.costs.imported > 0 ? directStats.costs.imported : cachedImportedFuelCost
+    setDebugStats({
+      fuel: directStats.rows.fuel,
+      service: directStats.rows.service,
+      expense: directStats.rows.expense,
+      liters: directStats.liters || numberValue(totalsCache?.fuelLiters),
+      cost: finalTotalCost,
+    })
+    const nextPoraba = {
+      garageBase: directStats.consumption.garageBase,
+      imported: directStats.consumption.imported,
+      total: directStats.consumption.total,
+    }
     const nextStroski = {
-      garageBase: finalGarageBaseCosts,
-      imported: finalImportedCosts,
-      total: totalCosts,
-      naKm: kmPrevozeni > 0 ? totalCosts / kmPrevozeni : null,
+      garageBase: finalGarageBaseCost,
+      imported: finalImportedCost,
+      total: finalTotalCost,
+      naKm: directStats.costs.perKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
     }
     setPoraba(nextPoraba)
     setStroski(nextStroski)

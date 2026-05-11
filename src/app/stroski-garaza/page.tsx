@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
+import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
 
 export default function StroškiGaraza() {
   const [avti, setAvti] = useState<any[]>([])
@@ -46,16 +47,21 @@ export default function StroškiGaraza() {
 
       if (cars.length > 0) {
         const ids = cars.map((avto: any) => avto.id)
-        const [gorivoRes, servisiRes] = await Promise.all([
-          supabase.from('fuel_logs').select('car_id,cena_skupaj').in('car_id', ids),
+        const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
+          supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter').in('car_id', ids),
           supabase.from('service_logs').select('car_id,cena').in('car_id', ids),
+          supabase.from('expenses').select('car_id,znesek,kategorija').in('car_id', ids),
         ])
 
         for (const row of gorivoRes.data || []) {
-          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + (row.cena_skupaj || 0)
+          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + fuelCostValue(row)
         }
         for (const row of servisiRes.data || []) {
-          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + (row.cena || 0)
+          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.cena)
+        }
+        for (const row of expensesRes.data || []) {
+          if (row.kategorija === 'km_sprememba') continue
+          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.znesek)
         }
       }
 

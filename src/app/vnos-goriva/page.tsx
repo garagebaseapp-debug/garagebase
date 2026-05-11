@@ -9,6 +9,7 @@ import { isReceiptImageOcrSupported, parseReceiptText, readReceiptTextFromImage 
 import { useLanguage } from '@/lib/i18n'
 import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 type FuelType = {
   value: string
@@ -441,6 +442,7 @@ export default function VnosGoriva() {
     }
 
     await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId)
+    clearVehicleDataCaches(carId)
     trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl, verificationLevel: 'basic' })
     setMessage(tx('Tankanje uspesno shranjeno!', 'Fill-up saved successfully!'))
     setTimeout(() => {

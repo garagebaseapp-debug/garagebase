@@ -8,6 +8,7 @@ import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } fro
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -275,6 +276,7 @@ export default function VnosServisa() {
     if (error) { setMessage(tx('Napaka: ', 'Error: ') + error.message); setLoading(false); return }
 
     await supabase.from('cars').update({ km_trenutni: Math.max(zadnjiKm, vneseniKm) }).eq('id', carId)
+    clearVehicleDataCaches(carId)
     trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
     await ustvariServisniOpomnik(vneseniKm)
 
