@@ -105,6 +105,17 @@ const detectSeparator = (line: string) => {
   return semicolon > comma ? ';' : ','
 }
 
+const uniqueHeaders = (headers: string[]) => {
+  const seen = new Map<string, number>()
+  return headers.map((header, index) => {
+    const clean = header || `Column ${index + 1}`
+    const key = normalizeText(clean) || `column${index + 1}`
+    const count = seen.get(key) || 0
+    seen.set(key, count + 1)
+    return count === 0 ? clean : `${clean}__${count + 1}`
+  })
+}
+
 const normalizeText = (value: string) =>
   value
     .toLowerCase()
@@ -353,7 +364,7 @@ const parseFlatCsv = (csv: string) => {
   const lines = csv.split(/\r?\n/).map(line => line.replace(/^\uFEFF/, '')).filter(line => cleanCsvMarker(line))
   if (lines.length === 0) return { headers: [] as string[], records: [] as Record<string, string>[] }
   const separator = detectSeparator(lines[0])
-  const headers = splitCsvLine(lines[0], separator)
+  const headers = uniqueHeaders(splitCsvLine(lines[0], separator))
   const records = lines.slice(1).map(line => {
     const values = splitCsvLine(line, separator)
     return headers.reduce((row, header, index) => ({ ...row, [header]: values[index] || '' }), {} as Record<string, string>)
@@ -384,7 +395,7 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
 
     if (waitingForHeader) {
       separator = detectSeparator(line)
-      current.headers = splitCsvLine(line, separator)
+      current.headers = uniqueHeaders(splitCsvLine(line, separator))
       waitingForHeader = false
       continue
     }
