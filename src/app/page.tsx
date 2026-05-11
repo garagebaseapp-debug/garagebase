@@ -242,11 +242,11 @@ const VehicleCardMini = ({ name, status, tone }: { name: string, status: string,
 )
 
 const DeviceShowcase = () => (
-  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[#080810] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[#080810] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
     <img
       src="/landing-mobile-app.png"
       alt=""
-      className="h-full w-full object-cover object-center"
+      className="h-full w-full rounded-xl object-contain object-center"
     />
   </div>
 )
