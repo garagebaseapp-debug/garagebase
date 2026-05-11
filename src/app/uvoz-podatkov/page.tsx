@@ -391,6 +391,45 @@ const parseSectionedCsv = (csv: string): ParsedSection[] => {
   return sections.filter(section => section.headers.length > 0)
 }
 
+const drivvoFuelHeaders = [
+  'Odometer',
+  'Date',
+  'Fuel type',
+  'Price/L',
+  'Total',
+  'Liters',
+  'Full tank',
+  'Missed fill-up',
+  'Partial fill-up',
+  'Tire pressure',
+  'City',
+  'Highway',
+  'Road',
+  'Air conditioning',
+  'Trailer',
+  'Roof rack',
+  'Heavy load',
+  'Consumption',
+  'Distance',
+  'Station',
+  'Driver',
+  'Reason',
+  'Payment',
+  'Notes',
+]
+
+const parseHeaderlessDrivvoFuelCsv = (csv: string): ParsedSection | null => {
+  const records = csv
+    .split(/\r?\n/)
+    .map(line => cleanCsvMarker(line))
+    .filter(line => line && !line.startsWith('##'))
+    .map(line => splitCsvLine(line, detectSeparator(line)))
+    .filter(values => toNumber(values[0]) !== null && Boolean(parseDate(values[1])))
+    .map(values => drivvoFuelHeaders.reduce((row, header, index) => ({ ...row, [header]: values[index] || '' }), {} as Record<string, string>))
+
+  return records.length ? { name: 'Refuelling', headers: drivvoFuelHeaders, records } : null
+}
+
 const sectionToRows = (section: ParsedSection, importType: ImportType, language: Language, distanceUnit: DistanceUnit = 'km'): PreviewRow[] => {
   const map = autoMapping(section.headers)
   const fallbackDescription = language === 'en' ? 'Import from Drivvo' : 'Uvoz iz Drivvo'
@@ -520,6 +559,7 @@ export default function UvozPodatkov() {
 
   const parsed = useMemo(() => parseFlatCsv(csv), [csv])
   const drivvoSections = useMemo(() => isDrivvo ? parseSectionedCsv(csv) : [], [csv, isDrivvo])
+  const headerlessDrivvoFuel = useMemo(() => isDrivvo ? parseHeaderlessDrivvoFuelCsv(csv) : null, [csv, isDrivvo])
 
   const activeDrivvoSection = useMemo(() => {
     if (!isDrivvo || importType === 'drivvo') return null
@@ -533,11 +573,11 @@ export default function UvozPodatkov() {
 
   const drivvoRows = useMemo(() => {
     if (!isDrivvo) return []
-    if (drivvoSections.length === 0 && parsed.headers.length > 0) {
-      return sectionToRows({ name: 'Refuelling', headers: parsed.headers, records: parsed.records }, 'fuel', language, enotaRazdalje)
+    if (drivvoSections.length === 0 && headerlessDrivvoFuel) {
+      return sectionToRows(headerlessDrivvoFuel, 'fuel', language, enotaRazdalje)
     }
     return drivvoSections.flatMap(section => sectionToRows(section, classifySection(section.name), language, enotaRazdalje))
-  }, [drivvoSections, isDrivvo, parsed.headers, parsed.records, language, enotaRazdalje])
+  }, [drivvoSections, headerlessDrivvoFuel, isDrivvo, language, enotaRazdalje])
 
   useEffect(() => {
     if (!isDrivvo && parsed.headers.length > 0) setMapping(autoMapping(parsed.headers))
@@ -546,6 +586,7 @@ export default function UvozPodatkov() {
   const previewRows = useMemo<PreviewRow[]>(() => {
     if (importType === 'drivvo') return drivvoRows
     if (activeDrivvoSection) return sectionToRows(activeDrivvoSection, importType, language, enotaRazdalje)
+    if (isDrivvo && importType === 'fuel' && headerlessDrivvoFuel) return sectionToRows(headerlessDrivvoFuel, 'fuel', language, enotaRazdalje)
 
     return parsed.records.map((row) => {
       const kind: ImportKind = importType === 'service' ? 'service' : importType === 'expense' ? 'expense' : 'fuel'
@@ -575,7 +616,7 @@ export default function UvozPodatkov() {
         fuelType: row[mapping.fuelType] || null,
       }
     }).filter(row => row.date)
-  }, [activeDrivvoSection, drivvoRows, parsed.records, mapping, importType, language, enotaRazdalje])
+  }, [activeDrivvoSection, drivvoRows, headerlessDrivvoFuel, isDrivvo, parsed.records, mapping, importType, language, enotaRazdalje])
 
   const handleFile = async (file?: File) => {
     if (!file) return
