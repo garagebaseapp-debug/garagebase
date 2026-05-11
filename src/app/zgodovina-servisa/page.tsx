@@ -18,6 +18,7 @@ export default function ZgodovinaServisa() {
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [selectedImported, setSelectedImported] = useState<string[]>([])
+  const [bulkEditMode, setBulkEditMode] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -125,6 +126,13 @@ export default function ZgodovinaServisa() {
     setSaving(false)
   }
 
+  const toggleBulkEditMode = () => {
+    setBulkEditMode(prev => {
+      if (prev) setSelectedImported([])
+      return !prev
+    })
+  }
+
   if (loading) return (
     <div className="min-h-screen bg-[#080810] flex items-center justify-center">
       <p className="text-[#5a5a80]">Nalaganje...</p>
@@ -164,17 +172,25 @@ export default function ZgodovinaServisa() {
         <div className="mb-4 rounded-2xl border border-[#22c55e44] bg-[#22c55e10] p-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-bold text-[#86efac]">
-              {tx('Uvozeni zapisi', 'Imported records')} · {selectedImported.length} {tx('izbranih', 'selected')}
+              {tx('Uvozeni zapisi', 'Imported records')}{bulkEditMode ? ` · ${selectedImported.length} ${tx('izbranih', 'selected')}` : ''}
             </p>
-            <div className="flex gap-2">
-              <button onClick={oznaciVseUvozene}
-                className="rounded-xl border border-[#22c55e66] px-3 py-2 text-xs font-bold text-[#86efac]">
-                {tx('Oznaci vse uvozene', 'Select all imported')}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={toggleBulkEditMode}
+                className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] px-4 py-2.5 text-sm font-black text-[#fbbf24]">
+                {bulkEditMode ? tx('Koncaj', 'Done') : tx('Uredi', 'Edit')}
               </button>
-              <button onClick={izbrisiIzbrane} disabled={selectedImported.length === 0 || saving}
-                className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5] disabled:opacity-50">
-                {tx('Izbrisi izbrane', 'Delete selected')}
-              </button>
+              {bulkEditMode && (
+                <>
+                  <button onClick={oznaciVseUvozene}
+                    className="rounded-xl border border-[#22c55e66] px-3 py-2.5 text-sm font-bold text-[#86efac]">
+                    {tx('Oznaci vse', 'Select all')}
+                  </button>
+                  <button onClick={izbrisiIzbrane} disabled={selectedImported.length === 0 || saving}
+                    className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2.5 text-sm font-bold text-[#fca5a5] disabled:opacity-50">
+                    {tx('Zbrisi oznaceno', 'Delete selected')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -210,12 +226,12 @@ export default function ZgodovinaServisa() {
 
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    {isImported && (
+                    {bulkEditMode && isImported && (
                       <input
                         type="checkbox"
                         checked={selectedImported.includes(vnos.id)}
                         onChange={() => toggleImported(vnos.id)}
-                        className="mb-2 h-5 w-5 accent-[#22c55e]"
+                        className="mb-2 h-6 w-6 accent-[#22c55e]"
                         aria-label={tx('Oznaci uvozen zapis', 'Select imported record')}
                       />
                     )}
@@ -248,7 +264,7 @@ export default function ZgodovinaServisa() {
                           cena: vnos.cena?.toString() || '',
                         })
                       }}
-                        className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
+                        className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-sm font-bold px-3 py-2 rounded-xl">
                         ✏️ Uredi · {preostalo}
                       </button>
                     )}
