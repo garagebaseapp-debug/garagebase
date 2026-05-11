@@ -23,7 +23,7 @@ const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: nul
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
 
 const numberValue = (value: unknown) => {
-  const parsed = Number(value)
+  const parsed = Number(String(value ?? '').replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
 }
 
@@ -192,6 +192,60 @@ export default function Dashboard() {
     if (selectedId) setOpomniki(completeGrouped[selectedId] || [])
     console.info(`[GarageBase speed] lite dashboard ${Math.round(performance.now() - started)}ms, cars ${ids.length}`)
   }
+
+  const naloziStatistikoVozila = async (carId: string, kmStart: number = 0, kmObVnosu: number = 0) => {
+    const [fuelRes, serviceRes, expenseRes] = await Promise.all([
+      supabase
+        .from('fuel_logs')
+        .select('km,litri,cena_skupaj,postaja,source_owner_label,import_batch_id')
+        .eq('car_id', carId)
+        .order('km', { ascending: true }),
+      supabase
+        .from('service_logs')
+        .select('cena,opis,source_owner_label,import_batch_id')
+        .eq('car_id', carId),
+      supabase
+        .from('expenses')
+        .select('znesek,kategorija,opis,source_owner_label,import_batch_id')
+        .eq('car_id', carId),
+    ])
+
+    if (fuelRes.error || serviceRes.error || expenseRes.error) {
+      console.warn('[GarageBase dashboard] statistics fetch failed', fuelRes.error?.message, serviceRes.error?.message, expenseRes.error?.message)
+    }
+
+    const fuelRows = fuelRes.data || []
+    const serviceRows = serviceRes.data || []
+    const expenseRows = expenseRes.data || []
+    const importedFuel = fuelRows.filter(isImportedDashboardRow)
+    const garageBaseFuel = fuelRows.filter((row: any) => !isImportedDashboardRow(row))
+    const nextPoraba = {
+      garageBase: dashboardConsumption(garageBaseFuel),
+      imported: dashboardConsumption(importedFuel),
+      total: dashboardConsumption(fuelRows),
+    }
+    const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
+    const garageBaseCosts =
+      costOf(garageBaseFuel, 'cena_skupaj') +
+      costOf(serviceRows.filter((row: any) => !isImportedDashboardRow(row)), 'cena') +
+      costOf(expenseRows.filter((row: any) => !isImportedDashboardRow(row)), 'znesek')
+    const importedCosts =
+      costOf(importedFuel, 'cena_skupaj') +
+      costOf(serviceRows.filter(isImportedDashboardRow), 'cena') +
+      costOf(expenseRows.filter(isImportedDashboardRow), 'znesek')
+    const totalCosts = garageBaseCosts + importedCosts
+    const kmPrevozeni = kmStart - kmObVnosu
+    const nextStroski = {
+      garageBase: garageBaseCosts,
+      imported: importedCosts,
+      total: totalCosts,
+      naKm: kmPrevozeni > 0 ? totalCosts / kmPrevozeni : null,
+    }
+    setPoraba(nextPoraba)
+    setStroski(nextStroski)
+    return { poraba: nextPoraba, stroski: nextStroski, fuelRows }
+  }
+
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
     const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
     if (cached) {
@@ -225,35 +279,9 @@ export default function Dashboard() {
     const gorivoData = gorivoRes.data || []
     setOpomniki(opData)
 
-    const importedFuel = gorivoData.filter(isImportedDashboardRow)
-    const garageBaseFuel = gorivoData.filter((row: any) => !isImportedDashboardRow(row))
-    const nextPoraba = {
-      garageBase: dashboardConsumption(garageBaseFuel),
-      imported: dashboardConsumption(importedFuel),
-      total: dashboardConsumption(gorivoData),
-    }
-    setPoraba(nextPoraba)
-
-    const servisData = servisRes.data || []
-    const expenseData = expensesRes.data || []
-    const costOf = (rows: any[], key: string) => rows.reduce((s: number, row: any) => s + numberValue(row[key]), 0)
-    const garageBaseCosts =
-      costOf(garageBaseFuel, 'cena_skupaj') +
-      costOf(servisData.filter((row: any) => !isImportedDashboardRow(row)), 'cena') +
-      costOf(expenseData.filter((row: any) => !isImportedDashboardRow(row)), 'znesek')
-    const importedCosts =
-      costOf(importedFuel, 'cena_skupaj') +
-      costOf(servisData.filter(isImportedDashboardRow), 'cena') +
-      costOf(expenseData.filter(isImportedDashboardRow), 'znesek')
-    const skupajVse = garageBaseCosts + importedCosts
-    const kmPrevozeni = avtoKmStart - kmObVnosu
-    const nextStroski = {
-      garageBase: garageBaseCosts,
-      imported: importedCosts,
-      total: skupajVse,
-      naKm: kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null,
-    }
-    setStroski(nextStroski)
+    const stats = await naloziStatistikoVozila(carId, avtoKmStart, kmObVnosu)
+    const nextPoraba = stats.poraba
+    const nextStroski = stats.stroski
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
     console.info(`[GarageBase speed] dashboard data ${Math.round(performance.now() - started)}ms`)
   }
