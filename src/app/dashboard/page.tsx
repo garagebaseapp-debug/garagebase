@@ -6,12 +6,61 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 
+type ConsumptionBreakdown = {
+  garageBase: number | null
+  imported: number | null
+  total: number | null
+}
+
+type CostBreakdown = {
+  garageBase: number
+  imported: number
+  total: number
+  naKm: number | null
+}
+
+const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
+const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
+
+const numberValue = (value: unknown) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const isImportedDashboardRow = (row: any) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
+  return Boolean(
+    row?.import_batch_id ||
+    row?.source_owner_label ||
+    /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText)
+  )
+}
+
+const averageConsumption = (rows: any[]) => {
+  const sorted = rows
+    .filter((row) => numberValue(row.km) > 0 && numberValue(row.litri) > 0)
+    .sort((a, b) => numberValue(a.km) - numberValue(b.km))
+
+  if (sorted.length < 2) return null
+
+  let distance = 0
+  let liters = 0
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = numberValue(sorted[i].km) - numberValue(sorted[i - 1].km)
+    if (diff <= 0) continue
+    distance += diff
+    liters += numberValue(sorted[i].litri)
+  }
+
+  return distance > 0 ? (liters / distance) * 100 : null
+}
+
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
   const [aktivniAvto, setAktivniAvto] = useState<any>(null)
   const [opomniki, setOpomniki] = useState<any[]>([])
-  const [poraba, setPoraba] = useState<{ skupaj: number | null, zadnja: number | null }>({ skupaj: null, zadnja: null })
-  const [stroski, setStroski] = useState<{ skupaj: number, naKm: number | null }>({ skupaj: 0, naKm: null })
+  const [poraba, setPoraba] = useState<ConsumptionBreakdown>(emptyConsumption)
+  const [stroski, setStroski] = useState<CostBreakdown>(emptyCosts)
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -20,6 +69,9 @@ export default function Dashboard() {
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
+  const hasConsumptionBreakdown = poraba.total !== null || poraba.garageBase !== null || poraba.imported !== null
+  const hasCostBreakdown = stroski.total > 0 || stroski.garageBase > 0 || stroski.imported > 0
+  const consumptionText = (value: number | null) => value !== null ? `${value.toFixed(1)} L/100` : '-'
 
   useEffect(() => {
     const init = async () => {
@@ -130,44 +182,61 @@ export default function Dashboard() {
       try {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
-        if (parsed.poraba) setPoraba(parsed.poraba)
-        if (parsed.stroski) setStroski(parsed.stroski)
+        if (parsed.poraba) {
+          setPoraba('total' in parsed.poraba
+            ? parsed.poraba
+            : { ...emptyConsumption, total: parsed.poraba.skupaj ?? null }
+          )
+        }
+        if (parsed.stroski) {
+          setStroski('total' in parsed.stroski
+            ? parsed.stroski
+            : { ...emptyCosts, total: parsed.stroski.skupaj || 0, naKm: parsed.stroski.naKm ?? null }
+          )
+        }
       } catch {}
     }
 
     const started = performance.now()
     const [opRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
       supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
-      supabase.from('fuel_logs').select('km,litri,cena_skupaj').eq('car_id', carId).order('km', { ascending: true }),
-      supabase.from('service_logs').select('cena').eq('car_id', carId),
-      supabase.from('expenses').select('znesek').eq('car_id', carId),
+      supabase.from('fuel_logs').select('km,litri,cena_skupaj,import_batch_id,source_owner_label,postaja').eq('car_id', carId).order('km', { ascending: true }),
+      supabase.from('service_logs').select('cena,import_batch_id,source_owner_label,opis').eq('car_id', carId),
+      supabase.from('expenses').select('znesek,import_batch_id,source_owner_label,kategorija,opis').eq('car_id', carId),
     ])
 
     const opData = opRes.data || []
     const gorivoData = gorivoRes.data || []
     setOpomniki(opData)
 
-    let nextPoraba = { skupaj: null as number | null, zadnja: null as number | null }
-    if (gorivoData.length >= 1) {
-      const skupajLitrov = gorivoData.reduce((s: number, v: any) => s + (v.litri || 0), 0)
-      const zadnjiKm = gorivoData[gorivoData.length - 1].km
-      const skupajKm = zadnjiKm - avtoKmStart
-      const skupajPoraba = skupajKm > 0 ? (skupajLitrov / skupajKm) * 100 : null
-      const zadnje = gorivoData[gorivoData.length - 1]
-      const predZadnje = gorivoData.length >= 2 ? gorivoData[gorivoData.length - 2] : null
-      const prejsnjiKm = predZadnje ? predZadnje.km : avtoKmStart
-      const kmRazlika = zadnje.km - prejsnjiKm
-      const zadnjaPoraba = kmRazlika > 0 ? (zadnje.litri / kmRazlika) * 100 : null
-      nextPoraba = { skupaj: skupajPoraba, zadnja: zadnjaPoraba }
+    const importedFuel = gorivoData.filter(isImportedDashboardRow)
+    const garageBaseFuel = gorivoData.filter((row: any) => !isImportedDashboardRow(row))
+    const nextPoraba = {
+      garageBase: averageConsumption(garageBaseFuel),
+      imported: averageConsumption(importedFuel),
+      total: averageConsumption(gorivoData),
     }
     setPoraba(nextPoraba)
 
-    const skupajGorivo = gorivoData.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
-    const skupajServis = (servisRes.data || []).reduce((s: number, v: any) => s + (v.cena || 0), 0)
-    const skupajExpenses = (expensesRes.data || []).reduce((s: number, v: any) => s + (v.znesek || 0), 0)
-    const skupajVse = skupajGorivo + skupajServis + skupajExpenses
+    const servisData = servisRes.data || []
+    const expenseData = expensesRes.data || []
+    const costOf = (rows: any[], key: string) => rows.reduce((s: number, row: any) => s + numberValue(row[key]), 0)
+    const garageBaseCosts =
+      costOf(garageBaseFuel, 'cena_skupaj') +
+      costOf(servisData.filter((row: any) => !isImportedDashboardRow(row)), 'cena') +
+      costOf(expenseData.filter((row: any) => !isImportedDashboardRow(row)), 'znesek')
+    const importedCosts =
+      costOf(importedFuel, 'cena_skupaj') +
+      costOf(servisData.filter(isImportedDashboardRow), 'cena') +
+      costOf(expenseData.filter(isImportedDashboardRow), 'znesek')
+    const skupajVse = garageBaseCosts + importedCosts
     const kmPrevozeni = avtoKmStart - kmObVnosu
-    const nextStroski = { skupaj: skupajVse, naKm: kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null }
+    const nextStroski = {
+      garageBase: garageBaseCosts,
+      imported: importedCosts,
+      total: skupajVse,
+      naKm: kmPrevozeni > 0 ? skupajVse / kmPrevozeni : null,
+    }
     setStroski(nextStroski)
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
     console.info(`[GarageBase speed] dashboard data ${Math.round(performance.now() - started)}ms`)
@@ -467,18 +536,44 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-[0.9fr_1.25fr_1.25fr] gap-3">
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
-                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Kilometri</p>
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
                     </div>
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
-                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Poraba</p>
-                      <p className="text-white font-bold text-2xl">{poraba.skupaj !== null ? poraba.skupaj.toFixed(1) : '-'} <span className="text-[#5a5a80] text-sm font-normal">L/100</span></p>
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Poraba', 'Consumption')}</p>
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#3ecfcf] text-xs font-bold uppercase">{tx('Skupaj', 'Total')}</span>
+                          <span className="text-white font-bold text-lg">{consumptionText(poraba.total)}</span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#a09aff] text-xs font-bold uppercase">{tx('GarageBase vnosi', 'GarageBase entries')}</span>
+                          <span className="text-[#c8c4ff] font-semibold">{consumptionText(poraba.garageBase)}</span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#86efac] text-xs font-bold uppercase">{tx('Uvozena zgodovina', 'Imported history')}</span>
+                          <span className="text-[#bbf7d0] font-semibold">{consumptionText(poraba.imported)}</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
-                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Stroški</p>
-              <p className="text-white font-bold text-2xl">{stroski.skupaj > 0 ? stroski.skupaj.toFixed(0) : '-'} <span className="text-[#5a5a80] text-sm font-normal">{znakValute}</span></p>
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski', 'Costs')}</p>
+                      <div className="space-y-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#3ecfcf] text-xs font-bold uppercase">{tx('Skupaj', 'Total')}</span>
+                          <span className="text-white font-bold text-lg">{stroski.total > 0 ? formatMoney(stroski.total, valuta) : '-'}</span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#a09aff] text-xs font-bold uppercase">{tx('GarageBase vnosi', 'GarageBase entries')}</span>
+                          <span className="text-[#c8c4ff] font-semibold">{stroski.garageBase > 0 ? formatMoney(stroski.garageBase, valuta) : '-'}</span>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-[#86efac] text-xs font-bold uppercase">{tx('Uvozena zgodovina', 'Imported history')}</span>
+                          <span className="text-[#bbf7d0] font-semibold">{stroski.imported > 0 ? formatMoney(stroski.imported, valuta) : '-'}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -544,35 +639,43 @@ export default function Dashboard() {
                   </div>
                 )}
 
-                {(poraba.skupaj !== null || poraba.zadnja !== null) && (
-                  <div className="mx-5 mb-4 grid grid-cols-2 gap-3">
-                    {poraba.skupaj !== null && (
+                {hasConsumptionBreakdown && (
+                  <div className="mx-5 mb-4 grid grid-cols-1 gap-3">
+                    {poraba.total !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
-                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">⌀ Poraba skupaj</p>
-                        <p className="text-white font-bold text-lg">{poraba.skupaj.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                        <p className="text-[#3ecfcf] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
+                        <p className="text-white font-bold text-lg">{poraba.total.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
-                    {poraba.zadnja !== null && (
+                    {poraba.garageBase !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
-                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">⌀ Zadnje tank.</p>
-                        <p className="text-white font-bold text-lg">{poraba.zadnja.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                        <p className="text-[#a09aff] text-xs uppercase tracking-wider mb-1">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
+                        <p className="text-[#c8c4ff] font-bold text-lg">{poraba.garageBase.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                      </div>
+                    )}
+                    {poraba.imported !== null && (
+                      <div className="bg-[#13131f] rounded-xl p-3">
+                        <p className="text-[#86efac] text-xs uppercase tracking-wider mb-1">{tx('Uvozena zgodovina', 'Imported history')}</p>
+                        <p className="text-[#bbf7d0] font-bold text-lg">{poraba.imported.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
                   </div>
                 )}
 
                 {/* Kalkulator stroškov €/km */}
-                {stroski.skupaj > 0 && (
+                {hasCostBreakdown && (
                   <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
-                    <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">💰 Stroški vozila</p>
+                    <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski vozila', 'Vehicle costs')}</p>
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-[#5a5a80] text-xs mb-0.5">Skupaj</p>
-          <p className="text-white font-bold text-xl">{formatMoney(stroski.skupaj, valuta)}</p>
+                        <p className="text-[#3ecfcf] text-xs mb-0.5">{tx('Skupaj', 'Total')}</p>
+          <p className="text-white font-bold text-xl">{formatMoney(stroski.total, valuta)}</p>
+                        <p className="text-[#a09aff] text-xs mt-1">{tx('GarageBase vnosi', 'GarageBase entries')}: {stroski.garageBase > 0 ? formatMoney(stroski.garageBase, valuta) : '-'}</p>
+                        <p className="text-[#86efac] text-xs">{tx('Uvozena zgodovina', 'Imported history')}: {stroski.imported > 0 ? formatMoney(stroski.imported, valuta) : '-'}</p>
                       </div>
                       {stroski.naKm !== null && (
                         <div className="text-right">
-                          <p className="text-[#5a5a80] text-xs mb-0.5">Cena na km</p>
+                          <p className="text-[#5a5a80] text-xs mb-0.5">{tx('Cena na km', 'Cost per km')}</p>
           <p className="text-[#6c63ff] font-bold text-xl">{stroski.naKm.toFixed(3)} {znakValute}/km</p>
                         </div>
                       )}
