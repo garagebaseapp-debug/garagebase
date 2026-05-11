@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2035'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2055'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -322,6 +322,7 @@ export default function Dashboard() {
     const token = sessionData.session?.access_token
     const cachedStats = readVehicleStatsCache(carId)
     let cachedFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
+    let apiFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
     let source = ''
 
     if (token) {
@@ -344,16 +345,8 @@ export default function Dashboard() {
             total: numberValue(stats.costs?.total),
             naKm: stats.costs?.perKm ?? null,
           }
-          setDebugStats({
-            fuel: numberValue(stats.rows?.fuel),
-            service: numberValue(stats.rows?.service),
-            expense: numberValue(stats.rows?.expense),
-            liters: numberValue(stats.liters),
-            cost: numberValue(stats.costs?.total),
-          })
-          setDebugStatsSource('api')
-          setPoraba(nextPoraba)
-          setStroski(nextStroski)
+          apiFallback = { poraba: nextPoraba, stroski: nextStroski }
+          source = 'api-seed'
           localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
             fuelCost: numberValue(stats.costs?.fuel),
             serviceCost: numberValue(stats.costs?.service),
@@ -364,7 +357,6 @@ export default function Dashboard() {
             costs: nextStroski,
             savedAt: Date.now(),
           }))
-          return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
         }
         source = `api-empty:${payload?.error || 'no-values'}`
         console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
@@ -440,24 +432,24 @@ export default function Dashboard() {
     const cachedFuelCost = numberValue(totalsCache?.fuelCost)
     const cachedGarageBaseFuelCost = numberValue(totalsCache?.garageBaseFuelCost)
     const cachedImportedFuelCost = numberValue(totalsCache?.importedFuelCost)
-    const cachedTotalCost = cachedFallback?.stroski.total || 0
+    const cachedTotalCost = cachedFallback?.stroski.total || apiFallback?.stroski.total || 0
     const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedFuelCost || cachedTotalCost
     const finalGarageBaseCost = directStats.costs.garageBase > 0
       ? directStats.costs.garageBase
-      : cachedGarageBaseFuelCost || cachedFallback?.stroski.garageBase || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
+      : cachedGarageBaseFuelCost || cachedFallback?.stroski.garageBase || apiFallback?.stroski.garageBase || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
     const finalImportedCost = directStats.costs.imported > 0
       ? directStats.costs.imported
-      : cachedImportedFuelCost || cachedFallback?.stroski.imported || 0
+      : cachedImportedFuelCost || cachedFallback?.stroski.imported || apiFallback?.stroski.imported || 0
     const nextPoraba = {
-      garageBase: directStats.consumption.garageBase ?? cachedFallback?.poraba.garageBase ?? null,
-      imported: directStats.consumption.imported ?? cachedFallback?.poraba.imported ?? null,
-      total: directStats.consumption.total ?? cachedFallback?.poraba.total ?? null,
+      garageBase: directStats.consumption.garageBase ?? cachedFallback?.poraba.garageBase ?? apiFallback?.poraba.garageBase ?? null,
+      imported: directStats.consumption.imported ?? cachedFallback?.poraba.imported ?? apiFallback?.poraba.imported ?? null,
+      total: directStats.consumption.total ?? cachedFallback?.poraba.total ?? apiFallback?.poraba.total ?? null,
     }
     const nextStroski = {
       garageBase: finalGarageBaseCost,
       imported: finalImportedCost,
       total: finalTotalCost,
-      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
+      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
     }
     setDebugStats({
       fuel: directStats.rows.fuel || numberValue(totalsCache?.fuelRows) || numberValue(cachedStats?.fuelRows),

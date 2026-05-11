@@ -1,6 +1,6 @@
 'use client'
 
-export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2035'
+export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-11-2055'
 
 export const clearVehicleDataCaches = (carId?: string | null) => {
   if (typeof window === 'undefined' || !carId) return
