@@ -139,7 +139,7 @@ export default function Dashboard() {
         setAktivniAvto(izbrani)
         setLoading(false)
         if (jeLite) await naloziLitePodatke(cars.map((a: any) => a.id), izbrani.id)
-        else await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
+        await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
       console.info(`[GarageBase speed] dashboard cars ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
@@ -291,13 +291,14 @@ export default function Dashboard() {
   }
   const preklopAvto = async (avto: any) => {
     setAktivniAvto(avto)
+    setPoraba(emptyConsumption)
+    setStroski(emptyCosts)
     if (nacin === 'lite') {
       const cachedOpomniki = liteOpomnikiPoAvtu[avto.id]
       if (cachedOpomniki) setOpomniki(cachedOpomniki)
       else await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
-    } else {
-      await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
     }
+    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {
