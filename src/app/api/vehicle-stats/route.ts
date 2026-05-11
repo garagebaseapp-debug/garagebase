@@ -6,7 +6,8 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const numberValue = (value: unknown) => {
-  const parsed = Number(String(value ?? '').replace(',', '.'))
+  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 

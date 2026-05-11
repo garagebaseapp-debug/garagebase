@@ -8,9 +8,10 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1535'
+const STROSKI_BUILD = 'stroski-2026-05-11-1615'
 const numericValue = (value: unknown) => {
-  const parsed = Number(String(value ?? '').replace(',', '.'))
+  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
@@ -229,9 +230,9 @@ export default function Stroski() {
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
     }
-    gorivo.forEach(v => { if (!v.datum || !v.cena_skupaj) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += v.cena_skupaj })
-    servisi.forEach(v => { if (!v.datum || !v.cena) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += v.cena })
-    expenses.forEach(v => { if (!v.datum || !v.znesek) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += v.znesek })
+    gorivo.forEach(v => { if (!v.datum || !numericValue(v.cena_skupaj)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += numericValue(v.cena_skupaj) })
+    servisi.forEach(v => { if (!v.datum || !numericValue(v.cena)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += numericValue(v.cena) })
+    expenses.forEach(v => { if (!v.datum || !numericValue(v.znesek)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += numericValue(v.znesek) })
     return meseci
   }
 

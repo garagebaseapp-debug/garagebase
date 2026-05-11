@@ -21,10 +21,11 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-1535'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-1615'
 
 const numberValue = (value: unknown) => {
-  const parsed = Number(String(value ?? '').replace(',', '.'))
+  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
 }
 

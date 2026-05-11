@@ -7,6 +7,40 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSe
 import { useLanguage } from '@/lib/i18n'
 
 const PAGE_SIZE = 50
+const fuelNumber = (value: unknown) => {
+  const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  if (key) buckets[key] = (buckets[key] || 0) + 1
+  return buckets
+}, {})
+
+const importInfoFromLabel = (label?: string | null) => {
+  if (!label?.includes('import |')) return null
+  const [source, stamp] = label.split(' import | ')
+  return { source, stamp }
+}
+
+const isImportedFuelRow = (row: any, buckets?: Record<string, number>) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''}`
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  return Boolean(
+    row?.import_batch_id ||
+    importInfoFromLabel(row?.source_owner_label) ||
+    (key && buckets && (buckets[key] || 0) >= 3) ||
+    /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText)
+  )
+}
+
+const fuelSummaryFor = (rows: any[]) => ({
+  liters: rows.reduce((sum, row) => sum + fuelNumber(row.litri), 0),
+  amount: rows.reduce((sum, row) => sum + fuelNumber(row.cena_skupaj), 0),
+  count: rows.length,
+})
 
 export default function ZgodovinaGoriva() {
   const { language } = useLanguage()
@@ -23,7 +57,11 @@ export default function ZgodovinaGoriva() {
   const [bulkEditMode, setBulkEditMode] = useState(false)
   const [carId, setCarId] = useState('')
   const [totalCount, setTotalCount] = useState(0)
-  const [summary, setSummary] = useState({ liters: 0, amount: 0 })
+  const [summary, setSummary] = useState({
+    garageBase: { liters: 0, amount: 0, count: 0 },
+    imported: { liters: 0, amount: 0, count: 0 },
+    total: { liters: 0, amount: 0, count: 0 },
+  })
   const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
@@ -39,7 +77,7 @@ export default function ZgodovinaGoriva() {
       setAvto(avtoData)
       const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
         supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).range(0, PAGE_SIZE - 1),
-        supabase.from('fuel_logs').select('litri,cena_skupaj').eq('car_id', selectedCarId),
+        supabase.from('fuel_logs').select('litri,cena_skupaj,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', selectedCarId),
         supabase.from('fuel_logs').select('km').eq('car_id', selectedCarId).order('km', { ascending: false }).limit(1),
       ])
       const gorivo = gorivoRes.data || []
@@ -50,9 +88,14 @@ export default function ZgodovinaGoriva() {
         setAvto({ ...avtoData, km_trenutni: maxFuelKm })
       }
       setTotalCount(gorivoRes.count || fuelRows.length)
+      const summaryRows = summaryRes.data || []
+      const buckets = importBuckets(summaryRows)
+      const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
+      const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
       setSummary({
-        liters: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.litri || 0), 0),
-        amount: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0),
+        garageBase: fuelSummaryFor(garageBaseRows),
+        imported: fuelSummaryFor(importedRows),
+        total: fuelSummaryFor(summaryRows),
       })
       setVnosi(fuelRows)
       setLoading(false)
@@ -97,20 +140,26 @@ export default function ZgodovinaGoriva() {
   }
 
   const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && Number(vnos.litri || 0) === 0 && Number(vnos.cena_skupaj || 0) === 0
-  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || importInfo(vnos.source_owner_label) || jeNepopolnUvoz(vnos))
+  const displayedImportBuckets = importBuckets(vnosi)
+  const jeUvozen = (vnos: any) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
   const editable = (vnos: any) => jeUvozen(vnos) || Boolean(preostaliCas(vnos.created_at))
 
   const refreshVnosi = async () => {
     const [gorivoRes, summaryRes] = await Promise.all([
       supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
-      supabase.from('fuel_logs').select('litri,cena_skupaj').eq('car_id', avto.id),
+      supabase.from('fuel_logs').select('litri,cena_skupaj,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', avto.id),
     ])
     const gorivo = gorivoRes.data || []
+    const summaryRows = summaryRes.data || []
+    const buckets = importBuckets(summaryRows)
+    const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
+    const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
     setVnosi(gorivo || [])
     setTotalCount(gorivoRes.count || gorivo.length || 0)
     setSummary({
-      liters: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.litri || 0), 0),
-      amount: (summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0),
+      garageBase: fuelSummaryFor(garageBaseRows),
+      imported: fuelSummaryFor(importedRows),
+      total: fuelSummaryFor(summaryRows),
     })
   }
 
@@ -124,8 +173,6 @@ export default function ZgodovinaGoriva() {
     setLoadingMore(false)
   }
 
-  const skupajLitrov = summary.liters
-  const skupajEurov = summary.amount
   const znakValute = currencySymbol(valuta)
 
   const tipGorivaIkona = (tip: string) => {
@@ -133,6 +180,34 @@ export default function ZgodovinaGoriva() {
     if (tip === '100') return { label: '100', bg: 'bg-[#2563eb]', text: 'text-white' }
     if (tip === 'diesel') return { label: 'D', bg: 'bg-[#333333]', text: 'text-[#aaaaaa]' }
     return null
+  }
+
+  const SummaryCard = ({ title, data, tone }: { title: string; data: { liters: number; amount: number; count: number }; tone: 'app' | 'import' | 'total' }) => {
+    const styles = tone === 'total'
+      ? 'border-[#3ecfcf55] bg-[#3ecfcf10]'
+      : tone === 'import'
+        ? 'border-[#22c55e55] bg-[#22c55e10]'
+        : 'border-[#6c63ff55] bg-[#6c63ff10]'
+    const titleColor = tone === 'total' ? 'text-[#3ecfcf]' : tone === 'import' ? 'text-[#86efac]' : 'text-[#a09aff]'
+    return (
+      <div className={`rounded-2xl border p-3 ${styles}`}>
+        <p className={`mb-3 text-xs font-black uppercase tracking-wide ${titleColor}`}>{title}</p>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <p className="text-[#5a5a80] text-[10px] uppercase tracking-wider">{tx('Litrov', 'Liters')}</p>
+            <p className="text-white font-bold text-base">{data.liters.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> L</span></p>
+          </div>
+          <div>
+            <p className="text-[#5a5a80] text-[10px] uppercase tracking-wider">{tx('Skupaj', 'Total')}</p>
+            <p className="text-white font-bold text-base">{data.amount.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> {znakValute}</span></p>
+          </div>
+          <div>
+            <p className="text-[#5a5a80] text-[10px] uppercase tracking-wider">{tx('Tankanij', 'Fill-ups')}</p>
+            <p className="text-white font-bold text-base">{data.count}</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const shraniUredi = async (id: string) => {
@@ -228,19 +303,10 @@ export default function ZgodovinaGoriva() {
       </div>
 
       {vnosi.length > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Litrov', 'Liters')}</p>
-            <p className="text-white font-bold text-lg">{skupajLitrov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> L</span></p>
-          </div>
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
-          <p className="text-white font-bold text-lg">{skupajEurov.toFixed(0)}<span className="text-[#5a5a80] text-xs font-normal"> {znakValute}</span></p>
-          </div>
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-3">
-            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Tankanij', 'Fill-ups')}</p>
-            <p className="text-white font-bold text-lg">{totalCount || vnosi.length}</p>
-          </div>
+        <div className="grid grid-cols-1 gap-3 mb-6 xl:grid-cols-3">
+          <SummaryCard title={tx('GarageBase vnosi', 'GarageBase entries')} data={summary.garageBase} tone="app" />
+          <SummaryCard title={tx('Uvozena zgodovina', 'Imported history')} data={summary.imported} tone="import" />
+          <SummaryCard title={tx('Skupne vrednosti', 'Combined totals')} data={summary.total} tone="total" />
         </div>
       )}
 
