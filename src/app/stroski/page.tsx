@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1825'
+const STROSKI_BUILD = 'stroski-2026-05-11-1840'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -362,6 +362,18 @@ export default function Stroski() {
   }
 
   const meseci = grafMeseci()
+  const graphTotals = meseci.reduce((totals, mesec) => {
+    totals.gorivo += mesec.gorivo
+    totals.servis += mesec.servis
+    totals.ostalo += mesec.ostalo
+    return totals
+  }, { gorivo: 0, servis: 0, ostalo: 0 })
+  const prikazGorivo = skupajGorivo > 0 ? skupajGorivo : graphTotals.gorivo
+  const prikazServis = skupajServis > 0 ? skupajServis : graphTotals.servis
+  const prikazExpenses = skupajExpenses > 0 ? skupajExpenses : graphTotals.ostalo
+  const prikazSkupaj = skupajVse > 0 ? skupajVse : prikazGorivo + prikazServis + prikazExpenses
+  const prikazGarageBase = skupajGarageBase > 0 ? skupajGarageBase : prikazSkupaj
+  const prikazUvoz = skupajUvoz
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
 
@@ -580,20 +592,20 @@ export default function Stroski() {
 
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
-        <p className="text-white font-bold text-4xl mb-1">{formatMoney(skupajVse, valuta)}</p>
+        <p className="text-white font-bold text-4xl mb-1">{formatMoney(prikazSkupaj, valuta)}</p>
         <div className="grid grid-cols-2 gap-3 mt-4">
           <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff0d] p-3">
             <p className="text-[#a09aff] text-[11px] font-bold uppercase tracking-wide">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
-            <p className="text-[#c8c4ff] text-lg font-semibold mt-1">{formatMoney(skupajGarageBase, valuta)}</p>
+            <p className="text-[#c8c4ff] text-lg font-semibold mt-1">{formatMoney(prikazGarageBase, valuta)}</p>
           </div>
           <div className="rounded-xl border border-[#22c55e33] bg-[#22c55e0d] p-3">
             <p className="text-[#86efac] text-[11px] font-bold uppercase tracking-wide">{tx('Uvozena zgodovina', 'Imported history')}</p>
-            <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(skupajUvoz, valuta)}</p>
+            <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(prikazUvoz, valuta)}</p>
           </div>
         </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
-          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)}
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)}
         </p>
       </div>
 
@@ -640,19 +652,19 @@ export default function Stroski() {
         <button onClick={() => setFilter(filter === 'gorivo' ? 'vse' : 'gorivo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'gorivo' ? 'bg-[#3ecfcf22] border-[#3ecfcf66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">⛽</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-[#5a5a80]'}`}>{tx('Gorivo', 'Fuel')}</p>
-          <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{skupajGorivo.toFixed(0)} {znakValute}</p>
+          <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{prikazGorivo.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{stGorivo}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'servis' ? 'vse' : 'servis')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'servis' ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">🔧</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-[#5a5a80]'}`}>{tx('Servisi', 'Services')}</p>
-          <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{skupajServis.toFixed(0)} {znakValute}</p>
+          <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{prikazServis.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{stServis}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'ostalo' ? 'vse' : 'ostalo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'ostalo' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">💰</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>{tx('Ostalo', 'Other')}</p>
-          <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{skupajExpenses.toFixed(0)} {znakValute}</p>
+          <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{prikazExpenses.toFixed(0)} {znakValute}</p>
           <p className="text-[#5a5a80] text-xs">{stOstalo}x</p>
         </button>
       </div>
