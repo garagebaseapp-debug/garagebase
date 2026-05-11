@@ -221,6 +221,10 @@ const normalizeCategory = (value?: string | null) => {
   return value || 'uvoz'
 }
 
+const saneLiters = (value: number | null) => value !== null && value > 0 && value < 500 ? value : null
+const sanePricePerLiter = (value: number | null) => value !== null && value > 0 && value < 20 ? value : null
+const saneAmount = (value: number | null) => value !== null && value > 0 ? value : null
+
 const optionalImportColumns = new Set([
   'verification_level',
   'source_owner_label',
@@ -283,13 +287,17 @@ const findHeader = (headers: string[], options: string[]) => {
   return index >= 0 ? headers[index] : ''
 }
 
+const amountHeaders = ['total', 'amount', 'cost', 'znesek', 'cena skupaj', 'skupaj', 'value', 'skupni stroski', 'total cost', 'total price', 'sum', 'subtotal']
+const literHeaders = ['liters', 'litres', 'liter', 'litri', 'litrov', 'litra', 'volume', 'volumen', 'vol', 'quantity', 'qty', 'kolicina', 'količina', 'natoceno', 'natočeno', 'toceno', 'točeno', 'amount of fuel', 'fuel amount', 'fuel volume', 'refuelled', 'refueled', 'filled']
+const pricePerLiterHeaders = ['price/l', 'priceperliter', 'price per liter', 'price per litre', 'cena/l', 'cena na liter', 'unit price', 'price per unit', 'ppu']
+
 const autoMapping = (headers: string[]): Mapping => ({
   date: findHeader(headers, ['date', 'datum', 'time']),
   km: findHeader(headers, ['odometer', 'mileage', 'kilometer', 'kilometri', 'km', 'stevec']),
   description: findHeader(headers, ['description', 'opis', 'note', 'notes', 'service', 'title', 'razlog']),
-  amount: findHeader(headers, ['total', 'amount', 'cost', 'price', 'znesek', 'cena skupaj', 'skupaj', 'value', 'skupni stroski', 'total cost', 'total price']),
-  liters: findHeader(headers, ['liters', 'litres', 'liter', 'litri', 'volume', 'volumen', 'quantity', 'kolicina', 'amount of fuel']),
-  pricePerLiter: findHeader(headers, ['price/l', 'priceperliter', 'price per liter', 'price per litre', 'cena/l', 'cena na liter', 'unit price']),
+  amount: findHeader(headers, amountHeaders),
+  liters: findHeader(headers, literHeaders),
+  pricePerLiter: findHeader(headers, pricePerLiterHeaders),
   station: findHeader(headers, ['station', 'place', 'location', 'postaja', 'servis', 'workshop', 'bencinska crpalka']),
   category: findHeader(headers, ['category', 'type', 'kategorija', 'vrsta', 'vrsta stroska']),
   fuelType: findHeader(headers, ['fuel type', 'fuel', 'gorivo']),
@@ -373,13 +381,13 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
         ? rawCategory || notes || fallbackDescription
         : row[map.description] || row[map.category] || fallbackDescription
     const fuelAmount = isFuelSection
-      ? numberFromRow(row, section.headers, map.amount, [4], ['total', 'amount', 'cost', 'znesek', 'skupaj'])
+      ? saneAmount(numberFromRow(row, section.headers, map.amount, [4, 5, 6], amountHeaders))
       : null
     const fuelPricePerLiter = isFuelSection
-      ? numberFromRow(row, section.headers, map.pricePerLiter, [3], ['price/l', 'price per liter', 'cena/l', 'cena na liter'])
+      ? sanePricePerLiter(numberFromRow(row, section.headers, map.pricePerLiter, [3, 4, 5], pricePerLiterHeaders))
       : null
     const fuelLiters = isFuelSection
-      ? numberFromRow(row, section.headers, map.liters, [5], ['liters', 'litres', 'litri', 'volume', 'volumen', 'quantity', 'kolicina'])
+      ? saneLiters(numberFromRow(row, section.headers, map.liters, [5, 4, 3], literHeaders))
       : null
     const calculatedLiters = fuelLiters === null && fuelAmount && fuelPricePerLiter
       ? Math.round((fuelAmount / fuelPricePerLiter) * 100) / 100
@@ -499,13 +507,13 @@ export default function UvozPodatkov() {
     return parsed.records.map((row) => {
       const kind: ImportKind = importType === 'service' ? 'service' : importType === 'expense' ? 'expense' : 'fuel'
       const csvAmount = kind === 'fuel'
-        ? numberFromRow(row, parsed.headers, mapping.amount, [], ['total', 'amount', 'cost', 'price', 'znesek', 'cena skupaj', 'skupaj', 'value', 'total cost', 'total price'])
+        ? saneAmount(numberFromRow(row, parsed.headers, mapping.amount, [], amountHeaders))
         : toNumber(row[mapping.amount])
       const csvLiters = kind === 'fuel'
-        ? numberFromRow(row, parsed.headers, mapping.liters, [], ['liters', 'litres', 'liter', 'litri', 'volume', 'volumen', 'quantity', 'kolicina', 'količina', 'amount of fuel'])
+        ? saneLiters(numberFromRow(row, parsed.headers, mapping.liters, [], literHeaders))
         : toNumber(row[mapping.liters])
       const csvPricePerLiter = kind === 'fuel'
-        ? numberFromRow(row, parsed.headers, mapping.pricePerLiter, [], ['price/l', 'priceperliter', 'price per liter', 'price per litre', 'cena/l', 'cena na liter', 'unit price'])
+        ? sanePricePerLiter(numberFromRow(row, parsed.headers, mapping.pricePerLiter, [], pricePerLiterHeaders))
         : toNumber(row[mapping.pricePerLiter])
       const finalLiters = kind === 'fuel' && csvLiters === null && csvAmount && csvPricePerLiter
         ? Number((csvAmount / csvPricePerLiter).toFixed(2))
