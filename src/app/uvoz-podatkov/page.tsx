@@ -134,12 +134,20 @@ const looksLikeDrivvoCsv = (csv: string) => {
 
 const toNumber = (value?: string) => {
   if (!value) return null
-  const cleaned = value
+  let cleaned = String(value)
     .replace(/\s/g, '')
-    .replace('EUR', '')
-    .replace('€', '')
-    .replace('$', '')
-    .replace(',', '.')
+    .replace(/EUR|USD|\u20ac|\$/gi, '')
+    .replace(/litrov|litri|liter|liters|litres|litra|ltr|lt|l\b/gi, '')
+    .replace(/[^\d,.-]/g, '')
+  const decimalComma = cleaned.lastIndexOf(',')
+  const decimalDot = cleaned.lastIndexOf('.')
+  if (decimalComma >= 0 && decimalDot >= 0) {
+    const decimalSeparator = decimalComma > decimalDot ? ',' : '.'
+    const thousandSeparator = decimalSeparator === ',' ? '.' : ','
+    cleaned = cleaned.replaceAll(thousandSeparator, '').replace(decimalSeparator, '.')
+  } else if (decimalComma >= 0) {
+    cleaned = cleaned.replace(',', '.')
+  }
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : null
 }
@@ -279,9 +287,9 @@ const autoMapping = (headers: string[]): Mapping => ({
   date: findHeader(headers, ['date', 'datum', 'time']),
   km: findHeader(headers, ['odometer', 'mileage', 'kilometer', 'kilometri', 'km', 'stevec']),
   description: findHeader(headers, ['description', 'opis', 'note', 'notes', 'service', 'title', 'razlog']),
-  amount: findHeader(headers, ['total', 'amount', 'cost', 'price', 'znesek', 'cena', 'value', 'skupni stroski']),
-  liters: findHeader(headers, ['liters', 'litres', 'liter', 'litri', 'volume', 'volumen']),
-  pricePerLiter: findHeader(headers, ['price/l', 'priceperliter', 'cena/l', 'cena na liter']),
+  amount: findHeader(headers, ['total', 'amount', 'cost', 'price', 'znesek', 'cena skupaj', 'skupaj', 'value', 'skupni stroski', 'total cost', 'total price']),
+  liters: findHeader(headers, ['liters', 'litres', 'liter', 'litri', 'volume', 'volumen', 'quantity', 'kolicina', 'amount of fuel']),
+  pricePerLiter: findHeader(headers, ['price/l', 'priceperliter', 'price per liter', 'price per litre', 'cena/l', 'cena na liter', 'unit price']),
   station: findHeader(headers, ['station', 'place', 'location', 'postaja', 'servis', 'workshop', 'bencinska crpalka']),
   category: findHeader(headers, ['category', 'type', 'kategorija', 'vrsta', 'vrsta stroska']),
   fuelType: findHeader(headers, ['fuel type', 'fuel', 'gorivo']),
@@ -490,15 +498,33 @@ export default function UvozPodatkov() {
 
     return parsed.records.map((row) => {
       const kind: ImportKind = importType === 'service' ? 'service' : importType === 'expense' ? 'expense' : 'fuel'
+      const csvAmount = kind === 'fuel'
+        ? numberFromRow(row, parsed.headers, mapping.amount, [], ['total', 'amount', 'cost', 'price', 'znesek', 'cena skupaj', 'skupaj', 'value', 'total cost', 'total price'])
+        : toNumber(row[mapping.amount])
+      const csvLiters = kind === 'fuel'
+        ? numberFromRow(row, parsed.headers, mapping.liters, [], ['liters', 'litres', 'liter', 'litri', 'volume', 'volumen', 'quantity', 'kolicina', 'količina', 'amount of fuel'])
+        : toNumber(row[mapping.liters])
+      const csvPricePerLiter = kind === 'fuel'
+        ? numberFromRow(row, parsed.headers, mapping.pricePerLiter, [], ['price/l', 'priceperliter', 'price per liter', 'price per litre', 'cena/l', 'cena na liter', 'unit price'])
+        : toNumber(row[mapping.pricePerLiter])
+      const finalLiters = kind === 'fuel' && csvLiters === null && csvAmount && csvPricePerLiter
+        ? Number((csvAmount / csvPricePerLiter).toFixed(2))
+        : csvLiters
+      const finalPricePerLiter = kind === 'fuel' && csvPricePerLiter === null && csvAmount && finalLiters
+        ? Number((csvAmount / finalLiters).toFixed(3))
+        : csvPricePerLiter
+      const finalAmount = kind === 'fuel' && csvAmount === null && finalLiters && finalPricePerLiter
+        ? Number((finalLiters * finalPricePerLiter).toFixed(2))
+        : csvAmount
       return {
         kind,
         source: 'CSV',
         date: parseDate(row[mapping.date]),
         km: toNumber(row[mapping.km]),
         description: row[mapping.description] || row[mapping.category] || tx('Uvoz iz druge aplikacije', 'Import from another app'),
-        amount: toNumber(row[mapping.amount]),
-        liters: toNumber(row[mapping.liters]),
-        pricePerLiter: toNumber(row[mapping.pricePerLiter]),
+        amount: finalAmount,
+        liters: finalLiters,
+        pricePerLiter: finalPricePerLiter,
         station: row[mapping.station] || '',
         category: row[mapping.category] || (importType === 'fuel' ? 'gorivo' : importType === 'service' ? 'servis' : 'uvoz'),
         fuelType: row[mapping.fuelType] || null,

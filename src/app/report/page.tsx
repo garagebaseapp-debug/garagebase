@@ -104,7 +104,7 @@ const maskPlate = (plate?: string) => {
 const pdfCopy = {
   sl: {
     subtitle: 'Servisna knjiga in evidenca vozila',
-    badge: 'VERIFICIRAN REPORT',
+    badge: 'GARAGEBASE REPORT',
     year: 'Letnik',
     plate: 'Tablica',
     fuel: 'Gorivo',
@@ -129,7 +129,7 @@ const pdfCopy = {
     attached: 'PRILOZENO',
     yes: 'DA',
     no: 'NE',
-    transferredNote: 'Zapisi oznaceni z [Prejsnji lastnik] so prenesena zgodovina. Novi vnosi trenutnega lastnika so brez te oznake.',
+    transferredNote: 'Uvozeni ali preneseni zapisi so loceni od zapisov, ki so nastali med uporabo GarageBase aplikacije.',
     qrRead: 'QR BRANJE: skeniraj za digitalni report iz GarageBase baze. Podatke primerjaj s PDF dokumentom. QR velja 30 dni.',
     qrImport: 'QR UVOZ ZGODOVINE: skeniraj za uvoz vozila in zgodovine v novo GarageBase garazo. Pred uvozom se prikaze potrditev. QR velja 30 dni.',
     serviceBook: 'Servisna knjiga',
@@ -142,12 +142,15 @@ const pdfCopy = {
     trustBasic: 'Basic',
     trustPhoto: 'Photo',
     trustStrong: 'Strong',
-    trustNote: 'Stopnje zaupanja: Basic = rocni vnos, Photo = vnos s sliko stevca, Strong = slika stevca + uradni dokument + casovni zig + zaklenjen zapis. GarageBase potrjuje transparentno zgodovino od trenutka uporabe aplikacije naprej.',
+    trustNote: 'Stopnje zaupanja: Basic = rocni vnos, Photo = vnos s sliko stevca, Strong = slika stevca + uradni dokument + casovni zig + zaklenjen zapis. GarageBase prikazuje sledljivost zapisov od trenutka uporabe aplikacije naprej.',
     receiptsNote: '[ DA ] = Slike racunov so prilozene v GarageBase aplikaciji. Za ogled originalnih racunov zahtevajte dostop pri prodajalcu vozila ali obiscite getgaragebase.com',
     fuelLog: 'Evidenca goriva',
     type: 'Tip',
     litersStation: 'Litri - Postaja',
     importedHistory: 'UVOZENA ZGODOVINA',
+    garageBaseHistory: 'VNOSI V GARAGEBASE',
+    historyOrderNote: 'Zapisi so razvrsceni od najnovejsih/najvecjih kilometrov na vrhu do najstarejsih/najnizjih kilometrov na dnu.',
+    importedDisclaimer: 'Uvozeni zapisi so prikazani po datumu in kilometrih, kot so bili prejeti iz uvoza ali prenosa. GarageBase ne jamci za pravilnost, popolnost ali zaporedje zgodovine pred uporabo aplikacije; za pravilnost vnesenih podatkov odgovarja uporabnik.',
     importedFrom: 'uvozeno iz',
     extraCosts: 'Dodatni stroski',
     category: 'Kategorija',
@@ -156,7 +159,7 @@ const pdfCopy = {
   },
   en: {
     subtitle: 'Service book and vehicle record',
-    badge: 'VERIFIED REPORT',
+    badge: 'GARAGEBASE REPORT',
     year: 'Year',
     plate: 'Plate',
     fuel: 'Fuel',
@@ -181,7 +184,7 @@ const pdfCopy = {
     attached: 'ATTACHED',
     yes: 'YES',
     no: 'NO',
-    transferredNote: 'Records marked with [Previous owner] are transferred history. New records from the current owner are not marked.',
+    transferredNote: 'Imported or transferred records are separated from records created while using the GarageBase app.',
     qrRead: 'QR READ: scan for the digital report from the GarageBase database. Compare the data with the PDF document. QR is valid for 30 days.',
     qrImport: 'QR HISTORY IMPORT: scan to import the vehicle and history into a new GarageBase garage. Confirmation is shown before import. QR is valid for 30 days.',
     serviceBook: 'Service book',
@@ -194,12 +197,15 @@ const pdfCopy = {
     trustBasic: 'Basic',
     trustPhoto: 'Photo',
     trustStrong: 'Strong',
-    trustNote: 'Trust levels: Basic = manual entry, Photo = odometer photo, Strong = odometer photo + official document + timestamp + locked record. GarageBase verifies transparent history from the moment the app is used onward.',
+    trustNote: 'Trust levels: Basic = manual entry, Photo = odometer photo, Strong = odometer photo + official document + timestamp + locked record. GarageBase shows record traceability from the moment the app is used onward.',
     receiptsNote: '[ YES ] = Receipt photos are attached in the GarageBase app. Ask the vehicle seller for access to view original receipts or visit getgaragebase.com',
     fuelLog: 'Fuel log',
     type: 'Type',
     litersStation: 'Liters - Station',
     importedHistory: 'IMPORTED HISTORY',
+    garageBaseHistory: 'GARAGEBASE ENTRIES',
+    historyOrderNote: 'Records are sorted from the newest/highest mileage at the top to the oldest/lowest mileage at the bottom.',
+    importedDisclaimer: 'Imported records are shown by date and mileage as received from import or transfer. GarageBase does not guarantee correctness, completeness, or sequence of history before the app was used; the user is responsible for entered data.',
     importedFrom: 'imported from',
     extraCosts: 'Additional costs',
     category: 'Category',
@@ -212,11 +218,11 @@ const reportKm = (row: any) => Number(row?.km ?? row?.kilometri ?? row?.km_trenu
 
 const sortReportRows = (rows: any[] = []) =>
   [...(rows || [])].sort((a, b) => {
-    const kmDiff = reportKm(a) - reportKm(b)
+    const kmDiff = reportKm(b) - reportKm(a)
     if (kmDiff !== 0) return kmDiff
     const dateA = new Date(a?.datum || a?.created_at || 0).getTime() || 0
     const dateB = new Date(b?.datum || b?.created_at || 0).getTime() || 0
-    return dateA - dateB
+    return dateB - dateA
   })
 
 const cleanReportText = (value?: string | null) =>
@@ -224,6 +230,11 @@ const cleanReportText = (value?: string | null) =>
     .replace(/\s*\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)[^\]]*\]/gi, '')
     .replace(/\s+/g, ' ')
     .trim()
+
+const isImportedReportRow = (row: any) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
+  return Boolean(row?.import_batch_id || row?.source_owner_label || /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText))
+}
 
 const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: any) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
@@ -241,7 +252,16 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const skupajLitrov = sortedGorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = sortedServisi.some((s: any) => s.foto_url) || sortedGorivo.some((g: any) => g.receipt_url) || sortedExpenses.some((e: any) => e.receipt_url)
-  const imaPrenesene = sortedServisi.some((v: any) => v.opis?.includes('[Prejsnji lastnik]')) || sortedGorivo.some((v: any) => v.postaja?.includes('[Prejsnji lastnik]')) || sortedExpenses.some((v: any) => v.opis?.includes('[Prejsnji lastnik]'))
+  const imaPrenesene = [...sortedServisi, ...sortedGorivo, ...sortedExpenses].some(isImportedReportRow)
+  const historyDivider = (rows: any[], row: any, index: number) => {
+    const imported = isImportedReportRow(row)
+    if (index > 0 && isImportedReportRow(rows[index - 1]) === imported) return null
+    return (
+      <View style={styles.ownerDivider}>
+        <Text style={styles.ownerDividerText}>{imported ? copy.importedHistory : copy.garageBaseHistory}</Text>
+      </View>
+    )
+  }
   const trustLabel = (row: any) => {
     if (row.verification_level === 'strong') return copy.trustStrong
     if (row.verification_level === 'photo') return copy.trustPhoto
@@ -340,6 +360,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
           </View>
           {avto.prenos_opomba && <Text style={styles.opomba}>{avto.prenos_opomba}</Text>}
           {imaPrenesene && <Text style={styles.opomba}>{copy.transferredNote}</Text>}
+          {imaPrenesene && <Text style={styles.opomba}>{copy.importedDisclaimer}</Text>}
           {verifyQr && (
             <View style={styles.qrBox}>
               <Image src={verifyQr} style={styles.qrImage} />
@@ -375,6 +396,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {sortedServisi.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.serviceBook}</Text>
+            <Text style={styles.opomba}>{copy.historyOrderNote}</Text>
             <View style={styles.tableHeader}>
               <Text style={styles.sDateH}>{copy.date}</Text>
               <Text style={styles.sKmH}>{unitLabel}</Text>
@@ -384,13 +406,16 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.sTrustH}>{copy.trust}</Text>
             </View>
             {sortedServisi.map((s: any, i: number) => (
-              <View key={s.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.sKm}>{distance(s.km)}</Text>
-                <Text style={styles.sOpis}>{cleanReportText(s.opis).substring(0, 55)}{cleanReportText(s.servis) ? ` (${cleanReportText(s.servis)})` : ''}</Text>
-                <Text style={styles.sCena}>{money(s.cena)}</Text>
-                <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
-                <Text style={styles.sTrust}>{trustLabel(s)}</Text>
+              <View key={s.id || `service-${i}`}>
+                {historyDivider(sortedServisi, s, i)}
+                <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.sKm}>{distance(s.km)}</Text>
+                  <Text style={styles.sOpis}>{cleanReportText(s.opis).substring(0, 55)}{cleanReportText(s.servis) ? ` (${cleanReportText(s.servis)})` : ''}</Text>
+                  <Text style={styles.sCena}>{money(s.cena)}</Text>
+                  <Text style={styles.sRacun}>{s.foto_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                  <Text style={styles.sTrust}>{trustLabel(s)}</Text>
+                </View>
               </View>
             ))}
             {imaPrivonke && (
@@ -406,6 +431,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {sortedGorivo.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.fuelLog}</Text>
+            <Text style={styles.opomba}>{copy.historyOrderNote}</Text>
             <View style={styles.tableHeader}>
               <Text style={styles.gDateH}>{copy.date}</Text>
               <Text style={styles.gKmH}>{unitLabel}</Text>
@@ -416,16 +442,19 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.gTrustH}>{copy.trust}</Text>
             </View>
             {sortedGorivo.map((g: any, i: number) => (
-              <View key={g.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.gKm}>{distance(g.km)}</Text>
-                <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
+              <View key={g.id || `fuel-${i}`}>
+                {historyDivider(sortedGorivo, g, i)}
+                <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.gKm}>{distance(g.km)}</Text>
+                  <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
 </Text>
-                <Text style={styles.gOpis}>{g.litri} L{cleanReportText(g.postaja) ? ` - ${cleanReportText(g.postaja)}` : ''}</Text>
-                <Text style={styles.gCena}>{money(g.cena_skupaj)}</Text>
-                <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
-                <Text style={styles.gTrust}>{trustLabel(g)}</Text>
+                  <Text style={styles.gOpis}>{g.litri} L{cleanReportText(g.postaja) ? ` - ${cleanReportText(g.postaja)}` : ''}</Text>
+                  <Text style={styles.gCena}>{money(g.cena_skupaj)}</Text>
+                  <Text style={styles.gRacun}>{g.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                  <Text style={styles.gTrust}>{trustLabel(g)}</Text>
+                </View>
               </View>
             ))}
             <Text style={styles.opomba}>{copy.trustNote}</Text>
@@ -436,6 +465,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
         {sortedExpenses.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>{copy.extraCosts}</Text>
+            <Text style={styles.opomba}>{copy.historyOrderNote}</Text>
             <View style={styles.tableHeader}>
               <Text style={styles.eDateH}>{copy.date}</Text>
               <Text style={styles.eKatH}>{copy.category}</Text>
@@ -445,13 +475,16 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.eTrustH}>{copy.trust}</Text>
             </View>
             {sortedExpenses.map((e: any, i: number) => (
-              <View key={e.id} style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString(locale)}</Text>
-                <Text style={styles.eKat}>{cleanReportText(e.kategorija) || '-'}</Text>
-                <Text style={styles.eOpis}>{cleanReportText(e.opis) || '-'}</Text>
-                <Text style={styles.eCena}>{money(e.znesek)}</Text>
-                <Text style={styles.eRacun}>{e.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
-                <Text style={styles.eTrust}>{trustLabel(e)}</Text>
+              <View key={e.id || `expense-${i}`}>
+                {historyDivider(sortedExpenses, e, i)}
+                <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+                  <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.eKat}>{cleanReportText(e.kategorija) || '-'}</Text>
+                  <Text style={styles.eOpis}>{cleanReportText(e.opis) || '-'}</Text>
+                  <Text style={styles.eCena}>{money(e.znesek)}</Text>
+                  <Text style={styles.eRacun}>{e.receipt_url ? `[ ${copy.yes} ]` : '-'}</Text>
+                  <Text style={styles.eTrust}>{trustLabel(e)}</Text>
+                </View>
               </View>
             ))}
             <Text style={styles.opomba}>{copy.trustNote}</Text>
