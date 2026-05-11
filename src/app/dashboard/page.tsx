@@ -6,6 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats } from '@/lib/vehicle-costs'
+import { ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 type ConsumptionBreakdown = {
   garageBase: number | null
@@ -213,6 +214,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const init = async () => {
+      ensureVehicleStatsCacheVersion(VEHICLE_STATS_CACHE_VERSION)
       let jeLite = false
       const settingsRaw = localStorage.getItem('garagebase_nastavitve')
       if (settingsRaw) {

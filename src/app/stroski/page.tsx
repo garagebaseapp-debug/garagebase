@@ -7,7 +7,7 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSe
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { buildCostSummary as buildSharedCostSummary } from '@/lib/vehicle-costs'
-import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
 const STROSKI_BUILD = 'stroski-2026-05-11-2035'
@@ -113,6 +113,7 @@ export default function Stroski() {
 
   useEffect(() => {
     const init = async () => {
+      ensureVehicleStatsCacheVersion(VEHICLE_STATS_CACHE_VERSION)
       setValuta(getCurrencyFromSettings())
       setEnotaRazdalje(getDistanceUnitFromSettings())
       const params = new URLSearchParams(window.location.search)
@@ -560,7 +561,7 @@ export default function Stroski() {
         </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
-          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · state: {gorivo.length}/{servisi.length}/{expenses.length} · snap: {loadedRows.gorivo.length}/{loadedRows.servisi.length}/{loadedRows.expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · sum: {loadedSummary.fuel.toFixed(2)} / {loadedSummary.service.toFixed(2)} / {loadedSummary.expense.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {debugSource}
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · {tx('stanje', 'state')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('posnetek', 'snapshot')}: {loadedRows.gorivo.length}/{loadedRows.servisi.length}/{loadedRows.expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · {tx('vsota', 'sum')}: {loadedSummary.fuel.toFixed(2)} / {loadedSummary.service.toFixed(2)} / {loadedSummary.expense.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {debugSource}
         </p>
       </div>
 
