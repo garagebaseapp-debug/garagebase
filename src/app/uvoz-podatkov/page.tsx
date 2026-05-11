@@ -126,6 +126,11 @@ const firstCsvLine = (csv: string) =>
 const looksLikeDrivvoCsv = (csv: string) => {
   const first = cleanCsvMarker(firstCsvLine(csv))
   if (first.startsWith('##')) return true
+  const firstValues = splitCsvLine(first, detectSeparator(first))
+  const firstLooksLikeKm = /^\d+(?:[,.]\d+)?$/.test(firstValues[0] || '')
+  const secondLooksLikeDate = /^\d{4}-\d{1,2}-\d{1,2}/.test(firstValues[1] || '')
+  const thirdLooksLikeFuel = ['bencin', 'diesel', 'dizel', 'petrol', 'gasoline', 'fuel'].some(value => normalizeText(firstValues[2] || '').includes(value))
+  if (firstLooksLikeKm && secondLooksLikeDate && thirdLooksLikeFuel) return true
   const firstBlock = csv.split(/\r?\n/).slice(0, 4).join(' ')
   const normalized = normalizeText(firstBlock)
   return normalized.includes('refuelling') ||
