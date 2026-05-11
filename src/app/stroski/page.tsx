@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1630'
+const STROSKI_BUILD = 'stroski-2026-05-11-1645'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -56,6 +56,12 @@ const splitRowsBySource = (rows: any[]) => {
   return { imported, garageBase }
 }
 
+const costValueFor = (row: any) => {
+  if (row?._tip === 'gorivo') return numericValue(row.cena_skupaj)
+  if (row?._tip === 'servis') return numericValue(row.cena)
+  return numericValue(row?.znesek)
+}
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
@@ -66,6 +72,7 @@ export default function Stroski() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'vse' | 'gorivo' | 'servis' | 'ostalo'>('vse')
   const [grafTip, setGrafTip] = useState<'stolpci' | 'crta' | 'kolac' | 'kategorije'>('stolpci')
+  const [grafObdobje, setGrafObdobje] = useState<'6m' | '12m'>('6m')
   const [uredi, setUredi] = useState<string | null>(null)
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
@@ -173,12 +180,31 @@ export default function Stroski() {
         }
       }
       localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
+      const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0)
+      const localServiceCost = servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
+      const localExpenseCost = expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
+      const localFuelLiters = gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0)
+      const hasLocalRows = gorivoData.length > 0 || servisData.length > 0 || expensesData.length > 0
+      const cacheRows = [
+        ...gorivoData.map((row: any) => ({ ...row, _tip: 'gorivo' })),
+        ...servisData.map((row: any) => ({ ...row, _tip: 'servis' })),
+        ...expensesData.map((row: any) => ({ ...row, _tip: 'ostalo' })),
+      ]
+      const cacheSplit = splitRowsBySource(cacheRows)
+      const cacheImported = cacheSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
+      const cacheTotal = localFuelCost + localServiceCost + localExpenseCost
       localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
-        fuelCost: nextServerStats ? numericValue(nextServerStats.costs?.fuel) : gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0),
-        serviceCost: nextServerStats ? numericValue(nextServerStats.costs?.service) : servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0),
-        expenseCost: nextServerStats ? numericValue(nextServerStats.costs?.expense) : expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0),
-        fuelLiters: nextServerStats ? numericValue(nextServerStats.liters) : gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0),
-        fuelRows: nextServerStats ? numericValue(nextServerStats.rows?.fuel) : gorivoData.length,
+        fuelCost: hasLocalRows ? localFuelCost : numericValue(nextServerStats?.costs?.fuel),
+        serviceCost: hasLocalRows ? localServiceCost : numericValue(nextServerStats?.costs?.service),
+        expenseCost: hasLocalRows ? localExpenseCost : numericValue(nextServerStats?.costs?.expense),
+        fuelLiters: hasLocalRows ? localFuelLiters : numericValue(nextServerStats?.liters),
+        fuelRows: hasLocalRows ? gorivoData.length : numericValue(nextServerStats?.rows?.fuel),
+        costs: {
+          garageBase: hasLocalRows ? Math.max(0, cacheTotal - cacheImported) : numericValue(nextServerStats?.costs?.garageBase),
+          imported: hasLocalRows ? cacheImported : numericValue(nextServerStats?.costs?.imported),
+          total: hasLocalRows ? cacheTotal : numericValue(nextServerStats?.costs?.total),
+          naKm: null,
+        },
         savedAt: Date.now(),
       }))
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
@@ -200,22 +226,26 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const lokalnoSkupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
-  const lokalnoSkupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
-  const lokalnoSkupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
-  const splitGorivo = splitRowsBySource(gorivo)
-  const splitServisi = splitRowsBySource(servisi)
-  const splitExpenses = splitRowsBySource(expenses)
-  const lokalnoImportedGorivo = splitGorivo.imported.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
-  const lokalnoImportedServis = splitServisi.imported.reduce((sum, v) => sum + numericValue(v.cena), 0)
-  const lokalnoImportedExpenses = splitExpenses.imported.reduce((sum, v) => sum + numericValue(v.znesek), 0)
-  const lokalnoImported = lokalnoImportedGorivo + lokalnoImportedServis + lokalnoImportedExpenses
-  const lokalnoGarageBase = (lokalnoSkupajGorivo + lokalnoSkupajServis + lokalnoSkupajExpenses) - lokalnoImported
-  const lokalnoTotal = lokalnoSkupajGorivo + lokalnoSkupajServis + lokalnoSkupajExpenses
-  const useServerStats = statsHasData(serverStats) && lokalnoTotal === 0
-  const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : lokalnoSkupajGorivo
-  const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : lokalnoSkupajServis
-  const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : lokalnoSkupajExpenses
+  const allCostRows = [
+    ...gorivo.map(v => ({ ...v, _tip: 'gorivo' })),
+    ...servisi.map(v => ({ ...v, _tip: 'servis' })),
+    ...expenses.map(v => ({ ...v, _tip: 'ostalo' })),
+  ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
+  const localTotals = allCostRows.reduce((totals, row) => {
+    const value = costValueFor(row)
+    if (row._tip === 'gorivo') totals.gorivo += value
+    else if (row._tip === 'servis') totals.servis += value
+    else totals.expenses += value
+    return totals
+  }, { gorivo: 0, servis: 0, expenses: 0 })
+  const splitAllCosts = splitRowsBySource(allCostRows)
+  const lokalnoImported = splitAllCosts.imported.reduce((sum, row) => sum + costValueFor(row), 0)
+  const lokalnoTotal = localTotals.gorivo + localTotals.servis + localTotals.expenses
+  const lokalnoGarageBase = Math.max(0, lokalnoTotal - lokalnoImported)
+  const useServerStats = statsHasData(serverStats) && allCostRows.length === 0
+  const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : localTotals.gorivo
+  const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : localTotals.servis
+  const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : localTotals.expenses
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const skupajUvoz = useServerStats ? numericValue(serverStats.costs?.imported) : lokalnoImported
   const skupajGarageBase = useServerStats ? numericValue(serverStats.costs?.garageBase) : lokalnoGarageBase
@@ -234,7 +264,8 @@ export default function Stroski() {
   const grafMeseci = () => {
     const meseci: { kljuc: string, label: string, gorivo: number, servis: number, ostalo: number }[] = []
     const danes = new Date()
-    for (let i = 5; i >= 0; i--) {
+    const stMesecev = grafObdobje === '12m' ? 12 : 6
+    for (let i = stMesecev - 1; i >= 0; i--) {
       const d = new Date(danes.getFullYear(), danes.getMonth() - i, 1)
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
@@ -434,11 +465,7 @@ export default function Stroski() {
     setSaving(false)
   }
 
-  const vsiVnosi = [
-    ...gorivo.map(v => ({ ...v, _tip: 'gorivo' })),
-    ...servisi.map(v => ({ ...v, _tip: 'servis' })),
-    ...expenses.map(v => ({ ...v, _tip: 'ostalo' })),
-  ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
+  const vsiVnosi = allCostRows
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
   const vidniVnosi = filtrirani.slice(0, visibleCostCount)
@@ -492,13 +519,23 @@ export default function Stroski() {
               ? tx('Razmerje stroskov', 'Cost split')
               : grafTip === 'kategorije'
                 ? tx('Trend po rubrikah', 'Category trend')
-                : tx('Zadnjih 6 mesecev', 'Last 6 months')}
+                : grafObdobje === '12m'
+                  ? tx('Zadnjih 12 mesecev', 'Last 12 months')
+                  : tx('Zadnjih 6 mesecev', 'Last 6 months')}
           </p>
+          <div className="flex flex-wrap justify-end gap-2">
+          {grafTip !== 'kolac' && (
+          <div className="flex gap-1 bg-[#13131f] rounded-xl p-1">
+            <button onClick={() => setGrafObdobje('6m')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafObdobje === '6m' ? 'bg-[#3ecfcf] text-black' : 'text-[#5a5a80] hover:text-white'}`}>6M</button>
+            <button onClick={() => setGrafObdobje('12m')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafObdobje === '12m' ? 'bg-[#3ecfcf] text-black' : 'text-[#5a5a80] hover:text-white'}`}>{tx('1L', '1Y')}</button>
+          </div>
+          )}
           <div className="flex gap-1 bg-[#13131f] rounded-xl p-1">
             <button onClick={() => setGrafTip('stolpci')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'stolpci' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>▌▌▌</button>
             <button onClick={() => setGrafTip('crta')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'crta' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>╱╱</button>
             <button onClick={() => setGrafTip('kategorije')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'kategorije' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>3L</button>
             <button onClick={() => setGrafTip('kolac')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafTip === 'kolac' ? 'bg-[#6c63ff] text-white' : 'text-[#5a5a80] hover:text-white'}`}>◉</button>
+          </div>
           </div>
         </div>
         {grafTip === 'stolpci' && <GrafStolpci />}

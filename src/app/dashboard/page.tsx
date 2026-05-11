@@ -396,8 +396,17 @@ export default function Dashboard() {
     if (cachedStats) {
       try {
         const parsed = JSON.parse(cachedStats)
-        const cachedCostTotal = numberValue(parsed.fuelCost) + numberValue(parsed.serviceCost) + numberValue(parsed.expenseCost)
-        if (cachedCostTotal > 0) setStroski({ garageBase: cachedCostTotal, imported: 0, total: cachedCostTotal, naKm: null })
+        if (parsed.costs && numberValue(parsed.costs.total) > 0) {
+          setStroski({
+            garageBase: numberValue(parsed.costs.garageBase),
+            imported: numberValue(parsed.costs.imported),
+            total: numberValue(parsed.costs.total),
+            naKm: parsed.costs.naKm ?? null,
+          })
+        } else {
+          const cachedCostTotal = numberValue(parsed.fuelCost) + numberValue(parsed.serviceCost) + numberValue(parsed.expenseCost)
+          if (cachedCostTotal > 0) setStroski({ garageBase: cachedCostTotal, imported: 0, total: cachedCostTotal, naKm: null })
+        }
       } catch {}
     }
 
@@ -716,7 +725,7 @@ export default function Dashboard() {
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
                     </div>
-                    <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+                    <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Poraba', 'Consumption')}</p>
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -732,8 +741,8 @@ export default function Dashboard() {
                           <span className="text-[#bbf7d0] font-semibold">{consumptionText(poraba.imported)}</span>
                         </div>
                       </div>
-                    </div>
-                    <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
+                    </button>
+                    <button onClick={() => window.location.href = '/stroski?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#6c63ff] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski', 'Costs')}</p>
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -749,7 +758,7 @@ export default function Dashboard() {
                           <span className="text-[#bbf7d0] font-semibold">{stroski.imported > 0 ? formatMoney(stroski.imported, valuta) : '-'}</span>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   </div>
                   <p className="text-[#5a5a80] text-[10px]">
                     {DASHBOARD_BUILD} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
@@ -818,7 +827,7 @@ export default function Dashboard() {
                 )}
 
                 {hasConsumptionBreakdown && (
-                  <div className="mx-5 mb-4 grid grid-cols-1 gap-3">
+                  <div onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`} className="mx-5 mb-4 grid grid-cols-1 gap-3 cursor-pointer">
                     {poraba.total !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
                         <p className="text-[#3ecfcf] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
@@ -842,7 +851,7 @@ export default function Dashboard() {
 
                 {/* Kalkulator stroškov €/km */}
                 {hasCostBreakdown && (
-                  <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
+                  <div onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`} className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4 cursor-pointer">
                     <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski vozila', 'Vehicle costs')}</p>
                     <div className="flex justify-between items-center">
                       <div>

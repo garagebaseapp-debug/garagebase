@@ -706,6 +706,12 @@ export default function VnosGoriva() {
           </div>
         )}
 
+        <div className="rounded-xl border border-[#f59e0b44] bg-[#f59e0b12] p-3">
+          <p className="text-[#fbbf24] text-xs leading-relaxed">
+            {tx('Pozor: po shranjevanju je ročno tankanje mogoče urejati samo 24 ur. Potem se vnos zaklene zaradi sledljivosti zgodovine.', 'Note: after saving, a manual fill-up can be edited for 24 hours only. After that it is locked to keep the history traceable.')}
+          </p>
+        </div>
+
         <button
           onClick={shrani}
           disabled={loading || !kmReady}

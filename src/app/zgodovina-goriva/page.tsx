@@ -142,7 +142,7 @@ export default function ZgodovinaGoriva() {
   const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && Number(vnos.litri || 0) === 0 && Number(vnos.cena_skupaj || 0) === 0
   const displayedImportBuckets = importBuckets(vnosi)
   const jeUvozen = (vnos: any) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
-  const editable = (vnos: any) => jeUvozen(vnos) || Boolean(preostaliCas(vnos.created_at))
+  const editable = (vnos: any) => Boolean(preostaliCas(vnos.created_at))
 
   const refreshVnosi = async () => {
     const [gorivoRes, summaryRes] = await Promise.all([
