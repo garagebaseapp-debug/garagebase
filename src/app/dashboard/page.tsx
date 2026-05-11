@@ -36,6 +36,20 @@ const isImportedDashboardRow = (row: any) => {
   )
 }
 
+const importedConsumptionValue = (row: any) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
+  const match = rawText.match(/(?:Poraba|Consumption|Efficiency)\s*:\s*([0-9]+(?:[,.][0-9]+)?)/i)
+  if (!match) return null
+  const parsed = Number(match[1].replace(',', '.'))
+  return Number.isFinite(parsed) && parsed > 0 && parsed < 100 ? parsed : null
+}
+
+const averageKnownConsumption = (rows: any[]) => {
+  const values = rows.map(importedConsumptionValue).filter((value): value is number => value !== null)
+  if (values.length === 0) return null
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
 const averageConsumption = (rows: any[]) => {
   const sorted = rows
     .filter((row) => numberValue(row.km) > 0 && numberValue(row.litri) > 0)
@@ -54,6 +68,8 @@ const averageConsumption = (rows: any[]) => {
 
   return distance > 0 ? (liters / distance) * 100 : null
 }
+
+const dashboardConsumption = (rows: any[]) => averageConsumption(rows) ?? averageKnownConsumption(rows)
 
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
@@ -244,9 +260,9 @@ export default function Dashboard() {
     const importedFuel = gorivoData.filter(isImportedDashboardRow)
     const garageBaseFuel = gorivoData.filter((row: any) => !isImportedDashboardRow(row))
     const nextPoraba = {
-      garageBase: averageConsumption(garageBaseFuel),
-      imported: averageConsumption(importedFuel),
-      total: averageConsumption(gorivoData),
+      garageBase: dashboardConsumption(garageBaseFuel),
+      imported: dashboardConsumption(importedFuel),
+      total: dashboardConsumption(gorivoData),
     }
     setPoraba(nextPoraba)
 

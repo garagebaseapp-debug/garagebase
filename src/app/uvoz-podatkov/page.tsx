@@ -741,6 +741,7 @@ export default function UvozPodatkov() {
       const inserted = insertedByType.fuel + insertedByType.service + insertedByType.expense
       trackEvent('external_import_saved', { rows: inserted, skipped, importType, source: isDrivvo ? 'drivvo' : 'generic', insertedByType })
       localStorage.removeItem('garagebase_garaza_cache')
+      localStorage.removeItem(`garagebase_dashboard_cache_${carId}`)
       localStorage.removeItem(`garagebase_stroski_cache_${carId}`)
       localStorage.removeItem('garagebase_stroski_garaza_cache')
       setLastImportCounts(insertedByType)
