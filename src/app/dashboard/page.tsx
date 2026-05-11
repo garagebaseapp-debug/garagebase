@@ -197,16 +197,16 @@ export default function Dashboard() {
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       supabase
         .from('fuel_logs')
-        .select('km,litri,cena_skupaj,postaja,source_owner_label,import_batch_id')
+        .select('km,litri,cena_skupaj,postaja')
         .eq('car_id', carId)
         .order('km', { ascending: true }),
       supabase
         .from('service_logs')
-        .select('cena,opis,source_owner_label,import_batch_id')
+        .select('cena,opis')
         .eq('car_id', carId),
       supabase
         .from('expenses')
-        .select('znesek,kategorija,opis,source_owner_label,import_batch_id')
+        .select('znesek,kategorija,opis')
         .eq('car_id', carId),
     ])
 
