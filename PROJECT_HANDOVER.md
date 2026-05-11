@@ -91,6 +91,7 @@ Te datoteke je treba zagnati v Supabase SQL Editorju, ce se projekt seli na novo
 - `SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql`
 - `SUPABASE_MIGRACIJA_ZAUPANJE_PRENOS.sql`
 - `SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql`
+- `SUPABASE_MIGRACIJA_RLS_OSNOVNI_PODATKI.sql`
 
 Priporocilo: ob vecjem lansiranju naredi eno zdruzeno migracijo ali urejen migracijski sistem.
 
@@ -228,4 +229,3 @@ Predlog teksta:
 ```text
 V obdobju lansiranja so funkcije GarageBase odklenjene brez doplacila do 31. 12. 2026, v okviru postene uporabe. GarageBase lahko zaradi varnosti, zlorab ali izjemno visoke porabe uvede tehnicne omejitve. O morebitnih paketih in cenah bomo uporabnike obvestili vnaprej.
 ```
-

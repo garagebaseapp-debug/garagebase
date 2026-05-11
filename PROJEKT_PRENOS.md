@@ -109,6 +109,7 @@ git push
 - `public/sw.js` - service worker za PWA/push
 - `public/manifest.json` - PWA manifest
 - `vercel.json` - Vercel cron nastavitev
+- `SUPABASE_MIGRACIJA_RLS_OSNOVNI_PODATKI.sql` - RLS pravila za osnovne uporabniske podatke
 
 ## Kaj mora biti shranjeno v password managerju
 
