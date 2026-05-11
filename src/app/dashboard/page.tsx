@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2115'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2210'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -336,7 +336,7 @@ export default function Dashboard() {
           cache: 'no-store',
         })
         const payload = await response.json()
-        if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
+        if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
           const stats = payload.stats
           const nextPoraba = {
             garageBase: stats.consumption?.garageBase ?? null,
@@ -361,9 +361,21 @@ export default function Dashboard() {
             costs: nextStroski,
             savedAt: Date.now(),
           }))
+          setDebugStats({
+            fuel: numberValue(stats.rows?.fuel),
+            service: numberValue(stats.rows?.service),
+            expense: numberValue(stats.rows?.expense),
+            liters: numberValue(stats.liters),
+            cost: numberValue(stats.costs?.total),
+          })
+          setDebugStatsSource(`api:${payload.source || 'stats'}`)
+          setPoraba(nextPoraba)
+          setStroski(nextStroski)
+          return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
+        } else {
+          source = `api-empty:${payload?.error || 'no-values'}`
+          console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
         }
-        source = `api-empty:${payload?.error || 'no-values'}`
-        console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
       } catch (error) {
         source = 'api-error'
         console.warn('[GarageBase dashboard] server statistics unavailable', error)

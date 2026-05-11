@@ -7,7 +7,7 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function GET(req: NextRequest) {
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !anonKey) {
     return NextResponse.json(
       { ok: false, error: 'missing_supabase_config' },
       { status: 500 }
@@ -25,20 +25,24 @@ export async function GET(req: NextRequest) {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false },
   })
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  })
+  const canUseServiceRole = Boolean(serviceRoleKey && serviceRoleKey.trim().length > 20)
+  const dataClient = canUseServiceRole
+    ? createClient(supabaseUrl, serviceRoleKey as string, { auth: { persistSession: false } })
+    : userClient
 
   const { data: userData, error: userError } = await userClient.auth.getUser()
   if (userError || !userData.user) {
     return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 })
   }
 
-  const { data: car, error: carError } = await admin
+  const carQuery = dataClient
     .from('cars')
     .select('id,user_id,km_trenutni,km_ob_vnosu')
     .eq('id', carId)
-    .eq('user_id', userData.user.id)
+
+  if (canUseServiceRole) carQuery.eq('user_id', userData.user.id)
+
+  const { data: car, error: carError } = await carQuery
     .maybeSingle()
 
   if (carError) {
@@ -49,9 +53,9 @@ export async function GET(req: NextRequest) {
   }
 
   const [fuelRes, serviceRes, expenseRes] = await Promise.all([
-    admin.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
-    admin.from('service_logs').select('*').eq('car_id', carId),
-    admin.from('expenses').select('*').eq('car_id', carId),
+    dataClient.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: true }),
+    dataClient.from('service_logs').select('*').eq('car_id', carId),
+    dataClient.from('expenses').select('*').eq('car_id', carId),
   ])
 
   if (fuelRes.error || serviceRes.error || expenseRes.error) {
@@ -70,6 +74,7 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
+    source: canUseServiceRole ? 'service-role' : 'user-rls',
     stats: buildVehicleStats(fuelRows, serviceRows, expenseRows, car),
   })
 }

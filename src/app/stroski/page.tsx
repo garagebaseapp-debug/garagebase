@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-2115'
+const STROSKI_BUILD = 'stroski-2026-05-11-2210'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -225,7 +225,7 @@ export default function Stroski() {
             cache: 'no-store',
           })
           const payload = await response.json()
-          if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
+          if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
             nextServerStats = payload.stats
             setServerStats(nextServerStats)
           } else {
