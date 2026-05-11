@@ -27,6 +27,34 @@ const statsHasData = (stats: any) => {
   return rowCount > 0 || costTotal > 0
 }
 
+const isImportedCostRow = (row: any) => {
+  const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.servis || ''} ${row?.kategorija || ''}`
+  return Boolean(
+    row?.import_batch_id ||
+    row?.source_owner_label ||
+    /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText)
+  )
+}
+
+const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  if (key) buckets[key] = (buckets[key] || 0) + 1
+  return buckets
+}, {})
+
+const splitRowsBySource = (rows: any[]) => {
+  const buckets = importBuckets(rows)
+  const imported: any[] = []
+  const garageBase: any[] = []
+  rows.forEach((row) => {
+    const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+    const looksLikeBulkImport = key && (buckets[key] || 0) >= 3
+    if (isImportedCostRow(row) || looksLikeBulkImport) imported.push(row)
+    else garageBase.push(row)
+  })
+  return { imported, garageBase }
+}
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
@@ -165,11 +193,25 @@ export default function Stroski() {
   const lokalnoSkupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
   const lokalnoSkupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
   const lokalnoSkupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
-  const useServerStats = statsHasData(serverStats)
+  const splitGorivo = splitRowsBySource(gorivo)
+  const splitServisi = splitRowsBySource(servisi)
+  const splitExpenses = splitRowsBySource(expenses)
+  const lokalnoImportedGorivo = splitGorivo.imported.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
+  const lokalnoImportedServis = splitServisi.imported.reduce((sum, v) => sum + numericValue(v.cena), 0)
+  const lokalnoImportedExpenses = splitExpenses.imported.reduce((sum, v) => sum + numericValue(v.znesek), 0)
+  const lokalnoImported = lokalnoImportedGorivo + lokalnoImportedServis + lokalnoImportedExpenses
+  const lokalnoGarageBase = (lokalnoSkupajGorivo + lokalnoSkupajServis + lokalnoSkupajExpenses) - lokalnoImported
+  const lokalnoTotal = lokalnoSkupajGorivo + lokalnoSkupajServis + lokalnoSkupajExpenses
+  const useServerStats = statsHasData(serverStats) && lokalnoTotal === 0
   const skupajGorivo = useServerStats ? numericValue(serverStats.costs?.fuel) : lokalnoSkupajGorivo
   const skupajServis = useServerStats ? numericValue(serverStats.costs?.service) : lokalnoSkupajServis
   const skupajExpenses = useServerStats ? numericValue(serverStats.costs?.expense) : lokalnoSkupajExpenses
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
+  const skupajUvoz = useServerStats ? numericValue(serverStats.costs?.imported) : lokalnoImported
+  const skupajGarageBase = useServerStats ? numericValue(serverStats.costs?.garageBase) : lokalnoGarageBase
+  const stGorivo = useServerStats ? numericValue(serverStats.rows?.fuel) : gorivo.length
+  const stServis = useServerStats ? numericValue(serverStats.rows?.service) : servisi.length
+  const stOstalo = useServerStats ? numericValue(serverStats.rows?.expense) : expenses.length
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
@@ -417,6 +459,16 @@ export default function Stroski() {
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
         <p className="text-white font-bold text-4xl mb-1">{formatMoney(skupajVse, valuta)}</p>
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff0d] p-3">
+            <p className="text-[#a09aff] text-[11px] font-bold uppercase tracking-wide">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
+            <p className="text-[#c8c4ff] text-lg font-semibold mt-1">{formatMoney(skupajGarageBase, valuta)}</p>
+          </div>
+          <div className="rounded-xl border border-[#22c55e33] bg-[#22c55e0d] p-3">
+            <p className="text-[#86efac] text-[11px] font-bold uppercase tracking-wide">{tx('Uvozena zgodovina', 'Imported history')}</p>
+            <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(skupajUvoz, valuta)}</p>
+          </div>
+        </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
           {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)}
@@ -457,19 +509,19 @@ export default function Stroski() {
           <p className="text-2xl mb-2">⛽</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-[#5a5a80]'}`}>{tx('Gorivo', 'Fuel')}</p>
           <p className={`font-bold text-lg ${filter === 'gorivo' ? 'text-[#3ecfcf]' : 'text-white'}`}>{skupajGorivo.toFixed(0)} {znakValute}</p>
-          <p className="text-[#5a5a80] text-xs">{gorivo.length}x</p>
+          <p className="text-[#5a5a80] text-xs">{stGorivo}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'servis' ? 'vse' : 'servis')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'servis' ? 'bg-[#f59e0b22] border-[#f59e0b66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">🔧</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-[#5a5a80]'}`}>{tx('Servisi', 'Services')}</p>
           <p className={`font-bold text-lg ${filter === 'servis' ? 'text-[#f59e0b]' : 'text-white'}`}>{skupajServis.toFixed(0)} {znakValute}</p>
-          <p className="text-[#5a5a80] text-xs">{servisi.length}x</p>
+          <p className="text-[#5a5a80] text-xs">{stServis}x</p>
         </button>
         <button onClick={() => setFilter(filter === 'ostalo' ? 'vse' : 'ostalo')} className={`rounded-2xl p-3 border transition-all text-left ${filter === 'ostalo' ? 'bg-[#6c63ff22] border-[#6c63ff66]' : 'bg-[#0f0f1a] border-[#1e1e32]'}`}>
           <p className="text-2xl mb-2">💰</p>
           <p className={`text-xs uppercase tracking-wider mb-1 ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-[#5a5a80]'}`}>{tx('Ostalo', 'Other')}</p>
           <p className={`font-bold text-lg ${filter === 'ostalo' ? 'text-[#a09aff]' : 'text-white'}`}>{skupajExpenses.toFixed(0)} {znakValute}</p>
-          <p className="text-[#5a5a80] text-xs">{expenses.length}x</p>
+          <p className="text-[#5a5a80] text-xs">{stOstalo}x</p>
         </button>
       </div>
 

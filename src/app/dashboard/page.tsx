@@ -51,6 +51,25 @@ const isImportedDashboardRow = (row: any) => {
   )
 }
 
+const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+  const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+  if (key) buckets[key] = (buckets[key] || 0) + 1
+  return buckets
+}, {})
+
+const splitRowsBySource = (rows: any[]) => {
+  const buckets = importBuckets(rows)
+  const imported: any[] = []
+  const garageBase: any[] = []
+  rows.forEach((row) => {
+    const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
+    const looksLikeBulkImport = key && (buckets[key] || 0) >= 3
+    if (isImportedDashboardRow(row) || looksLikeBulkImport) imported.push(row)
+    else garageBase.push(row)
+  })
+  return { imported, garageBase }
+}
+
 const importedConsumptionValue = (row: any) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
   const match = rawText.match(/(?:Poraba|Consumption|Efficiency)\s*:\s*([0-9]+(?:[,.][0-9]+)?)/i)
@@ -65,12 +84,14 @@ const averageKnownConsumption = (rows: any[]) => {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const averageConsumption = (rows: any[]) => {
+const consumptionSegment = (rows: any[]) => {
   const sorted = rows
     .filter((row) => numberValue(row.km) > 0 && numberValue(row.litri) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
-  if (sorted.length < 2) return null
+  if (sorted.length < 2) {
+    return { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
+  }
 
   let distance = 0
   let liters = 0
@@ -81,10 +102,23 @@ const averageConsumption = (rows: any[]) => {
     liters += numberValue(sorted[i].litri)
   }
 
-  return distance > 0 ? (liters / distance) * 100 : null
+  return {
+    average: distance > 0 ? (liters / distance) * 100 : averageKnownConsumption(rows),
+    distance,
+    liters,
+  }
 }
 
-const dashboardConsumption = (rows: any[]) => averageConsumption(rows) ?? averageKnownConsumption(rows)
+const combineConsumptionSegments = (segments: Array<{ average: number | null; distance: number; liters: number }>) => {
+  const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
+  const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
+  const liters = measured.reduce((sum, segment) => sum + segment.liters, 0)
+  if (distance > 0) return (liters / distance) * 100
+
+  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
+  if (known.length === 0) return null
+  return known.reduce((sum, value) => sum + value, 0) / known.length
+}
 
 export default function Dashboard() {
   const [avti, setAvti] = useState<any[]>([])
@@ -263,16 +297,16 @@ export default function Dashboard() {
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       supabase
         .from('fuel_logs')
-        .select('km,litri,cena_skupaj')
+        .select('*')
         .eq('car_id', carId)
         .order('km', { ascending: true }),
       supabase
         .from('service_logs')
-        .select('cena')
+        .select('*')
         .eq('car_id', carId),
       supabase
         .from('expenses')
-        .select('znesek')
+        .select('*')
         .eq('car_id', carId),
     ])
 
@@ -305,16 +339,25 @@ export default function Dashboard() {
       liters: debugLiters,
       cost: debugFuelCost + debugServiceCost + debugExpenseCost,
     })
-    const importedFuel: any[] = []
-    const garageBaseFuel = fuelRows
+    const splitFuel = splitRowsBySource(fuelRows)
+    const splitService = splitRowsBySource(serviceRows)
+    const splitExpense = splitRowsBySource(expenseRows)
+    const importedFuel = splitFuel.imported
+    const garageBaseFuel = splitFuel.garageBase
+    const importedService = splitService.imported
+    const garageBaseService = splitService.garageBase
+    const importedExpense = splitExpense.imported
+    const garageBaseExpense = splitExpense.garageBase
+    const garageBaseConsumption = consumptionSegment(garageBaseFuel)
+    const importedConsumption = consumptionSegment(importedFuel)
     const nextPoraba = {
-      garageBase: dashboardConsumption(garageBaseFuel),
-      imported: dashboardConsumption(importedFuel),
-      total: dashboardConsumption(fuelRows),
+      garageBase: garageBaseConsumption.average,
+      imported: importedConsumption.average,
+      total: combineConsumptionSegments([garageBaseConsumption, importedConsumption]),
     }
     const costOf = (rows: any[], key: string) => rows.reduce((sum: number, row: any) => sum + numberValue(row[key]), 0)
-    const garageBaseCosts = costOf(garageBaseFuel, 'cena_skupaj') + costOf(serviceRows, 'cena') + costOf(expenseRows, 'znesek')
-    const importedCosts = 0
+    const garageBaseCosts = costOf(garageBaseFuel, 'cena_skupaj') + costOf(garageBaseService, 'cena') + costOf(garageBaseExpense, 'znesek')
+    const importedCosts = costOf(importedFuel, 'cena_skupaj') + costOf(importedService, 'cena') + costOf(importedExpense, 'znesek')
     const totalCosts = garageBaseCosts + importedCosts
     const kmPrevozeni = kmStart - kmObVnosu
     const nextStroski = {
