@@ -196,6 +196,56 @@ export default function Dashboard() {
   }
 
   const naloziStatistikoVozila = async (carId: string, kmStart: number = 0, kmObVnosu: number = 0) => {
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+
+    if (token) {
+      try {
+        const response = await fetch(`/api/vehicle-stats?car=${encodeURIComponent(carId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: 'no-store',
+        })
+        const payload = await response.json()
+        if (response.ok && payload?.ok && payload?.stats) {
+          const stats = payload.stats
+          const nextPoraba = {
+            garageBase: stats.consumption?.garageBase ?? null,
+            imported: stats.consumption?.imported ?? null,
+            total: stats.consumption?.total ?? null,
+          }
+          const nextStroski = {
+            garageBase: numberValue(stats.costs?.garageBase),
+            imported: numberValue(stats.costs?.imported),
+            total: numberValue(stats.costs?.total),
+            naKm: stats.costs?.perKm ?? null,
+          }
+          setDebugStats({
+            fuel: numberValue(stats.rows?.fuel),
+            service: numberValue(stats.rows?.service),
+            expense: numberValue(stats.rows?.expense),
+            liters: numberValue(stats.liters),
+            cost: numberValue(stats.costs?.total),
+          })
+          setPoraba(nextPoraba)
+          setStroski(nextStroski)
+          localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
+            fuelCost: numberValue(stats.costs?.fuel),
+            serviceCost: numberValue(stats.costs?.service),
+            expenseCost: numberValue(stats.costs?.expense),
+            fuelLiters: numberValue(stats.liters),
+            fuelRows: numberValue(stats.rows?.fuel),
+            consumption: nextPoraba,
+            costs: nextStroski,
+            savedAt: Date.now(),
+          }))
+          return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
+        }
+        console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
+      } catch (error) {
+        console.warn('[GarageBase dashboard] server statistics unavailable', error)
+      }
+    }
+
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       supabase
         .from('fuel_logs')

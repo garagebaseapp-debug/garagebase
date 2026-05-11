@@ -32,6 +32,7 @@ export default function Stroski() {
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
   const [refreshing, setRefreshing] = useState(false)
+  const [serverStats, setServerStats] = useState<any>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -60,6 +61,7 @@ export default function Stroski() {
           if (Array.isArray(parsed.gorivo)) setGorivo(parsed.gorivo)
           if (Array.isArray(parsed.servisi)) setServisi(parsed.servisi)
           if (Array.isArray(parsed.expenses)) setExpenses(parsed.expenses)
+          if (parsed.serverStats) setServerStats(parsed.serverStats)
         } catch {}
       }
 
@@ -88,13 +90,33 @@ export default function Stroski() {
       setGorivo(gorivoData)
       setServisi(servisData)
       setExpenses(expensesData)
-      localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, savedAt: Date.now() }))
+      let nextServerStats = null
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      if (token) {
+        try {
+          const response = await fetch(`/api/vehicle-stats?car=${encodeURIComponent(carId)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+          })
+          const payload = await response.json()
+          if (response.ok && payload?.ok && payload?.stats) {
+            nextServerStats = payload.stats
+            setServerStats(nextServerStats)
+          } else {
+            console.warn('[GarageBase costs] server statistics failed', payload?.error)
+          }
+        } catch (error) {
+          console.warn('[GarageBase costs] server statistics unavailable', error)
+        }
+      }
+      localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
       localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
-        fuelCost: gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0),
-        serviceCost: servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0),
-        expenseCost: expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0),
-        fuelLiters: gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0),
-        fuelRows: gorivoData.length,
+        fuelCost: nextServerStats ? numericValue(nextServerStats.costs?.fuel) : gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.cena_skupaj), 0),
+        serviceCost: nextServerStats ? numericValue(nextServerStats.costs?.service) : servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0),
+        expenseCost: nextServerStats ? numericValue(nextServerStats.costs?.expense) : expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0),
+        fuelLiters: nextServerStats ? numericValue(nextServerStats.liters) : gorivoData.reduce((sum: number, row: any) => sum + numericValue(row.litri), 0),
+        fuelRows: nextServerStats ? numericValue(nextServerStats.rows?.fuel) : gorivoData.length,
         savedAt: Date.now(),
       }))
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
@@ -116,9 +138,12 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const skupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
-  const skupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
-  const skupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
+  const lokalnoSkupajGorivo = gorivo.reduce((sum, v) => sum + numericValue(v.cena_skupaj), 0)
+  const lokalnoSkupajServis = servisi.reduce((sum, v) => sum + numericValue(v.cena), 0)
+  const lokalnoSkupajExpenses = expenses.reduce((sum, v) => sum + numericValue(v.znesek), 0)
+  const skupajGorivo = serverStats ? numericValue(serverStats.costs?.fuel) : lokalnoSkupajGorivo
+  const skupajServis = serverStats ? numericValue(serverStats.costs?.service) : lokalnoSkupajServis
+  const skupajExpenses = serverStats ? numericValue(serverStats.costs?.expense) : lokalnoSkupajExpenses
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const kmPrevozeni = avto?.km_trenutni || 0
   const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
