@@ -8,7 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-11-1810'
+const STROSKI_BUILD = 'stroski-2026-05-11-1825'
 const numericValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
@@ -266,7 +266,6 @@ export default function Stroski() {
           console.warn('[GarageBase costs] server statistics unavailable', error)
         }
       }
-      localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
       const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
       const localServiceCost = servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
       const localExpenseCost = expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
@@ -280,21 +279,30 @@ export default function Stroski() {
       const cacheSplit = splitRowsBySource(cacheRows)
       const cacheImported = cacheSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
       const cacheTotal = localFuelCost + localServiceCost + localExpenseCost
-      localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
-        fuelCost: hasLocalRows ? localFuelCost : numericValue(nextServerStats?.costs?.fuel),
-        serviceCost: hasLocalRows ? localServiceCost : numericValue(nextServerStats?.costs?.service),
-        expenseCost: hasLocalRows ? localExpenseCost : numericValue(nextServerStats?.costs?.expense),
-        fuelLiters: hasLocalRows ? localFuelLiters : numericValue(nextServerStats?.liters),
-        fuelRows: hasLocalRows ? gorivoData.length : numericValue(nextServerStats?.rows?.fuel),
-        costs: {
-          garageBase: hasLocalRows ? Math.max(0, cacheTotal - cacheImported) : numericValue(nextServerStats?.costs?.garageBase),
-          imported: hasLocalRows ? cacheImported : numericValue(nextServerStats?.costs?.imported),
-          total: hasLocalRows ? cacheTotal : numericValue(nextServerStats?.costs?.total),
-          naKm: null,
-        },
-        savedAt: Date.now(),
-      }))
       setCostSummary(buildCostSummary(gorivoData, servisData, expensesData, nextServerStats))
+      try {
+        localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
+      } catch (error) {
+        console.warn('[GarageBase costs] cache write skipped', error)
+      }
+      try {
+        localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
+          fuelCost: hasLocalRows ? localFuelCost : numericValue(nextServerStats?.costs?.fuel),
+          serviceCost: hasLocalRows ? localServiceCost : numericValue(nextServerStats?.costs?.service),
+          expenseCost: hasLocalRows ? localExpenseCost : numericValue(nextServerStats?.costs?.expense),
+          fuelLiters: hasLocalRows ? localFuelLiters : numericValue(nextServerStats?.liters),
+          fuelRows: hasLocalRows ? gorivoData.length : numericValue(nextServerStats?.rows?.fuel),
+          costs: {
+            garageBase: hasLocalRows ? Math.max(0, cacheTotal - cacheImported) : numericValue(nextServerStats?.costs?.garageBase),
+            imported: hasLocalRows ? cacheImported : numericValue(nextServerStats?.costs?.imported),
+            total: hasLocalRows ? cacheTotal : numericValue(nextServerStats?.costs?.total),
+            naKm: null,
+          },
+          savedAt: Date.now(),
+        }))
+      } catch (error) {
+        console.warn('[GarageBase costs] vehicle stats cache skipped', error)
+      }
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       setLoading(false)
       setRefreshing(false)
