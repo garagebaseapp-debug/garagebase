@@ -208,14 +208,14 @@ const MenuTile = ({ kind, label, active = false }: { kind: string, label: string
 )
 
 const FeatureIconShowcase = ({ kind, label }: { kind: string, label: string }) => (
-  <div className="mt-5 flex h-48 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[radial-gradient(circle_at_50%_35%,rgba(108,99,255,0.22),transparent_42%),#080810] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-    <div className="flex flex-col items-center gap-4">
-      <div className="flex h-24 w-24 items-center justify-center rounded-3xl border border-white/12 bg-[#11111f] shadow-[0_18px_42px_rgba(0,0,0,0.42)]">
-        <div className="[&_svg]:h-14 [&_svg]:w-14">
+  <div className="mt-5 flex h-44 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[radial-gradient(circle_at_50%_35%,rgba(108,99,255,0.20),transparent_42%),#080810] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/12 bg-[#11111f] shadow-[0_18px_42px_rgba(0,0,0,0.42)]">
+        <div className="[&_svg]:h-11 [&_svg]:w-11">
           <MiniIcon kind={kind} />
         </div>
       </div>
-      <p className="text-lg font-black text-[#d8d4ff]">{label}</p>
+      <p className="text-base font-black text-[#d8d4ff]">{label}</p>
     </div>
   </div>
 )
@@ -241,68 +241,25 @@ const VehicleCardMini = ({ name, status, tone }: { name: string, status: string,
   </div>
 )
 
-const AppScreen = ({ compact = false, language }: { compact?: boolean, language: Language }) => {
-  const labels = appLabels[language]
-  const cars = [
-    { name: 'Family SUV', status: 'RED', tone: 'from-[#0ea5e9] to-[#111827]' },
-    { name: 'Driver Moto', status: 'RED', tone: 'from-[#ef4444] to-[#111827]' },
-    { name: 'Adventure ATV', status: 'OK', tone: 'from-[#f59e0b] to-[#111827]' },
-  ]
-  return (
-    <div className="h-full rounded-[22px] bg-[#080810] p-2 text-white">
-      <div className="mb-2 flex items-center justify-between">
-        <p className="text-[10px] font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
-        <span className="rounded-full bg-[#6c63ff] px-2 py-1 text-[7px] font-black">{labels.active}</span>
-      </div>
-      <div className={compact ? 'space-y-1.5' : 'grid grid-cols-2 gap-2'}>
-        {cars.slice(0, compact ? 3 : 4).map((car) => (
-          <VehicleCardMini key={car.name} {...car} />
-        ))}
-      </div>
-    </div>
-  )
-}
-
-const DeviceShowcase = ({ language }: { language: Language }) => (
-  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[radial-gradient(circle_at_22%_18%,rgba(139,92,246,0.42),transparent_36%),radial-gradient(circle_at_82%_24%,rgba(62,207,207,0.34),transparent_34%),#080810] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-    <div className="absolute inset-x-10 bottom-4 h-5 rounded-full bg-black/55 blur-lg" />
-    <div className="absolute bottom-6 left-5 h-48 w-64 rotate-[-3deg] rounded-[30px] border border-white/18 bg-[#171724] p-3 shadow-[0_28px_62px_rgba(0,0,0,0.62)]">
-      <AppScreen language={language} />
-    </div>
-    <div className="absolute bottom-6 right-6 h-48 w-24 rotate-[4deg] rounded-[28px] border border-white/18 bg-[#171724] p-2 shadow-[0_28px_62px_rgba(0,0,0,0.66)]">
-      <div className="mx-auto mb-1 h-1 w-8 rounded-full bg-white/20" />
-      <AppScreen compact language={language} />
-    </div>
+const DeviceShowcase = () => (
+  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[#080810] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+    <img
+      src="/landing-mobile-app.png"
+      alt=""
+      className="h-full w-full object-cover object-center"
+    />
   </div>
 )
 
-const VehicleTabletShowcase = ({ language }: { language: Language }) => {
-  const labels = appLabels[language]
-  return (
-    <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[radial-gradient(circle_at_20%_12%,rgba(62,207,207,0.20),transparent_34%),radial-gradient(circle_at_88%_16%,rgba(139,92,246,0.30),transparent_34%),#080810] p-4">
-      <div className="absolute inset-x-12 bottom-4 h-5 rounded-full bg-black/55 blur-lg" />
-      <div className="relative mx-auto h-full max-w-[380px] rotate-[-1deg] rounded-[30px] border border-white/16 bg-[#161625] p-3 shadow-[0_28px_58px_rgba(0,0,0,0.58)]">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
-          <span className="rounded-full bg-[#6c63ff] px-3 py-1 text-[9px] font-black">{labels.active}</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <VehicleCardMini name="Family SUV" status="RED" tone="from-[#0ea5e9] to-[#111827]" />
-          <VehicleCardMini name="Driver Moto" status="RED" tone="from-[#ef4444] to-[#111827]" />
-          <VehicleCardMini name="Adventure ATV" status="OK" tone="from-[#f59e0b] to-[#111827]" />
-          <div className="rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf12] p-3">
-            <p className="text-[10px] font-black text-[#9ff7f7]">3 {language === 'en' ? 'vehicles' : 'vozila'}</p>
-            <div className="mt-4 space-y-2">
-              <div className="h-2 rounded-full bg-[#3ecfcf]" />
-              <div className="h-2 w-3/4 rounded-full bg-[#6c63ff]" />
-              <div className="h-2 w-1/2 rounded-full bg-[#f59e0b]" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+const VehicleTabletShowcase = () => (
+  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[#080810] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+    <img
+      src="/landing-multi-vehicles.png"
+      alt=""
+      className="h-full w-full object-cover object-top"
+    />
+  </div>
+)
 
 const FeatureVisual = ({ kind, language }: { kind: string, language: Language }) => {
   const labels = appLabels[language]
@@ -348,11 +305,11 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   if (kind === 'mobile') {
-    return <DeviceShowcase language={language} />
+    return <DeviceShowcase />
   }
 
   if (kind === 'vehicles') {
-    return <VehicleTabletShowcase language={language} />
+    return <VehicleTabletShowcase />
   }
 
   if (kind === 'fuel' || kind === 'service' || kind === 'reminders') {
