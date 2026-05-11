@@ -22,7 +22,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2015'
+const DASHBOARD_BUILD = 'dashboard-2026-05-11-2035'
 
 const numberValue = (value: unknown) => {
   const cleaned = String(value ?? '').replace(',', '.').replace(/[^0-9.-]/g, '')
@@ -203,6 +203,7 @@ export default function Dashboard() {
   const [jezik, setJezik] = useState<Language>('sl')
   const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
   const [debugStats, setDebugStats] = useState({ fuel: 0, service: 0, expense: 0, liters: 0, cost: 0 })
+  const [debugStatsSource, setDebugStatsSource] = useState('')
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -318,6 +319,8 @@ export default function Dashboard() {
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
     const cachedStats = readVehicleStatsCache(carId)
+    let cachedFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
+    let source = ''
 
     if (token) {
       try {
@@ -346,6 +349,7 @@ export default function Dashboard() {
             liters: numberValue(stats.liters),
             cost: numberValue(stats.costs?.total),
           })
+          setDebugStatsSource('api')
           setPoraba(nextPoraba)
           setStroski(nextStroski)
           localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
@@ -360,8 +364,10 @@ export default function Dashboard() {
           }))
           return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
         }
+        source = `api-empty:${payload?.error || 'no-values'}`
         console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
       } catch (error) {
+        source = 'api-error'
         console.warn('[GarageBase dashboard] server statistics unavailable', error)
       }
     }
@@ -383,16 +389,10 @@ export default function Dashboard() {
         total: cachedCostTotal,
         naKm: cachedStats?.costs?.naKm ?? null,
       }
-      setDebugStats({
-        fuel: numberValue(cachedStats?.fuelRows),
-        service: 0,
-        expense: 0,
-        liters: numberValue(cachedStats?.fuelLiters),
-        cost: cachedCostTotal,
-      })
+      cachedFallback = { poraba: cachedPoraba, stroski: cachedStroski }
       if (cachedPoraba.total !== null || cachedPoraba.garageBase !== null || cachedPoraba.imported !== null) setPoraba(cachedPoraba)
-      setStroski(cachedStroski)
-      return { poraba: cachedPoraba, stroski: cachedStroski, fuelRows: [] }
+      if (cachedStroski.total > 0 || cachedStroski.garageBase > 0 || cachedStroski.imported > 0) setStroski(cachedStroski)
+      source = source ? `${source}+cache-seed` : 'cache-seed'
     }
 
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
@@ -412,6 +412,7 @@ export default function Dashboard() {
     ])
 
     if (fuelRes.error || serviceRes.error || expenseRes.error) {
+      source = `${source || 'direct'}-error`
       console.warn('[GarageBase dashboard] statistics fetch failed', fuelRes.error?.message, serviceRes.error?.message, expenseRes.error?.message)
     }
 
@@ -425,6 +426,7 @@ export default function Dashboard() {
           fuelRows = cached.gorivo
           serviceRows = cached.servisi
           expenseRows = cached.expenses
+          source = source ? `${source}+row-cache` : 'row-cache'
         }
       } catch {}
     }
@@ -436,29 +438,45 @@ export default function Dashboard() {
     const cachedFuelCost = numberValue(totalsCache?.fuelCost)
     const cachedGarageBaseFuelCost = numberValue(totalsCache?.garageBaseFuelCost)
     const cachedImportedFuelCost = numberValue(totalsCache?.importedFuelCost)
-    const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedFuelCost
-    const finalGarageBaseCost = directStats.costs.garageBase > 0 ? directStats.costs.garageBase : cachedGarageBaseFuelCost || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
-    const finalImportedCost = directStats.costs.imported > 0 ? directStats.costs.imported : cachedImportedFuelCost
-    setDebugStats({
-      fuel: directStats.rows.fuel,
-      service: directStats.rows.service,
-      expense: directStats.rows.expense,
-      liters: directStats.liters || numberValue(totalsCache?.fuelLiters),
-      cost: finalTotalCost,
-    })
+    const cachedTotalCost = cachedFallback?.stroski.total || 0
+    const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedFuelCost || cachedTotalCost
+    const finalGarageBaseCost = directStats.costs.garageBase > 0
+      ? directStats.costs.garageBase
+      : cachedGarageBaseFuelCost || cachedFallback?.stroski.garageBase || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
+    const finalImportedCost = directStats.costs.imported > 0
+      ? directStats.costs.imported
+      : cachedImportedFuelCost || cachedFallback?.stroski.imported || 0
     const nextPoraba = {
-      garageBase: directStats.consumption.garageBase,
-      imported: directStats.consumption.imported,
-      total: directStats.consumption.total,
+      garageBase: directStats.consumption.garageBase ?? cachedFallback?.poraba.garageBase ?? null,
+      imported: directStats.consumption.imported ?? cachedFallback?.poraba.imported ?? null,
+      total: directStats.consumption.total ?? cachedFallback?.poraba.total ?? null,
     }
     const nextStroski = {
       garageBase: finalGarageBaseCost,
       imported: finalImportedCost,
       total: finalTotalCost,
-      naKm: directStats.costs.perKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
+      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
     }
+    setDebugStats({
+      fuel: directStats.rows.fuel || numberValue(totalsCache?.fuelRows) || numberValue(cachedStats?.fuelRows),
+      service: directStats.rows.service,
+      expense: directStats.rows.expense,
+      liters: directStats.liters || numberValue(totalsCache?.fuelLiters) || numberValue(cachedStats?.fuelLiters),
+      cost: finalTotalCost,
+    })
+    setDebugStatsSource(source ? `${source}+direct` : 'direct')
     setPoraba(nextPoraba)
     setStroski(nextStroski)
+    localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
+      fuelCost: directStats.costs.fuel || cachedFuelCost,
+      serviceCost: directStats.costs.service,
+      expenseCost: directStats.costs.expense,
+      fuelLiters: directStats.liters || numberValue(totalsCache?.fuelLiters),
+      fuelRows: directStats.rows.fuel || numberValue(totalsCache?.fuelRows),
+      consumption: nextPoraba,
+      costs: nextStroski,
+      savedAt: Date.now(),
+    }))
     return { poraba: nextPoraba, stroski: nextStroski, fuelRows }
   }
 
@@ -469,16 +487,16 @@ export default function Dashboard() {
         const parsed = JSON.parse(cached)
         if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
         if (parsed.poraba) {
-          setPoraba('total' in parsed.poraba
+          const cachedPoraba = 'total' in parsed.poraba
             ? parsed.poraba
             : { ...emptyConsumption, total: parsed.poraba.skupaj ?? null }
-          )
+          if (cachedPoraba.total !== null || cachedPoraba.garageBase !== null || cachedPoraba.imported !== null) setPoraba(cachedPoraba)
         }
         if (parsed.stroski) {
-          setStroski('total' in parsed.stroski
+          const cachedStroski = 'total' in parsed.stroski
             ? parsed.stroski
             : { ...emptyCosts, total: parsed.stroski.skupaj || 0, naKm: parsed.stroski.naKm ?? null }
-          )
+          if (numberValue(cachedStroski.total) > 0 || numberValue(cachedStroski.garageBase) > 0 || numberValue(cachedStroski.imported) > 0) setStroski(cachedStroski)
         }
       } catch {}
     }
@@ -852,7 +870,7 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <p className="text-[#5a5a80] text-[10px]">
-                    {DASHBOARD_BUILD} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
                   </p>
 
                   <div className="grid grid-cols-3 gap-3 mt-auto">
@@ -961,7 +979,7 @@ export default function Dashboard() {
                   </div>
                 )}
                 <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]">
-                  {DASHBOARD_BUILD} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                  {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
                 </p>
 
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
