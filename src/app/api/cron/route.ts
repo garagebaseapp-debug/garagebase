@@ -21,10 +21,12 @@ type NotificationState = Record<string, {
 }>
 
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  supabaseServiceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const getSupabase = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = supabaseServiceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseKey) return null
+  return createClient(supabaseUrl, supabaseKey)
+}
 
 const vapidEmail = process.env.VAPID_EMAIL
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -102,7 +104,7 @@ async function sendPush(subscription: any, title: string, body: string) {
   )
 }
 
-async function recordPushSuccess(userId: string, endpoint?: string) {
+async function recordPushSuccess(supabase: any, userId: string, endpoint?: string) {
   if (!endpoint) return
   try {
     await supabase
@@ -121,7 +123,7 @@ async function recordPushSuccess(userId: string, endpoint?: string) {
   }
 }
 
-async function recordPushFailure(userId: string, endpoint: string | undefined, error: any) {
+async function recordPushFailure(supabase: any, userId: string, endpoint: string | undefined, error: any) {
   if (!endpoint) return
   const statusCode = Number(error?.statusCode || 0)
   if (statusCode === 404 || statusCode === 410) {
@@ -170,6 +172,7 @@ function buildSummary(items: string[]) {
 }
 
 export async function GET(req: Request) {
+  const supabase = getSupabase()
   const authHeader = req.headers.get('authorization')
   const userAgent = req.headers.get('user-agent') || ''
   const cronSecret = process.env.CRON_SECRET
@@ -187,7 +190,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, poslano: 0, skipped: 'push_not_configured' })
   }
 
-  if (!supabaseServiceRoleKey) {
+  if (!supabase || !supabaseServiceRoleKey) {
     return NextResponse.json(
       {
         success: false,
@@ -394,12 +397,12 @@ export async function GET(req: Request) {
               `GarageBase - ${messages.length} opomnikov`,
               buildSummary(messages)
             )
-            await recordPushSuccess(userId, sub.subscription?.endpoint)
+            await recordPushSuccess(supabase, userId, sub.subscription?.endpoint)
             poslano++
             delivered = true
           } catch (e) {
             console.error('Napaka pri posiljanju povzetka:', e)
-            await recordPushFailure(userId, sub.subscription?.endpoint, e)
+            await recordPushFailure(supabase, userId, sub.subscription?.endpoint, e)
             napakePosiljanja++
           }
         }
