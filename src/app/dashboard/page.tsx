@@ -23,7 +23,6 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-12-0715'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -71,30 +70,6 @@ const statsHasData = (stats: any) => {
     numberValue(stats.costs?.expense) +
     numberValue(stats.costs?.total)
   return rowCount > 0 || costTotal > 0 || numberValue(stats.liters) > 0
-}
-
-const apiDebugText = (payload: any) => {
-  const debug = payload?.debug
-  if (!debug) return `api:${payload?.source || 'stats'}`
-  const selected = debug.selected
-  const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
-  const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
-  const statsText = statsRows ? ` stats:${statsRows}` : ''
-  const sumText = debug.statsTotal || debug.statsLiters
-    ? ` sum:${numberValue(debug.statsTotal).toFixed(0)}/${numberValue(debug.statsLiters).toFixed(0)}`
-    : ''
-  const sample = debug.sampleFuel
-  const sampleText = sample
-    ? ` sample:${numberValue(sample.computedCost).toFixed(0)}/${numberValue(sample.computedLiters).toFixed(0)}`
-    : ''
-  const consumption = debug.statsConsumption
-  const consumptionText = consumption
-    ? ` cons:${numberValue(consumption.total || consumption.garageBase || consumption.imported).toFixed(1)}`
-    : ''
-  const otherRows = Array.isArray(debug.userCarsWithRows)
-    ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numberValue(car.fuel) + numberValue(car.service) + numberValue(car.expense), 0)
-    : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${consumptionText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const isImportedDashboardRow = (row: any) => {
@@ -244,8 +219,6 @@ export default function Dashboard() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [jezik, setJezik] = useState<Language>('sl')
   const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
-  const [debugStats, setDebugStats] = useState({ fuel: 0, service: 0, expense: 0, liters: 0, cost: 0 })
-  const [debugStatsSource, setDebugStatsSource] = useState('')
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -271,15 +244,6 @@ export default function Dashboard() {
   const stateHasCosts = stroski.total > 0 || stroski.garageBase > 0 || stroski.imported > 0
   const renderPoraba = stateHasConsumption ? poraba : cachedConsumption
   const renderStroski = stateHasCosts ? stroski : cachedCosts
-  const renderDebugStats = debugStats.cost > 0 || debugStats.liters > 0 || debugStats.fuel > 0
-    ? debugStats
-    : {
-        fuel: numberValue(renderStats?.rows?.fuel) || numberValue(renderStats?.fuelRows),
-        service: numberValue(renderStats?.rows?.service),
-        expense: numberValue(renderStats?.rows?.expense),
-        liters: numberValue(renderStats?.liters) || numberValue(renderStats?.fuelLiters),
-        cost: cachedCostTotal,
-      }
   const hasConsumptionBreakdown = renderPoraba.total !== null || renderPoraba.garageBase !== null || renderPoraba.imported !== null
   const hasCostBreakdown = renderStroski.total > 0 || renderStroski.garageBase > 0 || renderStroski.imported > 0
   const consumptionText = (value: number | null) => value !== null ? `${value.toFixed(1)} L/100` : '-'
@@ -400,7 +364,6 @@ export default function Dashboard() {
     const cachedStats = readVehicleStatsCache(carId)
     let cachedFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
     let apiFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
-    let source = ''
 
     if (token) {
       try {
@@ -425,7 +388,6 @@ export default function Dashboard() {
             naKm: stats.costs?.perKm ?? null,
           }
           apiFallback = { poraba: nextPoraba, stroski: nextStroski }
-          source = 'api-seed'
           localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
             fuelCost: numberValue(stats.costs?.fuel),
             serviceCost: numberValue(stats.costs?.service),
@@ -442,37 +404,17 @@ export default function Dashboard() {
             costs: nextStroski,
             savedAt: Date.now(),
           }))
-          setDebugStats({
-            fuel: numberValue(stats.rows?.fuel),
-            service: numberValue(stats.rows?.service),
-            expense: numberValue(stats.rows?.expense),
-            liters: numberValue(stats.liters),
-            cost: numberValue(stats.costs?.total),
-          })
-          setDebugStatsSource(apiDebugText(payload))
           setStroski(nextStroski)
           if (hasApiConsumption) {
             setPoraba(nextPoraba)
             return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
           }
-          source = `${source}+needs-consumption`
         } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
           if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
-          source = `${apiDebugText(payload)} no-values`
-          setDebugStats({
-            fuel: numberValue(payload.stats.rows?.fuel),
-            service: numberValue(payload.stats.rows?.service),
-            expense: numberValue(payload.stats.rows?.expense),
-            liters: numberValue(payload.stats.liters),
-            cost: numberValue(payload.stats.costs?.total),
-          })
-          setDebugStatsSource(source)
         } else {
-          source = payload?.debug ? `${apiDebugText(payload)} empty` : `api-empty:${payload?.error || 'no-values'}`
           console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
         }
       } catch (error) {
-        source = 'api-error'
         console.warn('[GarageBase dashboard] server statistics unavailable', error)
       }
     }
@@ -498,7 +440,6 @@ export default function Dashboard() {
       cachedFallback = { poraba: cachedPoraba, stroski: cachedStroski }
       if (cachedPoraba.total !== null || cachedPoraba.garageBase !== null || cachedPoraba.imported !== null) setPoraba(cachedPoraba)
       if (cachedStroski.total > 0 || cachedStroski.garageBase > 0 || cachedStroski.imported > 0) setStroski(cachedStroski)
-      source = source ? `${source}+cache-seed` : 'cache-seed'
     }
 
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
@@ -519,7 +460,6 @@ export default function Dashboard() {
     if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
 
     if (fuelRes.error || serviceRes.error || expenseRes.error) {
-      source = `${source || 'direct'}-error`
       console.warn('[GarageBase dashboard] statistics fetch failed', fuelRes.error?.message, serviceRes.error?.message, expenseRes.error?.message)
     }
 
@@ -533,7 +473,6 @@ export default function Dashboard() {
           fuelRows = cached.gorivo
           serviceRows = cached.servisi
           expenseRows = cached.expenses
-          source = source ? `${source}+row-cache` : 'row-cache'
         }
       } catch {}
     }
@@ -567,14 +506,6 @@ export default function Dashboard() {
       total: finalTotalCost,
       naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
     }
-    setDebugStats({
-      fuel: directStats.rows.fuel || numberValue(totalsCache?.fuelRows) || numberValue(cachedStats?.fuelRows),
-      service: directStats.rows.service,
-      expense: directStats.rows.expense,
-      liters: directStats.liters || numberValue(totalsCache?.fuelLiters) || numberValue(cachedStats?.fuelLiters),
-      cost: finalTotalCost,
-    })
-    setDebugStatsSource(source ? `${source}+direct` : 'direct')
     setPoraba(nextPoraba)
     setStroski(nextStroski)
     localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
@@ -979,12 +910,6 @@ export default function Dashboard() {
                       </div>
                     </button>
                   </div>
-                  {process.env.NODE_ENV !== 'production' && (
-                    <p className="text-[#5a5a80] text-[10px]" data-gb-no-translate>
-                      {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
-                    </p>
-                  )}
-
                   <div className="grid grid-cols-3 gap-3 mt-auto">
                     <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
                     <button onClick={() => window.location.href = '/zgodovina-servisa?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
@@ -1090,12 +1015,6 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
-                {process.env.NODE_ENV !== 'production' && (
-                  <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]" data-gb-no-translate>
-                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
-                  </p>
-                )}
-
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
