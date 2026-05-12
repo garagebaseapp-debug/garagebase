@@ -52,7 +52,16 @@ export default function VnosStroska() {
       setOcrAllowed(adminCheck.isAdmin)
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
-      const { data } = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)
+      const activeCarsResult = await supabase
+        .from('cars').select('id, znamka, model, arhivirano')
+        .eq('user_id', user.id)
+        .eq('arhivirano', false)
+      let data: any[] = activeCarsResult.data || []
+      if (activeCarsResult.error) {
+        const fallback = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)
+        data = fallback.data || []
+      }
+      data = (data || []).filter((car: any) => car?.arhivirano !== true)
       if (data && data.length > 0) {
         setAvti(data)
         const izbrani = data.find((a: any) => a.id === carParam) || data[0]

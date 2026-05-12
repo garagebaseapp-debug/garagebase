@@ -983,69 +983,108 @@ export default function Stroski() {
   const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
+  const compactMoney = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}M${znakValute}`
+    if (value >= 1000) return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k${znakValute}`
+    return `${value.toFixed(0)}${znakValute}`
+  }
+  const chartTicks = (max: number) => [max, max / 2, 0]
 
   const GrafStolpci = () => (
-    <div className="flex items-end justify-between gap-1.5 h-36 px-1">
-      {meseci.map((m, i) => {
-        const skupaj = m.gorivo + m.servis + m.ostalo
-        const visina = skupaj > 0 ? (skupaj / maxVrednost) * 100 : 0
-        const gorivoH = skupaj > 0 ? (m.gorivo / skupaj) * visina : 0
-        const servisH = skupaj > 0 ? (m.servis / skupaj) * visina : 0
-        const ostaloH = skupaj > 0 ? (m.ostalo / skupaj) * visina : 0
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full flex flex-col justify-end rounded-lg overflow-hidden" style={{ height: '110px' }}>
-              {skupaj === 0 ? <div className="w-full bg-[#1e1e32] rounded-lg" style={{ height: '4px' }} /> : (
-                <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
-                  <div style={{ height: `${ostaloH}%` }} className="bg-[#6c63ff] w-full" />
-                  <div style={{ height: `${servisH}%` }} className="bg-[#f59e0b] w-full" />
-                  <div style={{ height: `${gorivoH}%` }} className="bg-[#3ecfcf] w-full rounded-t-sm" />
+    <div className="grid grid-cols-[44px_1fr] gap-2">
+      <div className="flex h-40 flex-col justify-between pb-8 pt-1 text-right">
+        {chartTicks(maxVrednost).map((tick, i) => (
+          <span key={i} className="text-[9px] font-semibold text-[#5a5a80]">{compactMoney(tick)}</span>
+        ))}
+      </div>
+      <div className="relative h-40">
+        <div className="absolute inset-x-0 top-1 bottom-8 flex flex-col justify-between pointer-events-none">
+          {[0, 1, 2].map((line) => <div key={line} className="border-t border-[#1e1e32]" />)}
+        </div>
+        <div className="relative flex h-full items-end justify-between gap-1.5 px-1">
+          {meseci.map((m, i) => {
+            const skupaj = m.gorivo + m.servis + m.ostalo
+            const visina = skupaj > 0 ? (skupaj / maxVrednost) * 100 : 0
+            const gorivoH = skupaj > 0 ? (m.gorivo / skupaj) * visina : 0
+            const servisH = skupaj > 0 ? (m.servis / skupaj) * visina : 0
+            const ostaloH = skupaj > 0 ? (m.ostalo / skupaj) * visina : 0
+            return (
+              <div key={i} className="flex flex-1 flex-col items-center gap-1">
+                <div className="flex w-full flex-col justify-end overflow-hidden rounded-lg border border-[#1e1e32] bg-[#111122]" style={{ height: '110px' }} title={`${m.label}: ${formatMoney(skupaj, valuta)}`}>
+                  {skupaj === 0 ? <div className="w-full bg-[#1e1e32] rounded-lg" style={{ height: '4px' }} /> : (
+                    <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
+                      <div style={{ height: `${ostaloH}%` }} className="bg-[#6c63ff] w-full" />
+                      <div style={{ height: `${servisH}%` }} className="bg-[#f59e0b] w-full" />
+                      <div style={{ height: `${gorivoH}%` }} className="bg-[#3ecfcf] w-full rounded-t-sm" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <p className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
-            {skupaj > 0 && <p className="text-white text-[8px] font-bold">{skupaj.toFixed(0)}{znakValute}</p>}
-          </div>
-        )
-      })}
+                <p className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
+                {skupaj > 0 && <p className="text-white text-[8px] font-bold">{compactMoney(skupaj)}</p>}
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 
   const GrafCrta = () => {
-    const w = 300, h = 110, pad = 10
+    const w = 340, h = 140, padLeft = 46, padRight = 10, padTop = 16, padBottom = 28
+    const chartW = w - padLeft - padRight
+    const chartH = h - padTop - padBottom
     const tocke = meseci.map((m, i) => {
       const skupaj = m.gorivo + m.servis + m.ostalo
-      const x = pad + (i / (meseci.length - 1)) * (w - pad * 2)
-      const y = h - pad - (skupaj / maxVrednost) * (h - pad * 2)
+      const x = padLeft + (i / Math.max(meseci.length - 1, 1)) * chartW
+      const y = padTop + chartH - (skupaj / maxVrednost) * chartH
       return { x, y, skupaj, label: m.label }
     })
     const path = tocke.map((t, i) => `${i === 0 ? 'M' : 'L'} ${t.x} ${t.y}`).join(' ')
-    const fill = `${path} L ${tocke[tocke.length - 1].x} ${h} L ${tocke[0].x} ${h} Z`
+    const fill = `${path} L ${tocke[tocke.length - 1].x} ${h - padBottom} L ${tocke[0].x} ${h - padBottom} Z`
     return (
       <div className="w-full">
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '110px' }}>
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '145px' }}>
           <defs><linearGradient id="gradCrta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6c63ff" stopOpacity="0.4" /><stop offset="100%" stopColor="#6c63ff" stopOpacity="0" /></linearGradient></defs>
+          {chartTicks(maxVrednost).map((tick, i) => {
+            const y = padTop + (i / 2) * chartH
+            return (
+              <g key={i}>
+                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke="#1e1e32" strokeWidth="1" />
+                <text x={padLeft - 6} y={y + 3} textAnchor="end" fill="#5a5a80" fontSize="8" fontWeight="700">{compactMoney(tick)}</text>
+              </g>
+            )
+          })}
           <path d={fill} fill="url(#gradCrta)" />
           <path d={path} fill="none" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          {tocke.map((t, i) => (<g key={i}><circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />{t.skupaj > 0 && <text x={t.x} y={t.y - 8} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">{t.skupaj.toFixed(0)}{znakValute}</text>}</g>))}
+          {tocke.map((t, i) => (
+            <g key={i}>
+              <text x={t.x} y={h - 7} textAnchor="middle" fill="#5a5a80" fontSize="8" fontWeight="700">{t.label}</text>
+              <circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />
+              {t.skupaj > 0 && <text x={t.x} y={Math.max(8, t.y - 8)} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">{compactMoney(t.skupaj)}</text>}
+            </g>
+          ))}
         </svg>
-        <div className="flex justify-between px-2 mt-1">{meseci.map((m, i) => <p key={i} className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>)}</div>
       </div>
     )
   }
 
   const GrafKategorije = () => {
-    const w = 300
-    const h = 120
-    const pad = 14
+    const w = 340
+    const h = 145
+    const padLeft = 46
+    const padRight = 10
+    const padTop = 16
+    const padBottom = 28
+    const chartW = w - padLeft - padRight
+    const chartH = h - padTop - padBottom
     const series = [
       { key: 'gorivo', label: tx('Gorivo', 'Fuel'), color: '#3ecfcf' },
       { key: 'servis', label: tx('Servis', 'Service'), color: '#f59e0b' },
       { key: 'ostalo', label: tx('Ostalo', 'Other'), color: '#6c63ff' },
     ] as const
     const pointsFor = (key: typeof series[number]['key']) => meseci.map((m, i) => {
-      const x = pad + (i / Math.max(meseci.length - 1, 1)) * (w - pad * 2)
-      const y = h - pad - ((m[key] || 0) / maxKategorija) * (h - pad * 2)
+      const x = padLeft + (i / Math.max(meseci.length - 1, 1)) * chartW
+      const y = padTop + chartH - ((m[key] || 0) / maxKategorija) * chartH
       return { x, y, value: m[key] || 0 }
     })
     const pathFor = (key: typeof series[number]['key']) =>
@@ -1053,18 +1092,16 @@ export default function Stroski() {
 
     return (
       <div className="w-full">
-        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '120px' }}>
-          {[0, 1, 2].map((line) => (
-            <line
-              key={line}
-              x1={pad}
-              x2={w - pad}
-              y1={pad + line * ((h - pad * 2) / 2)}
-              y2={pad + line * ((h - pad * 2) / 2)}
-              stroke="#1e1e32"
-              strokeWidth="1"
-            />
-          ))}
+        <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '145px' }}>
+          {chartTicks(maxKategorija).map((tick, i) => {
+            const y = padTop + (i / 2) * chartH
+            return (
+              <g key={i}>
+                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke="#1e1e32" strokeWidth="1" />
+                <text x={padLeft - 6} y={y + 3} textAnchor="end" fill="#5a5a80" fontSize="8" fontWeight="700">{compactMoney(tick)}</text>
+              </g>
+            )
+          })}
           {series.map((s) => (
             <g key={s.key}>
               <path d={pathFor(s.key)} fill="none" stroke={s.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -1073,8 +1110,11 @@ export default function Stroski() {
               ))}
             </g>
           ))}
+          {meseci.map((m, i) => {
+            const x = padLeft + (i / Math.max(meseci.length - 1, 1)) * chartW
+            return <text key={i} x={x} y={h - 7} textAnchor="middle" fill="#5a5a80" fontSize="8" fontWeight="700">{m.label}</text>
+          })}
         </svg>
-        <div className="flex justify-between px-2 mt-1">{meseci.map((m, i) => <p key={i} className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>)}</div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           {series.map((s) => (
             <div key={s.key} className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-2">
@@ -1082,6 +1122,7 @@ export default function Stroski() {
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
                 <p className="text-[#5a5a80] text-[10px] font-bold uppercase">{s.label}</p>
               </div>
+              <p className="mt-1 text-xs font-bold text-white">{compactMoney(graphTotals[s.key])}</p>
             </div>
           ))}
         </div>

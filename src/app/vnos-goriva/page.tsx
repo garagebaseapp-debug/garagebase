@@ -89,7 +89,16 @@ export default function VnosGoriva() {
 
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
-      const { data } = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo').eq('user_id', user.id)
+      const activeCarsResult = await supabase
+        .from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano')
+        .eq('user_id', user.id)
+        .eq('arhivirano', false)
+      let data: any[] = activeCarsResult.data || []
+      if (activeCarsResult.error) {
+        const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo').eq('user_id', user.id)
+        data = fallback.data || []
+      }
+      data = (data || []).filter((car: any) => car?.arhivirano !== true)
       if (!data || data.length === 0) return
 
       setAvti(data)
@@ -221,7 +230,7 @@ export default function VnosGoriva() {
       }`}
       aria-label={tx('Glasovni vnos', 'Voice input')}
     >
-      MIC
+      🎤
     </button>
   )
 
@@ -299,6 +308,7 @@ export default function VnosGoriva() {
   }
 
   useEffect(() => {
+    if (!ocrAllowed) return
     const handleWindowPaste = async (event: ClipboardEvent) => {
       const imageItem = Array.from(event.clipboardData?.items || []).find((item) => item.type.startsWith('image/'))
       const file = imageItem?.getAsFile()
@@ -356,7 +366,7 @@ export default function VnosGoriva() {
   }
 
   const naloziRacun = async () => {
-    if (!racun) return null
+    if (!racun || !ocrAllowed) return null
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
     const ext = racun.name.split('.').pop() || 'jpg'
@@ -440,7 +450,7 @@ export default function VnosGoriva() {
 
       {poslusam && (
         <div className="bg-[#ef444422] border border-[#ef444444] rounded-xl p-3 mb-4 flex items-center gap-3">
-          <span className="text-xl animate-pulse">MIC</span>
+          <span className="text-xl animate-pulse">🎤</span>
           <p className="text-[#ef4444] text-sm font-semibold">{tx('Poslusam... govori zdaj', 'Listening... speak now')}</p>
         </div>
       )}
@@ -594,6 +604,7 @@ export default function VnosGoriva() {
           )}
         </div>
 
+        {ocrAllowed && (
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Racun', 'Receipt')}</label>
           <input ref={receiptInputRef} type="file" accept="image/*" capture="environment" onChange={dodajRacun} className="hidden" />
@@ -610,11 +621,9 @@ export default function VnosGoriva() {
             >
               {ocrLoading
                 ? tx('Berem racun...', 'Reading receipt...')
-                : ocrAllowed
-                  ? tx('Slikaj racun za test', 'Take receipt photo for testing')
-                  : adminCheckDone
-                    ? tx('Dodaj sliko racuna', 'Add receipt photo')
-                    : tx('Preverjam dostop...', 'Checking access...')}
+                : adminCheckDone
+                  ? tx('Slikaj racun (admin)', 'Take receipt photo (admin)')
+                  : tx('Preverjam dostop...', 'Checking access...')}
             </button>
           ) : (
             <div className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
@@ -679,6 +688,7 @@ export default function VnosGoriva() {
             </div>
           )}
         </div>
+        )}
 
         {message && (
           <div className={`p-3 rounded-xl text-sm border ${

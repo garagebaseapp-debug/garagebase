@@ -267,33 +267,56 @@ export default function Dashboard() {
       const params = new URLSearchParams(window.location.search)
       const carIdFromUrl = params.get('car')
       const cached = localStorage.getItem('garagebase_garaza_cache')
-      if (cached) {
+      if (cached && !carIdFromUrl) {
         try {
           const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed.avti) && parsed.avti.length > 0) {
-            setAvti(parsed.avti)
-            if (!carIdFromUrl) {
-              setAktivniAvto(parsed.avti[0])
-              setLoading(false)
-            }
+          const cachedCars = Array.isArray(parsed.avti)
+            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
+            : []
+          if (cachedCars.length > 0) {
+            setAvti(cachedCars)
+            setAktivniAvto(cachedCars[0])
+            setLoading(false)
           }
         } catch {}
       }
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const { data: avtiData } = await supabase
+      let selectedCar: any = null
+      if (carIdFromUrl) {
+        const { data } = await supabase
+          .from('cars').select('*')
+          .eq('user_id', user.id)
+          .eq('id', carIdFromUrl)
+          .maybeSingle()
+        selectedCar = data || null
+      }
+      const archiveMode = Boolean(selectedCar?.arhivirano)
+      let { data: avtiData, error: avtiError } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
+        .eq('arhivirano', archiveMode)
         .order('vrstni_red', { ascending: true })
-      const cars = avtiData || []
+      if (avtiError) {
+        const fallback = await supabase
+          .from('cars').select('*').eq('user_id', user.id)
+          .order('vrstni_red', { ascending: true })
+        avtiData = fallback.data || []
+      }
+      let cars = (avtiData || []).filter((car: any) => Boolean(car?.arhivirano) === archiveMode || car.id === selectedCar?.id)
+      if (selectedCar && !cars.some((car: any) => car.id === selectedCar.id)) {
+        cars = [selectedCar, ...cars]
+      }
       setAvti(cars)
-      const previousGarageCache = localStorage.getItem('garagebase_garaza_cache')
-      let previousOpomniki = {}
-      try { previousOpomniki = previousGarageCache ? JSON.parse(previousGarageCache).opomniki || {} : {} } catch {}
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: previousOpomniki, savedAt: Date.now() }))
+      if (!archiveMode) {
+        const previousGarageCache = localStorage.getItem('garagebase_garaza_cache')
+        let previousOpomniki = {}
+        try { previousOpomniki = previousGarageCache ? JSON.parse(previousGarageCache).opomniki || {} : {} } catch {}
+        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: previousOpomniki, arhiv: false, savedAt: Date.now() }))
+      }
       if (cars.length > 0) {
         const izbrani = carIdFromUrl
-          ? cars.find((a: any) => a.id === carIdFromUrl) || cars[0]
+          ? cars.find((a: any) => a.id === carIdFromUrl) || selectedCar || cars[0]
           : cars[0]
         setAktivniAvto(izbrani)
         setLoading(false)

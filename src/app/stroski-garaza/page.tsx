@@ -20,8 +20,11 @@ export default function StroškiGaraza() {
       if (cachedGarage) {
         try {
           const parsed = JSON.parse(cachedGarage)
-          if (Array.isArray(parsed.avti)) {
-            setAvti(parsed.avti)
+          const cachedCars = Array.isArray(parsed.avti)
+            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
+            : []
+          if (cachedCars.length > 0 && parsed.arhiv !== true) {
+            setAvti(cachedCars)
             setLoading(false)
           }
         } catch {}
@@ -38,8 +41,17 @@ export default function StroškiGaraza() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
 
-      const { data: avtiData } = await supabase.from('cars').select('*').eq('user_id', user.id).order('vrstni_red', { ascending: true })
-      const cars = avtiData || []
+      let { data: avtiData, error: avtiError } = await supabase
+        .from('cars').select('*').eq('user_id', user.id)
+        .eq('arhivirano', false)
+        .order('vrstni_red', { ascending: true })
+      if (avtiError) {
+        const fallback = await supabase
+          .from('cars').select('*').eq('user_id', user.id)
+          .order('vrstni_red', { ascending: true })
+        avtiData = fallback.data || []
+      }
+      const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
       setAvti(cars)
 
       const stroskoviMap: { [key: string]: number } = {}
@@ -66,7 +78,7 @@ export default function StroškiGaraza() {
       }
 
       setStroski(stroskoviMap)
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, savedAt: Date.now() }))
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, arhiv: false, savedAt: Date.now() }))
       localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
       setLoading(false)
     }

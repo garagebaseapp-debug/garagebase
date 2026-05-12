@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 const glavnePovezave = [
   { key: 'garaza', href: '/garaza', icon: '🏠', labelKey: 'garage' },
@@ -16,7 +17,16 @@ function pojdiNa(href: string) {
 }
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let mounted = true
+    checkCurrentUserAdmin().then((result) => {
+      if (mounted) setIsAdmin(result.isAdmin)
+    })
+    return () => { mounted = false }
+  }, [])
 
   return (
     <div className="gb-desktop-nav fixed top-0 left-0 right-0 z-50 hidden bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]">
@@ -32,6 +42,19 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
             <span>↩</span>
             <span>{t('home')}</span>
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => pojdiNa('/admin')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                aktivna === 'admin'
+                  ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
+                  : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
+              }`}
+            >
+              <span>Admin</span>
+              <span>{language === 'en' ? 'Panel' : 'Panel'}</span>
+            </button>
+          )}
           {glavnePovezave.map((item) => (
             <button
               key={item.key}

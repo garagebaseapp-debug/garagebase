@@ -64,9 +64,12 @@ export default function Garaza() {
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          if (Array.isArray(parsed.avti)) {
-            setAvti(parsed.avti)
-            if (parsed.avti[0]?.id) setLiteCarId(prev => prev || parsed.avti[0].id)
+          const cachedCars = Array.isArray(parsed.avti)
+            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
+            : []
+          if (cachedCars.length > 0 && parsed.arhiv !== true) {
+            setAvti(cachedCars)
+            if (cachedCars[0]?.id) setLiteCarId(prev => prev || cachedCars[0].id)
           }
           if (parsed.opomniki) setOpomniki(parsed.opomniki)
         } catch {}
@@ -120,7 +123,7 @@ export default function Garaza() {
         setOpomniki({})
       }
 
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: opomnikMap, savedAt: Date.now() }))
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: opomnikMap, arhiv: false, savedAt: Date.now() }))
       setLoading(false)
     }
     init()
@@ -394,10 +397,12 @@ export default function Garaza() {
               {urejanje ? '✓ Končaj' : '⇅ Uredi'}
             </button>
           )}
-          <button onClick={() => pojdiDodajAvto('header')}
-            className="bg-[#6c63ff] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
-            + Avto
-          </button>
+          {!arhiv && (
+            <button onClick={() => pojdiDodajAvto('header')}
+              className="bg-[#6c63ff] text-white text-sm font-semibold px-3 py-2 rounded-xl hover:bg-[#5a52e0] transition-colors">
+              + Avto
+            </button>
+          )}
           <button onClick={handleLogout}
             className="text-[#5a5a80] text-sm hover:text-white transition-colors">
             Odjava
@@ -487,9 +492,14 @@ export default function Garaza() {
                     <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
                       className={`relative shrink-0 rounded-xl border-2 ${priority.border} ${priority.glow} px-2 py-2 text-left min-w-[118px] shadow-md transition-all ${
                         selected
-                          ? 'bg-[#6c63ff22] text-white ring-2 ring-[#6c63ff88]'
+                          ? 'bg-[#3ecfcf22] text-white ring-4 ring-[#3ecfcfaa] border-[#3ecfcf] shadow-[#3ecfcf44]'
                           : 'bg-[#0f0f1a] text-[#8a8ab0]'
                       }`}>
+                      {selected && (
+                        <span className="absolute left-2 top-2 z-10 rounded-full bg-[#3ecfcf] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-black">
+                          {tx('Izbrano', 'Selected')}
+                        </span>
+                      )}
                       <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/40 shadow`} />
                       <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
                         {avto.slika_url ? (
@@ -553,16 +563,20 @@ export default function Garaza() {
         <div className="flex-1 flex items-center justify-center px-5">
           <div className="text-center">
             <p className="text-6xl mb-4">🚗</p>
-            <p className="text-white font-semibold text-xl mb-2">Tvoja garaža je prazna</p>
-            <p className="text-[#5a5a80] text-sm mb-6">Dodaj prvi avto in začni slediti stroškom</p>
-            <button onClick={() => pojdiDodajAvto('empty')}
-              className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
-              + Dodaj avto
-            </button>
-            {limitMessage && limitAnchor === 'empty' && (
-              <p className="mt-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-base font-black leading-snug text-[#fecaca] shadow-lg shadow-[#ef444422]">
-                {limitMessage}
-              </p>
+            <p className="text-white font-semibold text-xl mb-2">{arhiv ? tx('Arhiv je prazen', 'Archive is empty') : tx('Tvoja garaza je prazna', 'Your garage is empty')}</p>
+            <p className="text-[#5a5a80] text-sm mb-6">{arhiv ? tx('Arhivirana vozila se prikazejo tukaj.', 'Archived vehicles will appear here.') : tx('Dodaj prvi avto in zacni slediti stroskom', 'Add your first car and start tracking costs')}</p>
+            {!arhiv && (
+              <>
+                <button onClick={() => pojdiDodajAvto('empty')}
+                  className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
+                  + {tx('Dodaj avto', 'Add car')}
+                </button>
+                {limitMessage && limitAnchor === 'empty' && (
+                  <p className="mt-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-base font-black leading-snug text-[#fecaca] shadow-lg shadow-[#ef444422]">
+                    {limitMessage}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -629,7 +643,7 @@ export default function Garaza() {
               )
             })}
 
-            {!urejanje && (
+            {!urejanje && !arhiv && (
               <div onClick={() => pojdiDodajAvto('grid')}
                 className="aspect-square rounded-xl border-2 border-dashed border-[#2a2a40] flex items-center justify-center cursor-pointer hover:border-[#6c63ff] transition-colors">
                 <div className="text-center">
@@ -765,7 +779,7 @@ export default function Garaza() {
             )
           })}
 
-          {!urejanje && (
+          {!urejanje && !arhiv && (
             <div onClick={() => pojdiDodajAvto('list')}
               className="relative cursor-pointer overflow-hidden flex items-center justify-center border-t border-[#1a1a28]"
               style={{ height: '10vh', minHeight: '70px' }}>

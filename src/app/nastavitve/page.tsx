@@ -61,7 +61,6 @@ export default function Nastavitve() {
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [garazaPisava, setGarazaPisava] = useState(100)
   const [avtocomplete, setAvtocomplete] = useState(true)
-  const [datumFormat, setDatumFormat] = useState('dd.mm.yyyy')
   const [enotaRazdalje, setEnotaRazdalje] = useState<'km' | 'mi'>('km')
   const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const [tema, setTema] = useState('temna')
@@ -203,7 +202,6 @@ export default function Nastavitve() {
         setMobileGridStolpci(n.mobileGridStolpci || 3)
         setGarazaPisava(n.garazaPisava || 100)
         setAvtocomplete(n.avtocomplete !== false)
-        setDatumFormat(n.datumFormat || 'dd.mm.yyyy')
         setEnotaRazdalje(n.enotaRazdalje === 'mi' ? 'mi' : 'km')
         setValuta(n.valuta === 'USD' ? 'USD' : 'EUR')
         setTema(n.tema || 'temna')
@@ -455,7 +453,7 @@ export default function Nastavitve() {
   const shrani = () => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat, enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
+    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     applyFontSize(pisava)
@@ -729,13 +727,6 @@ export default function Nastavitve() {
                   </span>
                 </button>
               ))}
-              {isAdmin && (
-                <a href="/admin"
-                  className="mt-3 flex items-center justify-between rounded-2xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-3 text-sm font-semibold text-[#a09aff] transition-colors hover:bg-[#6c63ff33]">
-                  {tx('Admin panel', 'Admin panel')}
-                  <span className="text-[#3a3a5a]">&gt;</span>
-                </a>
-              )}
             </nav>
           </aside>
 
@@ -765,13 +756,6 @@ export default function Nastavitve() {
               )}
             </button>
           ))}
-          {isAdmin && (
-            <a href="/admin" className="relative overflow-hidden rounded-2xl border border-[#6c63ff66] bg-[#6c63ff22] p-3 text-left shadow-lg shadow-[#6c63ff18]">
-              <span className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#6c63ff] to-[#14b8a6]" />
-              <span className="block text-sm font-bold text-white">{tx('Admin panel', 'Admin panel')}</span>
-              <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{tx('Samo za administratorje', 'Administrators only')}</span>
-            </a>
-          )}
         </div>
       </div>
 
@@ -1008,24 +992,6 @@ export default function Nastavitve() {
       <div id="format-uporabe" style={{ display: showSection('uporaba') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Oblika podatkov', 'Data format')}</p>
         <div className="space-y-4">
-          <div>
-            <p className="mb-2 text-sm font-semibold text-white">{tx('Oblika datuma', 'Date format')}</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: 'dd.mm.yyyy', label: '31.12.2026' },
-                { value: 'yyyy-mm-dd', label: '2026-12-31' },
-                { value: 'dd/mm/yyyy', label: '31/12/2026' },
-                { value: 'mm/dd/yyyy', label: '12/31/2026' },
-              ].map((item) => (
-                <button key={item.value} type="button" onClick={() => setDatumFormat(item.value)}
-                  className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${
-                    datumFormat === item.value ? 'border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff]' : 'border-[#1e1e32] bg-[#13131f] text-[#5a5a80]'
-                  }`}>
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </div>
           <div>
             <p className="mb-2 text-sm font-semibold text-white">{tx('Enota razdalje', 'Distance unit')}</p>
             <div className="grid grid-cols-2 gap-2">
@@ -1363,22 +1329,6 @@ export default function Nastavitve() {
           </div>
         </div>
       </div>
-
-      {isAdmin && (
-        <div id="admin-panel" style={{ display: showSection('aplikacija') || showSection('pomoc') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#6c63ff66] rounded-2xl p-5 lg:col-span-2">
-          <p className="text-[#a09aff] text-xs uppercase tracking-wider mb-1">Admin</p>
-          <p className="text-white font-semibold text-sm">{jezik === 'en' ? 'Main admin panel' : 'Glavni admin panel'}</p>
-          <p className="text-[#5a5a80] text-xs mt-1 mb-3">
-            {jezik === 'en'
-              ? 'Visible only to accounts added as admins.'
-              : 'Vidno samo računom, ki so dodani kot admini.'}
-          </p>
-          <button onClick={() => window.location.href = '/admin'}
-            className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors">
-            {jezik === 'en' ? 'Open admin panel' : 'Odpri admin panel'}
-          </button>
-        </div>
-      )}
 
       {passwordDialogOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4">
