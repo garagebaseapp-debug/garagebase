@@ -577,7 +577,6 @@ export default function Stroski() {
       activeLoadRef.current = carId
       const shouldApply = () => activeLoadRef.current === carId
       setRefreshing(true)
-      const started = performance.now()
       try {
       const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
         supabase.from('cars').select('*').eq('id', carId).single(),
@@ -738,7 +737,6 @@ export default function Stroski() {
       }
       writeVehicleStatsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
       writeCostTotalsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
-      console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       } catch (error) {
         console.warn('[GarageBase costs] load failed', error)
         setDebugSource((prev) => `${prev || 'load'} | load-error`)

@@ -282,7 +282,6 @@ export default function Dashboard() {
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const started = performance.now()
       const { data: avtiData } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
         .order('vrstni_red', { ascending: true })
@@ -301,7 +300,6 @@ export default function Dashboard() {
         if (jeLite) await naloziLitePodatke(cars.map((a: any) => a.id), izbrani.id)
         await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
-      console.info(`[GarageBase speed] dashboard cars ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()
@@ -327,7 +325,6 @@ export default function Dashboard() {
     }
 
     if (ids.length === 0) return
-    const started = performance.now()
     const { data } = await supabase
       .from('reminders')
       .select('*')
@@ -355,7 +352,6 @@ export default function Dashboard() {
 
     setLiteOpomnikiPoAvtu(completeGrouped)
     if (selectedId) setOpomniki(completeGrouped[selectedId] || [])
-    console.info(`[GarageBase speed] lite dashboard ${Math.round(performance.now() - started)}ms, cars ${ids.length}`)
   }
 
   const naloziStatistikoVozila = async (carId: string, kmStart: number = 0, kmObVnosu: number = 0) => {
@@ -565,7 +561,6 @@ export default function Dashboard() {
       } catch {}
     }
 
-    const started = performance.now()
     const [opRes] = await Promise.all([
       supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
     ])
@@ -579,7 +574,6 @@ export default function Dashboard() {
     const nextPoraba = stats.poraba
     const nextStroski = stats.stroski
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
-    console.info(`[GarageBase speed] dashboard data ${Math.round(performance.now() - started)}ms`)
   }
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return

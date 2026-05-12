@@ -90,7 +90,6 @@ export default function Garaza() {
         return
       }
 
-      const started = performance.now()
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
         .eq('arhivirano', false)
@@ -122,7 +121,6 @@ export default function Garaza() {
       }
 
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: opomnikMap, savedAt: Date.now() }))
-      console.info(`[GarageBase speed] garaza load ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()

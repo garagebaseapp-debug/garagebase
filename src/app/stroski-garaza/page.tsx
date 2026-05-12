@@ -38,7 +38,6 @@ export default function StroškiGaraza() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
 
-      const started = performance.now()
       const { data: avtiData } = await supabase.from('cars').select('*').eq('user_id', user.id).order('vrstni_red', { ascending: true })
       const cars = avtiData || []
       setAvti(cars)
@@ -69,7 +68,6 @@ export default function StroškiGaraza() {
       setStroski(stroskoviMap)
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, savedAt: Date.now() }))
       localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
-      console.info(`[GarageBase speed] stroski-garaza load ${Math.round(performance.now() - started)}ms, cars ${cars.length}`)
       setLoading(false)
     }
     init()
