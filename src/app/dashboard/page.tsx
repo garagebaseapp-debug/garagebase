@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
@@ -228,6 +228,7 @@ const readVehicleStatsCache = (carId: string) => {
 }
 
 export default function Dashboard() {
+  const activeLoadRef = useRef('')
   const [avti, setAvti] = useState<any[]>([])
   const [aktivniAvto, setAktivniAvto] = useState<any>(null)
   const [opomniki, setOpomniki] = useState<any[]>([])
@@ -390,6 +391,7 @@ export default function Dashboard() {
 
   const naloziStatistikoVozila = async (carId: string, kmStart: number = 0, kmObVnosu: number = 0) => {
     const { data: sessionData } = await supabase.auth.getSession()
+    if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
     const token = sessionData.session?.access_token
     const cachedStats = readVehicleStatsCache(carId)
     let cachedFallback: { poraba: ConsumptionBreakdown; stroski: CostBreakdown } | null = null
@@ -404,6 +406,7 @@ export default function Dashboard() {
         })
         const payload = await response.json()
         if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
+          if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
           const stats = payload.stats
           const nextPoraba = {
             garageBase: stats.consumption?.garageBase ?? null,
@@ -450,6 +453,7 @@ export default function Dashboard() {
           }
           source = `${source}+needs-consumption`
         } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+          if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
           source = `${apiDebugText(payload)} no-values`
           setDebugStats({
             fuel: numberValue(payload.stats.rows?.fuel),
@@ -470,6 +474,7 @@ export default function Dashboard() {
     }
 
     if (cachedStats?.costs || cachedStats?.consumption) {
+      if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
       const cachedCostTotal =
         numberValue(cachedStats?.costs?.total) ||
         (numberValue(cachedStats?.fuelCost) + numberValue(cachedStats?.serviceCost) + numberValue(cachedStats?.expenseCost))
@@ -507,6 +512,7 @@ export default function Dashboard() {
         .select('*')
         .eq('car_id', carId),
     ])
+    if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
 
     if (fuelRes.error || serviceRes.error || expenseRes.error) {
       source = `${source || 'direct'}-error`
@@ -580,6 +586,8 @@ export default function Dashboard() {
   }
 
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
+    activeLoadRef.current = carId
+    const shouldApply = () => activeLoadRef.current === carId
     const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
     if (cached) {
       try {
@@ -624,9 +632,11 @@ export default function Dashboard() {
     ])
 
     const opData = opRes.data || []
+    if (!shouldApply()) return
     setOpomniki(opData)
 
     const stats = await naloziStatistikoVozila(carId, avtoKmStart, kmObVnosu)
+    if (!shouldApply()) return
     const nextPoraba = stats.poraba
     const nextStroski = stats.stroski
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
@@ -634,6 +644,7 @@ export default function Dashboard() {
   }
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
+    activeLoadRef.current = avto.id
     setAktivniAvto(avto)
     setPoraba(emptyConsumption)
     setStroski(emptyCosts)

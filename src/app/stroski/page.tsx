@@ -452,11 +452,13 @@ export default function Stroski() {
             cache: 'no-store',
           })
           const payload = await response.json()
-          if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+          if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
             nextServerStats = payload.stats
             setServerStats(nextServerStats)
             setDisplayStats(nextServerStats)
             nextDebugSource = `${nextDebugSource} | ${apiDebugText(payload)}`
+          } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
+            nextDebugSource = `${nextDebugSource} | ${apiDebugText(payload)} rows-only`
           } else {
             nextDebugSource = `${nextDebugSource} | ${payload?.debug ? `${apiDebugText(payload)} empty` : `api-empty:${payload?.error || 'no-values'}`}`
             console.warn('[GarageBase costs] server statistics failed', payload?.error)
@@ -467,7 +469,7 @@ export default function Stroski() {
         }
       }
       setDebugSource(nextDebugSource)
-      const statsForSummary = statsHasData(nextServerStats) || statsHasRealValues(nextServerStats) ? nextServerStats : immediateStats
+      const statsForSummary = firstUsableStats(nextServerStats, immediateStats)
       if (statsHasData(statsForSummary) || statsHasRealValues(statsForSummary)) setDisplayStats(statsForSummary)
       const nextSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, statsForSummary)
       setLoadedSummary(nextSummary)
@@ -511,7 +513,7 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const currentCarId = avto?.id || activeCarId
+  const currentCarId = activeCarId || avto?.id
   const renderCache = currentCarId ? readCostCache(currentCarId) : null
   const firstRows = (...sets: any[][]) => sets.find((set) => set.length > 0) || sets[0] || []
   const displayGorivo = firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, renderCache?.gorivo || [])
