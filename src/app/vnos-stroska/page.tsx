@@ -9,6 +9,7 @@ import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } fro
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 export default function VnosStroska() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -30,7 +31,6 @@ export default function VnosStroska() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const jeEn = typeof window !== 'undefined' && getStoredLanguage() === 'en'
   const tx = (sl: string, en: string) => jeEn ? en : sl
-  const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
   const kategorije = [
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
@@ -48,13 +48,8 @@ export default function VnosStroska() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const email = user.email?.toLowerCase() || ''
-      let isAdmin = adminEmails.includes(email)
-      if (!isAdmin) {
-        const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
-        isAdmin = !!adminRow
-      }
-      setOcrAllowed(isAdmin)
+      const adminCheck = await checkCurrentUserAdmin()
+      setOcrAllowed(adminCheck.isAdmin)
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
       const { data } = await supabase.from('cars').select('id, znamka, model').eq('user_id', user.id)

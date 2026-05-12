@@ -10,6 +10,7 @@ import { useLanguage } from '@/lib/i18n'
 import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 type FuelType = {
   value: string
@@ -20,8 +21,6 @@ type FuelType = {
   text: string
   activeBg: string
 }
-
-const adminEmails = ['drazen.letsgo@gmail.com', 'drazenletsgo@gmail.com', 'garagebase.app@gmail.com']
 
 export default function VnosGoriva() {
   const { language } = useLanguage()
@@ -75,27 +74,8 @@ export default function VnosGoriva() {
         return
       }
 
-      const email = user.email?.toLowerCase() || ''
-      let isAdmin = adminEmails.includes(email)
-      try {
-        const { data: sessionData } = await supabase.auth.getSession()
-        const jwt = sessionData.session?.access_token
-        if (jwt) {
-          const response = await fetch('/api/admin/check', {
-            headers: { Authorization: `Bearer ${jwt}` },
-          })
-          if (response.ok) {
-            const result = await response.json()
-            isAdmin = isAdmin || Boolean(result.isAdmin)
-          }
-        }
-      } catch {
-        if (!isAdmin) {
-          const { data: adminRow } = await supabase.from('admin_users').select('email').eq('email', email).maybeSingle()
-          isAdmin = !!adminRow
-        }
-      }
-      setOcrAllowed(isAdmin)
+      const adminCheck = await checkCurrentUserAdmin()
+      setOcrAllowed(adminCheck.isAdmin)
       setAdminCheckDone(true)
 
       try {

@@ -1,46 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-const fallbackAdminEmails = new Set([
-  'drazen.letsgo@gmail.com',
-  'drazenletsgo@gmail.com',
-  'garagebase.app@gmail.com',
-])
-const allowFallbackAdmins = process.env.NODE_ENV !== 'production' || process.env.GARAGEBASE_ALLOW_FALLBACK_ADMINS === 'true'
-
-async function requireAdmin(request: NextRequest) {
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-    return { error: NextResponse.json({ error: 'missing_server_config' }, { status: 500 }) }
-  }
-
-  const authorization = request.headers.get('authorization') || ''
-  const token = authorization.replace(/^Bearer\s+/i, '')
-  if (!token) return { error: NextResponse.json({ error: 'missing_token' }, { status: 401 }) }
-
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  })
-  const { data: { user }, error: userError } = await userClient.auth.getUser()
-  const email = user?.email?.toLowerCase() || ''
-  if (userError || !user || !email) return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) }
-
-  const admin = createClient(supabaseUrl, serviceRoleKey)
-  if (!(allowFallbackAdmins && fallbackAdminEmails.has(email))) {
-    const { data: adminRow, error: adminError } = await admin
-      .from('admin_users')
-      .select('email')
-      .eq('email', email)
-      .maybeSingle()
-
-    if (adminError || !adminRow) return { error: NextResponse.json({ error: 'forbidden' }, { status: 403 }) }
-  }
-
-  return { admin, user }
-}
+import { requireAdmin } from '@/lib/server-admin'
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request)
@@ -60,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const planByEmail = new Map((plans || []).map((plan: any) => [String(plan.email).toLowerCase(), plan]))
   const users = authData.users
-    .map((user) => {
+    .map((user: any) => {
       const email = user.email?.toLowerCase() || ''
       return {
         id: user.id,
@@ -70,7 +29,7 @@ export async function GET(request: NextRequest) {
         plan: planByEmail.get(email) || null,
       }
     })
-    .filter((user) => !search || user.email.includes(search))
+    .filter((user: any) => !search || user.email.includes(search))
     .slice(0, 100)
 
   return NextResponse.json({ users, plans: plans || [] })
