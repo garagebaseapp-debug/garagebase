@@ -114,7 +114,12 @@ export const buildCostSummary = (fuelRows: any[], serviceRows: any[], expenseRow
   const imported = split.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const garageBase = Math.max(0, total - imported)
 
-  if (total > 0 || rows.length > 0) {
+  const statsFuel = numberValue(stats?.costs?.fuel)
+  const statsService = numberValue(stats?.costs?.service)
+  const statsExpense = numberValue(stats?.costs?.expense)
+  const statsTotal = numberValue(stats?.costs?.total) || statsFuel + statsService + statsExpense
+
+  if (total > 0 || (rows.length > 0 && statsTotal <= 0)) {
     return {
       fuel,
       service,
@@ -131,10 +136,10 @@ export const buildCostSummary = (fuelRows: any[], serviceRows: any[], expenseRow
   }
 
   return {
-    fuel: numberValue(stats?.costs?.fuel),
-    service: numberValue(stats?.costs?.service),
-    expense: numberValue(stats?.costs?.expense),
-    total: numberValue(stats?.costs?.total),
+    fuel: statsFuel,
+    service: statsService,
+    expense: statsExpense,
+    total: statsTotal,
     imported: numberValue(stats?.costs?.imported),
     garageBase: numberValue(stats?.costs?.garageBase),
     rows: {

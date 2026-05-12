@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-11-2315'
+const DASHBOARD_BUILD = 'dashboard-2026-05-12-0530'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -239,8 +239,39 @@ export default function Dashboard() {
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
-  const hasConsumptionBreakdown = poraba.total !== null || poraba.garageBase !== null || poraba.imported !== null
-  const hasCostBreakdown = stroski.total > 0 || stroski.garageBase > 0 || stroski.imported > 0
+  const renderStats = aktivniAvto?.id ? readVehicleStatsCache(aktivniAvto.id) : null
+  const cachedConsumption: ConsumptionBreakdown = renderStats?.consumption
+    ? {
+        garageBase: renderStats.consumption.garageBase ?? null,
+        imported: renderStats.consumption.imported ?? null,
+        total: renderStats.consumption.total ?? null,
+      }
+    : emptyConsumption
+  const cachedCostTotal =
+    numberValue(renderStats?.costs?.total) ||
+    (numberValue(renderStats?.fuelCost) + numberValue(renderStats?.serviceCost) + numberValue(renderStats?.expenseCost))
+  const cachedImportedCost = numberValue(renderStats?.costs?.imported)
+  const cachedCosts: CostBreakdown = {
+    garageBase: numberValue(renderStats?.costs?.garageBase) || Math.max(0, cachedCostTotal - cachedImportedCost),
+    imported: cachedImportedCost,
+    total: cachedCostTotal,
+    naKm: renderStats?.costs?.naKm ?? renderStats?.costs?.perKm ?? null,
+  }
+  const stateHasConsumption = poraba.total !== null || poraba.garageBase !== null || poraba.imported !== null
+  const stateHasCosts = stroski.total > 0 || stroski.garageBase > 0 || stroski.imported > 0
+  const renderPoraba = stateHasConsumption ? poraba : cachedConsumption
+  const renderStroski = stateHasCosts ? stroski : cachedCosts
+  const renderDebugStats = debugStats.cost > 0 || debugStats.liters > 0 || debugStats.fuel > 0
+    ? debugStats
+    : {
+        fuel: numberValue(renderStats?.rows?.fuel) || numberValue(renderStats?.fuelRows),
+        service: numberValue(renderStats?.rows?.service),
+        expense: numberValue(renderStats?.rows?.expense),
+        liters: numberValue(renderStats?.liters) || numberValue(renderStats?.fuelLiters),
+        cost: cachedCostTotal,
+      }
+  const hasConsumptionBreakdown = renderPoraba.total !== null || renderPoraba.garageBase !== null || renderPoraba.imported !== null
+  const hasCostBreakdown = renderStroski.total > 0 || renderStroski.garageBase > 0 || renderStroski.imported > 0
   const consumptionText = (value: number | null) => value !== null ? `${value.toFixed(1)} L/100` : '-'
 
   useEffect(() => {
@@ -384,6 +415,12 @@ export default function Dashboard() {
             expenseCost: numberValue(stats.costs?.expense),
             fuelLiters: numberValue(stats.liters),
             fuelRows: numberValue(stats.rows?.fuel),
+            rows: {
+              fuel: numberValue(stats.rows?.fuel),
+              service: numberValue(stats.rows?.service),
+              expense: numberValue(stats.rows?.expense),
+            },
+            liters: numberValue(stats.liters),
             consumption: nextPoraba,
             costs: nextStroski,
             savedAt: Date.now(),
@@ -520,6 +557,8 @@ export default function Dashboard() {
       expenseCost: directStats.costs.expense,
       fuelLiters: directStats.liters || numberValue(totalsCache?.fuelLiters),
       fuelRows: directStats.rows.fuel || numberValue(totalsCache?.fuelRows),
+      rows: directStats.rows,
+      liters: directStats.liters || numberValue(totalsCache?.fuelLiters),
       consumption: nextPoraba,
       costs: nextStroski,
       savedAt: Date.now(),
@@ -886,15 +925,15 @@ export default function Dashboard() {
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#3ecfcf] text-xs font-bold uppercase">{tx('Skupaj', 'Total')}</span>
-                          <span className="text-white font-bold text-lg">{consumptionText(poraba.total)}</span>
+                          <span className="text-white font-bold text-lg">{consumptionText(renderPoraba.total)}</span>
                         </div>
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#a09aff] text-xs font-bold uppercase">{tx('GarageBase vnosi', 'GarageBase entries')}</span>
-                          <span className="text-[#c8c4ff] font-semibold">{consumptionText(poraba.garageBase)}</span>
+                          <span className="text-[#c8c4ff] font-semibold">{consumptionText(renderPoraba.garageBase)}</span>
                         </div>
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#86efac] text-xs font-bold uppercase">{tx('Uvozena zgodovina', 'Imported history')}</span>
-                          <span className="text-[#bbf7d0] font-semibold">{consumptionText(poraba.imported)}</span>
+                          <span className="text-[#bbf7d0] font-semibold">{consumptionText(renderPoraba.imported)}</span>
                         </div>
                       </div>
                     </button>
@@ -903,21 +942,21 @@ export default function Dashboard() {
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#3ecfcf] text-xs font-bold uppercase">{tx('Skupaj', 'Total')}</span>
-                          <span className="text-white font-bold text-lg">{stroski.total > 0 ? formatMoney(stroski.total, valuta) : '-'}</span>
+                          <span className="text-white font-bold text-lg">{renderStroski.total > 0 ? formatMoney(renderStroski.total, valuta) : '-'}</span>
                         </div>
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#a09aff] text-xs font-bold uppercase">{tx('GarageBase vnosi', 'GarageBase entries')}</span>
-                          <span className="text-[#c8c4ff] font-semibold">{stroski.garageBase > 0 ? formatMoney(stroski.garageBase, valuta) : '-'}</span>
+                          <span className="text-[#c8c4ff] font-semibold">{renderStroski.garageBase > 0 ? formatMoney(renderStroski.garageBase, valuta) : '-'}</span>
                         </div>
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="text-[#86efac] text-xs font-bold uppercase">{tx('Uvozena zgodovina', 'Imported history')}</span>
-                          <span className="text-[#bbf7d0] font-semibold">{stroski.imported > 0 ? formatMoney(stroski.imported, valuta) : '-'}</span>
+                          <span className="text-[#bbf7d0] font-semibold">{renderStroski.imported > 0 ? formatMoney(renderStroski.imported, valuta) : '-'}</span>
                         </div>
                       </div>
                     </button>
                   </div>
                   <p className="text-[#5a5a80] text-[10px]">
-                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
                   </p>
 
                   <div className="grid grid-cols-3 gap-3 mt-auto">
@@ -984,22 +1023,22 @@ export default function Dashboard() {
 
                 {hasConsumptionBreakdown && (
                   <div onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`} className="mx-5 mb-4 grid grid-cols-1 gap-3 cursor-pointer">
-                    {poraba.total !== null && (
+                    {renderPoraba.total !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
                         <p className="text-[#3ecfcf] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
-                        <p className="text-white font-bold text-lg">{poraba.total.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                        <p className="text-white font-bold text-lg">{renderPoraba.total.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
-                    {poraba.garageBase !== null && (
+                    {renderPoraba.garageBase !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
                         <p className="text-[#a09aff] text-xs uppercase tracking-wider mb-1">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
-                        <p className="text-[#c8c4ff] font-bold text-lg">{poraba.garageBase.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                        <p className="text-[#c8c4ff] font-bold text-lg">{renderPoraba.garageBase.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
-                    {poraba.imported !== null && (
+                    {renderPoraba.imported !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
                         <p className="text-[#86efac] text-xs uppercase tracking-wider mb-1">{tx('Uvozena zgodovina', 'Imported history')}</p>
-                        <p className="text-[#bbf7d0] font-bold text-lg">{poraba.imported.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                        <p className="text-[#bbf7d0] font-bold text-lg">{renderPoraba.imported.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
                       </div>
                     )}
                   </div>
@@ -1012,21 +1051,21 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center">
                       <div>
                         <p className="text-[#3ecfcf] text-xs mb-0.5">{tx('Skupaj', 'Total')}</p>
-          <p className="text-white font-bold text-xl">{formatMoney(stroski.total, valuta)}</p>
-                        <p className="text-[#a09aff] text-xs mt-1">{tx('GarageBase vnosi', 'GarageBase entries')}: {stroski.garageBase > 0 ? formatMoney(stroski.garageBase, valuta) : '-'}</p>
-                        <p className="text-[#86efac] text-xs">{tx('Uvozena zgodovina', 'Imported history')}: {stroski.imported > 0 ? formatMoney(stroski.imported, valuta) : '-'}</p>
+          <p className="text-white font-bold text-xl">{formatMoney(renderStroski.total, valuta)}</p>
+                        <p className="text-[#a09aff] text-xs mt-1">{tx('GarageBase vnosi', 'GarageBase entries')}: {renderStroski.garageBase > 0 ? formatMoney(renderStroski.garageBase, valuta) : '-'}</p>
+                        <p className="text-[#86efac] text-xs">{tx('Uvozena zgodovina', 'Imported history')}: {renderStroski.imported > 0 ? formatMoney(renderStroski.imported, valuta) : '-'}</p>
                       </div>
-                      {stroski.naKm !== null && (
+                      {renderStroski.naKm !== null && (
                         <div className="text-right">
                           <p className="text-[#5a5a80] text-xs mb-0.5">{tx('Cena na km', 'Cost per km')}</p>
-          <p className="text-[#6c63ff] font-bold text-xl">{stroski.naKm.toFixed(3)} {znakValute}/km</p>
+          <p className="text-[#6c63ff] font-bold text-xl">{renderStroski.naKm.toFixed(3)} {znakValute}/km</p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
                 <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]">
-                  {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {debugStats.fuel}/{debugStats.service}/{debugStats.expense} · L {debugStats.liters.toFixed(2)} · {znakValute} {debugStats.cost.toFixed(2)}
+                  {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
                 </p>
 
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
