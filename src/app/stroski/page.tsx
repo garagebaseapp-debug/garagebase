@@ -6,11 +6,11 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
+import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-12-0715'
+const STROSKI_BUILD = 'stroski-2026-05-12-1045'
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -254,9 +254,30 @@ const writeVehicleStatsCache = (carId: string, stats: any) => {
   }
 }
 
+const writeCostTotalsCache = (carId: string, stats: any) => {
+  try {
+    localStorage.setItem(`garagebase_cost_totals_${carId}`, JSON.stringify({
+      fuelCost: numericValue(stats?.costs?.fuel),
+      serviceCost: numericValue(stats?.costs?.service),
+      expenseCost: numericValue(stats?.costs?.expense),
+      garageBaseFuelCost: numericValue(stats?.costs?.garageBase),
+      importedFuelCost: numericValue(stats?.costs?.imported),
+      totalCost: numericValue(stats?.costs?.total),
+      fuelLiters: numericValue(stats?.liters),
+      fuelRows: numericValue(stats?.rows?.fuel),
+      serviceRows: numericValue(stats?.rows?.service),
+      expenseRows: numericValue(stats?.rows?.expense),
+      savedAt: Date.now(),
+    }))
+  } catch (error) {
+    console.warn('[GarageBase costs] totals cache skipped', error)
+  }
+}
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
+  const [activeCarId, setActiveCarId] = useState<string | null>(null)
   const [avto, setAvto] = useState<any>(null)
   const [gorivo, setGorivo] = useState<any[]>([])
   const [servisi, setServisi] = useState<any[]>([])
@@ -300,6 +321,7 @@ export default function Stroski() {
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/stroski-garaza'; return }
+      setActiveCarId(carId)
 
       const cachedGarage = localStorage.getItem('garagebase_garaza_cache')
       if (cachedGarage) {
@@ -345,7 +367,12 @@ export default function Stroski() {
         supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
         supabase.from('expenses').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
       ])
-      setAvto(avtoRes.data)
+      setActiveCarId(carId)
+      if (avtoRes.data) {
+        setAvto(avtoRes.data)
+      } else {
+        setAvto((prev: any) => prev || { id: carId })
+      }
       let gorivoData = gorivoRes.data || []
       let servisData = servisRes.data || []
       let expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
@@ -382,9 +409,10 @@ export default function Stroski() {
       let immediateStats: any = null
       let immediateSummary = initialSummary
       try {
-        immediateStats = buildRowStatsFromRows(gorivoData, servisData, expensesData, avtoRes.data)
+        immediateStats = buildVehicleStats(gorivoData, servisData, expensesData, avtoRes.data || avto || {})
         setRowStats(immediateStats)
         writeVehicleStatsCache(carId, immediateStats)
+        writeCostTotalsCache(carId, immediateStats)
         immediateSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, immediateStats)
         setLoadedSummary(immediateSummary)
         setCostSnapshot({
@@ -447,6 +475,7 @@ export default function Stroski() {
         console.warn('[GarageBase costs] cache write skipped', error)
       }
       writeVehicleStatsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
+      writeCostTotalsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       } catch (error) {
         console.warn('[GarageBase costs] load failed', error)
@@ -471,12 +500,13 @@ export default function Stroski() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const renderCache = avto?.id ? readCostCache(avto.id) : null
+  const currentCarId = avto?.id || activeCarId
+  const renderCache = currentCarId ? readCostCache(currentCarId) : null
   const firstRows = (...sets: any[][]) => sets.find((set) => set.length > 0) || sets[0] || []
   const displayGorivo = firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, renderCache?.gorivo || [])
   const displayServisi = firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, renderCache?.servisi || [])
   const displayExpenses = firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, renderCache?.expenses || [])
-  const cachedVehicleStats = avto?.id ? readVehicleStatsCache(avto.id) : null
+  const cachedVehicleStats = currentCarId ? readVehicleStatsCache(currentCarId) : null
   const statsForDisplay = statsHasData(rowStats) || statsHasRealValues(rowStats)
     ? rowStats
     : statsHasData(serverStats) || statsHasRealValues(serverStats)
@@ -495,7 +525,7 @@ export default function Stroski() {
   const rowSourceSplit = splitRowsBySource(allCostRows)
   const rowImportedTotal = rowSourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const rowGarageBaseTotal = Math.max(0, rowTotal - rowImportedTotal)
-  const totalsCache = readCostTotalsCache(avto?.id)
+  const totalsCache = readCostTotalsCache(currentCarId || undefined)
   const liveCostSummary = buildSharedCostSummary(displayGorivo, displayServisi, displayExpenses, statsForDisplay)
   const hasLiveSummary =
     liveCostSummary.total > 0 ||
@@ -762,7 +792,7 @@ export default function Stroski() {
   }
 
   const vsiVnosi = allCostRows
-  const dashboardBackHref = avto?.id ? `/dashboard?car=${avto.id}` : undefined
+  const dashboardBackHref = currentCarId ? `/dashboard?car=${currentCarId}` : undefined
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
   const vidniVnosi = filtrirani.slice(0, visibleCostCount)
