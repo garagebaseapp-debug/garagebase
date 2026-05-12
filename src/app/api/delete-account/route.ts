@@ -8,7 +8,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function POST(request: NextRequest) {
   try {
-    const limited = rateLimit(request, 'delete-account', 5, 60_000)
+    const limited = await rateLimit(request, 'delete-account', 5, 60_000)
     if (limited) return limited
 
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {

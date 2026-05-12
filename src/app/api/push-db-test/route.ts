@@ -14,7 +14,7 @@ if (pushConfigured) {
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = rateLimit(req, 'push-db-test', 10, 60_000)
+    const limited = await rateLimit(req, 'push-db-test', 10, 60_000)
     if (limited) return limited
 
     const auth = await requireAdmin(req)

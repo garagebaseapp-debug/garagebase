@@ -28,7 +28,7 @@ const isAuthorized = async (req: NextRequest) => {
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = rateLimit(req, 'push-test', 20, 60_000)
+    const limited = await rateLimit(req, 'push-test', 20, 60_000)
     if (limited) return limited
 
     if (!(await isAuthorized(req))) {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 type Bucket = {
   count: number
@@ -6,6 +7,8 @@ type Bucket = {
 }
 
 const buckets = new Map<string, Bucket>()
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 const clientIp = (request: NextRequest) => {
   const forwarded = request.headers.get('x-forwarded-for') || ''
@@ -15,11 +18,11 @@ const clientIp = (request: NextRequest) => {
     'unknown'
 }
 
-export function rateLimit(
+function memoryRateLimit(
   request: NextRequest,
   scope: string,
-  maxRequests = 60,
-  windowMs = 60_000,
+  maxRequests: number,
+  windowMs: number,
 ) {
   const now = Date.now()
   const key = `${scope}:${clientIp(request)}`
@@ -45,4 +48,38 @@ export function rateLimit(
   }
 
   return null
+}
+
+export async function rateLimit(
+  request: NextRequest,
+  scope: string,
+  maxRequests = 60,
+  windowMs = 60_000,
+) {
+  if (supabaseUrl && serviceRoleKey) {
+    try {
+      const admin = createClient(supabaseUrl, serviceRoleKey)
+      const { data, error } = await admin.rpc('check_rate_limit', {
+        p_scope: scope,
+        p_identifier: clientIp(request),
+        p_limit: maxRequests,
+        p_window_seconds: Math.max(1, Math.ceil(windowMs / 1000)),
+      })
+
+      if (!error) {
+        const result = Array.isArray(data) ? data[0] : data
+        if (result?.allowed === false) {
+          return NextResponse.json(
+            { error: 'rate_limited', retryAfterSeconds: result.retry_after_seconds || Math.ceil(windowMs / 1000) },
+            { status: 429 },
+          )
+        }
+        return null
+      }
+    } catch {
+      // Falls back below until the Supabase rate-limit migration is applied.
+    }
+  }
+
+  return memoryRateLimit(request, scope, maxRequests, windowMs)
 }

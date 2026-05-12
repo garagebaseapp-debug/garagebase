@@ -27,7 +27,7 @@ async function getUserFromRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const limited = rateLimit(req, 'push-subscription', 30, 60_000)
+    const limited = await rateLimit(req, 'push-subscription', 30, 60_000)
     if (limited) return limited
 
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -60,23 +60,31 @@ export async function POST(req: NextRequest) {
       .upsert(payload, { onConflict: 'user_id,endpoint' })
 
     if (error) {
-      await dbClient
+      const update = await dbClient
         .from('push_subscriptions')
-        .delete()
-        .eq('user_id', auth.user.id)
-        .eq('subscription->>endpoint', endpoint)
-
-      const fallback = await dbClient
-        .from('push_subscriptions')
-        .insert({
-          user_id: auth.user.id,
+        .update({
           subscription,
           notification_settings: notificationSettings,
-          notification_state: {},
           updated_at: new Date().toISOString(),
         })
+        .eq('user_id', auth.user.id)
+        .eq('subscription->>endpoint', endpoint)
+        .select('user_id')
+        .maybeSingle()
 
-      if (fallback.error) throw fallback.error
+      if (update.error || !update.data) {
+        const fallback = await dbClient
+          .from('push_subscriptions')
+          .insert({
+            user_id: auth.user.id,
+            subscription,
+            notification_settings: notificationSettings,
+            notification_state: {},
+            updated_at: new Date().toISOString(),
+          })
+
+        if (fallback.error) throw fallback.error
+      }
     }
 
     return NextResponse.json({ success: true })
