@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costValu
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-12-1255'
+const STROSKI_BUILD = 'stroski-2026-05-12-1435'
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -221,6 +221,49 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
   }
 }
 
+const emptyCostSummary = () => ({
+  fuel: 0,
+  service: 0,
+  expense: 0,
+  total: 0,
+  imported: 0,
+  garageBase: 0,
+  rows: {
+    fuel: 0,
+    service: 0,
+    expense: 0,
+  },
+})
+
+const safeBuildCostSummary = (fuelRows: any[] = [], serviceRows: any[] = [], expenseRows: any[] = [], stats?: any) => {
+  try {
+    return buildSharedCostSummary(fuelRows, serviceRows, expenseRows, stats)
+  } catch (error) {
+    console.warn('[GarageBase costs] summary fallback used', error)
+    const fallbackStats = statsHasData(stats) || statsHasRealValues(stats)
+      ? stats
+      : buildRowStatsFromRows(fuelRows, serviceRows, expenseRows)
+    const fuel = numericValue(fallbackStats?.costs?.fuel)
+    const service = numericValue(fallbackStats?.costs?.service)
+    const expense = numericValue(fallbackStats?.costs?.expense)
+    const total = fuel + service + expense
+    const imported = numericValue(fallbackStats?.costs?.imported)
+    return {
+      fuel,
+      service,
+      expense,
+      total: Math.max(total, numericValue(fallbackStats?.costs?.total)),
+      imported,
+      garageBase: Math.max(0, numericValue(fallbackStats?.costs?.garageBase) || total - imported),
+      rows: {
+        fuel: numericValue(fallbackStats?.rows?.fuel) || fuelRows.length,
+        service: numericValue(fallbackStats?.rows?.service) || serviceRows.length,
+        expense: numericValue(fallbackStats?.rows?.expense) || expenseRows.length,
+      },
+    }
+  }
+}
+
 const writeVehicleStatsCache = (carId: string, stats: any) => {
   try {
     const existingRaw = localStorage.getItem(`garagebase_vehicle_stats_${carId}`)
@@ -309,12 +352,12 @@ export default function Stroski() {
     expenses: [],
     ready: false,
   })
-  const [loadedSummary, setLoadedSummary] = useState(() => buildSharedCostSummary([], [], []))
+  const [loadedSummary, setLoadedSummary] = useState(() => emptyCostSummary())
   const [costSnapshot, setCostSnapshot] = useState(() => ({
     gorivo: [] as any[],
     servisi: [] as any[],
     expenses: [] as any[],
-    summary: buildSharedCostSummary([], [], []),
+    summary: emptyCostSummary(),
     debug: '',
     ready: false,
   }))
@@ -350,7 +393,7 @@ export default function Stroski() {
 
       const cached = readCostCache(carId)
       if (cached) {
-        const cachedSummary = buildSharedCostSummary(cached.gorivo, cached.servisi, cached.expenses, cached.serverStats)
+        const cachedSummary = safeBuildCostSummary(cached.gorivo, cached.servisi, cached.expenses, cached.serverStats)
         const cachedRowStats = buildRowStatsFromRows(cached.gorivo, cached.servisi, cached.expenses)
         latestRowsRef.current = { gorivo: cached.gorivo, servisi: cached.servisi, expenses: cached.expenses }
         latestSummaryRef.current = cachedSummary
@@ -401,7 +444,6 @@ export default function Stroski() {
         `loaded:${gorivoData.length}/${servisData.length}/${expensesData.length}`,
         gorivoRes.error?.message || servisRes.error?.message || expensesRes.error?.message || 'ok',
       ].join(' · ')
-      setDebugSource(nextDebugSource)
       if (gorivoData.length === 0 && servisData.length === 0 && expensesData.length === 0) {
         try {
           const cached = readCostCache(carId)
@@ -412,14 +454,21 @@ export default function Stroski() {
           }
         } catch {}
       }
-      const initialSummary = buildSharedCostSummary(gorivoData, servisData, expensesData)
+      const carForStats = avtoRes.data || avto || {}
+      const rowOnlyStats = buildRowStatsFromRows(gorivoData, servisData, expensesData, carForStats)
+      const initialSummary = safeBuildCostSummary(gorivoData, servisData, expensesData, rowOnlyStats)
       latestRowsRef.current = { gorivo: gorivoData, servisi: servisData, expenses: expensesData }
+      latestStatsRef.current = rowOnlyStats
       latestSummaryRef.current = initialSummary
       setGorivo(gorivoData)
       setServisi(servisData)
       setExpenses(expensesData)
       setLoadedRows({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, ready: true })
       setLoadedSummary(initialSummary)
+      setRowStats(rowOnlyStats)
+      setDisplayStats(rowOnlyStats)
+      nextDebugSource = `${nextDebugSource} | applied:${gorivoData.length}/${servisData.length}/${expensesData.length} row:${numericValue(rowOnlyStats.costs?.fuel).toFixed(0)}/${numericValue(rowOnlyStats.costs?.service).toFixed(0)}/${numericValue(rowOnlyStats.costs?.expense).toFixed(0)}`
+      setDebugSource(nextDebugSource)
       setCostSnapshot({
         gorivo: gorivoData,
         servisi: servisData,
@@ -428,16 +477,16 @@ export default function Stroski() {
         debug: nextDebugSource,
         ready: true,
       })
-      let immediateStats: any = null
+      let immediateStats: any = rowOnlyStats
       let immediateSummary = initialSummary
       try {
-        immediateStats = buildVehicleStats(gorivoData, servisData, expensesData, avtoRes.data || avto || {})
+        immediateStats = buildVehicleStats(gorivoData, servisData, expensesData, carForStats)
         latestStatsRef.current = immediateStats
         setRowStats(immediateStats)
         setDisplayStats(immediateStats)
         writeVehicleStatsCache(carId, immediateStats)
         writeCostTotalsCache(carId, immediateStats)
-        immediateSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, immediateStats)
+        immediateSummary = safeBuildCostSummary(gorivoData, servisData, expensesData, immediateStats)
         latestSummaryRef.current = immediateSummary
         setLoadedSummary(immediateSummary)
         setCostSnapshot({
@@ -486,12 +535,12 @@ export default function Stroski() {
         }
       }
       setDebugSource(nextDebugSource)
-      const statsForSummary = firstUsableStats(nextServerStats, immediateStats)
+      const statsForSummary = firstUsableStats(immediateStats, nextServerStats, rowOnlyStats)
       if (statsHasData(statsForSummary) || statsHasRealValues(statsForSummary)) {
         latestStatsRef.current = statsForSummary
         setDisplayStats(statsForSummary)
       }
-      const nextSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, statsForSummary)
+      const nextSummary = safeBuildCostSummary(gorivoData, servisData, expensesData, statsForSummary)
       latestSummaryRef.current = nextSummary
       setLoadedSummary(nextSummary)
       setCostSnapshot({
@@ -543,12 +592,12 @@ export default function Stroski() {
   const displayExpenses = firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, refRows.expenses, renderCache?.expenses || [])
   const cachedVehicleStats = currentCarId ? readVehicleStatsCache(currentCarId) : null
   const rowsDerivedStats = (displayGorivo.length || displayServisi.length || displayExpenses.length)
-    ? buildVehicleStats(displayGorivo, displayServisi, displayExpenses, avto || {})
+    ? buildRowStatsFromRows(displayGorivo, displayServisi, displayExpenses, avto || {})
     : null
   const refStats = latestStatsRef.current
   const refSummary = latestSummaryRef.current
-  const statsForDisplay = firstUsableStats(displayStats, serverStats, refStats, cachedVehicleStats, rowStats, rowsDerivedStats)
-  const statsCandidates = [displayStats, serverStats, refStats, cachedVehicleStats, rowStats, rowsDerivedStats].filter(Boolean)
+  const statsForDisplay = firstUsableStats(rowsDerivedStats, rowStats, displayStats, refStats, serverStats, cachedVehicleStats)
+  const statsCandidates = [rowsDerivedStats, rowStats, displayStats, refStats, serverStats, cachedVehicleStats].filter(Boolean)
   const maxStatValue = (reader: (stats: any) => unknown) =>
     Math.max(0, ...statsCandidates.map((stats) => numericValue(reader(stats))))
 
@@ -565,7 +614,7 @@ export default function Stroski() {
   const rowImportedTotal = rowSourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const rowGarageBaseTotal = Math.max(0, rowTotal - rowImportedTotal)
   const totalsCache = readCostTotalsCache(currentCarId || undefined)
-  const liveCostSummary = buildSharedCostSummary(displayGorivo, displayServisi, displayExpenses, statsForDisplay)
+  const liveCostSummary = safeBuildCostSummary(displayGorivo, displayServisi, displayExpenses, statsForDisplay)
   const hasLiveSummary =
     liveCostSummary.total > 0 ||
     liveCostSummary.rows.fuel > 0 ||
@@ -795,11 +844,15 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     const nextGorivo = data || []
-    const nextSummary = buildSharedCostSummary(nextGorivo, displayServisi, displayExpenses, serverStats)
+    const nextStats = buildRowStatsFromRows(nextGorivo, displayServisi, displayExpenses, avto || {})
+    const nextSummary = safeBuildCostSummary(nextGorivo, displayServisi, displayExpenses, nextStats)
     latestRowsRef.current = { gorivo: nextGorivo, servisi: displayServisi, expenses: displayExpenses }
+    latestStatsRef.current = nextStats
     latestSummaryRef.current = nextSummary
     setGorivo(nextGorivo)
     setLoadedRows(prev => ({ ...prev, gorivo: nextGorivo, ready: true }))
+    setRowStats(nextStats)
+    setDisplayStats(nextStats)
     setLoadedSummary(nextSummary)
     setCostSnapshot({ gorivo: nextGorivo, servisi: displayServisi, expenses: displayExpenses, summary: nextSummary, debug: 'edited', ready: true })
     clearVehicleDataCaches(avto.id)
@@ -817,11 +870,15 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     const nextServisi = data || []
-    const nextSummary = buildSharedCostSummary(displayGorivo, nextServisi, displayExpenses, serverStats)
+    const nextStats = buildRowStatsFromRows(displayGorivo, nextServisi, displayExpenses, avto || {})
+    const nextSummary = safeBuildCostSummary(displayGorivo, nextServisi, displayExpenses, nextStats)
     latestRowsRef.current = { gorivo: displayGorivo, servisi: nextServisi, expenses: displayExpenses }
+    latestStatsRef.current = nextStats
     latestSummaryRef.current = nextSummary
     setServisi(nextServisi)
     setLoadedRows(prev => ({ ...prev, servisi: nextServisi, ready: true }))
+    setRowStats(nextStats)
+    setDisplayStats(nextStats)
     setLoadedSummary(nextSummary)
     setCostSnapshot({ gorivo: displayGorivo, servisi: nextServisi, expenses: displayExpenses, summary: nextSummary, debug: 'edited', ready: true })
     clearVehicleDataCaches(avto.id)
@@ -838,11 +895,15 @@ export default function Stroski() {
     }).eq('id', id)
     const { data } = await supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
     const nextExpenses = (data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
-    const nextSummary = buildSharedCostSummary(displayGorivo, displayServisi, nextExpenses, serverStats)
+    const nextStats = buildRowStatsFromRows(displayGorivo, displayServisi, nextExpenses, avto || {})
+    const nextSummary = safeBuildCostSummary(displayGorivo, displayServisi, nextExpenses, nextStats)
     latestRowsRef.current = { gorivo: displayGorivo, servisi: displayServisi, expenses: nextExpenses }
+    latestStatsRef.current = nextStats
     latestSummaryRef.current = nextSummary
     setExpenses(nextExpenses)
     setLoadedRows(prev => ({ ...prev, expenses: nextExpenses, ready: true }))
+    setRowStats(nextStats)
+    setDisplayStats(nextStats)
     setLoadedSummary(nextSummary)
     setCostSnapshot({ gorivo: displayGorivo, servisi: displayServisi, expenses: nextExpenses, summary: nextSummary, debug: 'edited', ready: true })
     clearVehicleDataCaches(avto.id)
