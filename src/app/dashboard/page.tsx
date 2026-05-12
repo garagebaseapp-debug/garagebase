@@ -979,9 +979,11 @@ export default function Dashboard() {
                       </div>
                     </button>
                   </div>
-                  <p className="text-[#5a5a80] text-[10px]">
-                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
-                  </p>
+                  {process.env.NODE_ENV !== 'production' && (
+                    <p className="text-[#5a5a80] text-[10px]" data-gb-no-translate>
+                      {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
+                    </p>
+                  )}
 
                   <div className="grid grid-cols-3 gap-3 mt-auto">
                     <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
@@ -1088,9 +1090,11 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
-                <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]">
-                  {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
-                </p>
+                {process.env.NODE_ENV !== 'production' && (
+                  <p className="mx-5 mb-4 text-[#5a5a80] text-[10px]" data-gb-no-translate>
+                    {DASHBOARD_BUILD} · {debugStatsSource} · fuel/service/expense: {renderDebugStats.fuel}/{renderDebugStats.service}/{renderDebugStats.expense} · L {renderDebugStats.liters.toFixed(2)} · {znakValute} {renderDebugStats.cost.toFixed(2)}
+                  </p>
+                )}
 
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
                   <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}

@@ -295,7 +295,7 @@ for (const [sl, en] of [...phrasePairs, ...extraPhrasePairs]) {
   slToEn.set(norm(sl), en)
 }
 
-const textOriginals = new WeakMap<Text, string>()
+const textOriginals = new WeakMap<Text, { original: string; rendered: string }>()
 const translatedAttr = 'data-gb-i18n-original'
 
 function norm(value: string) {
@@ -382,9 +382,11 @@ function shouldSkipText(node: Text) {
 function translateTextNode(node: Text, language: Language) {
   if (shouldSkipText(node)) return
   const current = node.nodeValue || ''
-  if (!textOriginals.has(node)) textOriginals.set(node, current)
-  const original = textOriginals.get(node) || current
-  node.nodeValue = language === 'sl' ? original : translateCore(original, language)
+  const stored = textOriginals.get(node)
+  const original = !stored || current !== stored.rendered ? current : stored.original
+  const rendered = language === 'sl' ? original : translateCore(original, language)
+  if (current !== rendered) node.nodeValue = rendered
+  textOriginals.set(node, { original, rendered })
 }
 
 function translateAttribute(el: HTMLElement, attr: 'placeholder' | 'title' | 'aria-label', language: Language) {
