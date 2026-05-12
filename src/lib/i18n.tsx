@@ -418,7 +418,18 @@ export function GlobalTranslator() {
   useEffect(() => {
     const run = () => translateDom(language)
     run()
-    const observer = new MutationObserver(() => window.requestAnimationFrame(run))
+
+    if (language === 'sl') return
+
+    let scheduled = false
+    const observer = new MutationObserver(() => {
+      if (scheduled) return
+      scheduled = true
+      window.requestAnimationFrame(() => {
+        scheduled = false
+        run()
+      })
+    })
     observer.observe(document.body, { childList: true, subtree: true, characterData: true })
     return () => observer.disconnect()
   }, [language])
