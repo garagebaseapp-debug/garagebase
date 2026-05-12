@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costValu
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-12-1710'
+const STROSKI_BUILD = 'stroski-2026-05-12-2040'
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -966,16 +966,22 @@ export default function Stroski() {
     totalsCacheSummary.garageBase,
     absoluteTotal > 0 ? Math.max(0, absoluteTotal - absoluteImported) : 0,
   )
-  const prikazGorivo = hasRowCosts ? rowFuelTotal : absoluteFuelTotal
-  const prikazServis = hasRowCosts ? rowServiceTotal : absoluteServiceTotal
-  const prikazExpenses = hasRowCosts ? rowExpenseTotal : absoluteExpenseTotal
-  const prikazSkupaj = hasRowCosts ? Math.max(rowTotal, prikazGorivo + prikazServis + prikazExpenses) : absoluteTotal
+  const verifiedFuelTotal = Math.max(rowFuelTotal, graphTotals.gorivo, debugSummary.fuel, statsFuelTotal, totalsCacheSummary.fuel)
+  const verifiedServiceTotal = Math.max(rowServiceTotal, graphTotals.servis, debugSummary.service, statsServiceTotal, totalsCacheSummary.service)
+  const verifiedExpenseTotal = Math.max(rowExpenseTotal, graphTotals.ostalo, debugSummary.expense, statsExpenseTotal, totalsCacheSummary.expense)
+  const verifiedRowsTotal = verifiedFuelTotal + verifiedServiceTotal + verifiedExpenseTotal
+  const prikazGorivo = hasRowCosts ? verifiedFuelTotal : Math.max(verifiedFuelTotal, absoluteFuelTotal)
+  const prikazServis = hasRowCosts ? verifiedServiceTotal : Math.max(verifiedServiceTotal, absoluteServiceTotal)
+  const prikazExpenses = hasRowCosts ? verifiedExpenseTotal : Math.max(verifiedExpenseTotal, absoluteExpenseTotal)
+  const prikazSkupaj = Math.max(verifiedRowsTotal, absoluteTotal, summaryTotal, statsTotalCost, totalsCacheSummary.total)
   const hasSourceBreakdown = absoluteGarageBase > 0 || absoluteImported > 0
-  const prikazGarageBase = hasRowCosts ? rowGarageBaseTotal : hasSourceBreakdown ? absoluteGarageBase : prikazSkupaj
+  const prikazGarageBase = hasRowCosts
+    ? Math.max(rowGarageBaseTotal, verifiedRowsTotal > 0 ? Math.max(0, verifiedRowsTotal - rowImportedTotal) : 0)
+    : hasSourceBreakdown ? absoluteGarageBase : prikazSkupaj
   const prikazUvoz = hasRowCosts ? rowImportedTotal : absoluteImported
-  const prikazStGorivo = hasRowCosts ? displayGorivo.length : Math.max(stGorivo, displayGorivo.length, rowManualSummary.rows.fuel, renderSummary.rows.fuel, directCostSummary.rows.fuel, loadedSummary.rows.fuel, costSnapshot.summary.rows.fuel, totalsCacheSummary.rows.fuel)
-  const prikazStServis = hasRowCosts ? displayServisi.length : Math.max(stServis, displayServisi.length, rowManualSummary.rows.service, renderSummary.rows.service, directCostSummary.rows.service, loadedSummary.rows.service, costSnapshot.summary.rows.service, totalsCacheSummary.rows.service)
-  const prikazStOstalo = hasRowCosts ? displayExpenses.length : Math.max(stOstalo, displayExpenses.length, rowManualSummary.rows.expense, renderSummary.rows.expense, directCostSummary.rows.expense, loadedSummary.rows.expense, costSnapshot.summary.rows.expense, totalsCacheSummary.rows.expense)
+  const prikazStGorivo = Math.max(displayGorivo.length, rowManualSummary.rows.fuel, debugSummary.rows.fuel, stGorivo, totalsCacheSummary.rows.fuel)
+  const prikazStServis = Math.max(displayServisi.length, rowManualSummary.rows.service, debugSummary.rows.service, stServis, totalsCacheSummary.rows.service)
+  const prikazStOstalo = Math.max(displayExpenses.length, rowManualSummary.rows.expense, debugSummary.rows.expense, stOstalo, totalsCacheSummary.rows.expense)
   const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)

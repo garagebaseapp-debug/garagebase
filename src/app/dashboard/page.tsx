@@ -307,11 +307,10 @@ export default function Dashboard() {
           const parsed = JSON.parse(cached)
           if (Array.isArray(parsed.avti) && parsed.avti.length > 0) {
             setAvti(parsed.avti)
-            const cachedCar = carIdFromUrl
-              ? parsed.avti.find((a: any) => a.id === carIdFromUrl) || parsed.avti[0]
-              : parsed.avti[0]
-            setAktivniAvto(cachedCar)
-            setLoading(false)
+            if (!carIdFromUrl) {
+              setAktivniAvto(parsed.avti[0])
+              setLoading(false)
+            }
           }
         } catch {}
       }
@@ -653,20 +652,7 @@ export default function Dashboard() {
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
     if (avto.id === aktivniAvto?.id) return
-    setAktivniAvto(avto)
-    setOpomniki([])
-    setPoraba(emptyConsumption)
-    setStroski(emptyCosts)
-    setDebugStatsSource('switching')
-    try {
-      const url = new URL(window.location.href)
-      url.searchParams.set('car', avto.id)
-      window.history.replaceState(null, '', url.toString())
-    } catch {
-      window.history.replaceState(null, '', `/dashboard?car=${encodeURIComponent(avto.id)}`)
-    }
-    if (nacin === 'lite') await naloziLitePodatke(avti.map((item: any) => item.id), avto.id)
-    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
+    window.location.href = `/dashboard?car=${encodeURIComponent(avto.id)}`
   }
 
   const dniDo = (datum: string) => {
@@ -914,7 +900,7 @@ export default function Dashboard() {
 
           {aktivniAvto && (
             <>
-              <div className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
+              <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
                 <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
                   {aktivniAvto.slika_url ? (
                     <img src={aktivniAvto.slika_url} alt="Avto"
@@ -1008,7 +994,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
+              <div key={`mobile-${aktivniAvto.id}`} className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
                 {aktivniAvto.slika_url && (
                   <div className="relative h-36 overflow-hidden">
