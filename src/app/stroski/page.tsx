@@ -285,7 +285,7 @@ const summaryFromDebugText = (text: string) => {
     expense,
     total,
     imported: 0,
-    garageBase: total,
+    garageBase: 0,
     rows: {
       fuel: appliedMatch ? numericValue(appliedMatch[1]) : 0,
       service: appliedMatch ? numericValue(appliedMatch[2]) : 0,
