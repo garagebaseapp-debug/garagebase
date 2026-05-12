@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-12-0615'
+const DASHBOARD_BUILD = 'dashboard-2026-05-12-0715'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -375,7 +375,12 @@ export default function Dashboard() {
     ids.forEach((id) => {
       const opData = grouped[id] || []
       completeGrouped[id] = opData
-      localStorage.setItem(`garagebase_dashboard_cache_${id}`, JSON.stringify({ opomniki: opData, savedAt: Date.now() }))
+      let previousVehicleCache = {}
+      try {
+        const previousRaw = localStorage.getItem(`garagebase_dashboard_cache_${id}`)
+        previousVehicleCache = previousRaw ? JSON.parse(previousRaw) : {}
+      } catch {}
+      localStorage.setItem(`garagebase_dashboard_cache_${id}`, JSON.stringify({ ...previousVehicleCache, opomniki: opData, savedAt: Date.now() }))
     })
 
     setLiteOpomnikiPoAvtu(completeGrouped)
@@ -628,9 +633,17 @@ export default function Dashboard() {
     console.info(`[GarageBase speed] dashboard data ${Math.round(performance.now() - started)}ms`)
   }
   const preklopAvto = async (avto: any) => {
+    if (!avto?.id) return
     setAktivniAvto(avto)
     setPoraba(emptyConsumption)
     setStroski(emptyCosts)
+    setDebugStats({ fuel: 0, service: 0, expense: 0, liters: 0, cost: 0 })
+    setDebugStatsSource('switching')
+    try {
+      const url = new URL(window.location.href)
+      url.searchParams.set('car', avto.id)
+      window.history.replaceState(null, '', url.toString())
+    } catch {}
     if (nacin === 'lite') {
       const cachedOpomniki = liteOpomnikiPoAvtu[avto.id]
       if (cachedOpomniki) setOpomniki(cachedOpomniki)
