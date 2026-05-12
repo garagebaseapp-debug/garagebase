@@ -7,6 +7,7 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/curr
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
 import { ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { vehicleDisplayName } from '@/lib/vehicle-display'
 
 type ConsumptionBreakdown = {
   garageBase: number | null
@@ -680,7 +681,7 @@ export default function Dashboard() {
 
   if (nacin === 'lite' && aktivniAvto) {
     const aktivniStatus = statusZaAvto(aktivniAvto)
-    const aktivnoIme = `${aktivniAvto.znamka || ''} ${aktivniAvto.model || ''}`.trim() || tx('Vozilo', 'Vehicle')
+    const aktivnoIme = vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))
     const prikazOpomnikov = opomniki.slice(0, 4)
 
     return (
@@ -697,7 +698,7 @@ export default function Dashboard() {
           {avti.map((avto) => {
             const status = statusZaAvto(avto)
             const active = aktivniAvto?.id === avto.id
-            const ime = `${avto.znamka || ''} ${avto.model || ''}`.trim() || tx('Vozilo', 'Vehicle')
+            const ime = vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
             return (
               <button
                 key={avto.id}
@@ -820,7 +821,7 @@ export default function Dashboard() {
                     ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
                     : 'bg-transparent border-[#1e1e32] text-[#3a3a5a] hover:text-[#5a5a80]'
                 }`}>
-                {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)} {avto.model.toUpperCase()}
+                {vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))}
               </button>
             ))}
             <button onClick={() => window.location.href = '/dodaj-avto'}
@@ -834,7 +835,7 @@ export default function Dashboard() {
               <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
                 <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
                   {aktivniAvto.slika_url ? (
-                    <img src={aktivniAvto.slika_url} alt="Avto"
+                    <img src={aktivniAvto.slika_url} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="max-w-full max-h-[330px] object-contain rounded-xl" />
                   ) : (
                     <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
@@ -848,8 +849,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Izbrano vozilo</p>
                       <h2 className="text-white font-bold text-4xl leading-tight">
-                        {aktivniAvto.znamka.charAt(0).toUpperCase() + aktivniAvto.znamka.slice(1)}{' '}
-                        {aktivniAvto.model.toUpperCase()}
+                        {vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       </h2>
                       <p className="text-[#8080a0] text-base mt-3">
                         {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.barva].filter(Boolean).join(' · ')}
@@ -925,7 +925,7 @@ export default function Dashboard() {
 
                 {aktivniAvto.slika_url && (
                   <div className="relative h-36 overflow-hidden">
-                    <img src={aktivniAvto.slika_url} alt="Avto"
+                    <img src={aktivniAvto.slika_url} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="w-full h-full object-cover object-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
                   </div>
@@ -935,8 +935,7 @@ export default function Dashboard() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h2 className="text-white font-bold text-xl">
-                        {aktivniAvto.znamka.charAt(0).toUpperCase() + aktivniAvto.znamka.slice(1)}{' '}
-                        {aktivniAvto.model.toUpperCase()}
+                        {vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       </h2>
                       <p className="text-[#5a5a80] text-sm mt-1">
                         {[aktivniAvto.letnik, aktivniAvto.gorivo, aktivniAvto.barva].filter(Boolean).join(' · ')}

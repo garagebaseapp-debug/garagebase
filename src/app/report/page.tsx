@@ -8,6 +8,7 @@ import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { distanceUnitLabel, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
+import { vehicleDisplayName } from '@/lib/vehicle-display'
 import QRCode from 'qrcode'
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
@@ -303,7 +304,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
           <View style={{ alignItems: 'flex-end' }}>
             {includeVehicleImage && avto.slika_url && <Image src={avto.slika_url} style={styles.carPhoto} />}
             <Text style={[styles.carTitle, { marginTop: includeVehicleImage && avto.slika_url ? 8 : 0 }]}>
-              {avto.znamka?.charAt(0).toUpperCase() + avto.znamka?.slice(1)} {avto.model?.toUpperCase()}
+              {vehicleDisplayName(avto, language === 'en' ? 'Vehicle' : 'Vozilo')}
             </Text>
             {privacy.showYear !== false && avto.letnik && <Text style={styles.carInfo}>{copy.year}: {avto.letnik}</Text>}
             {privacy.showPlate !== false && avto.tablica && <Text style={styles.carInfo}>{copy.plate}: {privacy.maskPlate === false ? avto.tablica.toUpperCase() : maskPlate(avto.tablica)}</Text>}
@@ -739,7 +740,7 @@ export default function Report() {
         <BackButton />
         <div>
           <h1 className="text-xl font-bold text-white">📄 {tx('PDF Report', 'PDF Report')}</h1>
-          {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
+          {avto && <p className="text-[#5a5a80] text-xs">{vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))}</p>}
         </div>
       </div>
 

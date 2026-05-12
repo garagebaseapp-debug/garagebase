@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
+import { vehicleDisplayName } from '@/lib/vehicle-display'
 
 export default function StroškiGaraza() {
   const [avti, setAvti] = useState<any[]>([])
@@ -112,7 +113,7 @@ export default function StroškiGaraza() {
             style={{ height: '24dvh', minHeight: '165px', maxHeight: '210px' }}>
             <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
               {avto.slika_url ? (
-                <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                <img src={avto.slika_url} alt={vehicleDisplayName(avto)}
                   loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
               ) : (
                 <div className={`absolute inset-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]' : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'}`} />
@@ -122,7 +123,7 @@ export default function StroškiGaraza() {
             <div className="w-1/2 h-full p-3 flex flex-col justify-between border-l border-[#1e1e32] min-w-0">
               <div>
                 <h2 className="text-white font-bold text-base leading-tight line-clamp-2">
-                  {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}{avto.model.toUpperCase()}
+                  {vehicleDisplayName(avto)}
                 </h2>
                 <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>

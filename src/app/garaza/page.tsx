@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
+import { vehicleDisplayName } from '@/lib/vehicle-display'
 
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
@@ -38,6 +39,7 @@ export default function Garaza() {
   })
   const dragOver = useRef<number | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
 
   useEffect(() => {
     const init = async () => {
@@ -430,7 +432,7 @@ export default function Garaza() {
 
       {prodajniOpomnik && !arhiv && (
         <div className="mx-5 mb-3 rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf18] p-4">
-          <p className="text-[#3ecfcf] font-bold text-sm">Je {prodajniOpomnik.znamka} {prodajniOpomnik.model} ze prodan?</p>
+          <p className="text-[#3ecfcf] font-bold text-sm">Je {imeVozila(prodajniOpomnik)} ze prodan?</p>
           <p className="text-[#7b7ba6] text-xs mt-1">Pred casom si pripravil izvoz zgodovine. Ce vozila ne uporabljas vec, ga arhiviraj in sprosti glavno garazo.</p>
           <div className="grid grid-cols-2 gap-2 mt-3">
             <button onClick={() => window.location.href = `/nastavitve-avta?car=${prodajniOpomnik.id}`}
@@ -493,15 +495,15 @@ export default function Garaza() {
                       <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/40 shadow`} />
                       <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
                         {avto.slika_url ? (
-                          <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                          <img src={avto.slika_url} alt={imeVozila(avto)}
                             loading="lazy" decoding="async" className="h-full w-full object-cover" />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
-                            {avto.znamka} {avto.model}
+                            {imeVozila(avto)}
                           </span>
                         )}
                       </span>
-                      <span className="block max-w-[100px] truncate text-sm font-black">{avto.znamka} {avto.model}</span>
+                      <span className="block max-w-[100px] truncate text-sm font-black">{imeVozila(avto)}</span>
                     </button>
                   )
                 })}
@@ -584,7 +586,7 @@ export default function Garaza() {
                     urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
                   {avto.slika_url ? (
-                    <img src={avto.slika_url} alt={avto.znamka}
+                    <img src={avto.slika_url} alt={imeVozila(avto)}
                       loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1a1630] to-[#080810]" />
@@ -606,7 +608,7 @@ export default function Garaza() {
 
                   <div className="absolute bottom-0 left-0 right-0 p-1.5">
                     <p className="text-white font-bold text-[clamp(calc(10px*var(--gb-card-font-scale,1)),calc((28px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(15px*var(--gb-card-font-scale,1)))] lg:text-[10px] leading-tight truncate">
-                      {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)} {avto.model.toUpperCase()}
+                      {imeVozila(avto)}
                     </p>
                     {gridNastavitve.letnik && avto.letnik && (
                       <p className="text-white/60 text-[clamp(calc(8px*var(--gb-card-font-scale,1)),calc((22px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(12px*var(--gb-card-font-scale,1)))] lg:text-[8px]">{avto.letnik}</p>
@@ -662,7 +664,7 @@ export default function Garaza() {
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 {avto.slika_url ? (
-                  <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                  <img src={avto.slika_url} alt={imeVozila(avto)}
                     loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
@@ -678,8 +680,7 @@ export default function Garaza() {
                 <div className="absolute left-3 top-3 right-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h2 className="text-white font-black text-[calc(18px*var(--gb-card-font-scale,1))] leading-tight drop-shadow line-clamp-2">
-                      {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
-                      {avto.model.toUpperCase()}
+                      {imeVozila(avto)}
                     </h2>
                     <p className="text-white/75 text-[calc(12px*var(--gb-card-font-scale,1))] mt-1 drop-shadow">
                       {[
@@ -719,7 +720,7 @@ export default function Garaza() {
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
                   {avto.slika_url ? (
-                  <img src={avto.slika_url} alt={`${avto.znamka} ${avto.model}`}
+                  <img src={avto.slika_url} alt={imeVozila(avto)}
                     loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
@@ -737,8 +738,7 @@ export default function Garaza() {
                 <div className={`${prikaz === 'malo' ? 'w-2/3 p-2' : 'w-1/2 p-3'} h-full flex flex-col justify-between border-l border-[#1e1e32] min-w-0 overflow-hidden`}>
                   <div>
                     <h2 className="text-white font-bold text-[calc(16px*var(--gb-card-font-scale,1))] leading-tight line-clamp-2">
-                      {avto.znamka.charAt(0).toUpperCase() + avto.znamka.slice(1)}{' '}
-                      {avto.model.toUpperCase()}
+                      {imeVozila(avto)}
                     </h2>
                     <p className="text-[#5a5a80] text-[calc(12px*var(--gb-card-font-scale,1))] mt-1">
                       {[
