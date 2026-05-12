@@ -644,23 +644,15 @@ export default function Dashboard() {
   }
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
-    activeLoadRef.current = avto.id
-    setAktivniAvto(avto)
-    setPoraba(emptyConsumption)
-    setStroski(emptyCosts)
-    setDebugStats({ fuel: 0, service: 0, expense: 0, liters: 0, cost: 0 })
+    if (avto.id === aktivniAvto?.id) return
     setDebugStatsSource('switching')
     try {
       const url = new URL(window.location.href)
       url.searchParams.set('car', avto.id)
-      window.history.replaceState(null, '', url.toString())
-    } catch {}
-    if (nacin === 'lite') {
-      const cachedOpomniki = liteOpomnikiPoAvtu[avto.id]
-      if (cachedOpomniki) setOpomniki(cachedOpomniki)
-      else await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
+      window.location.assign(url.toString())
+    } catch {
+      window.location.href = `/dashboard?car=${encodeURIComponent(avto.id)}`
     }
-    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {
