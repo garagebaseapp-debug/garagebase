@@ -214,7 +214,7 @@ const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: 
       garageBase: garageBaseCost,
       imported: importedCost,
       total: totalCost,
-      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
+      perKm: drivenKm > 0 && garageBaseCost > 0 ? garageBaseCost / drivenKm : null,
     },
     consumption: {
       garageBase: garageBaseConsumption.average,

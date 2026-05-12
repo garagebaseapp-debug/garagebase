@@ -78,6 +78,12 @@ body:not(.landing) {
   }
 }
 
+.gb-lite-selected {
+  outline: 3px solid #3ecfcf;
+  outline-offset: 2px;
+  transform: translateY(-1px);
+}
+
 /* Light mode */
 .light-mode {
   color-scheme: light;
@@ -254,6 +260,13 @@ body:not(.landing) {
 .light-mode .gb-desktop-nav {
   background-color: rgba(255, 255, 255, 0.9) !important;
   border-color: var(--gb-border) !important;
+}
+
+.light-mode .gb-lite-selected {
+  background-color: #ccfbf1 !important;
+  border-color: #0891b2 !important;
+  box-shadow: 0 0 0 4px rgba(8, 145, 178, 0.18), 0 10px 24px rgba(8, 145, 178, 0.18) !important;
+  color: #083344 !important;
 }
 
 .light-mode body.landing {

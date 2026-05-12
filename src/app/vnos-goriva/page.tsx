@@ -52,6 +52,7 @@ export default function VnosGoriva() {
   const [adminCheckDone, setAdminCheckDone] = useState(false)
   const [valuta, setValuta] = useState<'EUR' | 'USD'>('EUR')
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
+  const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const postajRef = useRef<HTMLDivElement>(null)
   const receiptInputRef = useRef<HTMLInputElement>(null)
 
@@ -82,9 +83,11 @@ export default function VnosGoriva() {
         const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
         setValuta(settings.valuta === 'USD' ? 'USD' : 'EUR')
         setEnotaRazdalje(settings.enotaRazdalje === 'mi' ? 'mi' : 'km')
+        setNacin(settings.nacin === 'lite' ? 'lite' : 'full')
       } catch {
         setValuta('EUR')
         setEnotaRazdalje(getDistanceUnitFromSettings())
+        setNacin('full')
       }
 
       const params = new URLSearchParams(window.location.search)
@@ -377,6 +380,8 @@ export default function VnosGoriva() {
     return data.publicUrl
   }
 
+  const selectedCar = avti.find((a: any) => a.id === carId)
+
   const shrani = async () => {
     if (!kmReady) {
       setMessage(tx('Počakaj, da se naložijo zadnji kilometri vozila.', 'Wait until the latest vehicle mileage is loaded.'))
@@ -456,7 +461,14 @@ export default function VnosGoriva() {
       )}
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
-        {avti.length > 1 && (
+        {nacin === 'lite' && selectedCar && (
+          <div className="rounded-2xl border border-[#3ecfcf66] bg-[#3ecfcf14] px-4 py-3">
+            <p className="text-[#3ecfcf] text-xs font-black uppercase tracking-wide">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
+            <p className="mt-1 text-white text-lg font-black">{selectedCar.znamka} {selectedCar.model}</p>
+          </div>
+        )}
+
+        {avti.length > 1 && nacin !== 'lite' && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select

@@ -657,6 +657,7 @@ export default function UvozPodatkov() {
       const importBatchId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `import-${Date.now()}-${Math.random().toString(16).slice(2)}`
+      const lockedAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       const importSource = isDrivvo ? 'Drivvo' : 'CSV'
       const importedLabel = (source?: string) => `${source || importSource} import | ${importStamp}`
       const duplicateKey = (row: any) =>
@@ -690,6 +691,8 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           import_batch_id: importBatchId,
+          imported_at: importStamp,
+          locked_at: lockedAt,
         })), existingKeys)
         insertedByType.fuel = rows.length
         await insertImportRows('fuel_logs', rows)
@@ -709,6 +712,8 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           import_batch_id: importBatchId,
+          imported_at: importStamp,
+          locked_at: lockedAt,
         })), existingKeys)
         insertedByType.service = rows.length
         await insertImportRows('service_logs', rows)
@@ -727,6 +732,8 @@ export default function UvozPodatkov() {
           verification_level: 'basic',
           source_owner_label: importedLabel(row.source),
           import_batch_id: importBatchId,
+          imported_at: importStamp,
+          locked_at: lockedAt,
         })), existingKeys)
         insertedByType.expense = rows.length
         await insertImportRows('expenses', rows)
@@ -931,8 +938,8 @@ export default function UvozPodatkov() {
           <p className="text-[#3ecfcf] text-sm font-black">{tx('Varna uvozna sled', 'Safe import trail')}</p>
           <p className="mt-1 text-[#b7f7f7] text-xs leading-relaxed">
             {tx(
-              'Zapisi se shranijo na izbrano vozilo kot Basic import, dobijo casovni zig in podvojeni vnosi se preskocijo.',
-              'Records are saved to the selected vehicle as a Basic import, get a timestamp, and duplicate entries are skipped.'
+              'Zapisi se shranijo na izbrano vozilo kot Basic import, dobijo casovni zig in podvojeni vnosi se preskocijo. Zadnji uvoz lahko razveljavis takoj po uvozu, posamezne zapise pa lahko urejas samo prvih 24 ur.',
+              'Records are saved to the selected vehicle as a Basic import, get a timestamp, and duplicate entries are skipped. You can undo the last import right after importing, and individual records can be edited only for the first 24 hours.'
             )}
           </p>
         </div>

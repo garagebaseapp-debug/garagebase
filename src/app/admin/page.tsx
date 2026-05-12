@@ -247,8 +247,9 @@ export default function AdminPage() {
       }
 
       setIsAdmin(true)
-      await Promise.all([loadAdminData(), loadAdminUsers()])
+      await loadAdminData()
       setLoading(false)
+      loadAdminUsers()
     }
     init()
   }, [settingsRange])
@@ -612,6 +613,12 @@ export default function AdminPage() {
       {message && (
         <div className="mb-4 rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] p-4 text-sm text-[#f59e0b]">
           {message}
+        </div>
+      )}
+
+      {stats.errors > 0 && (
+        <div className="mb-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-sm font-bold text-[#fecaca] shadow-lg shadow-[#ef444422]">
+          {tx(`Pozor: ${stats.errors} novih napak v aplikaciji.`, `Attention: ${stats.errors} new app errors.`)}
         </div>
       )}
 

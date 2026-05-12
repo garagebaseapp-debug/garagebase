@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { saveStoredLanguage, type Language } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4)
@@ -181,12 +182,6 @@ export default function Nastavitve() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       setUser(user)
-      const { data: adminRow } = await supabase
-        .from('admin_users')
-        .select('email')
-        .eq('email', user.email)
-        .maybeSingle()
-      setIsAdmin(!!adminRow)
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
       let loadedSettings: any = {}
       if (shranjeneNastavitve) {
@@ -214,6 +209,14 @@ export default function Nastavitve() {
           document.documentElement.classList.remove('light-mode')
         }
       }
+      setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
+      setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
+      trackEvent('settings_open')
+      trackSettingsSnapshot('settings_snapshot', loadedSettings)
+      setLoading(false)
+
+      checkCurrentUserAdmin().then((result) => setIsAdmin(result.isAdmin))
+
       if ('Notification' in window) {
         if (Notification.permission === 'granted') {
           const registration = await navigator.serviceWorker.getRegistration('/sw.js')
@@ -232,11 +235,6 @@ export default function Nastavitve() {
         } else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
         else setNotifikacije('neznano')
       }
-      setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
-      setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
-      trackEvent('settings_open')
-      trackSettingsSnapshot('settings_snapshot', loadedSettings)
-      setLoading(false)
     }
     init()
   }, [])
@@ -874,7 +872,7 @@ export default function Nastavitve() {
                   : 'Obvestila se pošljejo enkrat na dan ob izbrani uri, če imaš aktivne opomnike.'}
               </p>
               <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)} disabled={notificationSaveState === 'saving'}
-                className={`mt-3 w-full font-semibold py-3 rounded-xl transition-colors disabled:opacity-70 ${
+                className={`mt-3 w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-70 ${
                   notificationSaveState === 'saved'
                     ? 'bg-[#16a34a] text-white shadow-lg shadow-[#16a34a33]'
                     : notificationSaveState === 'error'
@@ -1376,14 +1374,14 @@ export default function Nastavitve() {
         </div>
       )}
 
-      <div className="grid gap-3 lg:col-span-2 sm:grid-cols-2">
+      <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center">
         <button onClick={shrani}
-          className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
+          className="w-full rounded-xl bg-[#6c63ff] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5a52e0] sm:w-auto">
           {tx('Shrani nastavitve', 'Save settings')}
         </button>
 
         <button onClick={handleLogout}
-          className="w-full bg-[#13131f] border border-[#1e1e32] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
+          className="w-full rounded-xl border border-[#1e1e32] bg-[#13131f] px-5 py-2.5 text-sm font-semibold text-[#ef4444] transition-colors hover:bg-[#ef444411] sm:w-auto">
           {tx('Odjava', 'Sign out')}
         </button>
       </div>

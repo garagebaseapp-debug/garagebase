@@ -524,7 +524,7 @@ export default function Dashboard() {
       garageBase: finalGarageBaseCost,
       imported: finalImportedCost,
       total: finalTotalCost,
-      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
+      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalGarageBaseCost > 0 ? finalGarageBaseCost / (kmStart - kmObVnosu) : null),
     }
     setPoraba(nextPoraba)
     setStroski(nextStroski)

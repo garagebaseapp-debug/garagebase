@@ -40,6 +40,7 @@ export default function Garaza() {
   const dragOver = useRef<number | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
+  const slikaVozila = (avto: any) => avto?.slika_url || avto?.slika || ''
 
   useEffect(() => {
     const init = async () => {
@@ -485,14 +486,15 @@ export default function Garaza() {
             <div className="rounded-2xl border border-[#2a2a40] bg-[#13131f] p-3">
               <p className="text-[#8a8ab0] text-xs uppercase tracking-wider mb-2">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {avti.map((avto: any) => {
+                {avti.map((avto: any, index: number) => {
                   const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
                   const selected = liteAvto?.id === avto.id
+                  const imageSrc = slikaVozila(avto)
                   return (
                     <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
                       className={`relative shrink-0 rounded-xl border-2 ${priority.border} ${priority.glow} px-2 py-2 text-left min-w-[118px] shadow-md transition-all ${
                         selected
-                          ? 'bg-[#3ecfcf22] text-white ring-4 ring-[#3ecfcfaa] border-[#3ecfcf] shadow-[#3ecfcf44]'
+                          ? 'gb-lite-selected bg-[#3ecfcf22] text-white ring-4 ring-[#3ecfcfaa] border-[#3ecfcf] shadow-[#3ecfcf44]'
                           : 'bg-[#0f0f1a] text-[#8a8ab0]'
                       }`}>
                       {selected && (
@@ -502,9 +504,9 @@ export default function Garaza() {
                       )}
                       <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/40 shadow`} />
                       <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
-                        {avto.slika_url ? (
-                          <img src={avto.slika_url} alt={imeVozila(avto)}
-                            loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                        {imageSrc ? (
+                          <img src={imageSrc} alt={imeVozila(avto)}
+                            loading={index < 6 ? 'eager' : 'lazy'} decoding="async" className="h-full w-full object-cover" />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
                             {imeVozila(avto)}
@@ -586,6 +588,7 @@ export default function Garaza() {
             style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci, '--gb-card-font-scale': garazaPisava / 100 } as any}>
             {avti.map((avto, index) => {
               const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
+              const imageSrc = slikaVozila(avto)
               return (
                 <div key={avto.id}
                   draggable={urejanje}
@@ -597,9 +600,9 @@ export default function Garaza() {
                   className={`relative rounded-xl overflow-hidden border-2 ${barvaBorder(barva)} aspect-square transition-all ${
                     urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
-                  {avto.slika_url ? (
-                    <img src={avto.slika_url} alt={imeVozila(avto)}
-                      loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+                  {imageSrc ? (
+                    <img src={imageSrc} alt={imeVozila(avto)}
+                      loading={index < 8 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1a1630] to-[#080810]" />
                   )}
@@ -663,6 +666,7 @@ export default function Garaza() {
         <div className="flex-1 overflow-y-auto lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:overflow-visible lg:auto-rows-fr">
           {avti.map((avto, index) => {
             const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
+            const imageSrc = slikaVozila(avto)
             if (prikaz === 'veliko') return (
               <div key={avto.id}
                 draggable={urejanje}
@@ -675,9 +679,9 @@ export default function Garaza() {
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
-                {avto.slika_url ? (
-                  <img src={avto.slika_url} alt={imeVozila(avto)}
-                    loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
+                {imageSrc ? (
+                  <img src={imageSrc} alt={imeVozila(avto)}
+                    loading={index < 6 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0
@@ -731,9 +735,9 @@ export default function Garaza() {
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
-                  {avto.slika_url ? (
-                  <img src={avto.slika_url} alt={imeVozila(avto)}
-                    loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
+                  {imageSrc ? (
+                  <img src={imageSrc} alt={imeVozila(avto)}
+                    loading={index < 8 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0

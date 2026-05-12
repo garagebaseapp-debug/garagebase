@@ -10,7 +10,6 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costValu
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-12-2040'
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -864,8 +863,10 @@ export default function Stroski() {
   const stGorivo = Math.max(durableRowSummary.rows.fuel, renderSummary.rows.fuel, effectiveCostSummary.rows.fuel, loadedSummary.rows.fuel, directCostSummary.rows.fuel, committedCostSummary.rows.fuel, costSnapshot.summary.rows.fuel, numericValue(refSummary?.rows?.fuel), displayGorivo.length, maxStatValue((stats) => stats?.rows?.fuel), debugSummary.rows.fuel, totalsCacheSummary.rows.fuel)
   const stServis = Math.max(durableRowSummary.rows.service, renderSummary.rows.service, effectiveCostSummary.rows.service, loadedSummary.rows.service, directCostSummary.rows.service, committedCostSummary.rows.service, costSnapshot.summary.rows.service, numericValue(refSummary?.rows?.service), displayServisi.length, maxStatValue((stats) => stats?.rows?.service), debugSummary.rows.service, totalsCacheSummary.rows.service)
   const stOstalo = Math.max(durableRowSummary.rows.expense, renderSummary.rows.expense, effectiveCostSummary.rows.expense, loadedSummary.rows.expense, directCostSummary.rows.expense, committedCostSummary.rows.expense, costSnapshot.summary.rows.expense, numericValue(refSummary?.rows?.expense), displayExpenses.length, maxStatValue((stats) => stats?.rows?.expense), debugSummary.rows.expense, totalsCacheSummary.rows.expense)
-  const kmPrevozeni = avto?.km_trenutni || 0
-  const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
+  const kmTrenutni = numericValue(avto?.km_trenutni)
+  const kmObVnosu = numericValue(avto?.km_ob_vnosu)
+  const kmPrevozeni = kmTrenutni > kmObVnosu ? kmTrenutni - kmObVnosu : kmTrenutni
+  const strosekNaKm = kmPrevozeni > 0 && skupajGarageBase > 0 ? (skupajGarageBase / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
 
   const kategorijaIkona: { [key: string]: string } = {
@@ -980,7 +981,7 @@ export default function Stroski() {
   const prikazStGorivo = Math.max(displayGorivo.length, rowManualSummary.rows.fuel, debugSummary.rows.fuel, stGorivo, totalsCacheSummary.rows.fuel)
   const prikazStServis = Math.max(displayServisi.length, rowManualSummary.rows.service, debugSummary.rows.service, stServis, totalsCacheSummary.rows.service)
   const prikazStOstalo = Math.max(displayExpenses.length, rowManualSummary.rows.expense, debugSummary.rows.expense, stOstalo, totalsCacheSummary.rows.expense)
-  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
+  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazGarageBase > 0 ? (prikazGarageBase / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {
@@ -989,6 +990,12 @@ export default function Stroski() {
     return `${value.toFixed(0)}${znakValute}`
   }
   const chartTicks = (max: number) => [max, max / 2, 0]
+  const chartColors = {
+    gorivo: '#55d6d2',
+    servis: '#f2b35f',
+    ostalo: '#8b7cf6',
+    grid: '#263049',
+  }
 
   const GrafStolpci = () => (
     <div className="grid grid-cols-[44px_1fr] gap-2">
@@ -1010,12 +1017,14 @@ export default function Stroski() {
             const ostaloH = skupaj > 0 ? (m.ostalo / skupaj) * visina : 0
             return (
               <div key={i} className="flex flex-1 flex-col items-center gap-1">
-                <div className="flex w-full flex-col justify-end overflow-hidden rounded-lg border border-[#1e1e32] bg-[#111122]" style={{ height: '110px' }} title={`${m.label}: ${formatMoney(skupaj, valuta)}`}>
-                  {skupaj === 0 ? <div className="w-full bg-[#1e1e32] rounded-lg" style={{ height: '4px' }} /> : (
-                    <div className="w-full flex flex-col justify-end" style={{ height: '100%' }}>
-                      <div style={{ height: `${ostaloH}%` }} className="bg-[#6c63ff] w-full" />
-                      <div style={{ height: `${servisH}%` }} className="bg-[#f59e0b] w-full" />
-                      <div style={{ height: `${gorivoH}%` }} className="bg-[#3ecfcf] w-full rounded-t-sm" />
+                <div className="flex w-full justify-center" style={{ height: '118px' }} title={`${m.label}: ${formatMoney(skupaj, valuta)}`}>
+                  {skupaj === 0 ? (
+                    <div className="mt-auto h-1.5 w-3/4 rounded-full border border-[#1e1e32] bg-[#13131f]" />
+                  ) : (
+                    <div className="mt-auto flex w-10 max-w-[76%] flex-col justify-end overflow-hidden rounded-full border border-white/10 shadow-xl" style={{ height: `${Math.max(8, visina)}%` }}>
+                      {ostaloH > 0 && <div style={{ height: `${(ostaloH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.ostalo}, #a99dff)` }} className="w-full" />}
+                      {servisH > 0 && <div style={{ height: `${(servisH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.servis}, #ffd08a)` }} className="w-full" />}
+                      {gorivoH > 0 && <div style={{ height: `${(gorivoH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.gorivo}, #8be8e3)` }} className="w-full" />}
                     </div>
                   )}
                 </div>
@@ -1044,22 +1053,22 @@ export default function Stroski() {
     return (
       <div className="w-full">
         <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: '145px' }}>
-          <defs><linearGradient id="gradCrta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6c63ff" stopOpacity="0.4" /><stop offset="100%" stopColor="#6c63ff" stopOpacity="0" /></linearGradient></defs>
+          <defs><linearGradient id="gradCrta" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={chartColors.ostalo} stopOpacity="0.32" /><stop offset="100%" stopColor={chartColors.ostalo} stopOpacity="0" /></linearGradient></defs>
           {chartTicks(maxVrednost).map((tick, i) => {
             const y = padTop + (i / 2) * chartH
             return (
               <g key={i}>
-                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke="#1e1e32" strokeWidth="1" />
+                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke={chartColors.grid} strokeWidth="1" />
                 <text x={padLeft - 6} y={y + 3} textAnchor="end" fill="#5a5a80" fontSize="8" fontWeight="700">{compactMoney(tick)}</text>
               </g>
             )
           })}
           <path d={fill} fill="url(#gradCrta)" />
-          <path d={path} fill="none" stroke="#6c63ff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={path} fill="none" stroke={chartColors.ostalo} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           {tocke.map((t, i) => (
             <g key={i}>
               <text x={t.x} y={h - 7} textAnchor="middle" fill="#5a5a80" fontSize="8" fontWeight="700">{t.label}</text>
-              <circle cx={t.x} cy={t.y} r="3" fill="#6c63ff" />
+              <circle cx={t.x} cy={t.y} r="3" fill={chartColors.ostalo} />
               {t.skupaj > 0 && <text x={t.x} y={Math.max(8, t.y - 8)} textAnchor="middle" fill="white" fontSize="7" fontWeight="bold">{compactMoney(t.skupaj)}</text>}
             </g>
           ))}
@@ -1078,9 +1087,9 @@ export default function Stroski() {
     const chartW = w - padLeft - padRight
     const chartH = h - padTop - padBottom
     const series = [
-      { key: 'gorivo', label: tx('Gorivo', 'Fuel'), color: '#3ecfcf' },
-      { key: 'servis', label: tx('Servis', 'Service'), color: '#f59e0b' },
-      { key: 'ostalo', label: tx('Ostalo', 'Other'), color: '#6c63ff' },
+      { key: 'gorivo', label: tx('Gorivo', 'Fuel'), color: chartColors.gorivo },
+      { key: 'servis', label: tx('Servis', 'Service'), color: chartColors.servis },
+      { key: 'ostalo', label: tx('Ostalo', 'Other'), color: chartColors.ostalo },
     ] as const
     const pointsFor = (key: typeof series[number]['key']) => meseci.map((m, i) => {
       const x = padLeft + (i / Math.max(meseci.length - 1, 1)) * chartW
@@ -1097,7 +1106,7 @@ export default function Stroski() {
             const y = padTop + (i / 2) * chartH
             return (
               <g key={i}>
-                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke="#1e1e32" strokeWidth="1" />
+                <line x1={padLeft} x2={w - padRight} y1={y} y2={y} stroke={chartColors.grid} strokeWidth="1" />
                 <text x={padLeft - 6} y={y + 3} textAnchor="end" fill="#5a5a80" fontSize="8" fontWeight="700">{compactMoney(tick)}</text>
               </g>
             )
@@ -1134,9 +1143,9 @@ export default function Stroski() {
     if (skupajVse === 0) return <div className="flex items-center justify-center h-36"><p className="text-[#5a5a80] text-sm">{tx('Ni podatkov', 'No data')}</p></div>
     const r = 45, cx = 60, cy = 60
     const segments = [
-      { vrednost: skupajGorivo, barva: '#3ecfcf', naziv: tx('Gorivo', 'Fuel') },
-      { vrednost: skupajServis, barva: '#f59e0b', naziv: tx('Servis', 'Service') },
-      { vrednost: skupajExpenses, barva: '#6c63ff', naziv: tx('Ostalo', 'Other') },
+      { vrednost: skupajGorivo, barva: chartColors.gorivo, naziv: tx('Gorivo', 'Fuel') },
+      { vrednost: skupajServis, barva: chartColors.servis, naziv: tx('Servis', 'Service') },
+      { vrednost: skupajExpenses, barva: chartColors.ostalo, naziv: tx('Ostalo', 'Other') },
     ].filter(s => s.vrednost > 0)
     let kot = -90
     const poti = segments.map(s => {
@@ -1309,12 +1318,7 @@ export default function Stroski() {
             <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(prikazUvoz, valuta)}</p>
           </div>
         </div>
-        {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
-        {process.env.NODE_ENV !== 'production' && (
-          <p className="mt-3 text-[10px] text-[#5a5a80]" data-gb-no-translate>
-            {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · {tx('stanje', 'state')}: {gorivo.length}/{servisi.length}/{expenses.length} · ref: {refRows.gorivo.length}/{refRows.servisi.length}/{refRows.expenses.length} · {tx('posnetek', 'snapshot')}: {costSnapshot.gorivo.length}/{costSnapshot.servisi.length}/{costSnapshot.expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · {tx('vsota', 'sum')}: {loadedSummary.fuel.toFixed(2)} / {loadedSummary.service.toFixed(2)} / {loadedSummary.expense.toFixed(2)} · direct: {directCostSummary.fuel.toFixed(2)} / {directCostSummary.service.toFixed(2)} / {directCostSummary.expense.toFixed(2)} · render: {renderSummary.fuel.toFixed(2)} / {renderSummary.service.toFixed(2)} / {renderSummary.expense.toFixed(2)} · parsed: {debugSummary.fuel.toFixed(2)} / {debugSummary.service.toFixed(2)} / {debugSummary.expense.toFixed(2)} · stats: {statsFuelTotal.toFixed(2)} / {statsServiceTotal.toFixed(2)} / {statsExpenseTotal.toFixed(2)} / {statsTotalCost.toFixed(2)} · rowStats: {numericValue(rowStats?.costs?.fuel).toFixed(2)} / {numericValue(rowStats?.costs?.service).toFixed(2)} / {numericValue(rowStats?.costs?.expense).toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {costSnapshot.debug || debugSource}
-          </p>
-        )}
+        {prikazStrosekNaKm && <p className="text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('GarageBase od vpisa', 'GarageBase since added')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
@@ -1349,9 +1353,9 @@ export default function Stroski() {
         {grafTip === 'kolac' && <GrafKolac />}
         {grafTip !== 'kolac' && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-[#1e1e32]">
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#3ecfcf]" /><p className="text-[#5a5a80] text-[10px]">{tx('Gorivo', 'Fuel')}</p></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" /><p className="text-[#5a5a80] text-[10px]">{tx('Servis', 'Service')}</p></div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#6c63ff]" /><p className="text-[#5a5a80] text-[10px]">{tx('Ostalo', 'Other')}</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: chartColors.gorivo }} /><p className="text-[#5a5a80] text-[10px]">{tx('Gorivo', 'Fuel')}</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: chartColors.servis }} /><p className="text-[#5a5a80] text-[10px]">{tx('Servis', 'Service')}</p></div>
+            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: chartColors.ostalo }} /><p className="text-[#5a5a80] text-[10px]">{tx('Ostalo', 'Other')}</p></div>
           </div>
         )}
       </div>

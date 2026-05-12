@@ -35,6 +35,8 @@ const styles = StyleSheet.create({
   statBoxTotal: { flex: 1, backgroundColor: '#eefafa', borderRadius: 6, padding: 8, borderWidth: 1, borderColor: '#3ecfcf' },
   statLabel: { fontSize: 7, color: '#888888', marginBottom: 2 },
   statValue: { fontSize: 13, fontFamily: 'Helvetica-Bold', color: '#111111' },
+  statSubGarage: { fontSize: 7, color: '#6c63ff', marginTop: 3 },
+  statSubImport: { fontSize: 7, color: '#16a34a', marginTop: 1 },
   tableHeader: { flexDirection: 'row', backgroundColor: '#ebebff', padding: 6, borderRadius: 4, marginBottom: 2 },
   tableRow: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   tableRowAlt: { flexDirection: 'row', paddingVertical: 5, paddingHorizontal: 6, backgroundColor: '#fafafa', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
@@ -269,6 +271,9 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
   const skupajExpenses = sortedExpenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const costParts = costBreakdown(sortedServisi, sortedGorivo, sortedExpenses)
+  const fuelParts = costBreakdown(sortedGorivo)
+  const serviceParts = costBreakdown(sortedServisi)
+  const expenseParts = costBreakdown(sortedExpenses)
   const skupajLitrov = sortedGorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
   const imaPrivonke = sortedServisi.some((s: any) => s.foto_url) || sortedGorivo.some((g: any) => g.receipt_url) || sortedExpenses.some((e: any) => e.receipt_url)
@@ -337,14 +342,20 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.fuel.toUpperCase()}</Text>
               <Text style={styles.statValue}>{money(skupajGorivo)}</Text>
+              <Text style={styles.statSubGarage}>{copy.garageBaseCosts}: {money(fuelParts.garageBase)}</Text>
+              <Text style={styles.statSubImport}>{copy.importedCosts}: {money(fuelParts.imported)}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.services}</Text>
               <Text style={styles.statValue}>{money(skupajServis)}</Text>
+              <Text style={styles.statSubGarage}>{copy.garageBaseCosts}: {money(serviceParts.garageBase)}</Text>
+              <Text style={styles.statSubImport}>{copy.importedCosts}: {money(serviceParts.imported)}</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>{copy.other}</Text>
               <Text style={styles.statValue}>{money(skupajExpenses)}</Text>
+              <Text style={styles.statSubGarage}>{copy.garageBaseCosts}: {money(expenseParts.garageBase)}</Text>
+              <Text style={styles.statSubImport}>{copy.importedCosts}: {money(expenseParts.imported)}</Text>
             </View>
           </View>
           <View style={styles.statsRow}>
