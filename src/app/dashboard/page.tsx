@@ -645,14 +645,20 @@ export default function Dashboard() {
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
     if (avto.id === aktivniAvto?.id) return
+    setAktivniAvto(avto)
+    setOpomniki([])
+    setPoraba(emptyConsumption)
+    setStroski(emptyCosts)
     setDebugStatsSource('switching')
     try {
       const url = new URL(window.location.href)
       url.searchParams.set('car', avto.id)
-      window.location.assign(url.toString())
+      window.history.replaceState(null, '', url.toString())
     } catch {
-      window.location.href = `/dashboard?car=${encodeURIComponent(avto.id)}`
+      window.history.replaceState(null, '', `/dashboard?car=${encodeURIComponent(avto.id)}`)
     }
+    if (nacin === 'lite') await naloziLitePodatke(avti.map((item: any) => item.id), avto.id)
+    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {
