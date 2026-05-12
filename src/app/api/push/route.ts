@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import webpush from 'web-push'
+import { requireAdmin } from '@/lib/server-admin'
+import { rateLimit } from '@/lib/server-rate-limit'
 
 const vapidEmail = process.env.VAPID_EMAIL
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
@@ -11,8 +12,6 @@ if (pushConfigured) {
   webpush.setVapidDetails(vapidEmail!, vapidPublicKey!, vapidPrivateKey!)
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const pushApiSecret = process.env.PUSH_API_SECRET || process.env.CRON_SECRET
 
 const isAuthorized = async (req: NextRequest) => {
@@ -23,18 +22,15 @@ const isAuthorized = async (req: NextRequest) => {
     return true
   }
 
-  const jwt = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
-  if (!jwt || !supabaseUrl || !supabaseAnonKey) return false
-
-  const client = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: `Bearer ${jwt}` } },
-  })
-  const { data, error } = await client.auth.getUser()
-  return !error && !!data.user
+  const admin = await requireAdmin(req)
+  return !admin.error
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = rateLimit(req, 'push-test', 20, 60_000)
+    if (limited) return limited
+
     if (!(await isAuthorized(req))) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

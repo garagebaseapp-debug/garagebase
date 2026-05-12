@@ -32,6 +32,7 @@ const vapidEmail = process.env.VAPID_EMAIL
 const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
 const pushConfigured = Boolean(vapidEmail && vapidPublicKey && vapidPrivateKey)
+const PUSH_TIMEOUT_MS = 8_000
 
 const defaultNotificationSettings: NotificationSettings = {
   enabled: true,
@@ -94,14 +95,19 @@ function shouldRunForSendTime(sendTime: string) {
 }
 
 async function sendPush(subscription: any, title: string, body: string) {
-  await webpush.sendNotification(
-    subscription,
-    JSON.stringify({
-      title,
-      body,
-      url: '/opomniki',
-    })
-  )
+  await Promise.race([
+    webpush.sendNotification(
+      subscription,
+      JSON.stringify({
+        title,
+        body,
+        url: '/opomniki',
+      })
+    ),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('push_send_timeout')), PUSH_TIMEOUT_MS)
+    }),
+  ])
 }
 
 async function recordPushSuccess(supabase: any, userId: string, endpoint?: string) {
@@ -174,16 +180,14 @@ function buildSummary(items: string[]) {
 export async function GET(req: Request) {
   const supabase = getSupabase()
   const authHeader = req.headers.get('authorization')
-  const userAgent = req.headers.get('user-agent') || ''
   const cronSecret = process.env.CRON_SECRET
-  const isVercelCron = userAgent.includes('vercel-cron/1.0')
 
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}` && !isVercelCron) {
-    return NextResponse.json({ error: 'Unauthorized', reason: 'bad_cron_secret' }, { status: 401 })
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'cron_secret_missing' }, { status: 500 })
   }
 
-  if (!cronSecret && !isVercelCron) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized', reason: 'bad_cron_secret' }, { status: 401 })
   }
 
   if (!pushConfigured) {

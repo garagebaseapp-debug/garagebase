@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/server-rate-limit'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -7,6 +8,9 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = rateLimit(request, 'delete-account', 5, 60_000)
+    if (limited) return limited
+
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {
       return NextResponse.json({
         error: 'Brisanje računa potrebuje SUPABASE_SERVICE_ROLE_KEY v Vercel Environment Variables.',
@@ -22,6 +26,14 @@ export async function POST(request: NextRequest) {
     })
     const { data: userData, error: userError } = await userClient.auth.getUser(token)
     if (userError || !userData.user) return NextResponse.json({ error: 'Prijava ni veljavna.' }, { status: 401 })
+
+    const body = await request.json().catch(() => ({}))
+    const confirmation = String(body.confirmText || '').trim().toUpperCase()
+    const confirmEmail = String(body.email || '').trim().toLowerCase()
+    const userEmail = userData.user.email?.toLowerCase() || ''
+    if ((confirmation !== 'IZBRISI' && confirmation !== 'DELETE') || confirmEmail !== userEmail) {
+      return NextResponse.json({ error: 'Potrditev izbrisa ni pravilna.' }, { status: 400 })
+    }
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const userId = userData.user.id

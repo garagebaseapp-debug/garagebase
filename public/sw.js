@@ -8,11 +8,21 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim())
 })
 
+function safeInternalUrl(value, fallback) {
+  try {
+    const target = new URL(value || fallback, self.location.origin)
+    if (target.origin !== self.location.origin) return fallback
+    return `${target.pathname}${target.search}${target.hash}` || fallback
+  } catch {
+    return fallback
+  }
+}
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
   const data = event.data.json()
-  const url = data.url || '/opomniki'
+  const url = safeInternalUrl(data.url, '/opomniki')
 
   const options = {
     body: data.body,
@@ -46,7 +56,7 @@ self.addEventListener('message', (event) => {
       tag: 'garagebase-local-test',
       vibrate: [200, 100, 200],
       requireInteraction: false,
-      data: { url: data.url || '/nastavitve' },
+      data: { url: safeInternalUrl(data.url, '/nastavitve') },
       actions: [
         { action: 'odpri', title: 'Odpri' },
         { action: 'zapri', title: 'Zapri' }
@@ -60,6 +70,6 @@ self.addEventListener('notificationclick', (event) => {
 
   if (event.action === 'zapri') return
 
-  const url = event.notification.data?.url || '/opomniki'
+  const url = safeInternalUrl(event.notification.data?.url, '/opomniki')
   event.waitUntil(clients.openWindow(url))
 })

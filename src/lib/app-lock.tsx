@@ -15,15 +15,22 @@ function base64UrlToBuffer(value: string) {
   return bytes.buffer
 }
 
+function isAppLockSupported() {
+  return typeof window !== 'undefined' &&
+    window.isSecureContext &&
+    'PublicKeyCredential' in window &&
+    'credentials' in navigator
+}
 
 export function hasAppLockCredential() {
   if (typeof window === 'undefined') return false
-  return localStorage.getItem(enabledKey) === 'true' && !!localStorage.getItem(credentialKey) && 'PublicKeyCredential' in window
+  return localStorage.getItem(enabledKey) === 'true' && !!localStorage.getItem(credentialKey) && isAppLockSupported()
 }
 
 export async function unlockWithAppLock() {
   const credentialId = localStorage.getItem(credentialKey)
   if (!credentialId) throw new Error('Biometrija ni nastavljena.')
+  if (!isAppLockSupported()) throw new Error('Biometrija na tej napravi ni podprta.')
   const challenge = crypto.getRandomValues(new Uint8Array(32))
   await navigator.credentials.get({
     publicKey: {
@@ -45,7 +52,7 @@ export function AppLock() {
     const enabled = localStorage.getItem(enabledKey) === 'true'
     const credentialId = localStorage.getItem(credentialKey)
     const sessionUnlocked = sessionStorage.getItem(sessionUnlockedKey) === 'true'
-    if (!skip && enabled && credentialId && !sessionUnlocked && 'PublicKeyCredential' in window) {
+    if (!skip && enabled && credentialId && !sessionUnlocked && isAppLockSupported()) {
       setLocked(true)
     }
   }, [])

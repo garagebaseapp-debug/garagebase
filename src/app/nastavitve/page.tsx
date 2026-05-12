@@ -232,7 +232,7 @@ export default function Nastavitve() {
         } else if (Notification.permission === 'denied') setNotifikacije('zavrnjeno')
         else setNotifikacije('neznano')
       }
-      setBiometricSupported('PublicKeyCredential' in window && window.isSecureContext)
+      setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
       trackEvent('settings_open')
       trackSettingsSnapshot('settings_snapshot', loadedSettings)
@@ -382,6 +382,10 @@ export default function Nastavitve() {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        body: JSON.stringify({
+          confirmText: deleteConfirmText.trim(),
+          email: user?.email || '',
+        }),
       })
 
       const result = await response.json().catch(() => ({}))
@@ -486,7 +490,7 @@ export default function Nastavitve() {
     setAppLockLoading(true)
     setAppLockMessage('')
     try {
-      if (!('PublicKeyCredential' in window) || !window.isSecureContext) {
+      if (!('PublicKeyCredential' in window) || !('credentials' in navigator) || !window.isSecureContext) {
         setAppLockMessage('Ta naprava ali brskalnik ne podpira varnega biometričnega odklepa.')
         setAppLockLoading(false)
         return

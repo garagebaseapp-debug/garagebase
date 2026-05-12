@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit } from '@/lib/server-rate-limit'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -26,6 +27,9 @@ async function getUserFromRequest(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const limited = rateLimit(req, 'push-subscription', 30, 60_000)
+    if (limited) return limited
+
     if (!supabaseUrl || !supabaseAnonKey) {
       return NextResponse.json({ error: 'Supabase ni konfiguriran.' }, { status: 503 })
     }
@@ -43,23 +47,37 @@ export async function POST(req: NextRequest) {
       ? createClient(supabaseUrl, supabaseServiceKey)
       : auth.client
 
-    await dbClient
-      .from('push_subscriptions')
-      .delete()
-      .eq('user_id', auth.user.id)
-      .eq('subscription->>endpoint', endpoint)
+    const payload = {
+      user_id: auth.user.id,
+      endpoint,
+      subscription,
+      notification_settings: notificationSettings,
+      updated_at: new Date().toISOString(),
+    }
 
     const { error } = await dbClient
       .from('push_subscriptions')
-      .insert({
-        user_id: auth.user.id,
-        subscription,
-        notification_settings: notificationSettings,
-        notification_state: {},
-        updated_at: new Date().toISOString(),
-      })
+      .upsert(payload, { onConflict: 'user_id,endpoint' })
 
-    if (error) throw error
+    if (error) {
+      await dbClient
+        .from('push_subscriptions')
+        .delete()
+        .eq('user_id', auth.user.id)
+        .eq('subscription->>endpoint', endpoint)
+
+      const fallback = await dbClient
+        .from('push_subscriptions')
+        .insert({
+          user_id: auth.user.id,
+          subscription,
+          notification_settings: notificationSettings,
+          notification_state: {},
+          updated_at: new Date().toISOString(),
+        })
+
+      if (fallback.error) throw fallback.error
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
