@@ -124,7 +124,6 @@ export default function ZgodovinaGoriva() {
       })
       setVnosi(fuelRows)
       localStorage.setItem(`garagebase_fuel_history_cache_${selectedCarId}`, JSON.stringify({ rows: fuelRows, savedAt: Date.now() }))
-      localStorage.setItem(`garagebase_stroski_cache_${selectedCarId}`, JSON.stringify({ gorivo: fuelRows, savedAt: Date.now() }))
       saveFuelCostSummary(selectedCarId, summaryRows)
       setLoading(false)
     }
@@ -184,7 +183,6 @@ export default function ZgodovinaGoriva() {
     const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
     setVnosi(gorivo || [])
     localStorage.setItem(`garagebase_fuel_history_cache_${avto.id}`, JSON.stringify({ rows: gorivo || [], savedAt: Date.now() }))
-    localStorage.setItem(`garagebase_stroski_cache_${avto.id}`, JSON.stringify({ gorivo: gorivo || [], savedAt: Date.now() }))
     saveFuelCostSummary(avto.id, summaryRows)
     setTotalCount(gorivoRes.count || gorivo.length || 0)
     setSummary({

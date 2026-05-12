@@ -196,14 +196,19 @@ const readCostTotalsCache = (carId: string) => {
     const parsed = raw ? JSON.parse(raw) : null
     const hasValue =
       numberValue(parsed?.fuelCost) > 0 ||
+      numberValue(parsed?.serviceCost) > 0 ||
+      numberValue(parsed?.expenseCost) > 0 ||
+      numberValue(parsed?.totalCost) > 0 ||
       numberValue(parsed?.garageBaseFuelCost) > 0 ||
       numberValue(parsed?.importedFuelCost) > 0 ||
-      numberValue(parsed?.fuelRows) > 0
+      numberValue(parsed?.fuelRows) > 0 ||
+      numberValue(parsed?.serviceRows) > 0 ||
+      numberValue(parsed?.expenseRows) > 0
     if (hasValue) return parsed
     const garageRaw = localStorage.getItem('garagebase_stroski_garaza_cache')
     const garageParsed = garageRaw ? JSON.parse(garageRaw) : null
     const garageTotal = numberValue(garageParsed?.stroski?.[carId])
-    return garageTotal > 0 ? { fuelCost: garageTotal, garageBaseFuelCost: garageTotal, fuelRows: 0 } : null
+    return garageTotal > 0 ? { totalCost: garageTotal, garageBaseFuelCost: garageTotal, fuelRows: 0 } : null
   } catch {
     return null
   }
@@ -539,10 +544,13 @@ export default function Dashboard() {
     })
     const totalsCache = readCostTotalsCache(carId)
     const cachedFuelCost = numberValue(totalsCache?.fuelCost)
+    const cachedServiceCost = numberValue(totalsCache?.serviceCost)
+    const cachedExpenseCost = numberValue(totalsCache?.expenseCost)
+    const cachedTotalsCost = numberValue(totalsCache?.totalCost) || cachedFuelCost + cachedServiceCost + cachedExpenseCost
     const cachedGarageBaseFuelCost = numberValue(totalsCache?.garageBaseFuelCost)
     const cachedImportedFuelCost = numberValue(totalsCache?.importedFuelCost)
     const cachedTotalCost = cachedFallback?.stroski.total || apiFallback?.stroski.total || 0
-    const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedFuelCost || cachedTotalCost
+    const finalTotalCost = directStats.costs.total > 0 ? directStats.costs.total : cachedTotalsCost || cachedTotalCost
     const finalGarageBaseCost = directStats.costs.garageBase > 0
       ? directStats.costs.garageBase
       : cachedGarageBaseFuelCost || cachedFallback?.stroski.garageBase || apiFallback?.stroski.garageBase || (cachedFuelCost > 0 && cachedImportedFuelCost === 0 ? cachedFuelCost : 0)
