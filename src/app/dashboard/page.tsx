@@ -23,7 +23,7 @@ type CostBreakdown = {
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
-const DASHBOARD_BUILD = 'dashboard-2026-05-12-0530'
+const DASHBOARD_BUILD = 'dashboard-2026-05-12-0615'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -87,10 +87,14 @@ const apiDebugText = (payload: any) => {
   const sampleText = sample
     ? ` sample:${numberValue(sample.computedCost).toFixed(0)}/${numberValue(sample.computedLiters).toFixed(0)}`
     : ''
+  const consumption = debug.statsConsumption
+  const consumptionText = consumption
+    ? ` cons:${numberValue(consumption.total || consumption.garageBase || consumption.imported).toFixed(1)}`
+    : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numberValue(car.fuel) + numberValue(car.service) + numberValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${consumptionText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const isImportedDashboardRow = (row: any) => {
@@ -401,6 +405,7 @@ export default function Dashboard() {
             imported: stats.consumption?.imported ?? null,
             total: stats.consumption?.total ?? null,
           }
+          const hasApiConsumption = nextPoraba.total !== null || nextPoraba.garageBase !== null || nextPoraba.imported !== null
           const nextStroski = {
             garageBase: numberValue(stats.costs?.garageBase),
             imported: numberValue(stats.costs?.imported),
@@ -433,9 +438,12 @@ export default function Dashboard() {
             cost: numberValue(stats.costs?.total),
           })
           setDebugStatsSource(apiDebugText(payload))
-          setPoraba(nextPoraba)
           setStroski(nextStroski)
-          return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
+          if (hasApiConsumption) {
+            setPoraba(nextPoraba)
+            return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
+          }
+          source = `${source}+needs-consumption`
         } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
           source = `${apiDebugText(payload)} no-values`
           setDebugStats({

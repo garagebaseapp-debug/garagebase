@@ -10,7 +10,7 @@ import { buildCostSummary as buildSharedCostSummary, costValueFor, splitRowsBySo
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const STROSKI_BUILD = 'stroski-2026-05-12-0530'
+const STROSKI_BUILD = 'stroski-2026-05-12-0615'
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -68,10 +68,14 @@ const apiDebugText = (payload: any) => {
   const sampleText = sample
     ? ` sample:${numericValue(sample.computedCost).toFixed(0)}/${numericValue(sample.computedLiters).toFixed(0)}`
     : ''
+  const consumption = debug.statsConsumption
+  const consumptionText = consumption
+    ? ` cons:${numericValue(consumption.total || consumption.garageBase || consumption.imported).toFixed(1)}`
+    : ''
   const otherRows = Array.isArray(debug.userCarsWithRows)
     ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
     : 0
-  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
+  return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${consumptionText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
 const firstNumberValue = (row: any, keys: string[]) => {
@@ -171,6 +175,61 @@ const readVehicleStatsCache = (carId?: string) => {
   }
 }
 
+const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], expenseRows: any[] = [], car?: any) => {
+  const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
+  const fuelCost = fuelRows.reduce((sum, row) => sum + fuelCostValue(row), 0)
+  const serviceCost = serviceRows.reduce((sum, row) => sum + numericValue(row?.cena), 0)
+  const expenseCost = filteredExpenses.reduce((sum, row) => sum + numericValue(row?.znesek), 0)
+  const totalCost = fuelCost + serviceCost + expenseCost
+  const costRows = [
+    ...fuelRows.map((row) => ({ ...row, _tip: 'gorivo' })),
+    ...serviceRows.map((row) => ({ ...row, _tip: 'servis' })),
+    ...filteredExpenses.map((row) => ({ ...row, _tip: 'ostalo' })),
+  ]
+  const sourceSplit = splitRowsBySource(costRows)
+  const imported = sourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
+  const garageBase = Math.max(0, totalCost - imported)
+  const currentKm = numericValue(car?.km_trenutni)
+
+  return {
+    rows: {
+      fuel: fuelRows.length,
+      service: serviceRows.length,
+      expense: filteredExpenses.length,
+    },
+    liters: fuelRows.reduce((sum, row) => sum + fuelLitersValue(row), 0),
+    costs: {
+      fuel: fuelCost,
+      service: serviceCost,
+      expense: expenseCost,
+      garageBase,
+      imported,
+      total: totalCost,
+      perKm: currentKm > 0 && totalCost > 0 ? totalCost / currentKm : null,
+    },
+    consumption: {},
+  }
+}
+
+const writeVehicleStatsCache = (carId: string, stats: any) => {
+  try {
+    localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
+      fuelCost: numericValue(stats?.costs?.fuel),
+      serviceCost: numericValue(stats?.costs?.service),
+      expenseCost: numericValue(stats?.costs?.expense),
+      fuelLiters: numericValue(stats?.liters),
+      fuelRows: numericValue(stats?.rows?.fuel),
+      rows: stats?.rows,
+      liters: numericValue(stats?.liters),
+      costs: stats?.costs,
+      consumption: stats?.consumption || {},
+      savedAt: Date.now(),
+    }))
+  } catch (error) {
+    console.warn('[GarageBase costs] vehicle stats cache skipped', error)
+  }
+}
+
 export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
@@ -191,6 +250,7 @@ export default function Stroski() {
   const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
   const [refreshing, setRefreshing] = useState(false)
   const [serverStats, setServerStats] = useState<any>(null)
+  const [rowStats, setRowStats] = useState<any>(null)
   const [debugSource, setDebugSource] = useState('')
   const [loadedRows, setLoadedRows] = useState<{ gorivo: any[]; servisi: any[]; expenses: any[]; ready: boolean }>({
     gorivo: [],
@@ -232,11 +292,13 @@ export default function Stroski() {
       const cached = readCostCache(carId)
       if (cached) {
         const cachedSummary = buildSharedCostSummary(cached.gorivo, cached.servisi, cached.expenses, cached.serverStats)
+        const cachedRowStats = buildRowStatsFromRows(cached.gorivo, cached.servisi, cached.expenses)
         setGorivo(cached.gorivo)
         setServisi(cached.servisi)
         setExpenses(cached.expenses)
         setLoadedRows({ gorivo: cached.gorivo, servisi: cached.servisi, expenses: cached.expenses, ready: true })
         setLoadedSummary(cachedSummary)
+        if (statsHasData(cachedRowStats) || statsHasRealValues(cachedRowStats)) setRowStats(cachedRowStats)
         if (statsHasRealValues(cached.serverStats)) setServerStats(cached.serverStats)
       }
 
@@ -278,7 +340,10 @@ export default function Stroski() {
           }
         } catch {}
       }
-      const immediateSummary = buildSharedCostSummary(gorivoData, servisData, expensesData)
+      const immediateStats = buildRowStatsFromRows(gorivoData, servisData, expensesData, avtoRes.data)
+      setRowStats(immediateStats)
+      writeVehicleStatsCache(carId, immediateStats)
+      const immediateSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, immediateStats)
       setGorivo(gorivoData)
       setServisi(servisData)
       setExpenses(expensesData)
@@ -321,7 +386,8 @@ export default function Stroski() {
         }
       }
       setDebugSource(nextDebugSource)
-      const nextSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, nextServerStats)
+      const statsForSummary = statsHasData(nextServerStats) || statsHasRealValues(nextServerStats) ? nextServerStats : immediateStats
+      const nextSummary = buildSharedCostSummary(gorivoData, servisData, expensesData, statsForSummary)
       setLoadedSummary(nextSummary)
       setCostSnapshot({
         gorivo: gorivoData,
@@ -331,40 +397,13 @@ export default function Stroski() {
         debug: nextDebugSource,
         ready: true,
       })
-      const localFuelCost = gorivoData.reduce((sum: number, row: any) => sum + fuelCostValue(row), 0)
-      const localServiceCost = servisData.reduce((sum: number, row: any) => sum + numericValue(row.cena), 0)
-      const localExpenseCost = expensesData.reduce((sum: number, row: any) => sum + numericValue(row.znesek), 0)
-      const localFuelLiters = gorivoData.reduce((sum: number, row: any) => sum + fuelLitersValue(row), 0)
       const hasLocalRows = gorivoData.length > 0 || servisData.length > 0 || expensesData.length > 0
       try {
         localStorage.setItem(`garagebase_stroski_cache_${carId}`, JSON.stringify({ gorivo: gorivoData, servisi: servisData, expenses: expensesData, serverStats: nextServerStats, savedAt: Date.now() }))
       } catch (error) {
         console.warn('[GarageBase costs] cache write skipped', error)
       }
-      try {
-        localStorage.setItem(`garagebase_vehicle_stats_${carId}`, JSON.stringify({
-          fuelCost: hasLocalRows ? localFuelCost : numericValue(nextServerStats?.costs?.fuel),
-          serviceCost: hasLocalRows ? localServiceCost : numericValue(nextServerStats?.costs?.service),
-          expenseCost: hasLocalRows ? localExpenseCost : numericValue(nextServerStats?.costs?.expense),
-          fuelLiters: hasLocalRows ? localFuelLiters : numericValue(nextServerStats?.liters),
-          fuelRows: hasLocalRows ? gorivoData.length : numericValue(nextServerStats?.rows?.fuel),
-          rows: {
-            fuel: hasLocalRows ? gorivoData.length : numericValue(nextServerStats?.rows?.fuel),
-            service: hasLocalRows ? servisData.length : numericValue(nextServerStats?.rows?.service),
-            expense: hasLocalRows ? expensesData.length : numericValue(nextServerStats?.rows?.expense),
-          },
-          liters: hasLocalRows ? localFuelLiters : numericValue(nextServerStats?.liters),
-          costs: {
-            garageBase: hasLocalRows ? nextSummary.garageBase : numericValue(nextServerStats?.costs?.garageBase),
-            imported: hasLocalRows ? nextSummary.imported : numericValue(nextServerStats?.costs?.imported),
-            total: hasLocalRows ? nextSummary.total : numericValue(nextServerStats?.costs?.total),
-            naKm: null,
-          },
-          savedAt: Date.now(),
-        }))
-      } catch (error) {
-        console.warn('[GarageBase costs] vehicle stats cache skipped', error)
-      }
+      writeVehicleStatsCache(carId, hasLocalRows ? immediateStats : statsForSummary)
       console.info(`[GarageBase speed] stroski detail ${Math.round(performance.now() - started)}ms`)
       setLoading(false)
       setRefreshing(false)
@@ -390,7 +429,11 @@ export default function Stroski() {
   const displayServisi = firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, renderCache?.servisi || [])
   const displayExpenses = firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, renderCache?.expenses || [])
   const cachedVehicleStats = avto?.id ? readVehicleStatsCache(avto.id) : null
-  const statsForDisplay = statsHasData(serverStats) || statsHasRealValues(serverStats) ? serverStats : cachedVehicleStats
+  const statsForDisplay = statsHasData(rowStats) || statsHasRealValues(rowStats)
+    ? rowStats
+    : statsHasData(serverStats) || statsHasRealValues(serverStats)
+      ? serverStats
+      : cachedVehicleStats
 
   const allCostRows = [
     ...displayGorivo.map(v => ({ ...v, _tip: 'gorivo' })),
@@ -713,7 +756,7 @@ export default function Stroski() {
         </div>
         {strosekNaKm && <p className="text-[#5a5a80] text-sm">{strosekNaKm} {znakValute}/{enotaRazdalje} · {formatDistance(kmPrevozeni, enotaRazdalje)} {tx('skupaj', 'total')}</p>}
         <p className="mt-3 text-[10px] text-[#5a5a80]">
-          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · {tx('stanje', 'state')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('posnetek', 'snapshot')}: {costSnapshot.gorivo.length}/{costSnapshot.servisi.length}/{costSnapshot.expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · {tx('vsota', 'sum')}: {loadedSummary.fuel.toFixed(2)} / {loadedSummary.service.toFixed(2)} / {loadedSummary.expense.toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {costSnapshot.debug || debugSource}
+          {STROSKI_BUILD} · {tx('vrstice', 'rows')}: {displayGorivo.length}/{displayServisi.length}/{displayExpenses.length} · {tx('stanje', 'state')}: {gorivo.length}/{servisi.length}/{expenses.length} · {tx('posnetek', 'snapshot')}: {costSnapshot.gorivo.length}/{costSnapshot.servisi.length}/{costSnapshot.expenses.length} · {tx('osnova', 'base')}: {skupajGorivo.toFixed(2)} / {skupajServis.toFixed(2)} / {skupajExpenses.toFixed(2)} · {tx('vsota', 'sum')}: {loadedSummary.fuel.toFixed(2)} / {loadedSummary.service.toFixed(2)} / {loadedSummary.expense.toFixed(2)} · rowStats: {numericValue(rowStats?.costs?.fuel).toFixed(2)} / {numericValue(rowStats?.costs?.service).toFixed(2)} / {numericValue(rowStats?.costs?.expense).toFixed(2)} · graf: {graphTotals.gorivo.toFixed(2)} / {graphTotals.servis.toFixed(2)} / {graphTotals.ostalo.toFixed(2)} · {costSnapshot.debug || debugSource}
         </p>
       </div>
 
