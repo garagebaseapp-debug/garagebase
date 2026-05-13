@@ -41,7 +41,7 @@ export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
   const [litri, setLitri] = useState('')
-  const [polniRezervar, setPolniRezervar] = useState(true)
+  const [polniRezervar, setPolniRezervar] = useState<boolean | null>(null)
   const [cenaNaLiter, setCenaNaLiter] = useState('')
   const [postaja, setPostaja] = useState('')
   const [tipGoriva, setTipGoriva] = useState('')
@@ -403,6 +403,13 @@ export default function VnosGoriva() {
       setMessage(tx('Km in litri sta obvezna!', 'Mileage and liters are required!'))
       return
     }
+    if (polniRezervar === null) {
+      setMessage(tx(
+        'Izberi nacin tankanja: Poln rezervar ali Delno tankovanje.',
+        'Choose fill-up type: Full tank or Partial fill-up.'
+      ))
+      return
+    }
 
     const vneseniKm = parseInt(km)
     const sveziKm = await sveziMinimalniKm(carId)
@@ -583,23 +590,40 @@ export default function VnosGoriva() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setPolniRezervar(prev => !prev)}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-            polniRezervar
-              ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
-              : 'bg-[#13131f] border-[#1e1e32] text-[#5a5a80]'
-          }`}
-          aria-pressed={polniRezervar}
-        >
-          <span className="font-semibold">
-            {polniRezervar
-              ? tx('Poln rezervar', 'Full tank')
-              : tx('Delno tankovanje', 'Partial fill-up')}
-          </span>
-          <span className="text-xl">{polniRezervar ? '⛽' : '◐'}</span>
-        </button>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Nacin tankanja', 'Fill-up type')} *</label>
+          <div className={`grid grid-cols-2 gap-2 rounded-2xl ${message.includes('Izberi nacin') || message.includes('Choose fill-up type') ? 'ring-4 ring-[#ef444455]' : ''}`}>
+            <button
+              type="button"
+              onClick={() => setPolniRezervar(true)}
+              className={`flex items-center justify-between px-4 py-4 rounded-xl border text-left transition-colors ${
+                polniRezervar === true
+                  ? 'bg-[#3ecfcf22] border-[#3ecfcf] text-[#3ecfcf] shadow-[0_0_0_2px_rgba(62,207,207,0.18)]'
+                  : 'bg-[#13131f] border-[#1e1e32] text-[#7b7ba6]'
+              }`}
+              aria-pressed={polniRezervar === true}
+            >
+              <span className="font-black">{tx('Poln rezervar', 'Full tank')}</span>
+              <span className="text-xl">⛽</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPolniRezervar(false)}
+              className={`flex items-center justify-between px-4 py-4 rounded-xl border text-left transition-colors ${
+                polniRezervar === false
+                  ? 'bg-[#64748b22] border-[#94a3b8] text-[#cbd5e1] shadow-[0_0_0_2px_rgba(148,163,184,0.18)]'
+                  : 'bg-[#13131f] border-[#1e1e32] text-[#7b7ba6]'
+              }`}
+              aria-pressed={polniRezervar === false}
+            >
+              <span className="font-black">{tx('Delno tankovanje', 'Partial fill-up')}</span>
+              <span className="text-xl">◐</span>
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-[#7b7ba6]">
+            {tx('Za pravilen izracun porabe oznaci, ali si tankal do polnega.', 'For correct consumption, mark whether you filled the tank fully.')}
+          </p>
+        </div>
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} ({currencySymbol})</label>

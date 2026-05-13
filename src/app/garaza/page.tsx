@@ -6,6 +6,8 @@ import { BottomNav } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 
+const GARAZA_CACHE_VERSION = 'garaza-2026-05-13-0830'
+
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
 export default function Garaza() {
@@ -42,6 +44,23 @@ export default function Garaza() {
   const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
   const slikaVozila = (avto: any) => avto?.slika_url || avto?.slika || ''
 
+  const naloziOpomnike = async (cars: any[]) => {
+    const opomnikMap: { [key: string]: any[] } = {}
+    for (const avto of cars) opomnikMap[avto.id] = []
+    if (cars.length === 0) return opomnikMap
+
+    const ids = cars.map((avto: any) => avto.id).filter(Boolean)
+    const { data: opData } = await supabase
+      .from('reminders').select('*').in('car_id', ids)
+      .order('datum', { ascending: true })
+
+    for (const op of opData || []) {
+      if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
+      opomnikMap[op.car_id].push(op)
+    }
+    return opomnikMap
+  }
+
   useEffect(() => {
     const init = async () => {
       const shranjene = localStorage.getItem('garagebase_nastavitve')
@@ -65,14 +84,19 @@ export default function Garaza() {
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          const cachedCars = Array.isArray(parsed.avti)
-            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
-            : []
-          if (cachedCars.length > 0 && parsed.arhiv !== true) {
-            setAvti(cachedCars)
-            if (cachedCars[0]?.id) setLiteCarId(prev => prev || cachedCars[0].id)
+          if (parsed.version === GARAZA_CACHE_VERSION) {
+            const cachedCars = Array.isArray(parsed.avti)
+              ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
+              : []
+            if (cachedCars.length > 0 && parsed.arhiv !== true) {
+              setAvti(cachedCars)
+              if (cachedCars[0]?.id) setLiteCarId(prev => prev || cachedCars[0].id)
+              setLoading(false)
+            }
+            if (parsed.opomniki) setOpomniki(parsed.opomniki)
+          } else {
+            localStorage.removeItem('garagebase_garaza_cache')
           }
-          if (parsed.opomniki) setOpomniki(parsed.opomniki)
         } catch {}
       }
 
@@ -107,25 +131,24 @@ export default function Garaza() {
       }
       setAvti(cars)
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
-
-      let opomnikMap: { [key: string]: any[] } = {}
-      if (cars.length > 0) {
-        const ids = cars.map((avto: any) => avto.id)
-        const { data: opData } = await supabase
-          .from('reminders').select('*').in('car_id', ids)
-          .order('datum', { ascending: true })
-        for (const avto of cars) opomnikMap[avto.id] = []
-        for (const op of opData || []) {
-          if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
-          opomnikMap[op.car_id].push(op)
-        }
-        setOpomniki(opomnikMap)
-      } else {
-        setOpomniki({})
-      }
-
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: opomnikMap, arhiv: false, savedAt: Date.now() }))
       setLoading(false)
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
+        version: GARAZA_CACHE_VERSION,
+        avti: cars,
+        opomniki: {},
+        arhiv: false,
+        savedAt: Date.now(),
+      }))
+
+      const opomnikMap = await naloziOpomnike(cars)
+      setOpomniki(opomnikMap)
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
+        version: GARAZA_CACHE_VERSION,
+        avti: cars,
+        opomniki: opomnikMap,
+        arhiv: false,
+        savedAt: Date.now(),
+      }))
     }
     init()
 
@@ -151,18 +174,17 @@ export default function Garaza() {
       const cars = data || []
       setAvti(cars)
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
-      if (cars.length > 0) {
-        const ids = cars.map((avto: any) => avto.id)
-        const { data: opData } = await supabase.from('reminders').select('*').in('car_id', ids).order('datum', { ascending: true })
-        const opomnikMap: { [key: string]: any[] } = {}
-        for (const avto of cars) opomnikMap[avto.id] = []
-        for (const op of opData || []) {
-          if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
-          opomnikMap[op.car_id].push(op)
-        }
-        setOpomniki(opomnikMap)
-      } else {
-        setOpomniki({})
+      setLoading(false)
+      const opomnikMap = await naloziOpomnike(cars)
+      setOpomniki(opomnikMap)
+      if (!arhiv) {
+        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
+          version: GARAZA_CACHE_VERSION,
+          avti: cars,
+          opomniki: opomnikMap,
+          arhiv: false,
+          savedAt: Date.now(),
+        }))
       }
     }
     refreshArchive()
