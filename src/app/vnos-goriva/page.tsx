@@ -22,16 +22,30 @@ type FuelType = {
   activeBg: string
 }
 
-const isMissingFullTankColumn = (error: any) => {
-  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase()
-  return text.includes('polni_rezervar') && (
-    text.includes('could not find') ||
-    text.includes('column') ||
-    text.includes('schema cache') ||
-    error?.code === 'PGRST204' ||
-    error?.code === '42703'
-  )
+const optionalFuelInsertColumns = new Set([
+  'polni_rezervar',
+  'receipt_url',
+  'verified_document_url',
+  'verification_level',
+])
+
+const getMissingSchemaColumn = (error: any) => {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`
+  if (
+    !text.toLowerCase().includes('could not find') &&
+    !text.toLowerCase().includes('schema cache') &&
+    error?.code !== 'PGRST204' &&
+    error?.code !== '42703'
+  ) return null
+
+  const match = text.match(/'([^']+)' column of '([^']+)'/)
+  if (match?.[1]) return match[1]
+
+  return Array.from(optionalFuelInsertColumns).find(column => text.includes(column)) || null
 }
+
+const stripColumns = (row: Record<string, unknown>, columns: Set<string>) =>
+  Object.fromEntries(Object.entries(row).filter(([key]) => !columns.has(key)))
 
 export default function VnosGoriva() {
   const { language } = useLanguage()
@@ -450,11 +464,17 @@ export default function VnosGoriva() {
       verification_level: 'basic',
     }
 
-    let { error } = await supabase.from('fuel_logs').insert(fuelPayload)
+    let payloadForInsert: Record<string, unknown> = fuelPayload
+    let { error } = await supabase.from('fuel_logs').insert(payloadForInsert)
+    const removedColumns = new Set<string>()
 
-    if (error && isMissingFullTankColumn(error)) {
-      const { polni_rezervar: _polniRezervar, ...legacyFuelPayload } = fuelPayload
-      const retry = await supabase.from('fuel_logs').insert(legacyFuelPayload)
+    while (error) {
+      const missingColumn = getMissingSchemaColumn(error)
+      if (!missingColumn || !optionalFuelInsertColumns.has(missingColumn) || removedColumns.has(missingColumn)) break
+
+      removedColumns.add(missingColumn)
+      payloadForInsert = stripColumns(fuelPayload, removedColumns)
+      const retry = await supabase.from('fuel_logs').insert(payloadForInsert)
       error = retry.error
     }
 
