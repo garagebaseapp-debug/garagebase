@@ -6,7 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
+import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDistanceFromFuelRows, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
@@ -214,9 +214,7 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
   const sourceSplit = splitRowsBySource(costRows)
   const imported = sourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const garageBase = Math.max(0, totalCost - imported)
-  const currentKm = numericValue(car?.km_trenutni)
-  const startKm = numericValue(car?.km_ob_vnosu)
-  const drivenKm = Math.max(0, currentKm - startKm)
+  const drivenKm = costDistanceFromFuelRows(fuelRows, car)
 
   return {
     rows: {
@@ -232,7 +230,7 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
       garageBase,
       imported,
       total: totalCost,
-      perKm: drivenKm > 0 && garageBase > 0 ? garageBase / drivenKm : null,
+      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
     },
     consumption: {},
   }
@@ -865,10 +863,8 @@ export default function Stroski() {
   const stGorivo = Math.max(durableRowSummary.rows.fuel, renderSummary.rows.fuel, effectiveCostSummary.rows.fuel, loadedSummary.rows.fuel, directCostSummary.rows.fuel, committedCostSummary.rows.fuel, costSnapshot.summary.rows.fuel, numericValue(refSummary?.rows?.fuel), displayGorivo.length, maxStatValue((stats) => stats?.rows?.fuel), debugSummary.rows.fuel, totalsCacheSummary.rows.fuel)
   const stServis = Math.max(durableRowSummary.rows.service, renderSummary.rows.service, effectiveCostSummary.rows.service, loadedSummary.rows.service, directCostSummary.rows.service, committedCostSummary.rows.service, costSnapshot.summary.rows.service, numericValue(refSummary?.rows?.service), displayServisi.length, maxStatValue((stats) => stats?.rows?.service), debugSummary.rows.service, totalsCacheSummary.rows.service)
   const stOstalo = Math.max(durableRowSummary.rows.expense, renderSummary.rows.expense, effectiveCostSummary.rows.expense, loadedSummary.rows.expense, directCostSummary.rows.expense, committedCostSummary.rows.expense, costSnapshot.summary.rows.expense, numericValue(refSummary?.rows?.expense), displayExpenses.length, maxStatValue((stats) => stats?.rows?.expense), debugSummary.rows.expense, totalsCacheSummary.rows.expense)
-  const kmTrenutni = numericValue(avto?.km_trenutni)
-  const kmObVnosu = numericValue(avto?.km_ob_vnosu)
-  const kmPrevozeni = kmTrenutni > kmObVnosu ? kmTrenutni - kmObVnosu : kmTrenutni
-  const strosekNaKm = kmPrevozeni > 0 && skupajGarageBase > 0 ? (skupajGarageBase / kmPrevozeni).toFixed(3) : null
+  const kmPrevozeni = costDistanceFromFuelRows(displayGorivo, avto || {})
+  const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
 
   const kategorijaIkona: { [key: string]: string } = {
@@ -983,7 +979,7 @@ export default function Stroski() {
   const prikazStGorivo = Math.max(displayGorivo.length, rowManualSummary.rows.fuel, debugSummary.rows.fuel, stGorivo, totalsCacheSummary.rows.fuel)
   const prikazStServis = Math.max(displayServisi.length, rowManualSummary.rows.service, debugSummary.rows.service, stServis, totalsCacheSummary.rows.service)
   const prikazStOstalo = Math.max(displayExpenses.length, rowManualSummary.rows.expense, debugSummary.rows.expense, stOstalo, totalsCacheSummary.rows.expense)
-  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazGarageBase > 0 ? (prikazGarageBase / kmPrevozeni).toFixed(3) : strosekNaKm
+  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {
@@ -1320,7 +1316,7 @@ export default function Stroski() {
             <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(prikazUvoz, valuta)}</p>
           </div>
         </div>
-        {prikazStrosekNaKm && <p className="text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('GarageBase od vpisa', 'GarageBase since added')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
+        {prikazStrosekNaKm && <p className="text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">

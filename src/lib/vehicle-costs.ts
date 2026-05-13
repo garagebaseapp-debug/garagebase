@@ -271,6 +271,20 @@ export const combineConsumptionSegments = (segments: Array<{ average: number | n
   return known.reduce((sum, value) => sum + value, 0) / known.length
 }
 
+export const costDistanceFromFuelRows = (fuelRows: any[], car?: any) => {
+  const mileageValues = fuelRows
+    .map(rowMileageValue)
+    .filter((value) => value > 0)
+    .sort((a, b) => a - b)
+
+  if (mileageValues.length >= 2) {
+    const dataDistance = mileageValues[mileageValues.length - 1] - mileageValues[0]
+    if (dataDistance > 0) return dataDistance
+  }
+
+  return Math.max(0, numberValue(car?.km_trenutni) - numberValue(car?.km_ob_vnosu))
+}
+
 export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: any[], car?: any): VehicleStats => {
   const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
   const fuelSplit = splitRowsBySource(fuelRows)
@@ -289,9 +303,7 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
 
   const garageBaseConsumption = consumptionSegment(fuelSplit.garageBase)
   const importedConsumption = consumptionSegment(fuelSplit.imported)
-  const kmCurrent = numberValue(car?.km_trenutni)
-  const kmStart = numberValue(car?.km_ob_vnosu)
-  const drivenKm = Math.max(0, kmCurrent - kmStart)
+  const drivenKm = costDistanceFromFuelRows(fuelRows, car)
   const fuelCost = fuelRows.reduce((sum, row) => sum + fuelCostValue(row), 0)
   const serviceCost = serviceRows.reduce((sum, row) => sum + numberValue(row?.cena), 0)
   const expenseCost = filteredExpenses.reduce((sum, row) => sum + numberValue(row?.znesek), 0)
@@ -311,7 +323,7 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
       garageBase: garageBaseCost,
       imported: importedCost,
       total: totalCost,
-      perKm: drivenKm > 0 && garageBaseCost > 0 ? garageBaseCost / drivenKm : null,
+      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
     },
     consumption: {
       garageBase: garageBaseConsumption.average,

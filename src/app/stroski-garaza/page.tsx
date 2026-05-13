@@ -6,6 +6,7 @@ import { BottomNav, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
+import { GARAGE_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 export default function StroškiGaraza() {
   const [avti, setAvti] = useState<any[]>([])
@@ -78,7 +79,7 @@ export default function StroškiGaraza() {
       }
 
       setStroski(stroskoviMap)
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, arhiv: false, savedAt: Date.now() }))
+      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ version: GARAGE_CACHE_VERSION, avti: cars, arhiv: false, savedAt: Date.now() }))
       localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
       setLoading(false)
     }

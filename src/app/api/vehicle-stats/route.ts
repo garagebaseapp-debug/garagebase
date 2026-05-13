@@ -201,6 +201,20 @@ const apiCombineConsumptionSegments = (segments: Array<{ average: number | null;
   return known.reduce((sum, value) => sum + value, 0) / known.length
 }
 
+const apiCostDistanceFromFuelRows = (fuelRows: any[], car?: any) => {
+  const mileageValues = fuelRows
+    .map((row) => apiNumberValue(row?.km ?? row?.kilometri ?? row?.km_trenutni))
+    .filter((value) => value > 0)
+    .sort((a, b) => a - b)
+
+  if (mileageValues.length >= 2) {
+    const dataDistance = mileageValues[mileageValues.length - 1] - mileageValues[0]
+    if (dataDistance > 0) return dataDistance
+  }
+
+  return Math.max(0, apiNumberValue(car?.km_trenutni) - apiNumberValue(car?.km_ob_vnosu))
+}
+
 const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: any[], car?: any) => {
   const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
   const costRows = [
@@ -219,7 +233,7 @@ const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: 
   const totalCost = fuelCost + serviceCost + expenseCost
   const importedCost = sourceSplit.imported.reduce((sum, row) => sum + apiCostValueFor(row), 0)
   const garageBaseCost = Math.max(0, totalCost - importedCost)
-  const drivenKm = Math.max(0, apiNumberValue(car?.km_trenutni) - apiNumberValue(car?.km_ob_vnosu))
+  const drivenKm = apiCostDistanceFromFuelRows(fuelRows, car)
 
   return {
     rows: {
@@ -235,7 +249,7 @@ const buildApiVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: 
       garageBase: garageBaseCost,
       imported: importedCost,
       total: totalCost,
-      perKm: drivenKm > 0 && garageBaseCost > 0 ? garageBaseCost / drivenKm : null,
+      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
     },
     consumption: {
       garageBase: garageBaseConsumption.average,

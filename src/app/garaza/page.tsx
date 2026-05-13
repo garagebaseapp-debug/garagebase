@@ -5,8 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
-
-const GARAZA_CACHE_VERSION = 'garaza-2026-05-13-0830'
+import { GARAGE_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
@@ -94,7 +93,7 @@ export default function Garaza() {
 
       if (!arhiv) {
         localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
-          version: GARAZA_CACHE_VERSION,
+          version: GARAGE_CACHE_VERSION,
           avti: cars,
           opomniki: opomnikMap,
           arhiv: false,
@@ -130,7 +129,7 @@ export default function Garaza() {
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          if (parsed.version === GARAZA_CACHE_VERSION) {
+          if (parsed.version === GARAGE_CACHE_VERSION) {
             const cachedCars = Array.isArray(parsed.avti)
               ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
               : []
@@ -179,7 +178,7 @@ export default function Garaza() {
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
       setLoading(false)
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
-        version: GARAZA_CACHE_VERSION,
+        version: GARAGE_CACHE_VERSION,
         avti: cars,
         opomniki: {},
         arhiv: false,
@@ -189,7 +188,7 @@ export default function Garaza() {
       const opomnikMap = await naloziOpomnike(cars)
       setOpomniki(opomnikMap)
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
-        version: GARAZA_CACHE_VERSION,
+        version: GARAGE_CACHE_VERSION,
         avti: cars,
         opomniki: opomnikMap,
         arhiv: false,
@@ -225,7 +224,7 @@ export default function Garaza() {
       setOpomniki(opomnikMap)
       if (!arhiv) {
         localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
-          version: GARAZA_CACHE_VERSION,
+          version: GARAGE_CACHE_VERSION,
           avti: cars,
           opomniki: opomnikMap,
           arhiv: false,

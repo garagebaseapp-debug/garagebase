@@ -6,7 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
-import { ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 
 type ConsumptionBreakdown = {
@@ -312,7 +312,7 @@ export default function Dashboard() {
         const previousGarageCache = localStorage.getItem('garagebase_garaza_cache')
         let previousOpomniki = {}
         try { previousOpomniki = previousGarageCache ? JSON.parse(previousGarageCache).opomniki || {} : {} } catch {}
-        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ avti: cars, opomniki: previousOpomniki, arhiv: false, savedAt: Date.now() }))
+        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ version: GARAGE_CACHE_VERSION, avti: cars, opomniki: previousOpomniki, arhiv: false, savedAt: Date.now() }))
       }
       if (cars.length > 0) {
         const izbrani = carIdFromUrl
@@ -524,7 +524,7 @@ export default function Dashboard() {
       garageBase: finalGarageBaseCost,
       imported: finalImportedCost,
       total: finalTotalCost,
-      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalGarageBaseCost > 0 ? finalGarageBaseCost / (kmStart - kmObVnosu) : null),
+      naKm: directStats.costs.perKm ?? cachedFallback?.stroski.naKm ?? apiFallback?.stroski.naKm ?? (kmStart > kmObVnosu && finalTotalCost > 0 ? finalTotalCost / (kmStart - kmObVnosu) : null),
     }
     setPoraba(nextPoraba)
     setStroski(nextStroski)
