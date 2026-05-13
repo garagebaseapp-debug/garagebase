@@ -19,6 +19,7 @@ export default function Garaza() {
   const [archiveMessage, setArchiveMessage] = useState('')
   const [limitMessage, setLimitMessage] = useState('')
   const [limitAnchor, setLimitAnchor] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
@@ -59,6 +60,51 @@ export default function Garaza() {
       opomnikMap[op.car_id].push(op)
     }
     return opomnikMap
+  }
+
+  const osveziGarazo = async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    setArchiveMessage('')
+    localStorage.removeItem('garagebase_garaza_cache')
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        window.location.href = '/'
+        return
+      }
+
+      const query = supabase
+        .from('cars').select('*').eq('user_id', user.id)
+        .eq('arhivirano', arhiv)
+        .order('vrstni_red', { ascending: true })
+
+      const { data, error } = await query
+      if (error) {
+        setArchiveMessage(error.message.includes('arhivirano') ? tx('Za arhiv najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql.', 'For archive, run SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql first.') : error.message)
+        return
+      }
+
+      const cars = data || []
+      setAvti(cars)
+      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
+      const opomnikMap = await naloziOpomnike(cars)
+      setOpomniki(opomnikMap)
+
+      if (!arhiv) {
+        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
+          version: GARAZA_CACHE_VERSION,
+          avti: cars,
+          opomniki: opomnikMap,
+          arhiv: false,
+          savedAt: Date.now(),
+        }))
+      }
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
 
   useEffect(() => {
@@ -406,6 +452,10 @@ export default function Garaza() {
           Garage<span className="text-[#6c63ff]">Base</span>
         </h1>
         <div className="flex gap-2 items-center flex-wrap justify-end">
+          <button onClick={osveziGarazo} disabled={refreshing}
+            className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] text-sm font-black px-4 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors disabled:opacity-60">
+            {refreshing ? tx('Osvezevanje...', 'Refreshing...') : `↻ ${tx('Osvezi', 'Refresh')}`}
+          </button>
           {installPrompt && (
             <button onClick={handleInstall}
               className="bg-[#3ecfcf22] border border-[#3ecfcf44] text-[#3ecfcf] text-xs font-semibold px-3 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
