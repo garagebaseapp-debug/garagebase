@@ -366,6 +366,9 @@ export default function LandingPage() {
   const [theme, setTheme] = useState<LandingTheme>('temna')
   const { language } = useLanguage()
   const t = copy[language]
+  const isLightTheme = theme === 'svetla'
+  const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
+  const deviceImage = isLightTheme ? '/landing-device-light.jpg' : '/landing-device-dark.jpg'
 
   const updateTheme = (nextTheme: LandingTheme) => {
     setTheme(nextTheme)
@@ -479,15 +482,32 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <section className="relative min-h-[92svh] overflow-hidden bg-[#07070d]">
+      <section className="landing-hero relative min-h-[92svh] overflow-hidden bg-[#07070d]">
         <img
-          src="/landing-garagebase.png"
+          src={heroImage}
           alt={t.alt}
-          className="absolute inset-0 h-full w-full object-cover object-[66%_62%] lg:object-[center_66%]"
+          className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[66%_62%] lg:object-[center_66%]"
         />
         <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#07070d]/80 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#07070d] via-[#07070d]/38 to-transparent" />
+        <div className="landing-device-layer" aria-hidden="true">
+          <div className={`landing-laptop-screen ${isLightTheme ? 'is-light' : 'is-dark'}`}>
+            <div className="landing-laptop-nav">
+              <span>Garage<span>Base</span></span>
+              <i />
+            </div>
+            <div className="landing-laptop-content">
+              <strong>{t.title}</strong>
+              <p>{t.subtitle}</p>
+              <div>
+                {t.stats.map((item) => <span key={item.value}>{item.value}</span>)}
+              </div>
+            </div>
+          </div>
+          <img src={deviceImage} alt="" className="landing-tablet-screen" />
+          <img src={deviceImage} alt="" className="landing-phone-screen" />
+        </div>
+        <div className="landing-top-fade absolute inset-x-0 top-0 h-32" />
+        <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-44" />
 
         <div className="relative z-10 mx-auto flex min-h-[92svh] max-w-7xl items-center px-5 pb-14 pt-24 sm:px-8 lg:pb-16 lg:pt-28">
           <div className="landing-copy w-full max-w-[560px]">
