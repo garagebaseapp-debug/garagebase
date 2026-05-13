@@ -483,7 +483,12 @@ export default function Garaza() {
         </div>
       </div>
 
-      <div className="px-5 pb-3 flex gap-2">
+      <div className="px-5 pb-3">
+        <button onClick={osveziGarazo} disabled={refreshing}
+          className="mb-3 w-full rounded-2xl border-2 border-[#3ecfcf] bg-[#3ecfcf22] px-4 py-3 text-base font-black text-[#0f9f9f] shadow-sm transition-colors hover:bg-[#3ecfcf33] disabled:opacity-60">
+          {refreshing ? tx('Osvezujem garazo...', 'Refreshing garage...') : `↻ ${tx('Osvezi garazo', 'Refresh garage')}`}
+        </button>
+        <div className="flex gap-2">
         <button onClick={() => setArhiv(false)}
           className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${!arhiv ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8080a0]'}`}>
           Aktivna vozila
@@ -492,6 +497,7 @@ export default function Garaza() {
           className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${arhiv ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8080a0]'}`}>
           Arhiv
         </button>
+        </div>
       </div>
 
       {archiveMessage && (
