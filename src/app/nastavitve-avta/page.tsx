@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage } from '@/lib/i18n'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 export default function NastavitveAvta() {
   const [avto, setAvto] = useState<any>(null)
@@ -116,12 +117,15 @@ export default function NastavitveAvta() {
       return
     }
     const fileExt = preparedFile.name.split('.').pop() || 'jpg'
-    const fileName = `${user.id}/${avto.id}.${fileExt}`
-    await supabase.storage.from('car-images').remove([fileName])
-    const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { upsert: true })
+    const previousPath = String(avto?.slika_url || '').split('/car-images/')[1]?.split('?')[0]
+    const fileName = `${user.id}/${avto.id}-${Date.now()}.${fileExt}`
+    const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { cacheControl: '31536000', upsert: false })
     if (uploadError) { setMessage('Napaka pri nalaganju slike'); setUploadingSlika(false); return }
     const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
-    await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', avto.id)
+    const { error: updateError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', avto.id)
+    if (updateError) { setMessage('Napaka pri shranjevanju slike'); setUploadingSlika(false); return }
+    if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
+    clearVehicleDataCaches(avto.id)
     setAvto({ ...avto, slika_url: urlData.publicUrl })
     setMessage('✅ Slika uspešno naložena!')
     setUploadingSlika(false)
@@ -186,7 +190,11 @@ export default function NastavitveAvta() {
       homologacija_url: homologacijaUrl || null,
     }).eq('id', avto.id)
     if (error) setMessage(error.message.includes('homologacija') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql' : error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
-    else { setMessage('✅ Nastavitve shranjene!'); setAvto({ ...avto }) }
+    else {
+      clearVehicleDataCaches(avto.id)
+      setMessage('✅ Nastavitve shranjene!')
+      setAvto({ ...avto })
+    }
     setSaving(false)
   }
 
@@ -201,6 +209,7 @@ export default function NastavitveAvta() {
     if (error) {
       setMessage(error.message.includes('arhivirano') ? 'Napaka: v Supabase najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql' : 'Napaka: ' + error.message)
     } else {
+      clearVehicleDataCaches(avto.id)
       setAvto({ ...avto, arhivirano: value, archived_at: value ? new Date().toISOString() : null })
       setMessage(value ? 'Vozilo je premaknjeno v arhiv.' : 'Vozilo je vrnjeno med aktivna vozila.')
     }

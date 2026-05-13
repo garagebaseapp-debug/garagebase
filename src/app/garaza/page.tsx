@@ -5,12 +5,13 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
-import { GARAGE_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
 export default function Garaza() {
   const [avti, setAvti] = useState<any[]>([])
+  const [brokenImageUrls, setBrokenImageUrls] = useState<Record<string, boolean>>({})
   const [opomniki, setOpomniki] = useState<{ [key: string]: any[] }>({})
   const [loading, setLoading] = useState(true)
   const [urejanje, setUrejanje] = useState(false)
@@ -42,7 +43,17 @@ export default function Garaza() {
   const dragOver = useRef<number | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
-  const slikaVozila = (avto: any) => avto?.slika_url || avto?.slika || ''
+  const slikaVozila = (avto: any) => {
+    const rawUrl = avto?.slika_url || avto?.slika || ''
+    if (!rawUrl) return ''
+    const version = avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION
+    const src = imageUrlWithVersion(rawUrl, version)
+    return brokenImageUrls[src] ? '' : src
+  }
+  const oznaciPokvarjenoSliko = (src: string) => {
+    if (!src) return
+    setBrokenImageUrls(prev => prev[src] ? prev : { ...prev, [src]: true })
+  }
 
   const naloziOpomnike = async (cars: any[]) => {
     const opomnikMap: { [key: string]: any[] } = {}
@@ -125,24 +136,17 @@ export default function Garaza() {
         }
       }
 
-      const cached = localStorage.getItem('garagebase_garaza_cache')
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached)
-          if (parsed.version === GARAGE_CACHE_VERSION) {
-            const cachedCars = Array.isArray(parsed.avti)
-              ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
-              : []
-            if (cachedCars.length > 0 && parsed.arhiv !== true) {
-              setAvti(cachedCars)
-              if (cachedCars[0]?.id) setLiteCarId(prev => prev || cachedCars[0].id)
-              setLoading(false)
-            }
-            if (parsed.opomniki) setOpomniki(parsed.opomniki)
-          } else {
-            localStorage.removeItem('garagebase_garaza_cache')
-          }
-        } catch {}
+      const parsedCache = readGarageCache()
+      if (parsedCache) {
+        const cachedCars = Array.isArray(parsedCache.avti)
+          ? parsedCache.avti.filter((car: any) => car?.arhivirano !== true)
+          : []
+        if (cachedCars.length > 0) {
+          setAvti(cachedCars)
+          if (cachedCars[0]?.id) setLiteCarId(prev => prev || cachedCars[0].id)
+          setLoading(false)
+        }
+        if (parsedCache.opomniki) setOpomniki(parsedCache.opomniki)
       }
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -583,7 +587,7 @@ export default function Garaza() {
                       <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
                         {imageSrc ? (
                           <img src={imageSrc} alt={imeVozila(avto)}
-                            loading={index < 6 ? 'eager' : 'lazy'} decoding="async" className="h-full w-full object-cover" />
+                            loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
                         ) : (
                           <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
                             {imeVozila(avto)}
@@ -679,7 +683,7 @@ export default function Garaza() {
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
                   {imageSrc ? (
                     <img src={imageSrc} alt={imeVozila(avto)}
-                      loading={index < 8 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover" />
+                      loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1a1630] to-[#080810]" />
                   )}
@@ -758,7 +762,7 @@ export default function Garaza() {
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
-                    loading={index < 6 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
+                    loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0
@@ -814,7 +818,7 @@ export default function Garaza() {
                 <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
                   {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
-                    loading={index < 8 ? 'eager' : 'lazy'} decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
+                    loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0

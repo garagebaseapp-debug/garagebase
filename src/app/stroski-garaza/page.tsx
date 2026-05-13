@@ -6,29 +6,31 @@ import { BottomNav, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
-import { GARAGE_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
 export default function StroškiGaraza() {
   const [avti, setAvti] = useState<any[]>([])
   const [stroski, setStroski] = useState<{ [key: string]: number }>({})
   const [loading, setLoading] = useState(true)
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const slikaVozila = (avto: any) => {
+    const rawUrl = avto?.slika_url || avto?.slika || ''
+    if (!rawUrl) return ''
+    return imageUrlWithVersion(rawUrl, avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION)
+  }
 
   useEffect(() => {
     const init = async () => {
       setValuta(getCurrencyFromSettings())
-      const cachedGarage = localStorage.getItem('garagebase_garaza_cache')
-      if (cachedGarage) {
-        try {
-          const parsed = JSON.parse(cachedGarage)
-          const cachedCars = Array.isArray(parsed.avti)
-            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
-            : []
-          if (cachedCars.length > 0 && parsed.arhiv !== true) {
-            setAvti(cachedCars)
-            setLoading(false)
-          }
-        } catch {}
+      const parsedGarage = readGarageCache()
+      if (parsedGarage) {
+        const cachedCars = Array.isArray(parsedGarage.avti)
+          ? parsedGarage.avti.filter((car: any) => car?.arhivirano !== true)
+          : []
+        if (cachedCars.length > 0) {
+          setAvti(cachedCars)
+          setLoading(false)
+        }
       }
 
       const cachedCosts = localStorage.getItem('garagebase_stroski_garaza_cache')
@@ -123,8 +125,8 @@ export default function StroškiGaraza() {
             className="relative cursor-pointer overflow-hidden bg-[#0f0f1a] border-t border-[#1a1a28] flex"
             style={{ height: '24dvh', minHeight: '165px', maxHeight: '210px' }}>
             <div className="relative w-1/2 h-full flex-shrink-0 overflow-hidden">
-              {avto.slika_url ? (
-                <img src={avto.slika_url} alt={vehicleDisplayName(avto)}
+              {slikaVozila(avto) ? (
+                <img src={slikaVozila(avto)} alt={vehicleDisplayName(avto)}
                   loading="lazy" decoding="async" className="absolute inset-0 w-full h-full object-cover object-center" />
               ) : (
                 <div className={`absolute inset-0 ${index % 2 === 0 ? 'bg-gradient-to-br from-[#1a1630] via-[#13131f] to-[#080810]' : 'bg-gradient-to-br from-[#0f1a16] via-[#13131f] to-[#080810]'}`} />

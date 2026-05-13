@@ -6,7 +6,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
-import { GARAGE_CACHE_VERSION, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, ensureVehicleStatsCacheVersion, imageUrlWithVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 
 type ConsumptionBreakdown = {
@@ -223,6 +223,11 @@ export default function Dashboard() {
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
+  const slikaVozila = (avto: any) => {
+    const rawUrl = avto?.slika_url || avto?.slika || ''
+    if (!rawUrl) return ''
+    return imageUrlWithVersion(rawUrl, avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION)
+  }
   const renderStats = aktivniAvto?.id ? readVehicleStatsCache(aktivniAvto.id) : null
   const cachedConsumption: ConsumptionBreakdown = renderStats?.consumption
     ? {
@@ -266,19 +271,16 @@ export default function Dashboard() {
       if (!settingsRaw) setJezik(getStoredLanguage())
       const params = new URLSearchParams(window.location.search)
       const carIdFromUrl = params.get('car')
-      const cached = localStorage.getItem('garagebase_garaza_cache')
-      if (cached && !carIdFromUrl) {
-        try {
-          const parsed = JSON.parse(cached)
-          const cachedCars = Array.isArray(parsed.avti)
-            ? parsed.avti.filter((car: any) => car?.arhivirano !== true)
-            : []
-          if (cachedCars.length > 0) {
-            setAvti(cachedCars)
-            setAktivniAvto(cachedCars[0])
-            setLoading(false)
-          }
-        } catch {}
+      const parsedCache = readGarageCache()
+      if (parsedCache && !carIdFromUrl) {
+        const cachedCars = Array.isArray(parsedCache.avti)
+          ? parsedCache.avti.filter((car: any) => car?.arhivirano !== true)
+          : []
+        if (cachedCars.length > 0) {
+          setAvti(cachedCars)
+          setAktivniAvto(cachedCars[0])
+          setLoading(false)
+        }
       }
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -724,8 +726,8 @@ export default function Dashboard() {
                 aria-label={ime}
               >
                 <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#11111d]">
-                  {avto.slika_url ? (
-                    <img src={avto.slika_url} alt={ime} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  {slikaVozila(avto) ? (
+                    <img src={slikaVozila(avto)} alt={ime} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-white">{ime}</div>
                   )}
@@ -737,7 +739,7 @@ export default function Dashboard() {
         </div>
 
         <div className={`rounded-2xl border overflow-hidden mb-4 ${liteStatusStyle[aktivniStatus].border} bg-[#0f0f1a]`}>
-          {(aktivniAvto.slika_url || aktivniAvto.slika) && <img src={aktivniAvto.slika_url || aktivniAvto.slika} alt={aktivnoIme} loading="lazy" decoding="async" className="h-40 w-full object-cover" />}
+          {slikaVozila(aktivniAvto) && <img src={slikaVozila(aktivniAvto)} alt={aktivnoIme} loading="lazy" decoding="async" className="h-40 w-full object-cover" />}
           <div className="p-5">
             <p className={`mb-2 text-xs font-black uppercase tracking-wider ${liteStatusStyle[aktivniStatus].text}`}>{statusOznaka(aktivniStatus)}</p>
             <h2 className="text-2xl font-black text-white">{aktivnoIme}</h2>
@@ -851,8 +853,8 @@ export default function Dashboard() {
             <>
               <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
                 <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
-                  {aktivniAvto.slika_url ? (
-                    <img src={aktivniAvto.slika_url} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
+                  {slikaVozila(aktivniAvto) ? (
+                    <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="max-w-full max-h-[330px] object-contain rounded-xl" />
                   ) : (
                     <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
@@ -940,9 +942,9 @@ export default function Dashboard() {
 
               <div key={`mobile-${aktivniAvto.id}`} className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
-                {aktivniAvto.slika_url && (
+                {slikaVozila(aktivniAvto) && (
                   <div className="relative h-36 overflow-hidden">
-                    <img src={aktivniAvto.slika_url} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
+                    <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="w-full h-full object-cover object-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
                   </div>

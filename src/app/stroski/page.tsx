@@ -7,7 +7,7 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSe
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDistanceFromFuelRows, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
-import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
 const numericValue = (value: unknown) => {
@@ -523,16 +523,13 @@ export default function Stroski() {
       resetVehicleState(carId)
       setActiveCarId(carId)
 
-      const cachedGarage = localStorage.getItem('garagebase_garaza_cache')
-      if (cachedGarage) {
-        try {
-          const parsed = JSON.parse(cachedGarage)
-          const cachedCar = parsed.avti?.find((a: any) => a.id === carId)
-          if (cachedCar) {
-            setAvto(cachedCar)
-            setLoading(false)
-          }
-        } catch {}
+      const parsedGarage = readGarageCache()
+      if (parsedGarage) {
+        const cachedCar = parsedGarage.avti?.find((a: any) => a.id === carId)
+        if (cachedCar) {
+          setAvto(cachedCar)
+          setLoading(false)
+        }
       }
 
       const cached = readCostCache(carId)

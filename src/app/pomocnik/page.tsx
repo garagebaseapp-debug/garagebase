@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
+import { readGarageCache } from '@/lib/vehicle-cache'
 
 type Guide = {
   id: string
@@ -27,13 +28,8 @@ export default function PomocnikPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
-      const cached = localStorage.getItem('garagebase_garaza_cache')
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached)
-          if (parsed.avti?.[0]?.id) setFirstCarId(parsed.avti[0].id)
-        } catch {}
-      }
+      const parsed = readGarageCache()
+      if (parsed?.avti?.[0]?.id) setFirstCarId(parsed.avti[0].id)
     }
     init()
     trackEvent('assistant_page_open')

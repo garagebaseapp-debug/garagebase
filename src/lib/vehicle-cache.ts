@@ -1,7 +1,42 @@
 'use client'
 
-export const GARAGE_CACHE_VERSION = 'garaza-2026-05-13-1145'
+export const GARAGE_CACHE_VERSION = 'garaza-2026-05-13-1325'
 export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-13-1145'
+export const GARAGE_CACHE_MAX_AGE_MS = 5 * 60 * 1000
+
+export const clearGarageCache = () => {
+  if (typeof window === 'undefined') return
+  localStorage.removeItem('garagebase_garaza_cache')
+}
+
+export const readGarageCache = () => {
+  if (typeof window === 'undefined') return null
+  const raw = localStorage.getItem('garagebase_garaza_cache')
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw)
+    const savedAt = Number(parsed?.savedAt || 0)
+    const age = Date.now() - savedAt
+    const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
+
+    if (parsed?.version !== GARAGE_CACHE_VERSION || parsed?.arhiv === true || !fresh) {
+      clearGarageCache()
+      return null
+    }
+
+    return parsed
+  } catch {
+    clearGarageCache()
+    return null
+  }
+}
+
+export const imageUrlWithVersion = (url: string, version: string | number | null | undefined = GARAGE_CACHE_VERSION) => {
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}gbv=${encodeURIComponent(String(version || GARAGE_CACHE_VERSION))}`
+}
 
 export const clearVehicleDataCaches = (carId?: string | null) => {
   if (typeof window === 'undefined' || !carId) return
@@ -12,6 +47,7 @@ export const clearVehicleDataCaches = (carId?: string | null) => {
     `garagebase_cost_totals_${carId}`,
     `garagebase_fuel_history_cache_${carId}`,
     'garagebase_stroski_garaza_cache',
+    'garagebase_garaza_cache',
   ]
   keys.forEach((key) => localStorage.removeItem(key))
 }
