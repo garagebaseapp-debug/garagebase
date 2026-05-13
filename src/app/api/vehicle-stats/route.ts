@@ -136,6 +136,8 @@ const apiAverageKnownConsumption = (rows: any[]) => {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
+const apiIsPartialFillUpRow = (row: any) => row?.polni_rezervar === false || row?.polni_rezervar === null || String(row?.polni_rezervar).toLowerCase() === 'false'
+
 const apiConsumptionSegment = (rows: any[]) => {
   const sorted = rows
     .filter((row) => apiNumberValue(row?.km) > 0 && apiFuelLitersValue(row) > 0)
@@ -143,6 +145,33 @@ const apiConsumptionSegment = (rows: any[]) => {
 
   if (sorted.length < 2) {
     return { average: apiAverageKnownConsumption(rows), distance: 0, liters: 0 }
+  }
+
+  if (sorted.some(apiIsPartialFillUpRow)) {
+    const fullIndices = sorted
+      .map((row, i) => ({ row, i }))
+      .filter(({ row }) => !apiIsPartialFillUpRow(row))
+      .map(({ i }) => i)
+
+    if (fullIndices.length >= 2) {
+      let distance = 0
+      let liters = 0
+      for (let f = 1; f < fullIndices.length; f++) {
+        const from = fullIndices[f - 1]
+        const to = fullIndices[f]
+        const diff = apiNumberValue(sorted[to].km) - apiNumberValue(sorted[from].km)
+        if (diff <= 0) continue
+        const segmentLiters = sorted
+          .slice(from + 1, to + 1)
+          .reduce((sum, row) => sum + apiFuelLitersValue(row), 0)
+        distance += diff
+        liters += segmentLiters
+      }
+
+      if (distance > 0) {
+        return { average: (liters / distance) * 100, distance, liters }
+      }
+    }
   }
 
   let distance = 0

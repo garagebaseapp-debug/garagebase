@@ -157,6 +157,7 @@ export default function ZgodovinaGoriva() {
   const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && fuelLitersValue(vnos) === 0 && fuelCostValue(vnos) === 0
   const displayedImportBuckets = importBuckets(vnosi)
   const jeUvozen = (vnos: any) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
+  const jeDelnoTankanje = (vnos: any) => vnos?.polni_rezervar === false || vnos?.polni_rezervar === null || String(vnos?.polni_rezervar).toLowerCase() === 'false'
   const editable = (vnos: any) => Boolean(preostaliCas(vnos.created_at))
   const filteredVnosi = vnosi.filter((vnos) => {
     const imported = jeUvozen(vnos)
@@ -199,6 +200,18 @@ export default function ZgodovinaGoriva() {
     const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: false }).order('datum', { ascending: false }).range(from, to)
     setVnosi(prev => sortRowsByMileageAndDate([...prev, ...(data || [])]))
     setLoadingMore(false)
+  }
+
+  const izracunajPrikazPorabe = (rows: any[], index: number) => {
+    if (jeDelnoTankanje(rows[index])) return null
+    if (!rows.some(jeDelnoTankanje)) return izracunajPorabo(rows, index)
+
+    const olderFullIndex = rows.findIndex((row, i) => i > index && !jeDelnoTankanje(row))
+    if (olderFullIndex < 0) return null
+    const kmRazlika = numberValue(rows[index].km) - numberValue(rows[olderFullIndex].km)
+    if (kmRazlika <= 0) return null
+    const litriSegmenta = rows.slice(index, olderFullIndex).reduce((sum, row) => sum + fuelLitersValue(row), 0)
+    return litriSegmenta > 0 ? (litriSegmenta / kmRazlika) * 100 : null
   }
 
   const znakValute = currencySymbol(valuta)
@@ -420,11 +433,12 @@ export default function ZgodovinaGoriva() {
       ) : (
         <div className="flex flex-col gap-3">
           {filteredVnosi.map((vnos, index) => {
-            const poraba = izracunajPorabo(filteredVnosi, index)
+            const poraba = izracunajPrikazPorabe(filteredVnosi, index)
             const tipIkona = tipGorivaIkona(vnos.tip_goriva)
             const cenaSkupaj = fuelCostValue(vnos)
             const litri = fuelLitersValue(vnos)
             const cenaNaLiter = numberValue(vnos.cena_na_liter)
+            const isPartialFillUp = jeDelnoTankanje(vnos)
             const preostalo = preostaliCas(vnos.created_at)
             const jeUredi = uredi === vnos.id
             const info = importInfo(vnos.source_owner_label) || (jeNepopolnUvoz(vnos) ? { key: `incomplete-${vnos.id}`, source: tx('Nepopoln uvoz', 'Incomplete import'), dateText: '' } : null)
@@ -460,7 +474,14 @@ export default function ZgodovinaGoriva() {
                       </div>
                     )}
                     <div>
-                      <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
+                        {isPartialFillUp && (
+                          <span className="rounded-full border border-[#94a3b866] bg-[#94a3b81a] px-2 py-0.5 text-[10px] font-black uppercase text-[#64748b]">
+                            ◐ {tx('Delno', 'Partial')}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[#5a5a80] text-xs mt-0.5">{vnos.km?.toLocaleString()} km{vnos.postaja && ` · ${vnos.postaja}`}</p>
                     </div>
                   </div>

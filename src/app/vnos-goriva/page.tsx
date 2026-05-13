@@ -22,6 +22,17 @@ type FuelType = {
   activeBg: string
 }
 
+const isMissingFullTankColumn = (error: any) => {
+  const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`.toLowerCase()
+  return text.includes('polni_rezervar') && (
+    text.includes('could not find') ||
+    text.includes('column') ||
+    text.includes('schema cache') ||
+    error?.code === 'PGRST204' ||
+    error?.code === '42703'
+  )
+}
+
 export default function VnosGoriva() {
   const { language } = useLanguage()
   const jeEn = language === 'en'
@@ -30,6 +41,7 @@ export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
   const [litri, setLitri] = useState('')
+  const [polniRezervar, setPolniRezervar] = useState(true)
   const [cenaNaLiter, setCenaNaLiter] = useState('')
   const [postaja, setPostaja] = useState('')
   const [tipGoriva, setTipGoriva] = useState('')
@@ -416,19 +428,28 @@ export default function VnosGoriva() {
     const opombaNaknaden = jeNaknaden ? ` [Naknadno vneseno: ${datumVnosa}]` : ''
     const postajaZOpombo = postaja ? postaja + opombaNaknaden : jeNaknaden ? opombaNaknaden.trim() : null
 
-    const { error } = await supabase.from('fuel_logs').insert({
+    const fuelPayload = {
       car_id: carId,
       datum,
       km: vneseniKm,
       litri: parseFloat(litri),
       cena_na_liter: cenaNaLiter ? parseFloat(cenaNaLiter) : null,
       cena_skupaj: cenaSkupaj ? parseFloat(cenaSkupaj) : null,
+      polni_rezervar: polniRezervar,
       postaja: postajaZOpombo,
       tip_goriva: tipGoriva || null,
       receipt_url: receiptUrl,
       verified_document_url: receiptUrl,
       verification_level: 'basic',
-    })
+    }
+
+    let { error } = await supabase.from('fuel_logs').insert(fuelPayload)
+
+    if (error && isMissingFullTankColumn(error)) {
+      const { polni_rezervar: _polniRezervar, ...legacyFuelPayload } = fuelPayload
+      const retry = await supabase.from('fuel_logs').insert(legacyFuelPayload)
+      error = retry.error
+    }
 
     if (error) {
       setMessage(tx('Napaka: ', 'Error: ') + error.message)
@@ -561,6 +582,24 @@ export default function VnosGoriva() {
             <MicButton polje="litri" />
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setPolniRezervar(prev => !prev)}
+          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
+            polniRezervar
+              ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
+              : 'bg-[#13131f] border-[#1e1e32] text-[#5a5a80]'
+          }`}
+          aria-pressed={polniRezervar}
+        >
+          <span className="font-semibold">
+            {polniRezervar
+              ? tx('Poln rezervar', 'Full tank')
+              : tx('Delno tankovanje', 'Partial fill-up')}
+          </span>
+          <span className="text-xl">{polniRezervar ? '⛽' : '◐'}</span>
+        </button>
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Cena/L', 'Price/L')} ({currencySymbol})</label>
