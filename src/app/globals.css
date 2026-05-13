@@ -156,7 +156,12 @@ body:not(.landing) {
 
 .light-mode .text-\[\#5a5a80\],
 .light-mode .text-\[\#8080a0\],
-.light-mode .text-\[\#8a8aa8\] {
+.light-mode .text-\[\#8a8aa8\],
+.light-mode .text-\[\#8e8ac0\],
+.light-mode .text-\[\#d8d8e8\],
+.light-mode .text-\[\#d8d4ff\],
+.light-mode .text-\[\#ddd8ff\],
+.light-mode .text-\[\#b9b2ff\] {
   color: var(--gb-muted) !important;
 }
 
@@ -273,6 +278,22 @@ body:not(.landing) {
   background: #eef2ff !important;
 }
 
+.light-mode body.landing nav {
+  color: #f8fafc !important;
+}
+
+.light-mode body.landing nav .gb-landing-brand,
+.light-mode body.landing nav a:not(.landing-login):not(.gb-landing-primary),
+.light-mode body.landing nav .text-white,
+.light-mode body.landing nav .text-white\/74,
+.light-mode body.landing nav .hover\:text-white:hover {
+  color: #f8fafc !important;
+}
+
+.light-mode body.landing .gb-landing-primary {
+  color: #ffffff !important;
+}
+
 .light-mode .landing-hero-shade {
   background: linear-gradient(90deg, rgba(244,246,255,0.92) 0%, rgba(244,246,255,0.76) 34%, rgba(244,246,255,0.26) 55%, rgba(244,246,255,0.04) 78%, rgba(244,246,255,0) 100%) !important;
 }
@@ -317,5 +338,34 @@ body:not(.landing) {
 
 .light-mode .landing-lang button.bg-white {
   background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+}
+
+.light-mode .gb-legal-page {
+  background: #f4f6ff !important;
+  color: #141426 !important;
+}
+
+.light-mode .gb-legal-page h1,
+.light-mode .gb-legal-page h2 {
+  color: #141426 !important;
+}
+
+.light-mode .gb-legal-page p,
+.light-mode .gb-legal-page .text-\[\#d8d8e8\],
+.light-mode .gb-legal-page .text-\[\#8a8aa8\] {
+  color: #48506a !important;
+}
+
+.light-mode .gb-legal-page a {
+  color: #5b21b6 !important;
+}
+
+.light-mode .gb-legal-page .bg-\[\#0f0f1a\] {
+  background-color: #ffffff !important;
+  border-color: #dfe3f4 !important;
+}
+
+.light-mode .gb-legal-page button.bg-\[\#6c63ff\] {
   color: #ffffff !important;
 }

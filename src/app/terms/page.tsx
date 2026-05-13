@@ -1,3 +1,7 @@
+'use client'
+
+import { saveStoredLanguage, useLanguage, type Language } from '@/lib/i18n'
+
 const slSections = [
   {
     title: 'Namen aplikacije',
@@ -146,6 +150,44 @@ const enSections = [
   },
 ]
 
+const pageCopy = {
+  sl: {
+    back: 'Nazaj na GarageBase',
+    title: 'Pogoji uporabe',
+    updated: 'Zadnja posodobitev: 13. 5. 2026',
+    sections: slSections,
+  },
+  en: {
+    back: 'Back to GarageBase',
+    title: 'Terms of Use',
+    updated: 'Last updated: 13 May 2026',
+    sections: enSections,
+  },
+} satisfies Record<Language, { back: string; title: string; updated: string; sections: typeof slSections }>
+
+function LanguageSwitch({ language }: { language: Language }) {
+  return (
+    <div className="inline-flex rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
+      {[
+        { code: 'sl' as Language, label: 'SL' },
+        { code: 'en' as Language, label: 'EN' },
+      ].map((item) => (
+        <button
+          key={item.code}
+          type="button"
+          onClick={() => saveStoredLanguage(item.code)}
+          className={`rounded-lg px-4 py-2 text-sm font-black transition-all ${
+            language === item.code ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8] hover:text-white'
+          }`}
+          aria-label={item.code === 'sl' ? 'Slovenščina' : 'English'}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function TermsSection({ title, body }: { title: string; body: string[] }) {
   return (
     <section className="space-y-3">
@@ -158,26 +200,22 @@ function TermsSection({ title, body }: { title: string; body: string[] }) {
 }
 
 export default function TermsPage() {
-  return (
-    <main className="min-h-screen bg-[#080810] text-white px-5 py-10">
-      <div className="mx-auto max-w-4xl">
-        <a href="/" className="text-[#a09aff] text-sm font-semibold">Nazaj na GarageBase / Back to GarageBase</a>
-        <h1 className="mt-6 text-4xl font-black">Pogoji uporabe</h1>
-        <p className="mt-3 text-[#8a8aa8]">Zadnja posodobitev: 13. 5. 2026</p>
+  const { language } = useLanguage()
+  const t = pageCopy[language]
 
-        <div className="mt-8 space-y-8 text-[#d8d8e8] leading-relaxed">
-          {slSections.map((section) => (
-            <TermsSection key={section.title} {...section} />
-          ))}
+  return (
+    <main data-gb-no-translate className="gb-legal-page min-h-screen bg-[#080810] px-5 py-10 text-white">
+      <div className="mx-auto max-w-4xl">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <a href="/" className="text-sm font-semibold text-[#a09aff]">{t.back}</a>
+          <LanguageSwitch language={language} />
         </div>
 
-        <div className="my-12 border-t border-[#1e1e32]" />
+        <h1 className="mt-8 text-4xl font-black">{t.title}</h1>
+        <p className="mt-3 text-[#8a8aa8]">{t.updated}</p>
 
-        <h1 className="text-4xl font-black">Terms of Use</h1>
-        <p className="mt-3 text-[#8a8aa8]">Last updated: 13 May 2026</p>
-
-        <div className="mt-8 space-y-8 text-[#d8d8e8] leading-relaxed">
-          {enSections.map((section) => (
+        <div className="mt-8 space-y-8 leading-relaxed text-[#d8d8e8]">
+          {t.sections.map((section) => (
             <TermsSection key={section.title} {...section} />
           ))}
         </div>

@@ -9,6 +9,11 @@ type Feature = {
   report?: boolean
 }
 
+type RoadmapItem = {
+  title: string
+  text: string
+}
+
 type LandingCopy = {
   navFeatures: string
   navContact: string
@@ -24,6 +29,10 @@ type LandingCopy = {
   featuresKicker: string
   featuresTitle: string
   features: Feature[]
+  roadmapKicker: string
+  roadmapTitle: string
+  roadmapText: string
+  roadmap: RoadmapItem[]
   privacy: string
   terms: string
   promoLink: string
@@ -60,6 +69,17 @@ const copy: Record<Language, LandingCopy> = {
       { title: 'Več vozil', text: 'Celotna domača garaža na enem mestu.' },
       { title: 'AI scan računov', text: 'Avtomatsko branje računov je v testiranju in planirano za 2027.' },
     ],
+    roadmapKicker: 'V načrtu za 2027',
+    roadmapTitle: 'Naslednji korak: manj ročnega dela, več zaupanja',
+    roadmapText: 'Po javnem zagonu bomo funkcije dodajali postopno in testirano, da app ostane hiter, stabilen in uporaben tudi pri več uporabnikih.',
+    roadmap: [
+      { title: 'AI scan računov', text: 'Branje računov za gorivo, servise in stroške, z obveznim pregledom pred shranjevanjem.' },
+      { title: 'Backup/export JSON', text: 'Uporabnik si lahko shrani svojo evidenco v berljivi datoteki za mir, zaupanje in GDPR zahteve.' },
+      { title: 'Primerjava vozil', text: 'Poraba, €/km, servisi in stroški dveh vozil prikazani drug ob drugem.' },
+      { title: 'Boljši grafi', text: 'Trend stroškov po mesecih, jasne osi in pregled, kje vozilo dejansko porablja denar.' },
+      { title: 'Več jezikov', text: 'Poleg slovenščine in angleščine postopno še jeziki za širšo uporabo v EU.' },
+      { title: 'Pametni opomniki', text: 'Boljši predlogi za servis, registracijo, gume in ponavljajoče stroške.' },
+    ],
     privacy: 'Zasebnost',
     terms: 'Pogoji uporabe',
     promoLink: 'Launch promocija',
@@ -93,6 +113,17 @@ const copy: Record<Language, LandingCopy> = {
       { title: 'Mobile app', text: 'Install it on your phone and use it like an app.' },
       { title: 'Multiple vehicles', text: 'Your whole home garage in one place.' },
       { title: 'AI receipt scan', text: 'Automatic receipt reading is being tested and is planned for 2027.' },
+    ],
+    roadmapKicker: 'Planned for 2027',
+    roadmapTitle: 'Next step: less manual work, more trust',
+    roadmapText: 'After the public launch, new features will be added gradually and tested carefully so the app stays fast, stable and useful with more users.',
+    roadmap: [
+      { title: 'AI receipt scan', text: 'Receipt reading for fuel, services and expenses, with user review before anything is saved.' },
+      { title: 'JSON backup/export', text: 'Users can save their own records in a readable file for trust, portability and GDPR requests.' },
+      { title: 'Vehicle comparison', text: 'Consumption, cost per distance, services and expenses for two vehicles side by side.' },
+      { title: 'Better charts', text: 'Monthly cost trends, clear axes and a better view of where a vehicle really spends money.' },
+      { title: 'More languages', text: 'After Slovenian and English, more languages for broader EU use.' },
+      { title: 'Smarter reminders', text: 'Better suggestions for service, registration, tires and recurring expenses.' },
     ],
     privacy: 'Privacy',
     terms: 'Terms',
@@ -357,7 +388,7 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-          <a href="/" className="text-2xl font-black tracking-tight">
+          <a href="/" className="gb-landing-brand text-2xl font-black tracking-tight">
             Garage<span className="text-[#8b5cf6]">Base</span>
           </a>
           <div className="hidden items-center gap-8 text-sm font-semibold text-white/74 md:flex">
@@ -386,7 +417,7 @@ export default function LandingPage() {
             <a href="/login" className="landing-login hidden rounded-xl border border-white/18 bg-black/20 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:inline-flex">
               {t.signIn}
             </a>
-            <a href="/login" className="rounded-xl bg-[#8b5cf6] px-5 py-3 text-sm font-bold text-white shadow-[0_0_28px_rgba(139,92,246,0.45)] transition-all hover:bg-[#7c3aed]">
+            <a href="/login" className="gb-landing-primary rounded-xl bg-[#8b5cf6] px-5 py-3 text-sm font-bold text-white shadow-[0_0_28px_rgba(139,92,246,0.45)] transition-all hover:bg-[#7c3aed]">
               {t.start}
             </a>
           </div>
@@ -418,7 +449,7 @@ export default function LandingPage() {
             </p>
 
             <div className="mb-9 flex flex-col gap-4 sm:flex-row">
-              <a href="/login" className="rounded-xl bg-[#8b5cf6] px-8 py-4 text-center text-lg font-bold text-white shadow-[0_0_36px_rgba(139,92,246,0.48)] transition-all hover:bg-[#7c3aed]">
+              <a href="/login" className="gb-landing-primary rounded-xl bg-[#8b5cf6] px-8 py-4 text-center text-lg font-bold text-white shadow-[0_0_36px_rgba(139,92,246,0.48)] transition-all hover:bg-[#7c3aed]">
                 {t.start}
               </a>
               <a href="#funkcije" className="rounded-xl border border-white/18 bg-black/24 px-8 py-4 text-center text-lg font-bold text-white backdrop-blur-sm transition-all hover:bg-white/10">
@@ -461,6 +492,22 @@ export default function LandingPage() {
                 />
               </div>
             ))}
+          </div>
+
+          <div className="mt-16 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-6 sm:p-8">
+            <div className="max-w-3xl">
+              <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#3ecfcf]">{t.roadmapKicker}</p>
+              <h2 className="text-3xl font-black text-white md:text-4xl">{t.roadmapTitle}</h2>
+              <p className="mt-4 text-base leading-relaxed text-[#8a8aa8]">{t.roadmapText}</p>
+            </div>
+            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {t.roadmap.map((item) => (
+                <div key={item.title} className="rounded-xl border border-[#24243a] bg-[#13131f] p-5">
+                  <p className="text-base font-black text-white">{item.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#8a8aa8]">{item.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
