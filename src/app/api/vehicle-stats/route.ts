@@ -137,17 +137,12 @@ const apiAverageKnownConsumption = (rows: any[]) => {
 }
 
 const apiConsumptionSegment = (rows: any[]) => {
-  const knownAverage = apiAverageKnownConsumption(rows)
-  if (knownAverage !== null) {
-    return { average: knownAverage, distance: 0, liters: 0 }
-  }
-
   const sorted = rows
     .filter((row) => apiNumberValue(row?.km) > 0 && apiFuelLitersValue(row) > 0)
     .sort((a, b) => apiNumberValue(a.km) - apiNumberValue(b.km))
 
   if (sorted.length < 2) {
-    return { average: null, distance: 0, liters: 0 }
+    return { average: apiAverageKnownConsumption(rows), distance: 0, liters: 0 }
   }
 
   let distance = 0
@@ -160,22 +155,19 @@ const apiConsumptionSegment = (rows: any[]) => {
   }
 
   return {
-    average: distance > 0 ? (liters / distance) * 100 : null,
+    average: distance > 0 ? (liters / distance) * 100 : apiAverageKnownConsumption(rows),
     distance,
     liters,
   }
 }
 
 const apiCombineConsumptionSegments = (segments: Array<{ average: number | null; distance: number; liters: number }>) => {
-  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
   const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
   const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
   const liters = measured.reduce((sum, segment) => sum + segment.liters, 0)
-  if (known.length > 0 && measured.length !== segments.length) {
-    return known.reduce((sum, value) => sum + value, 0) / known.length
-  }
   if (distance > 0) return (liters / distance) * 100
 
+  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
   if (known.length === 0) return null
   return known.reduce((sum, value) => sum + value, 0) / known.length
 }

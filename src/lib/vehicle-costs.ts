@@ -40,6 +40,18 @@ export const numberValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+export const rowMileageValue = (row: any) =>
+  numberValue(row?.km ?? row?.kilometri ?? row?.km_trenutni)
+
+const rowDateValue = (row: any) => new Date(row?.datum || row?.created_at || 0).getTime() || 0
+
+export const sortRowsByMileageAndDate = <T extends Record<string, any>>(rows: T[] = []) =>
+  [...(rows || [])].sort((a, b) => {
+    const kmDiff = rowMileageValue(b) - rowMileageValue(a)
+    if (kmDiff !== 0) return kmDiff
+    return rowDateValue(b) - rowDateValue(a)
+  })
+
 const firstNumberValue = (row: any, keys: string[]) => {
   for (const key of keys) {
     const value = numberValue(row?.[key])
@@ -55,7 +67,7 @@ export const fuelPriceValue = (row: any) =>
   firstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
 
 export const fuelCostValue = (row: any) => {
-  const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
+  const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
   const liters = fuelLitersValue(row)
   const price = fuelPriceValue(row)
@@ -195,17 +207,12 @@ const averageKnownConsumption = (rows: any[]) => {
 }
 
 export const consumptionSegment = (rows: any[]) => {
-  const knownAverage = averageKnownConsumption(rows)
-  if (knownAverage !== null) {
-    return { average: knownAverage, distance: 0, liters: 0 }
-  }
-
   const sorted = rows
     .filter((row) => numberValue(row?.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
   if (sorted.length < 2) {
-    return { average: null, distance: 0, liters: 0 }
+    return { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
   }
 
   let distance = 0
@@ -218,22 +225,19 @@ export const consumptionSegment = (rows: any[]) => {
   }
 
   return {
-    average: distance > 0 ? (liters / distance) * 100 : null,
+    average: distance > 0 ? (liters / distance) * 100 : averageKnownConsumption(rows),
     distance,
     liters,
   }
 }
 
 export const combineConsumptionSegments = (segments: Array<{ average: number | null; distance: number; liters: number }>) => {
-  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
   const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
   const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
   const liters = measured.reduce((sum, segment) => sum + segment.liters, 0)
-  if (known.length > 0 && measured.length !== segments.length) {
-    return known.reduce((sum, value) => sum + value, 0) / known.length
-  }
   if (distance > 0) return (liters / distance) * 100
 
+  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
   if (known.length === 0) return null
   return known.reduce((sum, value) => sum + value, 0) / known.length
 }

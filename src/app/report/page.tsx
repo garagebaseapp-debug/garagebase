@@ -9,6 +9,7 @@ import { trackEvent } from '@/lib/analytics'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { distanceUnitLabel, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
+import { fuelCostValue, sortRowsByMileageAndDate } from '@/lib/vehicle-costs'
 import QRCode from 'qrcode'
 import { PDFDownloadLink, Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 
@@ -226,16 +227,8 @@ const pdfCopy = {
   },
 } as const
 
-const reportKm = (row: any) => Number(row?.km ?? row?.kilometri ?? row?.km_trenutni ?? 0) || 0
-
 const sortReportRows = (rows: any[] = []) =>
-  [...(rows || [])].sort((a, b) => {
-    const kmDiff = reportKm(b) - reportKm(a)
-    if (kmDiff !== 0) return kmDiff
-    const dateA = new Date(a?.datum || a?.created_at || 0).getTime() || 0
-    const dateB = new Date(b?.datum || b?.created_at || 0).getTime() || 0
-    return dateB - dateA
-  })
+  sortRowsByMileageAndDate(rows)
 
 const cleanReportText = (value?: string | null) =>
   String(value || '')
@@ -248,7 +241,10 @@ const isImportedReportRow = (row: any) => {
   return Boolean(row?.import_batch_id || row?.source_owner_label || /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText))
 }
 
-const reportRowAmount = (row: any) => Number(row?.cena_skupaj ?? row?.cena ?? row?.znesek ?? 0) || 0
+const reportRowAmount = (row: any) => {
+  if (row?.litri !== undefined || row?.cena_na_liter !== undefined) return fuelCostValue(row)
+  return Number(row?.cena_skupaj ?? row?.cena ?? row?.znesek ?? 0) || 0
+}
 
 const costBreakdown = (...groups: any[][]) => {
   const rows = groups.flat()

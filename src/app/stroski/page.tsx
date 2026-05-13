@@ -215,6 +215,8 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
   const imported = sourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const garageBase = Math.max(0, totalCost - imported)
   const currentKm = numericValue(car?.km_trenutni)
+  const startKm = numericValue(car?.km_ob_vnosu)
+  const drivenKm = Math.max(0, currentKm - startKm)
 
   return {
     rows: {
@@ -230,7 +232,7 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
       garageBase,
       imported,
       total: totalCost,
-      perKm: currentKm > 0 && totalCost > 0 ? totalCost / currentKm : null,
+      perKm: drivenKm > 0 && garageBase > 0 ? garageBase / drivenKm : null,
     },
     consumption: {},
   }
