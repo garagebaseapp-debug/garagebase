@@ -183,7 +183,7 @@ export default function ScanPage() {
     setTransfer(null)
     setPayload(null)
 
-    const { data, error } = await supabase.from('vehicle_transfers').select('*').eq('token', token).single()
+    const { data, error } = await supabase.from('vehicle_transfers').select('*').eq('token', token).maybeSingle()
     if (error || !data) {
       setMessage(error?.message?.includes('vehicle_transfers') ? 'Najprej v Supabase zazeni SUPABASE_MIGRACIJA_QR_PRENOS.sql.' : 'QR koda ni najdena ali je potekla.')
       setLoading(false)

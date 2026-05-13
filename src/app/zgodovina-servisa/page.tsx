@@ -35,7 +35,8 @@ export default function ZgodovinaServisa() {
       const selectedCarId = params.get('car')
       if (!selectedCarId) { window.location.href = '/garaza'; return }
       setCarId(selectedCarId)
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).single()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).maybeSingle()
+      if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const [servisiRes, summaryRes] = await Promise.all([
         supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),

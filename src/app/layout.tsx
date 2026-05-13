@@ -23,6 +23,7 @@ export default function RootLayout({
   return (
     <html
       lang="sl"
+      id="gb-html-root"
       className="h-full antialiased"
     >
       <head>
@@ -31,7 +32,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#6c63ff" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className="min-h-full flex flex-col">
         {children}
@@ -46,12 +47,14 @@ export default function RootLayout({
           window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
           window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
           
-          // Theme and app font size
-          const nastavitve = localStorage.getItem('garagebase_nastavitve');
-          const publicFontPaths = new Set(['/', '/login', '/registracija']);
-          const shouldUseAppFont = !publicFontPaths.has(window.location.pathname);
-          if (nastavitve) {
-            const n = JSON.parse(nastavitve);
+          try {
+            // Theme, language and app font size
+            const n = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}');
+            if (n.jezik === 'en' || n.language === 'en') {
+              document.getElementById('gb-html-root')?.setAttribute('lang', 'en');
+            }
+            const publicFontPaths = new Set(['/', '/login', '/registracija']);
+            const shouldUseAppFont = !publicFontPaths.has(window.location.pathname);
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
@@ -67,6 +70,8 @@ export default function RootLayout({
               document.documentElement.style.fontSize = '16px';
               document.documentElement.style.setProperty('--gb-app-font-scale', '1');
             }
+          } catch {
+            // Ignore broken localStorage settings and load the app with defaults.
           }
         `}} />
       </body>

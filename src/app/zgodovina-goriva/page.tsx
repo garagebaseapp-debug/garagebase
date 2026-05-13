@@ -86,7 +86,8 @@ export default function ZgodovinaGoriva() {
       const selectedCarId = params.get('car')
       if (!selectedCarId) { window.location.href = '/garaza'; return }
       setCarId(selectedCarId)
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).single()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).maybeSingle()
+      if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
         supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),

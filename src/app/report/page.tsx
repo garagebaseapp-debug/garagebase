@@ -687,7 +687,8 @@ export default function Report() {
       if (!carId) { window.location.href = '/garaza'; return }
       trackEvent('report_open', { carId })
 
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).single()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
+      if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
       setServisi(servisData || [])

@@ -64,7 +64,8 @@ export default function NastavitveAvta() {
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/garaza'; return }
-      const { data } = await supabase.from('cars').select('*').eq('id', carId).single()
+      const { data } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
+      if (!data) { window.location.href = '/garaza'; return }
       if (data) {
         setAvto(data)
         // Če tip ni standardni, je custom

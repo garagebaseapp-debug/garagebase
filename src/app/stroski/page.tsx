@@ -578,12 +578,13 @@ export default function Stroski() {
       setRefreshing(true)
       try {
       const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
-        supabase.from('cars').select('*').eq('id', carId).single(),
+        supabase.from('cars').select('*').eq('id', carId).maybeSingle(),
         supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
         supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
         supabase.from('expenses').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
       ])
       if (!shouldApply()) return
+      if (!avtoRes.data) { window.location.href = '/garaza'; return }
       setActiveCarId(carId)
       if (avtoRes.data) {
         setAvto(avtoRes.data)

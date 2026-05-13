@@ -25,11 +25,16 @@ export default function ServisDetajl() {
       if (!servisId || !carId) { window.location.href = '/garaza'; return }
 
       const { data: servisData } = await supabase
-        .from('service_logs').select('*').eq('id', servisId).single()
+        .from('service_logs').select('*').eq('id', servisId).maybeSingle()
+      if (!servisData) {
+        setLoading(false)
+        return
+      }
       setServis(servisData)
 
       const { data: avtoData } = await supabase
-        .from('cars').select('*').eq('id', carId).single()
+        .from('cars').select('*').eq('id', carId).maybeSingle()
+      if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
 
       setLoading(false)

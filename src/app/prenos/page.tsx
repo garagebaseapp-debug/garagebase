@@ -37,7 +37,8 @@ export default function PrenosZgodovine() {
       const modeParam = params.get('mode')
       if (modeParam === 'import' || modeParam === 'verify') setMode(modeParam)
       if (!carId) { window.location.href = '/garaza'; return }
-      const { data } = await supabase.from('cars').select('*').eq('id', carId).single()
+      const { data } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
+      if (!data) { window.location.href = '/garaza'; return }
       setAvto(data)
       setLoading(false)
     }
