@@ -18,15 +18,16 @@ Ta dokument je kratek proces pred vsakim vecjim push/deployem.
    - QR scan
    - nastavitve
    - push test, samo admin
-5. Ce je sprememba v bazi, najprej zazeni SQL na staging bazi.
+5. Pred Google Play closed testingom preveri `TESTNI_PLAN.md` in pripravi sporocilo testerjem iz `GOOGLE_PLAY_TESTER_NAVODILA.md`.
+6. Ce je sprememba v bazi, najprej zazeni SQL na staging bazi.
    - Za CSV razveljavitev mora biti zagnan `SUPABASE_MIGRACIJA_UVOZ_BATCH_ROLLBACK.sql`.
    - Za admin pakete/uporabnike mora biti zagnan `SUPABASE_MIGRACIJA_ADMIN_UPORABNIKI_PAKETI.sql`.
-6. Sele potem deploy na production.
+7. Sele potem deploy na production.
 
 ## Po deployu
 
 1. Odpri `getgaragebase.com`.
-2. Zaženi `npm run production:check`, da preveriš `getgaragebase.com`, `www.getgaragebase.com` in oba `/api/health` endpointa.
+2. Zazeni `npm run production:check`, da preveris `getgaragebase.com`, `www.getgaragebase.com` in oba `/api/health` endpointa.
 3. Odpri `/api/health` in preveri, da je `ok: true`.
 4. Preveri `/login`, `/garaza`, `/nastavitve`, `/admin`.
 5. V adminu preveri `Napake v sistemu`.
