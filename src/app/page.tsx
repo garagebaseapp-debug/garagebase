@@ -14,6 +14,8 @@ type RoadmapItem = {
   text: string
 }
 
+type LandingTheme = 'temna' | 'svetla'
+
 type LandingCopy = {
   navFeatures: string
   navContact: string
@@ -361,8 +363,42 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
+  const [theme, setTheme] = useState<LandingTheme>('temna')
   const { language } = useLanguage()
   const t = copy[language]
+
+  const updateTheme = (nextTheme: LandingTheme) => {
+    setTheme(nextTheme)
+    try {
+      const raw = localStorage.getItem('garagebase_nastavitve')
+      const current = raw ? JSON.parse(raw) : {}
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: nextTheme }))
+    } catch {}
+    document.documentElement.classList.toggle('light-mode', nextTheme === 'svetla')
+    window.dispatchEvent(new CustomEvent('garagebase-theme-change', { detail: nextTheme }))
+  }
+
+  useEffect(() => {
+    const readTheme = () => {
+      try {
+        const raw = localStorage.getItem('garagebase_nastavitve')
+        const current = raw ? JSON.parse(raw) : {}
+        const storedTheme: LandingTheme = current.tema === 'svetla' ? 'svetla' : 'temna'
+        setTheme(storedTheme)
+        document.documentElement.classList.toggle('light-mode', storedTheme === 'svetla')
+      } catch {
+        setTheme(document.documentElement.classList.contains('light-mode') ? 'svetla' : 'temna')
+      }
+    }
+    readTheme()
+    const onThemeChange = () => readTheme()
+    window.addEventListener('storage', onThemeChange)
+    window.addEventListener('garagebase-theme-change', onThemeChange)
+    return () => {
+      window.removeEventListener('storage', onThemeChange)
+      window.removeEventListener('garagebase-theme-change', onThemeChange)
+    }
+  }, [])
 
   useEffect(() => {
     document.body.classList.add('landing')
@@ -409,6 +445,25 @@ export default function LandingPage() {
                     language === item.code ? 'bg-white text-[#141426]' : 'text-white/72 hover:text-white'
                   }`}
                   aria-label={`Language ${item.code.toUpperCase()}`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div className="landing-theme hidden items-center rounded-xl border border-white/18 bg-black/18 p-1 backdrop-blur-sm sm:flex" data-gb-no-translate>
+              {[
+                { code: 'temna' as LandingTheme, label: '☾', aria: language === 'en' ? 'Dark mode' : 'Temni način' },
+                { code: 'svetla' as LandingTheme, label: '☀', aria: language === 'en' ? 'Light mode' : 'Svetli način' },
+              ].map((item) => (
+                <button
+                  key={item.code}
+                  type="button"
+                  onClick={() => updateTheme(item.code)}
+                  className={`rounded-lg px-3 py-2 text-xs font-black transition-all ${
+                    theme === item.code ? 'bg-white text-[#141426]' : 'text-white/72 hover:text-white'
+                  }`}
+                  aria-label={item.aria}
+                  title={item.aria}
                 >
                   {item.label}
                 </button>

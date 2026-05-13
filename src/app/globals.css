@@ -327,16 +327,19 @@ body:not(.landing) {
   border-color: rgba(139, 92, 246, 0.45) !important;
 }
 
-.light-mode .landing-lang {
+.light-mode .landing-lang,
+.light-mode .landing-theme {
   background-color: rgba(255, 255, 255, 0.78) !important;
   border-color: rgba(20, 20, 38, 0.18) !important;
 }
 
-.light-mode .landing-lang button {
+.light-mode .landing-lang button,
+.light-mode .landing-theme button {
   color: #50566d !important;
 }
 
-.light-mode .landing-lang button.bg-white {
+.light-mode .landing-lang button.bg-white,
+.light-mode .landing-theme button.bg-white {
   background-color: #8b5cf6 !important;
   color: #ffffff !important;
 }

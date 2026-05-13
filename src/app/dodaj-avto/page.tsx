@@ -120,13 +120,15 @@ export default function DodajAvto() {
       <div className="flex items-center gap-3 mb-8">
         <BackButton href="/garaza" />
         <div>
-          <h1 className="text-xl font-bold text-white">Dodaj vozilo</h1>
-          <p className="text-[#5a5a80] text-xs">Korak {korak}/3 · najprej nujni podatki, nato opcijski.</p>
+          <h1 className="text-xl font-bold text-white">{tx('Dodaj vozilo', 'Add vehicle')}</h1>
+          <p className="text-[#5a5a80] text-xs">
+            {tx('Korak', 'Step')} {korak}/3 · {tx('najprej nujni podatki, nato opcijski.', 'required details first, optional details after.')}
+          </p>
         </div>
       </div>
 
       <div className="mb-5 grid grid-cols-3 gap-2">
-        {['Tip', 'Osnovno', 'Dodatno'].map((label, index) => (
+        {[tx('Tip', 'Type'), tx('Osnovno', 'Basic'), tx('Dodatno', 'Extra')].map((label, index) => (
           <button key={label} type="button" onClick={() => setKorak(index + 1)}
             className={`rounded-xl border py-2 text-xs font-bold ${
               korak === index + 1 ? 'border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff]' : 'border-[#1e1e32] bg-[#0f0f1a] text-[#5a5a80]'
@@ -134,6 +136,22 @@ export default function DodajAvto() {
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="mb-5 rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf11] p-4">
+        <p className="text-sm font-black text-[#3ecfcf]">{tx('Kaj je nujno?', 'What is required?')}</p>
+        <p className="mt-2 text-sm leading-relaxed text-[#d8d8e8]">
+          {tx(
+            'Za shranjevanje vozila sta nujna samo znamka in model. Tip vozila je izbran vnaprej in ga spremeniš samo, če ni pravi.',
+            'Only make and model are required to save a vehicle. Vehicle type is preselected and you only change it if needed.',
+          )}
+        </p>
+        <p className="mt-2 text-xs leading-relaxed text-[#8a8aa8]">
+          {tx(
+            'Letnik, kilometri, gorivo, tablica, barva in tehnični podatki niso obvezni. Več kot jih dodaš, bolj verodostojno in uporabno bo poročilo, ker se ti podatki lahko izvozijo v PDF/QR report.',
+            'Year, mileage, fuel type, plate, color and technical details are optional. The more you add, the more credible and useful the report becomes, because these details can be exported to the PDF/QR report.',
+          )}
+        </p>
       </div>
 
       <div className="flex flex-col gap-4">
@@ -170,8 +188,10 @@ export default function DodajAvto() {
         {/* Osnovno */}
         <div className={`${korak === 2 ? '' : 'hidden'} bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4`}>
           <div>
-            <h2 className="text-white font-semibold">Osnovni podatki</h2>
-            <p className="text-[#5a5a80] text-xs mt-1">Znamka in model sta nujna. Ostalo lahko dopolniš kasneje.</p>
+            <h2 className="text-white font-semibold">{tx('Osnovni podatki', 'Basic details')}</h2>
+            <p className="text-[#5a5a80] text-xs mt-1">
+              {tx('Znamka in model sta nujna. Ostalo lahko dopolniš kasneje.', 'Make and model are required. Everything else can be completed later.')}
+            </p>
           </div>
 
           <div>
