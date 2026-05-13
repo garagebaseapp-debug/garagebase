@@ -35,6 +35,17 @@ Ce live deploy pokvari app:
 5. Klikni `Promote to Production` ali `Redeploy` na dobrem deployu.
 6. V admin panelu preveri, da se nove napake nehajo pojavljati.
 
+## Rollback ni backup baze
+
+Vercel rollback vrne samo kodo in frontend/API verzijo. Ne vrne Supabase podatkov, ne vrne izbrisanih slik in ne razveljavi SQL migracije.
+
+Ce je incident povezan z bazo ali storage slikami:
+
+1. Najprej naredi Vercel rollback, ce koda dela skodo uporabnikom.
+2. Potem odpri `BACKUP_PLAN.md`.
+3. Zapisi cas incidenta, commit, Vercel deployment in SQL, ki je bil izveden.
+4. Bazo popravljaj sele po preverjenem backup/restore postopku.
+
 ## Pravilo za paniko
 
 Ce je app po deployu pokvarjen za uporabnike, se ne popravlja na slepo. Najprej rollback, potem mirno popravljanje na staging.
