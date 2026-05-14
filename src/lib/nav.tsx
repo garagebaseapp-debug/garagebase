@@ -4,8 +4,17 @@ import { useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
-const glavnePovezave = [
-  { key: 'garaza', href: '/garaza', icon: '🏠', labelKey: 'garage' },
+const mobilnePovezave = [
+  { key: 'domov', href: '/domov', icon: '🏠', labelKey: 'home' },
+  { key: 'gorivo', href: '/vnos-goriva', icon: '⛽', labelKey: 'fuel' },
+  { key: 'servis', href: '/vnos-servisa', icon: '🔧', labelKey: 'service' },
+  { key: 'stroski', href: '/stroski-garaza', icon: '📊', labelKey: 'costs' },
+  { key: 'nastavitve', href: '/nastavitve', icon: '⚙️', labelKey: 'more' },
+] as const
+
+const namiznePovezave = [
+  { key: 'domov', href: '/domov', icon: '🏠', labelKey: 'home' },
+  { key: 'garaza', href: '/garaza', icon: '🏡', labelKey: 'garage' },
   { key: 'gorivo', href: '/vnos-goriva', icon: '⛽', labelKey: 'fuel' },
   { key: 'servis', href: '/vnos-servisa', icon: '🔧', labelKey: 'service' },
   { key: 'stroski', href: '/stroski-garaza', icon: '📊', labelKey: 'costs' },
@@ -14,6 +23,15 @@ const glavnePovezave = [
 
 function pojdiNa(href: string) {
   window.location.href = href
+}
+
+function activeKeyFromPath(path: string) {
+  if (path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
+  if (path.includes('servis') || path.includes('opomniki') || path.includes('report') || path.includes('scan')) return 'servis'
+  if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
+  if (path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake')) return 'nastavitve'
+  if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'domov'
+  return 'domov'
 }
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
@@ -31,43 +49,36 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
   return (
     <div className="gb-desktop-nav fixed top-0 left-0 right-0 z-50 hidden bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]">
       <div className="w-full max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-        <button onClick={() => pojdiNa('/garaza')} className="text-2xl font-bold text-white">
+        <button onClick={() => pojdiNa('/domov')} className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
         </button>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => pojdiNa('/')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40] transition-all"
-          >
-            <span>↩</span>
-            <span>{t('home')}</span>
-          </button>
-          {isAdmin && (
-            <button
-              onClick={() => pojdiNa('/admin')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                aktivna === 'admin'
-                  ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
-                  : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
-              }`}
-            >
-              <span>Admin</span>
-              <span>{language === 'en' ? 'Panel' : 'Panel'}</span>
-            </button>
-          )}
-          {glavnePovezave.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => pojdiNa(item.href)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                aktivna === item.key
-                  ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
-                  : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{t(item.labelKey)}</span>
-            </button>
+          {namiznePovezave.map((item) => (
+            <div key={item.key} className="flex items-center gap-2">
+              <button
+                onClick={() => pojdiNa(item.href)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                  aktivna === item.key
+                    ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
+                    : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
+                }`}
+              >
+                <span>{item.icon}</span>
+                <span>{t(item.labelKey)}</span>
+              </button>
+              {item.key === 'domov' && isAdmin && (
+                <button
+                  onClick={() => pojdiNa('/admin')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                    aktivna === 'admin'
+                      ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
+                      : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
+                  }`}
+                >
+                  <span>{language === 'en' ? 'Admin Panel' : 'Admin Panel'}</span>
+                </button>
+              )}
+            </div>
           ))}
         </div>
       </div>
@@ -94,10 +105,10 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   }, [])
 
   const litePovezave = [
-    { key: 'garaza', href: '/garaza', icon: '🏠', label: t('garage') },
+    { key: 'domov', href: '/domov', icon: '🏠', label: t('home') },
   ]
   const mobileLinks = [
-    ...(lite ? litePovezave : glavnePovezave),
+    ...(lite ? litePovezave : mobilnePovezave),
     ...(isAdmin ? [{ key: 'admin', href: '/admin', icon: '🛡️', label: 'Admin' }] : []),
   ]
 
@@ -108,7 +119,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
         {mobileLinks.map((item: any) => (
           <button key={item.key} onClick={() => pojdiNa(item.href)} className="flex flex-col items-center gap-1">
             <span className="text-2xl leading-none">{item.icon}</span>
-            <span className={`text-[11px] uppercase tracking-wide ${aktivna === item.key ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
+            <span className={`text-[11px] uppercase tracking-wide ${aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
               {item.label || t(item.labelKey)}
             </span>
           </button>
@@ -118,35 +129,18 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   )
 }
 
-export function HomeButton() {
-  const { t } = useLanguage()
-  const [isAdmin, setIsAdmin] = useState(false)
+export function HomeButton({ aktivna }: { aktivna?: string } = {}) {
+  const [resolvedActive, setResolvedActive] = useState(aktivna || 'domov')
 
   useEffect(() => {
-    let mounted = true
-    checkCurrentUserAdmin().then((result) => {
-      if (mounted) setIsAdmin(result.isAdmin)
-    })
-    return () => { mounted = false }
-  }, [])
+    if (aktivna) {
+      setResolvedActive(aktivna)
+      return
+    }
+    setResolvedActive(activeKeyFromPath(window.location.pathname))
+  }, [aktivna])
 
-  return (
-    <>
-      <DesktopNav />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex ${isAdmin ? 'justify-around' : 'justify-center'} py-3 px-4 z-50`}>
-        <button onClick={() => pojdiNa('/garaza')} className="flex flex-col items-center gap-1">
-          <span className="text-2xl leading-none">🏠</span>
-          <span className="text-[11px] uppercase tracking-wide text-[#6c63ff] font-bold">{t('garage')}</span>
-        </button>
-        {isAdmin && (
-          <button onClick={() => pojdiNa('/admin')} className="flex flex-col items-center gap-1">
-            <span className="text-2xl leading-none">🛡️</span>
-            <span className="text-[11px] uppercase tracking-wide text-[#3a3a5a]">Admin</span>
-          </button>
-        )}
-      </div>
-    </>
-  )
+  return <BottomNav aktivna={resolvedActive} />
 }
 
 export function BackButton({ href, label }: { href?: string, label?: string }) {

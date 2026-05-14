@@ -23,7 +23,7 @@ export default function OnboardingPage() {
         try {
           const settings = JSON.parse(raw)
           if (settings.onboardingDone) {
-            window.location.href = '/garaza'
+            window.location.href = '/domov'
             return
           }
         } catch {}
@@ -56,7 +56,7 @@ export default function OnboardingPage() {
       },
     }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(next))
-    window.location.href = '/garaza'
+    window.location.href = '/domov'
   }
 
   if (loading) return (

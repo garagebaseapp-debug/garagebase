@@ -5,6 +5,7 @@ const root = process.cwd()
 
 const requiredPaths = [
   'src/app/login/page.tsx',
+  'src/app/domov/page.tsx',
   'src/app/garaza/page.tsx',
   'src/app/dodaj-avto/page.tsx',
   'src/app/vnos-goriva/page.tsx',

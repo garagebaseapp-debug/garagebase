@@ -38,7 +38,7 @@ export default function LoginPage() {
         return
       }
       await unlockWithAppLock()
-      window.location.href = '/garaza'
+      window.location.href = '/domov'
     } catch {
       setMessage('Biometrična prijava ni uspela. Poskusi znova ali uporabi geslo.')
     }
@@ -85,7 +85,7 @@ export default function LoginPage() {
         if (raw) {
           try { onboardingDone = JSON.parse(raw).onboardingDone === true } catch {}
         }
-        window.location.href = onboardingDone ? '/garaza' : '/onboarding'
+        window.location.href = onboardingDone ? '/domov' : '/onboarding'
       }
     }
     setLoading(false)

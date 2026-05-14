@@ -336,6 +336,9 @@ export default function ZgodovinaGoriva() {
     </div>
   )
 
+  const hasImportedSummary = summary.imported.count > 0 || summary.imported.amount > 0 || summary.imported.liters > 0
+  const primarySummary = hasImportedSummary ? summary.garageBase : summary.total
+
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
       <div className="flex items-center gap-3 mb-6">
@@ -347,10 +350,14 @@ export default function ZgodovinaGoriva() {
       </div>
 
       {vnosi.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 mb-6 xl:grid-cols-3">
-          <SummaryCard title={tx('GarageBase vnosi', 'GarageBase entries')} data={summary.garageBase} tone="app" />
-          <SummaryCard title={tx('Uvozena zgodovina', 'Imported history')} data={summary.imported} tone="import" />
-          <SummaryCard title={tx('Skupne vrednosti', 'Combined totals')} data={summary.total} tone="total" />
+        <div className={`grid grid-cols-1 gap-3 mb-6 ${hasImportedSummary ? 'xl:grid-cols-3' : ''}`}>
+          <SummaryCard title={hasImportedSummary ? tx('GarageBase vnosi', 'GarageBase entries') : tx('Skupne vrednosti', 'Combined totals')} data={primarySummary} tone={hasImportedSummary ? 'app' : 'total'} />
+          {hasImportedSummary && (
+            <>
+              <SummaryCard title={tx('Uvozena zgodovina', 'Imported history')} data={summary.imported} tone="import" />
+              <SummaryCard title={tx('Skupne vrednosti', 'Combined totals')} data={summary.total} tone="total" />
+            </>
+          )}
         </div>
       )}
 
@@ -393,7 +400,7 @@ export default function ZgodovinaGoriva() {
         </div>
       )}
 
-      {vnosi.length > 0 && (
+      {vnosi.length > 0 && hasImportedSummary && (
         <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
           <button
             type="button"

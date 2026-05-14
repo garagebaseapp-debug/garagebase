@@ -1274,6 +1274,7 @@ export default function Stroski() {
 
   const vsiVnosi = allCostRows
   const dashboardBackHref = currentCarId ? `/dashboard?car=${currentCarId}` : undefined
+  const hasImportedCosts = prikazUvoz > 0
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
   const vidniVnosi = filtrirani.slice(0, visibleCostCount)
@@ -1304,16 +1305,18 @@ export default function Stroski() {
       <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
         <p className="text-white font-bold text-4xl mb-1">{formatMoney(prikazSkupaj, valuta)}</p>
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff0d] p-3">
-            <p className="text-[#a09aff] text-[11px] font-bold uppercase tracking-wide">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
-            <p className="text-[#c8c4ff] text-lg font-semibold mt-1">{formatMoney(prikazGarageBase, valuta)}</p>
+        {hasImportedCosts && (
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff0d] p-3">
+              <p className="text-[#a09aff] text-[11px] font-bold uppercase tracking-wide">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
+              <p className="text-[#c8c4ff] text-lg font-semibold mt-1">{formatMoney(prikazGarageBase, valuta)}</p>
+            </div>
+            <div className="rounded-xl border border-[#22c55e33] bg-[#22c55e0d] p-3">
+              <p className="text-[#86efac] text-[11px] font-bold uppercase tracking-wide">{tx('Uvozena zgodovina', 'Imported history')}</p>
+              <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(prikazUvoz, valuta)}</p>
+            </div>
           </div>
-          <div className="rounded-xl border border-[#22c55e33] bg-[#22c55e0d] p-3">
-            <p className="text-[#86efac] text-[11px] font-bold uppercase tracking-wide">{tx('Uvozena zgodovina', 'Imported history')}</p>
-            <p className="text-[#bbf7d0] text-lg font-semibold mt-1">{formatMoney(prikazUvoz, valuta)}</p>
-          </div>
-        </div>
+        )}
         {prikazStrosekNaKm && <p className="text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
 
