@@ -38,7 +38,8 @@ export default function LoginPage() {
         return
       }
       await unlockWithAppLock()
-      window.location.href = '/domov'
+      sessionStorage.setItem('garagebase_after_login_home', String(Date.now()))
+      window.location.replace('/domov')
     } catch {
       setMessage('Biometrična prijava ni uspela. Poskusi znova ali uporabi geslo.')
     }
@@ -79,7 +80,10 @@ export default function LoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
-      else window.location.href = '/domov'
+      else {
+        sessionStorage.setItem('garagebase_after_login_home', String(Date.now()))
+        window.location.replace('/domov')
+      }
     }
     setLoading(false)
   }

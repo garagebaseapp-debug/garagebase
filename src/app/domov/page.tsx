@@ -77,7 +77,8 @@ function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield'
   )
   if (type === 'wrench') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M14.5 5.5a5 5 0 0 0 4 6l-8.7 8.7a2.4 2.4 0 0 1-3.4-3.4l8.7-8.7a5 5 0 0 0-.6-2.6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14.7 4.4a4.7 4.7 0 0 0 4.9 6.2l-8.9 8.9a2.7 2.7 0 0 1-3.8-3.8l8.9-8.9a4.7 4.7 0 0 0-1.1-2.4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8.4 17.2h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   )
   if (type === 'calendar') return (
@@ -165,6 +166,9 @@ export default function DomovPage() {
 
   useEffect(() => {
     const load = async () => {
+      try {
+        sessionStorage.removeItem('garagebase_after_login_home')
+      } catch {}
       const selectedCurrency = getCurrencyFromSettings()
       const selectedDistanceUnit = getDistanceUnitFromSettings()
       setCurrency(selectedCurrency)
@@ -326,45 +330,45 @@ export default function DomovPage() {
   ]
 
   return (
-    <div className="gb-app-home min-h-screen bg-[#080810] px-4 pt-4 pb-24 text-white md:pt-6">
+    <div className="gb-app-home h-dvh overflow-hidden bg-[#080810] px-4 pt-3 pb-20 text-white md:h-auto md:min-h-screen md:overflow-visible md:pt-6">
       <div className="mx-auto max-w-md lg:max-w-5xl">
-        <header className="mb-4 flex items-center justify-between">
-          <button onClick={() => window.location.href = '/domov'} className="text-3xl font-black tracking-tight text-white">
+        <header className="mb-3 flex items-center justify-between">
+          <button onClick={() => window.location.href = '/domov'} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
-          <button onClick={() => window.location.href = '/nastavitve'} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8]">
+          <button onClick={() => window.location.href = '/nastavitve'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
             <Icon type="bell" className="h-5 w-5" />
           </button>
         </header>
 
-        <section className="mb-4">
-          <h1 className="max-w-2xl text-[1.75rem] font-black leading-[1.08] text-white sm:text-5xl">
+        <section className="mb-3">
+          <h1 className="max-w-2xl text-[1.48rem] font-black leading-[1.05] text-white sm:text-5xl">
             {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />
             {tx('Pripravljen ', 'Ready for the ')}<span className="text-[#6c63ff]">{tx('na pot?', 'road?')}</span>
           </h1>
         </section>
 
-        <section className="mb-4 grid grid-cols-4 gap-2">
+        <section className="mb-3 grid grid-cols-4 gap-2">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[90px] rounded-[18px] border border-[#1e1e32] bg-[#0f0f1a] p-2 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98]">
-              <div className={`mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone}`}>
+            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[76px] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
+              <div className={`mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone} sm:h-9 sm:w-9`}>
                 <Icon type={item.icon} className="h-5 w-5" />
               </div>
-              <p className="text-xl font-black leading-none text-white">{loading && cars.length === 0 ? '-' : item.value}</p>
-              <p className="mt-1 text-[10px] font-semibold leading-tight text-[#8a8aa8]">{item.label}</p>
+              <p className="text-lg font-black leading-none text-white sm:text-xl">{loading && cars.length === 0 ? '-' : item.value}</p>
+              <p className="mt-0.5 text-[9px] font-semibold leading-tight text-[#8a8aa8] sm:mt-1 sm:text-[10px]">{item.label}</p>
             </button>
           ))}
         </section>
 
-        <section className="mb-5 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
+        <section className="mb-4 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
           <button
             onClick={() => window.location.href = cars.length > 0 ? '/garaza' : '/dodaj-avto'}
-            className="relative block h-[165px] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
+            className="relative block h-[135px] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
           >
             <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
-            <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7">
-              <span className="inline-flex w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff44]">
+            <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7">
+              <span className="inline-flex w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] sm:py-3">
                 {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
               </span>
@@ -397,9 +401,9 @@ export default function DomovPage() {
           </section>
         )}
 
-        <section className="mb-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[1.18rem] font-black text-white">{tx('Aktivni opomniki', 'Active reminders')}</h2>
+        <section className="mb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[1.05rem] font-black text-white sm:text-[1.18rem]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
             <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
@@ -410,15 +414,15 @@ export default function DomovPage() {
             ) : topReminders.map((item, index) => {
               const tone = cardTone[item.tone]
               return (
-                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-2.5 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                  <div className="h-12 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
+                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-2 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                  <div className="h-10 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
                     {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-black text-white">{item.carName}</p>
                     <p className="mt-0.5 truncate text-xs text-[#d8d8e8]">{item.title} - {item.subtitle}</p>
                   </div>
-                  <span className={`rounded-xl px-3 py-2 text-xs font-black ${tone.pill}`}>{item.value}</span>
+                  <span className={`rounded-xl px-2.5 py-1.5 text-xs font-black sm:px-3 sm:py-2 ${tone.pill}`}>{item.value}</span>
                 </button>
               )
             })}
@@ -426,8 +430,8 @@ export default function DomovPage() {
         </section>
 
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[1.18rem] font-black text-white">{tx('Nedavni dogodki', 'Recent events')}</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-[1.05rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
             <button onClick={() => window.location.href = favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
@@ -435,9 +439,9 @@ export default function DomovPage() {
           <div className="overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
             {recentEvents.length === 0 ? (
               <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
-            ) : recentEvents.slice(0, 3).map((event, index) => (
-              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
+            ) : recentEvents.slice(0, 1).map((event, index) => (
+              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-2.5 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
                   <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">

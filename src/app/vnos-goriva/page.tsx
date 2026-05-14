@@ -121,10 +121,10 @@ export default function VnosGoriva() {
       const activeCarsResult = await supabase
         .from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano')
         .eq('user_id', user.id)
-        .eq('arhivirano', false)
+        .or('arhivirano.is.null,arhivirano.eq.false')
       let data: any[] = activeCarsResult.data || []
-      if (activeCarsResult.error) {
-        const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo').eq('user_id', user.id)
+      if (activeCarsResult.error || data.length === 0) {
+        const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano').eq('user_id', user.id)
         data = fallback.data || []
       }
       data = (data || []).filter((car: any) => car?.arhivirano !== true)

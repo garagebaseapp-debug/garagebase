@@ -122,7 +122,12 @@ export default function ServisPage() {
         return
       }
 
-      const activeCars = await loadActiveCars(user.id)
+      let activeCars = await loadActiveCars(user.id)
+      const carParam = new URLSearchParams(window.location.search).get('car')
+      if (carParam) {
+        const selectedCar = activeCars.find((car: any) => car?.id === carParam)
+        if (selectedCar) activeCars = [selectedCar]
+      }
       setCars(activeCars)
       const ids = activeCars.map((car: any) => car.id).filter(Boolean)
       if (ids.length === 0) {

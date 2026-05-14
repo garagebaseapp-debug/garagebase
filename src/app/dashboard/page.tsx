@@ -748,13 +748,13 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <a href={`/vnos-goriva?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#6c5cff] p-4 text-center font-black text-white shadow-lg shadow-[#6c5cff33]">
+          <a href={`/gorivo?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#6c5cff] p-4 text-center font-black text-white shadow-lg shadow-[#6c5cff33]">
             <span className="block text-xs uppercase text-white/70">{tx('Gorivo', 'Fuel')}</span>
-            + {tx('Tankanje', 'Fill-up')}
+            {tx('Pregled', 'Overview')}
           </a>
-          <a href={`/vnos-servisa?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#f59e0b] p-4 text-center font-black text-white shadow-lg shadow-[#f59e0b22]">
+          <a href={`/servis?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#f59e0b] p-4 text-center font-black text-white shadow-lg shadow-[#f59e0b22]">
             <span className="block text-xs uppercase text-white/70">{tx('Servis', 'Service')}</span>
-            + {tx('Servis', 'Service')}
+            {tx('Pregled', 'Overview')}
           </a>
           <a href={`/vnos-stroska?car=${aktivniAvto.id}`} className="rounded-2xl bg-[#20c7c7] p-4 text-center font-black text-[#061014]">
             <span className="block text-xs uppercase text-[#061014]/60">{tx('Stroški', 'Costs')}</span>
@@ -894,7 +894,7 @@ export default function Dashboard() {
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
                     </div>
-                    <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
+                    <button onClick={() => window.location.href = '/gorivo?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Poraba', 'Consumption')}</p>
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -930,8 +930,8 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-auto">
-                    <button onClick={() => window.location.href = '/zgodovina-goriva?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
-                    <button onClick={() => window.location.href = '/zgodovina-servisa?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
+                    <button onClick={() => window.location.href = '/gorivo?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
+                    <button onClick={() => window.location.href = '/servis?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
                     <button onClick={() => window.location.href = '/opomniki?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>Opomniki</button>
                     <button onClick={() => window.location.href = '/stroski?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>Stroški</button>
                     <button onClick={() => window.location.href = '/nastavitve-avta?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>Nastavitve</button>
@@ -991,7 +991,7 @@ export default function Dashboard() {
                 )}
 
                 {hasConsumptionBreakdown && (
-                  <div onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`} className="mx-5 mb-4 grid grid-cols-1 gap-3 cursor-pointer">
+                  <div onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`} className="mx-5 mb-4 grid grid-cols-1 gap-3 cursor-pointer">
                     {renderPoraba.total !== null && (
                       <div className="bg-[#13131f] rounded-xl p-3">
                         <p className="text-[#3ecfcf] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
@@ -1034,11 +1034,11 @@ export default function Dashboard() {
                   </div>
                 )}
                 <div className="px-5 pb-5 grid grid-cols-6 gap-2">
-                  <button onClick={() => window.location.href = `/zgodovina-goriva?car=${aktivniAvto.id}`}
+                  <button onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
                     <span>⛽</span><span className="text-[11px]">Gorivo</span>
                   </button>
-                  <button onClick={() => window.location.href = `/zgodovina-servisa?car=${aktivniAvto.id}`}
+                  <button onClick={() => window.location.href = `/servis?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
                     <span>🔧</span><span className="text-[11px]">Servis</span>
                   </button>

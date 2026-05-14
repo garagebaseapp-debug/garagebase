@@ -268,6 +268,12 @@ export default function GorivoPage() {
         nextCars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
       }
 
+      const carParam = new URLSearchParams(window.location.search).get('car')
+      if (carParam) {
+        const selectedCar = nextCars.find((car: any) => car?.id === carParam)
+        if (selectedCar) nextCars = [selectedCar]
+      }
+
       setCars(nextCars)
       const carIds = nextCars.map((car: any) => car.id).filter(Boolean)
       if (carIds.length === 0) {

@@ -7,9 +7,9 @@ type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'a
 
 const mobilnePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
-  { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
-  { key: 'servis', href: '/servis', icon: 'service', labelKey: 'service' },
-  { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
+  { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
+  { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
+  { key: 'stroski', href: '/vnos-stroska', icon: 'costs', labelKey: 'costs' },
   { key: 'nastavitve', href: '/vec', icon: 'more', labelKey: 'more' },
 ] as const
 
@@ -55,7 +55,8 @@ function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?
   )
   if (type === 'service') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M14.5 5.5a5 5 0 0 0 4 6l-8.7 8.7a2.4 2.4 0 0 1-3.4-3.4l8.7-8.7a5 5 0 0 0-.6-2.6Z" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M14.7 4.4a4.7 4.7 0 0 0 4.9 6.2l-8.9 8.9a2.7 2.7 0 0 1-3.8-3.8l8.9-8.9a4.7 4.7 0 0 0-1.1-2.4Z" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M8.4 17.2h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
     </svg>
   )
   if (type === 'costs') return (
@@ -129,21 +130,28 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
-        {mobileLinks.map((item: any) => (
-          <button
-            key={item.key}
-            onClick={() => pojdiNa(item.href)}
-            className={`flex min-w-[56px] flex-col items-center gap-1 transition-colors ${
-              aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff]' : 'text-[#7b7b8f]'
-            }`}
-          >
-            <NavIcon type={item.icon} className="h-6 w-6" />
-            <span className={`text-[11px] font-semibold leading-none ${aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff]' : 'text-[#6b6b80]'}`}>
-              {item.label || t(item.labelKey)}
-            </span>
-          </button>
-        ))}
+      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 z-50 backdrop-blur-xl`}>
+        {mobileLinks.map((item: any) => {
+          const isActive = aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov')
+          return (
+            <button
+              key={item.key}
+              onClick={() => pojdiNa(item.href)}
+              className="flex min-w-[58px] flex-col items-center gap-0.5 transition-transform active:scale-95"
+            >
+              <span className={`flex h-9 w-9 items-center justify-center rounded-2xl transition-colors ${
+                isActive
+                  ? 'bg-[#6c63ff22] text-[#6c63ff]'
+                  : 'text-[#5f6474] hover:bg-[#ffffff08] hover:text-[#d8d8e8]'
+              }`}>
+                <NavIcon type={item.icon} className="h-6 w-6" />
+              </span>
+              <span className={`text-[12px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#5f6474]'}`}>
+                {item.label || t(item.labelKey)}
+              </span>
+            </button>
+          )
+        })}
       </div>
     </>
   )
