@@ -316,7 +316,7 @@ export default function DomovPage() {
   const activeReminders = reminders.filter((item) => item.tone !== 'red')
   const expiredReminders = reminders.filter((item) => item.tone === 'red')
   const serviceSoon = reminders.filter((item) => item.title.toLowerCase().includes('servis') || item.title.toLowerCase().includes('service'))
-  const topReminders = reminders.slice(0, 3)
+  const topReminders = reminders.slice(0, 2)
 
   const statCards = [
     { label: tx('Vozil', 'Vehicles'), value: cars.length, icon: 'car' as const, tone: 'text-[#6c63ff]', href: '/garaza' },
@@ -326,9 +326,9 @@ export default function DomovPage() {
   ]
 
   return (
-    <div className="gb-app-home min-h-screen bg-[#080810] px-5 pt-5 pb-24 text-white md:pt-6">
+    <div className="gb-app-home min-h-screen bg-[#080810] px-4 pt-4 pb-24 text-white md:pt-6">
       <div className="mx-auto max-w-md lg:max-w-5xl">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-4 flex items-center justify-between">
           <button onClick={() => window.location.href = '/domov'} className="text-3xl font-black tracking-tight text-white">
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
@@ -337,34 +337,34 @@ export default function DomovPage() {
           </button>
         </header>
 
-        <section className="mb-5">
-          <h1 className="max-w-2xl text-[2rem] font-black leading-[1.08] text-white sm:text-5xl">
+        <section className="mb-4">
+          <h1 className="max-w-2xl text-[1.75rem] font-black leading-[1.08] text-white sm:text-5xl">
             {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />
             {tx('Pripravljen ', 'Ready for the ')}<span className="text-[#6c63ff]">{tx('na pot?', 'road?')}</span>
           </h1>
         </section>
 
-        <section className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <section className="mb-4 grid grid-cols-4 gap-2">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[118px] rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] p-3 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98]">
-              <div className={`mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6c63ff14] ${item.tone}`}>
-                <Icon type={item.icon} className="h-6 w-6" />
+            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[90px] rounded-[18px] border border-[#1e1e32] bg-[#0f0f1a] p-2 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98]">
+              <div className={`mx-auto mb-1.5 flex h-9 w-9 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone}`}>
+                <Icon type={item.icon} className="h-5 w-5" />
               </div>
-              <p className="text-2xl font-black text-white">{loading && cars.length === 0 ? '-' : item.value}</p>
-              <p className="mt-1 text-[13px] leading-tight text-[#8a8aa8]">{item.label}</p>
+              <p className="text-xl font-black leading-none text-white">{loading && cars.length === 0 ? '-' : item.value}</p>
+              <p className="mt-1 text-[10px] font-semibold leading-tight text-[#8a8aa8]">{item.label}</p>
             </button>
           ))}
         </section>
 
-        <section className="mb-6 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
+        <section className="mb-5 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
           <button
             onClick={() => window.location.href = cars.length > 0 ? '/garaza' : '/dodaj-avto'}
-            className="relative block h-[220px] w-full overflow-hidden text-left sm:h-[300px] lg:h-[340px]"
+            className="relative block h-[165px] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
           >
             <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
             <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7">
-              <span className="inline-flex w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-5 py-3.5 text-base font-black text-white shadow-lg shadow-[#6c63ff44]">
+              <span className="inline-flex w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff44]">
                 {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
               </span>
@@ -397,9 +397,9 @@ export default function DomovPage() {
           </section>
         )}
 
-        <section className="mb-7">
+        <section className="mb-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[1.35rem] font-black text-white">{tx('Aktivni opomniki', 'Active reminders')}</h2>
+            <h2 className="text-[1.18rem] font-black text-white">{tx('Aktivni opomniki', 'Active reminders')}</h2>
             <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
@@ -410,15 +410,15 @@ export default function DomovPage() {
             ) : topReminders.map((item, index) => {
               const tone = cardTone[item.tone]
               return (
-                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                  <div className="h-14 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#13131f]">
+                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-2.5 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                  <div className="h-12 w-14 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
                     {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-black text-white">{item.carName}</p>
-                    <p className="mt-1 truncate text-sm text-[#d8d8e8]">{item.title} - {item.subtitle}</p>
+                    <p className="truncate text-sm font-black text-white">{item.carName}</p>
+                    <p className="mt-0.5 truncate text-xs text-[#d8d8e8]">{item.title} - {item.subtitle}</p>
                   </div>
-                  <span className={`rounded-2xl px-4 py-3 text-sm font-black ${tone.pill}`}>{item.value}</span>
+                  <span className={`rounded-xl px-3 py-2 text-xs font-black ${tone.pill}`}>{item.value}</span>
                 </button>
               )
             })}
@@ -427,7 +427,7 @@ export default function DomovPage() {
 
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[1.35rem] font-black text-white">{tx('Nedavni dogodki', 'Recent events')}</h2>
+            <h2 className="text-[1.18rem] font-black text-white">{tx('Nedavni dogodki', 'Recent events')}</h2>
             <button onClick={() => window.location.href = favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
@@ -436,15 +436,15 @@ export default function DomovPage() {
             {recentEvents.length === 0 ? (
               <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
             ) : recentEvents.slice(0, 3).map((event, index) => (
-              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-4 p-4 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
-                  <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} />
+              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
+                  <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-black text-white">{event.title}</p>
-                  <p className="mt-1 truncate text-sm text-[#8a8aa8]">{event.subtitle}</p>
+                  <p className="truncate text-sm font-black text-white">{event.title}</p>
+                  <p className="mt-0.5 truncate text-xs text-[#8a8aa8]">{event.subtitle}</p>
                 </div>
-                <span className="text-sm text-[#8a8aa8]">{event.dateText}</span>
+                <span className="text-xs text-[#8a8aa8]">{event.dateText}</span>
               </button>
             ))}
           </div>
