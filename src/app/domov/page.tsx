@@ -362,7 +362,7 @@ export default function DomovPage() {
                 <Icon type={item.icon} className="h-5 w-5" />
               </div>
               <p className="text-lg font-black leading-none text-white sm:text-xl">{loading && cars.length === 0 ? '-' : item.value}</p>
-              <p className="mt-0.5 text-[9px] font-semibold leading-tight text-[#8a8aa8] sm:mt-1 sm:text-[10px]">{item.label}</p>
+              <p className="mt-1 text-[10.5px] font-bold leading-tight text-[#8a8aa8] sm:text-xs">{item.label}</p>
             </button>
           ))}
         </section>

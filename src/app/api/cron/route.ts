@@ -56,8 +56,9 @@ if (pushConfigured) {
   webpush.setVapidDetails(vapidEmail!, vapidPublicKey!, vapidPrivateKey!)
 }
 
-function getDateStatus(daysLeft: number): ReminderStatus {
-  if (daysLeft <= 7) return 'red'
+function getDateStatus(daysLeft: number, reminderType?: string): ReminderStatus {
+  const isVignette = String(reminderType || '').toLowerCase().includes('vinjet')
+  if (daysLeft <= (isVignette ? 14 : 7)) return 'red'
   if (daysLeft <= 30) return 'yellow'
   return 'green'
 }
@@ -330,7 +331,7 @@ export async function GET(req: Request) {
             const dniDo = Math.ceil(
               (new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
             )
-            const status = getDateStatus(dniDo)
+            const status = getDateStatus(dniDo, op.tip)
             checks.push({
               key: `${op.id}:date`,
               enabledSetting: 'dateReminders',

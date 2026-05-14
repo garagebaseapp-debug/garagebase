@@ -54,6 +54,68 @@ export default function Garaza() {
     if (!src) return
     setBrokenImageUrls(prev => prev[src] ? prev : { ...prev, [src]: true })
   }
+  const tipVozila = (avto: any) => String(avto?.tip_vozila || avto?.oblika || '').toLowerCase()
+  const metaVozila = (avto: any) => [
+    avto?.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : null,
+    avto?.gorivo || null,
+  ].filter(Boolean).join(' · ')
+  const datumFormat = (value: string) => {
+    try {
+      return new Date(value).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')
+    } catch {
+      return value
+    }
+  }
+  const vinjetaOpomnik = (carId: string) => (opomniki[carId] || [])
+    .filter((op: any) => String(op.tip || '').toLowerCase().includes('vinjet'))
+    .sort((a: any, b: any) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())[0]
+  const vinjetaTekst = (avto: any) => {
+    const op = vinjetaOpomnik(avto.id)
+    if (!op?.datum) return ''
+    return `${tx('Vinjeta do', 'Vignette until')} ${datumFormat(op.datum)}`
+  }
+  const statusOpomnika = (avto: any) => {
+    const ops = opomniki[avto.id] || []
+    const kandidati = ops
+      .map((op: any) => ({
+        op,
+        dni: op.datum ? Math.ceil((new Date(op.datum).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
+        km: op.km_opomnik ? Number(op.km_opomnik) - Number(avto.km_trenutni || 0) : null,
+      }))
+      .sort((a, b) => {
+        const av = a.dni ?? (a.km !== null ? a.km / 50 : 99999)
+        const bv = b.dni ?? (b.km !== null ? b.km / 50 : 99999)
+        return av - bv
+      })
+    const item = kandidati[0]
+    if (!item) return { text: tx('Brez opomnika', 'No reminder'), tone: 'border-[#2a2a40] bg-[#13131f] text-[#8a8ab0]' }
+    const naziv = String(item.op.tip || tx('Opomnik', 'Reminder'))
+    if (item.dni !== null) {
+      const isVignette = String(item.op.tip || '').toLowerCase().includes('vinjet')
+      const redDays = isVignette ? 14 : 7
+      const tone = item.dni <= redDays ? 'border-[#ef444455] bg-[#ef444411] text-[#ef4444]' : item.dni <= 30 ? 'border-[#f59e0b55] bg-[#f59e0b11] text-[#f59e0b]' : 'border-[#16a34a55] bg-[#16a34a11] text-[#16a34a]'
+      return { text: item.dni < 0 ? `${naziv}: +${Math.abs(item.dni)} d` : `${naziv}: ${item.dni} d`, tone }
+    }
+    if (item.km !== null) {
+      const tone = item.km <= 500 ? 'border-[#ef444455] bg-[#ef444411] text-[#ef4444]' : item.km <= 1500 ? 'border-[#f59e0b55] bg-[#f59e0b11] text-[#f59e0b]' : 'border-[#16a34a55] bg-[#16a34a11] text-[#16a34a]'
+      return { text: `${naziv}: ${formatDistance(item.km, enotaRazdalje)}`, tone }
+    }
+    return { text: naziv, tone: 'border-[#16a34a55] bg-[#16a34a11] text-[#16a34a]' }
+  }
+  const kategorijaVozila = (avto: any) => {
+    const raw = tipVozila(avto)
+    if (raw.includes('motor') || raw.includes('moto') || raw.includes('skuter')) return tx('Motorji', 'Motorcycles')
+    if (raw.includes('kombi') || raw.includes('tovorn') || raw.includes('bus') || raw.includes('van')) return tx('Delovna vozila', 'Work vehicles')
+    if (raw.includes('plov') || raw.includes('jaht') || raw.includes('col') || raw.includes('čol')) return tx('Plovila', 'Boats')
+    return tx('Avtomobili', 'Cars')
+  }
+  const shraniPrikazGaraze = (next: string) => {
+    setPrikaz(next)
+    try {
+      const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, prikazGaraze: next, onboardingDone: true }))
+    } catch {}
+  }
 
   const naloziOpomnike = async (cars: any[]) => {
     const opomnikMap: { [key: string]: any[] } = {}
@@ -369,10 +431,13 @@ export default function Garaza() {
     if (ops.length === 0) return null
     let minDni = Infinity
     let minKm = Infinity
+    let rdecDatum = false
 
     for (const op of ops) {
       if (op.datum) {
         const dni = Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+        const redDays = String(op.tip || '').toLowerCase().includes('vinjet') ? 14 : 7
+        if (dni <= redDays) rdecDatum = true
         if (dni < minDni) minDni = dni
       }
       if (op.km_opomnik !== null && op.km_opomnik !== undefined && op.km_opomnik !== '') {
@@ -382,7 +447,7 @@ export default function Garaza() {
     }
 
     // Vzamemo slabšo barvo med datumom in km
-    const rdeca = (minDni !== Infinity && minDni <= 7) || (minKm !== Infinity && minKm <= 500)
+    const rdeca = rdecDatum || (minKm !== Infinity && minKm <= 500)
     const rumena = (minDni !== Infinity && minDni <= 30) || (minKm !== Infinity && minKm <= 1500)
 
     if (rdeca) return 'rdeca'
@@ -406,8 +471,8 @@ export default function Garaza() {
     return { border: 'border-[#2a2a40]', dot: 'bg-[#5a5a80]', glow: 'shadow-transparent' }
   }
 
-  const opomnikBarva = (vrednost: number, tip: 'dni' | 'km') => {
-    const rdecaMeja = tip === 'dni' ? 7 : 500
+  const opomnikBarva = (vrednost: number, tip: 'dni' | 'km', tipOpomnika?: string) => {
+    const rdecaMeja = tip === 'dni' ? (String(tipOpomnika || '').toLowerCase().includes('vinjet') ? 14 : 7) : 500
     const rumenaMeja = tip === 'dni' ? 30 : 1500
     if (vrednost <= rdecaMeja) return { text: 'text-[#ef4444]', border: 'border-[#ef444455]' }
     if (vrednost <= rumenaMeja) return { text: 'text-[#f59e0b]', border: 'border-[#f59e0b55]' }
@@ -433,7 +498,8 @@ export default function Garaza() {
         tip_prikaza: 'datum'
       }))
       .filter((op: any) => {
-        if (op.dni <= 7) return nastavitve.opomnikRdeci !== false
+        const redDays = String(op.tip || '').toLowerCase().includes('vinjet') ? 14 : 7
+        if (op.dni <= redDays) return nastavitve.opomnikRdeci !== false
         if (op.dni <= 30) return nastavitve.opomnikRumeni !== false
         return nastavitve.opomnikZeleni === true
       })
@@ -461,7 +527,7 @@ export default function Garaza() {
         {badgi.slice(0, max).map((op: any) => {
           const isDatum = op.tip_prikaza === 'datum'
           const vrednost = isDatum ? op.dni : op.preostaloKm
-          const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km')
+          const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km', op.tip)
           const tekst = isDatum
             ? `${op.dni} d`
             : `${op.preostaloKm <= 0 ? '+' + Math.abs(op.preostaloKm) : op.preostaloKm} ${enotaRazdalje}`
@@ -476,6 +542,219 @@ export default function Garaza() {
       </>
     )
   }
+
+  const layoutChoices = [
+    { key: 'premium', label: tx('Premium', 'Premium'), desc: tx('Velika kartica', 'Large cards') },
+    { key: 'kategorije', label: tx('Kategorije', 'Categories'), desc: tx('Po tipu vozila', 'By vehicle type') },
+    { key: 'status', label: tx('Status', 'Status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
+  ]
+
+  const GarageLayoutPicker = () => (
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      {layoutChoices.map((item) => (
+        <button
+          key={item.key}
+          type="button"
+          onClick={() => shraniPrikazGaraze(item.key)}
+          className={`rounded-2xl border px-2 py-2 text-center transition-all ${
+            prikaz === item.key
+              ? 'border-[#6c63ff] bg-[#6c63ff22] text-[#a09aff] shadow-[0_10px_28px_rgba(108,99,255,0.18)]'
+              : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8ab0]'
+          }`}
+        >
+          <span className="block text-sm font-black">{item.label}</span>
+          <span className="mt-0.5 block text-[10px] font-semibold opacity-75">{item.desc}</span>
+        </button>
+      ))}
+    </div>
+  )
+
+  const renderVehicleImage = (avto: any, index: number, className = 'h-full w-full object-cover') => {
+    const imageSrc = slikaVozila(avto)
+    return imageSrc ? (
+      <img
+        src={imageSrc}
+        alt={imeVozila(avto)}
+        loading={index < 6 ? 'eager' : 'lazy'}
+        decoding="async"
+        onError={() => oznaciPokvarjenoSliko(imageSrc)}
+        className={className}
+      />
+    ) : (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#17172a] to-[#080810] px-4 text-center text-sm font-black text-[#6c63ff]">
+        {imeVozila(avto)}
+      </div>
+    )
+  }
+
+  const renderVinjetaLine = (avto: any) => {
+    const text = vinjetaTekst(avto)
+    if (!text) return null
+    return (
+      <p className="mt-1 inline-flex w-fit items-center rounded-full border border-[#16a34a55] bg-[#16a34a11] px-2 py-1 text-[11px] font-black text-[#16a34a]">
+        {text}
+      </p>
+    )
+  }
+
+  const renderPremiumLayout = () => {
+    const glavni = avti[0]
+    if (!glavni) return null
+    const status = statusOpomnika(glavni)
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
+        <div
+          onClick={() => !urejanje && (window.location.href = `/dashboard?car=${glavni.id}`)}
+          className="relative mb-4 min-h-[360px] overflow-hidden rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a] shadow-2xl shadow-black/20"
+        >
+          {renderVehicleImage(glavni, 0, 'absolute inset-0 h-full w-full object-cover')}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+          <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-black text-white backdrop-blur">
+            {tx('Glavno vozilo', 'Main vehicle')}
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 p-5">
+            <h2 className="text-3xl font-black leading-none text-white drop-shadow">{imeVozila(glavni)}</h2>
+            <p className="mt-2 text-sm font-semibold text-white/80">{metaVozila(glavni)}</p>
+            {renderVinjetaLine(glavni)}
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {[
+                { label: tx('Stroški', 'Costs'), href: `/stroski?car=${glavni.id}`, icon: '▥' },
+                { label: tx('Servis', 'Service'), href: `/servis?car=${glavni.id}`, icon: '⌘' },
+                { label: tx('Dokumenti', 'Docs'), href: `/report?car=${glavni.id}`, icon: '▤' },
+                { label: tx('Opomniki', 'Reminders'), href: `/opomniki?car=${glavni.id}`, icon: '!' },
+              ].map((action) => (
+                <button
+                  key={action.label}
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); window.location.href = action.href }}
+                  className="rounded-2xl border border-white/10 bg-black/35 px-2 py-3 text-center text-xs font-black text-white/90 backdrop-blur"
+                >
+                  <span className="mb-1 block text-lg">{action.icon}</span>
+                  {action.label}
+                </button>
+              ))}
+            </div>
+            <div className={`mt-4 inline-flex rounded-full border px-3 py-1.5 text-xs font-black ${status.tone}`}>
+              {status.text}
+            </div>
+          </div>
+        </div>
+
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-black text-white">{tx('Vsa vozila', 'All vehicles')}</h3>
+          <span className="text-sm font-bold text-[#8a8ab0]">{avti.length} {tx('vozil', 'vehicles')}</span>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-3">
+          {avti.map((avto, index) => (
+            <button
+              key={avto.id}
+              onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+              className="w-[150px] shrink-0 overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
+            >
+              <div className="h-36 w-full overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
+              <div className="p-3">
+                <p className="truncate text-sm font-black text-white">{imeVozila(avto)}</p>
+                <p className="mt-1 truncate text-xs font-semibold text-[#8a8ab0]">{metaVozila(avto) || '-'}</p>
+                <div className="mt-2 flex min-h-[28px] flex-wrap gap-1">
+                  <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={1} nastavitve={listaNastavitve} />
+                </div>
+              </div>
+            </button>
+          ))}
+          {!arhiv && (
+            <button onClick={() => pojdiDodajAvto('premium')} className="flex w-[150px] shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-[#2a2a40] bg-[#0f0f1a] text-sm font-black text-[#8a8ab0]">
+              + {tx('Dodaj', 'Add')}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderCategorizedLayout = () => {
+    const sections: [string, any[]][] = Array.from(avti.reduce<Map<string, any[]>>((map, avto) => {
+      const key = kategorijaVozila(avto)
+      map.set(key, [...(map.get(key) || []), avto])
+      return map
+    }, new Map<string, any[]>()))
+    return (
+      <div className="flex-1 overflow-y-auto px-5 pb-6">
+        <div className="space-y-6">
+          {sections.map(([title, cars]) => (
+            <section key={title}>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-base font-black text-white">{title}</h2>
+                <span className="text-sm font-bold text-[#8a8ab0]">{cars.length}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {cars.map((avto, index) => (
+                  <button
+                    key={avto.id}
+                    onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                    className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
+                  >
+                    <div className="h-28 overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
+                    <div className="p-3">
+                      <p className="truncate text-sm font-black text-white">{imeVozila(avto)}</p>
+                      <p className="mt-1 truncate text-xs font-semibold text-[#8a8ab0]">{avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : '-'}</p>
+                      {renderVinjetaLine(avto)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+          {!arhiv && (
+            <button onClick={() => pojdiDodajAvto('kategorije')} className="w-full rounded-2xl border-2 border-dashed border-[#2a2a40] bg-[#0f0f1a] py-8 text-center text-sm font-black text-[#8a8ab0]">
+              + {tx('Dodaj vozilo', 'Add vehicle')}
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  const renderStatusLayout = () => (
+    <div className="flex-1 overflow-y-auto px-5 pb-6">
+      <div className="space-y-3">
+        {avti.map((avto, index) => {
+          const status = statusOpomnika(avto)
+          const statusColor = status.tone.includes('ef4444')
+            ? 'border-l-[#ef4444] bg-[#ef44440d]'
+            : status.tone.includes('f59e0b')
+              ? 'border-l-[#f59e0b] bg-[#f59e0b0d]'
+              : status.tone.includes('16a34a')
+                ? 'border-l-[#16a34a] bg-[#16a34a0d]'
+                : 'border-l-[#6c63ff] bg-[#0f0f1a]'
+          return (
+            <button
+              key={avto.id}
+              onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+              className={`flex w-full items-center gap-3 rounded-2xl border border-[#1e1e32] border-l-4 ${statusColor} p-3 text-left shadow-lg shadow-black/10`}
+            >
+              <div className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
+                {renderVehicleImage(avto, index, 'h-full w-full object-cover')}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-base font-black text-white">{imeVozila(avto)}</p>
+                <p className="mt-1 truncate text-sm font-semibold text-[#8a8ab0]">{metaVozila(avto) || '-'}</p>
+                {renderVinjetaLine(avto)}
+              </div>
+              <div className={`max-w-[35%] rounded-2xl border px-3 py-2 text-right text-xs font-black ${status.tone}`}>
+                {status.text}
+              </div>
+            </button>
+          )
+        })}
+        {!arhiv && (
+          <button onClick={() => pojdiDodajAvto('status')} className="w-full rounded-2xl border-2 border-dashed border-[#2a2a40] bg-[#0f0f1a] py-6 text-center text-sm font-black text-[#8a8ab0]">
+            + {tx('Dodaj vozilo', 'Add vehicle')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
 
@@ -516,10 +795,6 @@ export default function Garaza() {
       </div>
 
       <div className="px-5 pb-3">
-        <button onClick={osveziGarazo} disabled={refreshing}
-          className="mb-3 w-full rounded-2xl border-2 border-[#3ecfcf] bg-[#3ecfcf22] px-4 py-3 text-base font-black text-[#0f9f9f] shadow-sm transition-colors hover:bg-[#3ecfcf33] disabled:opacity-60">
-          {refreshing ? tx('Osvezujem garazo...', 'Refreshing garage...') : `↻ ${tx('Osvezi garazo', 'Refresh garage')}`}
-        </button>
         <div className="flex gap-2">
         <button onClick={() => setArhiv(false)}
           className={`flex-1 rounded-xl border px-3 py-2 text-sm font-semibold ${!arhiv ? 'bg-[#6c63ff] border-[#6c63ff] text-white' : 'bg-[#13131f] border-[#1e1e32] text-[#8080a0]'}`}>
@@ -530,6 +805,7 @@ export default function Garaza() {
           Arhiv
         </button>
         </div>
+        {!arhiv && avti.length > 0 && !showLiteHome && <GarageLayoutPicker />}
       </div>
 
       {archiveMessage && (
@@ -692,6 +968,12 @@ export default function Garaza() {
             )}
           </div>
         </div>
+      ) : !arhiv && prikaz === 'premium' ? (
+        renderPremiumLayout()
+      ) : !arhiv && prikaz === 'kategorije' ? (
+        renderCategorizedLayout()
+      ) : !arhiv && prikaz === 'status' ? (
+        renderStatusLayout()
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
           <div className="gb-car-grid grid gap-2 lg:gap-4"
@@ -744,6 +1026,7 @@ export default function Garaza() {
                     {gridNastavitve.km && avto.km_trenutni && (
                       <p className="text-[#3ecfcf] text-[clamp(calc(9px*var(--gb-card-font-scale,1)),calc((24px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(13px*var(--gb-card-font-scale,1)))] lg:text-[9px] font-semibold">{formatDistance(avto.km_trenutni, enotaRazdalje)}</p>
                     )}
+                    {gridNastavitve.km && renderVinjetaLine(avto)}
                     {gridNastavitve.tablica && avto.tablica && (
                       <div className="mt-0.5 bg-white rounded px-1 inline-block">
                         <span className="text-black font-bold text-[clamp(calc(7px*var(--gb-card-font-scale,1)),calc((19px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(11px*var(--gb-card-font-scale,1)))] lg:text-[7px] tracking-wider font-mono">
@@ -815,6 +1098,7 @@ export default function Garaza() {
                         listaNastavitve.km && avto.km_trenutni && formatDistance(avto.km_trenutni, enotaRazdalje)
                       ].filter(Boolean).join(' · ')}
                     </p>
+                    {listaNastavitve.km && renderVinjetaLine(avto)}
                   </div>
                   {listaNastavitve.tablica && avto.tablica && (
                     <div className="bg-white border border-[#cfd7e6] rounded-md px-2 py-1 shadow-sm max-w-[42%] overflow-hidden flex-shrink-0">
@@ -873,6 +1157,7 @@ export default function Garaza() {
                         listaNastavitve.km && avto.km_trenutni && formatDistance(avto.km_trenutni, enotaRazdalje)
                       ].filter(Boolean).join(' · ')}
                     </p>
+                    {listaNastavitve.km && renderVinjetaLine(avto)}
                   </div>
                   <div className={`${prikaz === 'malo' ? 'flex-row items-end justify-between gap-2' : 'flex-col gap-2'} flex min-w-0`}>
                     <div className={`${prikaz === 'malo' ? 'min-h-0 flex-1' : 'min-h-[32px]'} flex flex-wrap gap-1.5 content-start overflow-hidden`}>

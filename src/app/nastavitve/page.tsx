@@ -1120,6 +1120,9 @@ export default function Nastavitve() {
         <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
         <div className="grid grid-cols-2 gap-2">
           {[
+            { vrednost: 'premium', naziv: tx('Premium', 'Premium'), opis: tx('Velika glavna kartica', 'Large main card') },
+            { vrednost: 'kategorije', naziv: tx('Kategorije', 'Categories'), opis: tx('Vozila po tipu', 'Vehicles by type') },
+            { vrednost: 'status', naziv: tx('Status', 'Status'), opis: tx('Opomniki v fokusu', 'Reminder focus') },
             { vrednost: 'malo', naziv: 'Malo', opis: 'Več avtov' },
             { vrednost: 'srednje', naziv: 'Srednje', opis: 'Privzeto' },
             { vrednost: 'veliko', naziv: 'Veliko', opis: 'Večje slike' },

@@ -1015,7 +1015,7 @@ export default function Stroski() {
               <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <div className="flex w-full justify-center" style={{ height: '118px' }} title={`${m.label}: ${formatMoney(skupaj, valuta)}`}>
                   {skupaj === 0 ? (
-                    <div className="mt-auto h-1.5 w-3/4 rounded-full border border-[#1e1e32] bg-[#13131f] opacity-70" />
+                    <div className="mt-auto h-1.5 w-3/4 rounded-full border border-[#6c63ff33] bg-[#6c63ff22] opacity-80" />
                   ) : (
                     <div className="mt-auto flex w-5 max-w-[82%] flex-col justify-end overflow-hidden rounded-b-md rounded-t-full border border-white/20 shadow-lg sm:w-8 md:w-10" style={{ height: `${Math.max(8, visina)}%` }}>
                       {ostaloH > 0 && <div style={{ height: `${(ostaloH / visina) * 100}%`, background: `linear-gradient(180deg, #968dff, ${chartColors.ostalo})` }} className="w-full" />}
@@ -1302,7 +1302,46 @@ export default function Stroski() {
         )}
       </div>
 
-      <div className="bg-[#0f0f1a] border border-[#6c63ff44] rounded-2xl p-6 mb-4">
+      <div className="overflow-hidden rounded-3xl border border-[#6c63ff33] bg-[#0f0f1a] p-6 mb-4 shadow-2xl shadow-black/10">
+        <div className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
+            <p className="text-white font-black text-4xl leading-none">{formatMoney(prikazSkupaj, valuta)}</p>
+          </div>
+          <button
+            onClick={() => window.location.href = `/vnos-stroska?car=${avto?.id}`}
+            className="rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]"
+          >
+            + {tx('Dodaj', 'Add')}
+          </button>
+        </div>
+        {hasImportedCosts ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+            <div className="rounded-2xl border border-[#22c55e44] bg-[#22c55e12] p-4">
+              <p className="text-[#22c55e] text-xs font-black uppercase tracking-wide">{tx('Uvoženi stroški', 'Imported costs')}</p>
+              <p className="mt-2 text-2xl font-black text-[#22c55e]">{formatMoney(prikazUvoz, valuta)}</p>
+            </div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] text-xl font-black text-white sm:flex">+</div>
+            <div className="rounded-2xl border border-[#6c63ff44] bg-[#6c63ff12] p-4">
+              <p className="text-[#a09aff] text-xs font-black uppercase tracking-wide">{tx('GarageBase stroški', 'GarageBase costs')}</p>
+              <p className="mt-2 text-2xl font-black text-[#a09aff]">{formatMoney(prikazGarageBase, valuta)}</p>
+            </div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-xl font-black text-white sm:flex">=</div>
+            <div className="rounded-2xl border border-[#d8d8e833] bg-[#ffffff08] p-4">
+              <p className="text-[#d8d8e8] text-xs font-black uppercase tracking-wide">{tx('Skupaj', 'Total')}</p>
+              <p className="mt-2 text-2xl font-black text-white">{formatMoney(prikazSkupaj, valuta)}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-[#6c63ff33] bg-[#6c63ff10] p-4">
+            <p className="text-[#a09aff] text-xs font-black uppercase tracking-wide">{tx('Skupni stroški', 'Total costs')}</p>
+            <p className="mt-2 text-2xl font-black text-white">{formatMoney(prikazSkupaj, valuta)}</p>
+          </div>
+        )}
+        {prikazStrosekNaKm && <p className="mt-4 text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
+      </div>
+
+      <div className="hidden">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
         <p className="text-white font-bold text-4xl mb-1">{formatMoney(prikazSkupaj, valuta)}</p>
         {hasImportedCosts && (

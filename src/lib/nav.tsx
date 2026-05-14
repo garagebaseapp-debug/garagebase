@@ -7,6 +7,7 @@ type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'a
 
 const mobilnePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
+  { key: 'garaza', href: '/garaza', icon: 'garage', labelKey: 'garage' },
   { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
   { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
   { key: 'stroski', href: '/vnos-stroska', icon: 'costs', labelKey: 'costs' },
@@ -31,7 +32,7 @@ function activeKeyFromPath(path: string) {
   if (path.includes('servis') || path.includes('opomniki') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
   if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov') || path.includes('admin')) return 'nastavitve'
-  if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'domov'
+  if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'garaza'
   return 'domov'
 }
 
@@ -112,43 +113,29 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 
 export function BottomNav({ aktivna }: { aktivna?: string }) {
   const { t } = useLanguage()
-  const [lite, setLite] = useState(false)
 
-  useEffect(() => {
-    try {
-      const settingsRaw = localStorage.getItem('garagebase_nastavitve')
-      const settings = settingsRaw ? JSON.parse(settingsRaw) : {}
-      setLite(settings.nacin === 'lite')
-    } catch {}
-  }, [])
-
-  const litePovezave = [
-    { key: 'domov', href: '/domov', icon: 'home', label: t('home') },
-  ]
-  const mobileLinks = [
-    ...(lite ? litePovezave : mobilnePovezave),
-  ]
+  const mobileLinks = mobilnePovezave
 
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-3 pb-[calc(0.72rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
+      <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 z-50 flex justify-between border-t border-[#1a1a28] bg-[#0a0a12]/96 px-2 pb-[calc(0.72rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl">
         {mobileLinks.map((item: any) => {
-          const isActive = aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov')
+          const isActive = aktivna === item.key
           return (
             <button
               key={item.key}
               onClick={() => pojdiNa(item.href)}
-              className="flex min-w-[66px] flex-col items-center gap-1 transition-transform active:scale-95"
+              className="flex min-w-0 flex-1 flex-col items-center gap-1 transition-transform active:scale-95"
             >
-              <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-colors ${
+              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${
                 isActive
                   ? 'bg-[#6c63ff24] text-[#6c63ff] shadow-[0_10px_28px_rgba(108,99,255,0.22)]'
                   : 'text-[#343a46] hover:bg-[#ffffff08] hover:text-[#d8d8e8]'
               }`}>
-                <NavIcon type={item.icon} className="h-8 w-8" />
+                <NavIcon type={item.icon} className="h-7 w-7" />
               </span>
-              <span className={`text-[12px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#343a46]'}`}>
+              <span className={`text-[12.5px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#343a46]'}`}>
                 {item.label || t(item.labelKey)}
               </span>
             </button>
