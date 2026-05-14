@@ -4,21 +4,23 @@ import { useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
+type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'admin'
+
 const mobilnePovezave = [
-  { key: 'domov', href: '/domov', icon: '🏠', labelKey: 'home' },
-  { key: 'gorivo', href: '/vnos-goriva', icon: '⛽', labelKey: 'fuel' },
-  { key: 'servis', href: '/vnos-servisa', icon: '🔧', labelKey: 'service' },
-  { key: 'stroski', href: '/stroski-garaza', icon: '📊', labelKey: 'costs' },
-  { key: 'nastavitve', href: '/nastavitve', icon: '⚙️', labelKey: 'more' },
+  { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
+  { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
+  { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
+  { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
+  { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
 ] as const
 
 const namiznePovezave = [
-  { key: 'domov', href: '/domov', icon: '🏠', labelKey: 'home' },
-  { key: 'garaza', href: '/garaza', icon: '🏡', labelKey: 'garage' },
-  { key: 'gorivo', href: '/vnos-goriva', icon: '⛽', labelKey: 'fuel' },
-  { key: 'servis', href: '/vnos-servisa', icon: '🔧', labelKey: 'service' },
-  { key: 'stroski', href: '/stroski-garaza', icon: '📊', labelKey: 'costs' },
-  { key: 'nastavitve', href: '/nastavitve', icon: '⚙️', labelKey: 'more' },
+  { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
+  { key: 'garaza', href: '/garaza', icon: 'garage', labelKey: 'garage' },
+  { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
+  { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
+  { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
+  { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
 ] as const
 
 function pojdiNa(href: string) {
@@ -32,6 +34,47 @@ function activeKeyFromPath(path: string) {
   if (path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake')) return 'nastavitve'
   if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'domov'
   return 'domov'
+}
+
+function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?: string }) {
+  if (type === 'home') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-8.5Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+    </svg>
+  )
+  if (type === 'garage') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 20V9l8-4 8 4v11" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M7 20v-7h10v7M7 16h10" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  )
+  if (type === 'fuel') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M7 3h7a1 1 0 0 1 1 1v17H6V4a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="2.2"/>
+      <path d="M8 7h5v4H8V7ZM15 7h2l2 3v7a2 2 0 0 0 2 2" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  )
+  if (type === 'service') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M14.5 5.5a5 5 0 0 0 4 6l-8.7 8.7a2.4 2.4 0 0 1-3.4-3.4l8.7-8.7a5 5 0 0 0-.6-2.6Z" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+  if (type === 'costs') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+      <path d="M4 19h16" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  )
+  if (type === 'admin') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 3l7 3v5c0 4.5-2.8 8.3-7 10-4.2-1.7-7-5.5-7-10V6l7-3Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
+    </svg>
+  )
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6 12h.01M12 12h.01M18 12h.01" stroke="currentColor" strokeWidth="3.4" strokeLinecap="round"/>
+    </svg>
+  )
 }
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
@@ -61,9 +104,9 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
                   aktivna === item.key
                     ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
                     : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
-                }`}
+              }`}
               >
-                <span>{item.icon}</span>
+                <NavIcon type={item.icon} className="h-4 w-4" />
                 <span>{t(item.labelKey)}</span>
               </button>
               {item.key === 'domov' && isAdmin && (
@@ -105,21 +148,27 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   }, [])
 
   const litePovezave = [
-    { key: 'domov', href: '/domov', icon: '🏠', label: t('home') },
+    { key: 'domov', href: '/domov', icon: 'home', label: t('home') },
   ]
   const mobileLinks = [
     ...(lite ? litePovezave : mobilnePovezave),
-    ...(isAdmin ? [{ key: 'admin', href: '/admin', icon: '🛡️', label: 'Admin' }] : []),
+    ...(isAdmin ? [{ key: 'admin', href: '/admin', icon: 'admin', label: 'Admin' }] : []),
   ]
 
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12] border-t border-[#1a1a28] flex ${lite && !isAdmin ? 'justify-center' : 'justify-around'} py-3 px-4 z-50`}>
+      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite && !isAdmin ? 'justify-center' : 'justify-around'} px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
         {mobileLinks.map((item: any) => (
-          <button key={item.key} onClick={() => pojdiNa(item.href)} className="flex flex-col items-center gap-1">
-            <span className="text-2xl leading-none">{item.icon}</span>
-            <span className={`text-[11px] uppercase tracking-wide ${aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff] font-bold' : 'text-[#3a3a5a]'}`}>
+          <button
+            key={item.key}
+            onClick={() => pojdiNa(item.href)}
+            className={`flex min-w-[56px] flex-col items-center gap-1 transition-colors ${
+              aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff]' : 'text-[#7b7b8f]'
+            }`}
+          >
+            <NavIcon type={item.icon} className="h-6 w-6" />
+            <span className={`text-[11px] font-semibold leading-none ${aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov') ? 'text-[#6c63ff]' : 'text-[#6b6b80]'}`}>
               {item.label || t(item.labelKey)}
             </span>
           </button>
