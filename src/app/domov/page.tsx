@@ -194,7 +194,7 @@ export default function DomovPage() {
         .from('cars')
         .select('*')
         .eq('user_id', user.id)
-        .eq('arhivirano', false)
+        .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
 
       if (carsError) {

@@ -79,14 +79,7 @@ export default function LoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
-      else {
-        const raw = localStorage.getItem('garagebase_nastavitve')
-        let onboardingDone = false
-        if (raw) {
-          try { onboardingDone = JSON.parse(raw).onboardingDone === true } catch {}
-        }
-        window.location.href = onboardingDone ? '/domov' : '/onboarding'
-      }
+      else window.location.href = '/domov'
     }
     setLoading(false)
   }

@@ -85,10 +85,10 @@ export default function Garaza() {
         return
       }
 
-      const query = supabase
+      let query = supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .eq('arhivirano', arhiv)
         .order('vrstni_red', { ascending: true })
+      query = arhiv ? query.eq('arhivirano', true) : query.or('arhivirano.is.null,arhivirano.eq.false')
 
       const { data, error } = await query
       if (error) {
@@ -169,7 +169,7 @@ export default function Garaza() {
 
       const { data } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .eq('arhivirano', false)
+        .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
       let cars = data || []
       if (!data) {
@@ -212,10 +212,11 @@ export default function Garaza() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setArchiveMessage('')
-      const { data, error } = await supabase
+      let query = supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .eq('arhivirano', arhiv)
         .order('vrstni_red', { ascending: true })
+      query = arhiv ? query.eq('arhivirano', true) : query.or('arhivirano.is.null,arhivirano.eq.false')
+      const { data, error } = await query
       if (error) {
         setArchiveMessage(error.message.includes('arhivirano') ? 'Za arhiv najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql.' : error.message)
         return
@@ -265,7 +266,7 @@ export default function Garaza() {
       .from('cars')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('arhivirano', false)
+      .or('arhivirano.is.null,arhivirano.eq.false')
 
     if (activeResult.error) {
       const fallback = await supabase
