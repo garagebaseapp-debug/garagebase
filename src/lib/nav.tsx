@@ -8,7 +8,7 @@ type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'a
 
 const mobilnePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
-  { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
+  { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
   { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
   { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
   { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
@@ -17,7 +17,7 @@ const mobilnePovezave = [
 const namiznePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
   { key: 'garaza', href: '/garaza', icon: 'garage', labelKey: 'garage' },
-  { key: 'gorivo', href: '/vnos-goriva', icon: 'fuel', labelKey: 'fuel' },
+  { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
   { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
   { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
   { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
@@ -28,7 +28,7 @@ function pojdiNa(href: string) {
 }
 
 function activeKeyFromPath(path: string) {
-  if (path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
+  if (path.includes('gorivo') || path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
   if (path.includes('servis') || path.includes('opomniki') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
   if (path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake')) return 'nastavitve'
