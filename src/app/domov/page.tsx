@@ -167,7 +167,11 @@ export default function DomovPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        if (window.location.search.includes('login=1')) {
+          window.history.replaceState({}, '', '/domov')
+        }
         sessionStorage.removeItem('garagebase_after_login_home')
+        sessionStorage.setItem('garagebase_seen_domov_this_session', '1')
         localStorage.removeItem('garagebase_after_login_home')
       } catch {}
       const selectedCurrency = getCurrencyFromSettings()
@@ -321,7 +325,7 @@ export default function DomovPage() {
   const activeReminders = reminders.filter((item) => item.tone !== 'red')
   const expiredReminders = reminders.filter((item) => item.tone === 'red')
   const serviceSoon = reminders.filter((item) => item.title.toLowerCase().includes('servis') || item.title.toLowerCase().includes('service'))
-  const topReminders = reminders.slice(0, 2)
+  const topReminders = reminders.slice(0, 3)
 
   const statCards = [
     { label: tx('Vozil', 'Vehicles'), value: cars.length, icon: 'car' as const, tone: 'text-[#6c63ff]', href: '/garaza' },
@@ -331,27 +335,27 @@ export default function DomovPage() {
   ]
 
   return (
-    <div className="gb-app-home h-dvh overflow-hidden bg-[#080810] px-4 pt-3 pb-20 text-white md:h-auto md:min-h-screen md:overflow-visible md:pt-6">
+    <div className="gb-app-home h-[100dvh] overflow-hidden bg-[#080810] px-4 pt-3 pb-[calc(5.9rem+env(safe-area-inset-bottom))] text-white md:h-auto md:min-h-screen md:overflow-visible md:pt-6">
       <div className="mx-auto max-w-md lg:max-w-5xl">
         <header className="mb-3 flex items-center justify-between">
           <button onClick={() => window.location.href = '/domov'} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
-          <button onClick={() => window.location.href = '/nastavitve'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
+          <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
             <Icon type="bell" className="h-5 w-5" />
           </button>
         </header>
 
-        <section className="mb-3">
-          <h1 className="max-w-2xl text-[1.48rem] font-black leading-[1.05] text-white sm:text-5xl">
+        <section className="mb-2.5">
+          <h1 className="max-w-2xl text-[clamp(1.36rem,6.2vw,1.72rem)] font-black leading-[1.04] text-white sm:text-5xl">
             {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />
             {tx('Pripravljen ', 'Ready for the ')}<span className="text-[#6c63ff]">{tx('na pot?', 'road?')}</span>
           </h1>
         </section>
 
-        <section className="mb-3 grid grid-cols-4 gap-2">
+        <section className="mb-2.5 grid grid-cols-4 gap-2">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[76px] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
+            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[clamp(68px,10dvh,82px)] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
               <div className={`mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone} sm:h-9 sm:w-9`}>
                 <Icon type={item.icon} className="h-5 w-5" />
               </div>
@@ -361,10 +365,10 @@ export default function DomovPage() {
           ))}
         </section>
 
-        <section className="mb-4 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
+        <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
           <button
             onClick={() => window.location.href = cars.length > 0 ? '/garaza' : '/dodaj-avto'}
-            className="relative block h-[135px] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
+            className="relative block h-[clamp(118px,18dvh,155px)] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
           >
             <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
@@ -402,10 +406,10 @@ export default function DomovPage() {
           </section>
         )}
 
-        <section className="mb-4">
+        <section className="mb-3">
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-[1.05rem] font-black text-white sm:text-[1.18rem]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
-            <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
+            <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
+            <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
           </div>
@@ -415,8 +419,8 @@ export default function DomovPage() {
             ) : topReminders.map((item, index) => {
               const tone = cardTone[item.tone]
               return (
-                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-2 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                  <div className="h-10 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
+                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-1.5 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                  <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
                     {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -432,7 +436,7 @@ export default function DomovPage() {
 
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-[1.05rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
+            <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
             <button onClick={() => window.location.href = favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
@@ -441,8 +445,8 @@ export default function DomovPage() {
             {recentEvents.length === 0 ? (
               <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
             ) : recentEvents.slice(0, 1).map((event, index) => (
-              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-2.5 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
+              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-2 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
                   <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">

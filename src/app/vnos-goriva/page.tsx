@@ -9,7 +9,7 @@ import { isReceiptImageOcrSupported, parseReceiptText, readReceiptTextFromImage 
 import { useLanguage } from '@/lib/i18n'
 import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 type FuelType = {
@@ -115,6 +115,8 @@ export default function VnosGoriva() {
         setEnotaRazdalje(getDistanceUnitFromSettings())
         setNacin('full')
       }
+      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      if (cachedCars.length > 0) setAvti(cachedCars)
 
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
@@ -131,16 +133,21 @@ export default function VnosGoriva() {
       if (!data || data.length === 0) return
 
       setAvti(data)
-      const izbrani = data.find((a: any) => a.id === carParam) || data[0]
-      setCarId(izbrani.id)
-      setKmReady(false)
-      await Promise.all([
-        naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0),
-        naloziPostaje(data.map((a: any) => a.id)),
-      ])
-      if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
-      else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
-      trackEvent('fuel_add_open', { carId: izbrani.id })
+      const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
+      await naloziPostaje(data.map((a: any) => a.id))
+      if (izbrani) {
+        setCarId(izbrani.id)
+        setKmReady(false)
+        await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
+        if (izbrani.gorivo === 'Diesel') setTipGoriva('diesel')
+        else if (izbrani.gorivo === 'Bencin') setTipGoriva('95')
+        trackEvent('fuel_add_open', { carId: izbrani.id })
+      } else {
+        setCarId('')
+        setKmReady(false)
+        setZadnjiKm(0)
+        trackEvent('fuel_add_open', { carId: null })
+      }
     }
 
     init()
@@ -189,9 +196,12 @@ export default function VnosGoriva() {
 
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
-    const avto = avti.find((a: any) => a.id === noviId)
-    if (!avto) return
     setKmReady(false)
+    const avto = avti.find((a: any) => a.id === noviId)
+    if (!avto) {
+      setZadnjiKm(0)
+      return
+    }
     await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
     if (avto.gorivo === 'Diesel') setTipGoriva('diesel')
     else if (avto.gorivo === 'Bencin') setTipGoriva('95')
@@ -409,6 +419,10 @@ export default function VnosGoriva() {
   const selectedCar = avti.find((a: any) => a.id === carId)
 
   const shrani = async () => {
+    if (!carId) {
+      setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.'))
+      return
+    }
     if (!kmReady) {
       setMessage(tx('Počakaj, da se naložijo zadnji kilometri vozila.', 'Wait until the latest vehicle mileage is loaded.'))
       return
@@ -516,7 +530,7 @@ export default function VnosGoriva() {
           </div>
         )}
 
-        {avti.length > 1 && nacin !== 'lite' && (
+        {avti.length > 0 && (nacin !== 'lite' || !selectedCar) && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select
@@ -524,6 +538,7 @@ export default function VnosGoriva() {
               onChange={(event) => menjavaAvta(event.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors"
             >
+              <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
               {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
@@ -574,14 +589,14 @@ export default function VnosGoriva() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {kmReady ? formatDistance(zadnjiKm, enotaRazdalje) : tx('nalagam...', 'loading...')})</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {carId ? (kmReady ? formatDistance(zadnjiKm, enotaRazdalje) : tx('nalagam...', 'loading...')) : tx('izberi vozilo', 'choose vehicle')})</span>
           </label>
           <div className="flex gap-2">
             <input
               type="number"
               value={km}
               onChange={(event) => setKm(event.target.value)}
-              placeholder={kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')}
+              placeholder={carId ? (kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')) : tx('najprej izberi vozilo', 'choose a vehicle first')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
                 km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
               }`}
@@ -801,7 +816,7 @@ export default function VnosGoriva() {
 
         <button
           onClick={shrani}
-          disabled={loading || !kmReady}
+          disabled={loading}
           className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2"
         >
           {loading ? tx('Shranjevanje...', 'Saving...') : `${tx('Shrani tankanje', 'Save fill-up')} ->`}

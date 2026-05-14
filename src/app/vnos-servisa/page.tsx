@@ -8,7 +8,7 @@ import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } fro
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
@@ -47,6 +47,8 @@ export default function VnosServisa() {
     setValuta(getCurrencyFromSettings())
     setEnotaRazdalje(getDistanceUnitFromSettings())
     const init = async () => {
+      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      if (cachedCars.length > 0) setAvti(cachedCars)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
@@ -63,13 +65,17 @@ export default function VnosServisa() {
       data = (data || []).filter((car: any) => car?.arhivirano !== true)
       if (data && data.length > 0) {
         setAvti(data)
-        const izbrani = data.find((a: any) => a.id === carParam) || data[0]
-        setCarId(izbrani.id)
-        trackEvent('service_add_open', { carId: izbrani.id })
-        await Promise.all([
-          naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0),
-          naloziServisHistory(data.map((a: any) => a.id)),
-        ])
+        const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
+        await naloziServisHistory(data.map((a: any) => a.id))
+        if (izbrani) {
+          setCarId(izbrani.id)
+          trackEvent('service_add_open', { carId: izbrani.id })
+          await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
+        } else {
+          setCarId('')
+          setZadnjiKm(0)
+          trackEvent('service_add_open', { carId: null })
+        }
       }
     }
     init()
@@ -111,7 +117,11 @@ export default function VnosServisa() {
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
     const avto = avti.find((a: any) => a.id === noviId)
-    if (avto) await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
+    if (!avto) {
+      setZadnjiKm(0)
+      return
+    }
+    await naloziZadnjiKm(noviId, avto.km_trenutni || 0)
   }
 
   const handleServisChange = (value: string) => {
@@ -263,6 +273,7 @@ export default function VnosServisa() {
     })
   }
   const shrani = async () => {
+    if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
     if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
     const vneseniKm = parseInt(km)
     if (vneseniKm < zadnjiKm) {
@@ -353,11 +364,12 @@ export default function VnosServisa() {
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
 
-        {avti.length > 1 && (
+        {avti.length > 0 && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select value={carId} onChange={e => menjavaAvta(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors">
+              <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
               {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>

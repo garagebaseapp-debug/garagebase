@@ -47,7 +47,7 @@ export default function LoginPage() {
       }
       await unlockWithAppLock()
       markAfterLoginHome()
-      window.location.replace('/domov')
+      window.location.replace('/domov?login=1')
     } catch {
       setMessage('Biometrična prijava ni uspela. Poskusi znova ali uporabi geslo.')
     }
@@ -90,7 +90,7 @@ export default function LoginPage() {
       if (error) setMessage(error.message)
       else {
         markAfterLoginHome()
-        window.location.replace('/domov')
+        window.location.replace('/domov?login=1')
       }
     }
     setLoading(false)

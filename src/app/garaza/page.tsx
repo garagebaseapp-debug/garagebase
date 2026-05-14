@@ -126,11 +126,14 @@ export default function Garaza() {
   useEffect(() => {
     const init = async () => {
       try {
+        const search = new URLSearchParams(window.location.search)
+        const seenDomov = sessionStorage.getItem('garagebase_seen_domov_this_session') === '1'
+        const explicitGarageOpen = search.get('direct') === '1'
         const afterLogin = Math.max(
           Number(sessionStorage.getItem('garagebase_after_login_home') || 0),
           Number(localStorage.getItem('garagebase_after_login_home') || 0),
         )
-        if (afterLogin && Date.now() - afterLogin < 5 * 60 * 1000) {
+        if ((afterLogin && Date.now() - afterLogin < 30 * 60 * 1000) || (!seenDomov && !explicitGarageOpen)) {
           sessionStorage.removeItem('garagebase_after_login_home')
           localStorage.removeItem('garagebase_after_login_home')
           window.location.replace('/domov')

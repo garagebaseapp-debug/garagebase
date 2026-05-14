@@ -8,7 +8,7 @@ import { trackEvent } from '@/lib/analytics'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
-import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 export default function VnosStroska() {
@@ -46,6 +46,8 @@ export default function VnosStroska() {
   useEffect(() => {
     setValuta(getCurrencyFromSettings())
     const init = async () => {
+      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      if (cachedCars.length > 0) setAvti(cachedCars)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const adminCheck = await checkCurrentUserAdmin()
@@ -64,9 +66,14 @@ export default function VnosStroska() {
       data = (data || []).filter((car: any) => car?.arhivirano !== true)
       if (data && data.length > 0) {
         setAvti(data)
-        const izbrani = data.find((a: any) => a.id === carParam) || data[0]
-        setCarId(izbrani.id)
-        trackEvent('expense_add_open', { carId: izbrani.id })
+        const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
+        if (izbrani) {
+          setCarId(izbrani.id)
+          trackEvent('expense_add_open', { carId: izbrani.id })
+        } else {
+          setCarId('')
+          trackEvent('expense_add_open', { carId: null })
+        }
       }
     }
     init()
@@ -212,6 +219,7 @@ export default function VnosStroska() {
   }
 
   const shrani = async () => {
+    if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
     if (!znesek) { setMessage('Znesek je obvezen!'); return }
     if (kategorija === 'custom' && !kategorijaCustom) { setMessage('Vnesi naziv stroška!'); return }
 
@@ -263,11 +271,12 @@ export default function VnosStroska() {
 
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-5">
 
-        {avti.length > 1 && (
+        {avti.length > 0 && (
           <div>
-            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Avto</label>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
             <select value={carId} onChange={e => setCarId(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors">
+              <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
               {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
