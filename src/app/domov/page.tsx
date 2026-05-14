@@ -168,6 +168,7 @@ export default function DomovPage() {
     const load = async () => {
       try {
         sessionStorage.removeItem('garagebase_after_login_home')
+        localStorage.removeItem('garagebase_after_login_home')
       } catch {}
       const selectedCurrency = getCurrencyFromSettings()
       const selectedDistanceUnit = getDistanceUnitFromSettings()

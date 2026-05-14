@@ -991,26 +991,40 @@ export default function Dashboard() {
                 )}
 
                 {hasConsumptionBreakdown && (
-                  <div onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`} className="mx-5 mb-4 grid grid-cols-1 gap-3 cursor-pointer">
-                    {renderPoraba.total !== null && (
-                      <div className="bg-[#13131f] rounded-xl p-3">
-                        <p className="text-[#3ecfcf] text-xs uppercase tracking-wider mb-1">{tx('Skupaj', 'Total')}</p>
-                        <p className="text-white font-bold text-lg">{renderPoraba.total.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
+                  <button
+                    type="button"
+                    onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
+                    className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6c63ff22] text-2xl">⛽</span>
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#7d829a]">{tx('Poraba goriva', 'Fuel consumption')}</p>
+                        <p className="text-sm font-semibold text-[#d8d8e8]">{tx('Pregled po viru vnosa', 'Breakdown by source')}</p>
+                      </div>
+                    </div>
+                    {renderPoraba.imported !== null ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl bg-[#6c63ff18] p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#a09aff]">{tx('Naši vnosi', 'Our entries')}</p>
+                          <p className="mt-1 text-lg font-black text-[#c8c4ff]">{consumptionText(renderPoraba.garageBase)}</p>
+                        </div>
+                        <div className="rounded-xl bg-[#22c55e14] p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#86efac]">{tx('Uvoz', 'Import')}</p>
+                          <p className="mt-1 text-lg font-black text-[#bbf7d0]">{consumptionText(renderPoraba.imported)}</p>
+                        </div>
+                        <div className="rounded-xl bg-white/[0.08] p-3">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
+                          <p className="mt-1 text-lg font-black text-white">{consumptionText(renderPoraba.total)}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-white/[0.08] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
+                        <p className="mt-1 text-3xl font-black text-white">{consumptionText(renderPoraba.total ?? renderPoraba.garageBase)}</p>
                       </div>
                     )}
-                    {renderPoraba.garageBase !== null && (
-                      <div className="bg-[#13131f] rounded-xl p-3">
-                        <p className="text-[#a09aff] text-xs uppercase tracking-wider mb-1">{tx('GarageBase vnosi', 'GarageBase entries')}</p>
-                        <p className="text-[#c8c4ff] font-bold text-lg">{renderPoraba.garageBase.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
-                      </div>
-                    )}
-                    {renderPoraba.imported !== null && (
-                      <div className="bg-[#13131f] rounded-xl p-3">
-                        <p className="text-[#86efac] text-xs uppercase tracking-wider mb-1">{tx('Uvozena zgodovina', 'Imported history')}</p>
-                        <p className="text-[#bbf7d0] font-bold text-lg">{renderPoraba.imported.toFixed(1)} <span className="text-[#5a5a80] text-xs font-normal">L/100</span></p>
-                      </div>
-                    )}
-                  </div>
+                  </button>
                 )}
 
                 {/* Kalkulator stroškov €/km */}
@@ -1033,30 +1047,30 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
-                <div className="px-5 pb-5 grid grid-cols-6 gap-2">
+                <div className="px-5 pb-5 grid grid-cols-3 gap-2.5">
                   <button onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>⛽</span><span className="text-[11px]">Gorivo</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#3ecfcf] py-3.5 rounded-2xl hover:border-[#3ecfcf] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">Gorivo</span>
                   </button>
                   <button onClick={() => window.location.href = `/servis?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex flex-col items-center gap-1">
-                    <span>🔧</span><span className="text-[11px]">Servis</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#f59e0b] py-3.5 rounded-2xl hover:border-[#f59e0b] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">🔧</span><span className="text-[12px] font-black text-[#d8d8e8]">Servis</span>
                   </button>
                   <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex flex-col items-center gap-1">
-                    <span>🔔</span><span className="text-[11px]">Opomniki</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">🔔</span><span className="text-[12px] font-black text-[#d8d8e8]">Opomniki</span>
                   </button>
                   <button onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex flex-col items-center gap-1">
-                    <span>📊</span><span className="text-[11px]">Stroški</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#22c55e] py-3.5 rounded-2xl hover:border-[#22c55e] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">📊</span><span className="text-[12px] font-black text-[#d8d8e8]">Stroški</span>
                   </button>
                   <button onClick={() => window.location.href = `/nastavitve-avta?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] text-base py-3 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex flex-col items-center gap-1">
-                    <span>⚙️</span><span className="text-[11px]">Nastavitve</span>
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#94a3b8] py-3.5 rounded-2xl hover:border-[#94a3b8] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">⚙️</span><span className="text-[12px] font-black text-[#d8d8e8]">Nastavitve</span>
                   </button>
                   <button onClick={() => window.location.href = `/report?car=${aktivniAvto.id}`}
-                    className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] text-base py-3 rounded-xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1">
-                    <span>📄</span><span className="text-[11px]">Report</span>
+                    className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-2xl leading-none">📄</span><span className="text-[12px] font-black text-[#d8d8e8]">Report</span>
                   </button>
                 </div>
               </div>

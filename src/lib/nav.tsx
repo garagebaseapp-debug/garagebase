@@ -130,23 +130,23 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] pt-2.5 z-50 backdrop-blur-xl`}>
+      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-3 pb-[calc(0.7rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
         {mobileLinks.map((item: any) => {
           const isActive = aktivna === item.key || (aktivna === 'garaza' && item.key === 'domov')
           return (
             <button
               key={item.key}
               onClick={() => pojdiNa(item.href)}
-              className="flex min-w-[58px] flex-col items-center gap-0.5 transition-transform active:scale-95"
+              className="flex min-w-[64px] flex-col items-center gap-1 transition-transform active:scale-95"
             >
-              <span className={`flex h-9 w-9 items-center justify-center rounded-2xl transition-colors ${
+              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${
                 isActive
-                  ? 'bg-[#6c63ff22] text-[#6c63ff]'
-                  : 'text-[#5f6474] hover:bg-[#ffffff08] hover:text-[#d8d8e8]'
+                  ? 'bg-[#6c63ff24] text-[#6c63ff] shadow-[0_10px_28px_rgba(108,99,255,0.22)]'
+                  : 'text-[#4f5666] hover:bg-[#ffffff08] hover:text-[#d8d8e8]'
               }`}>
-                <NavIcon type={item.icon} className="h-6 w-6" />
+                <NavIcon type={item.icon} className="h-7 w-7" />
               </span>
-              <span className={`text-[12px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#5f6474]'}`}>
+              <span className={`text-[12px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#4f5666]'}`}>
                 {item.label || t(item.labelKey)}
               </span>
             </button>

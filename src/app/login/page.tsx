@@ -15,6 +15,14 @@ export default function LoginPage() {
   const [biometricReady, setBiometricReady] = useState(false)
   const [acceptedLegal, setAcceptedLegal] = useState(false)
 
+  const markAfterLoginHome = () => {
+    const stamp = String(Date.now())
+    try {
+      sessionStorage.setItem('garagebase_after_login_home', stamp)
+      localStorage.setItem('garagebase_after_login_home', stamp)
+    } catch {}
+  }
+
   useEffect(() => {
     document.body.classList.add('landing')
     setBiometricReady(hasAppLockCredential())
@@ -38,7 +46,7 @@ export default function LoginPage() {
         return
       }
       await unlockWithAppLock()
-      sessionStorage.setItem('garagebase_after_login_home', String(Date.now()))
+      markAfterLoginHome()
       window.location.replace('/domov')
     } catch {
       setMessage('Biometrična prijava ni uspela. Poskusi znova ali uporabi geslo.')
@@ -81,7 +89,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
       else {
-        sessionStorage.setItem('garagebase_after_login_home', String(Date.now()))
+        markAfterLoginHome()
         window.location.replace('/domov')
       }
     }

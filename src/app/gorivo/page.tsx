@@ -253,7 +253,7 @@ export default function GorivoPage() {
 
       const carsRes = await supabase
         .from('cars')
-        .select('id,znamka,model,gorivo,km_trenutni,slika_url,slika,slika_updated_at,updated_at,created_at,arhivirano,vrstni_red')
+        .select('*')
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
@@ -262,7 +262,7 @@ export default function GorivoPage() {
       if (carsRes.error || nextCars.length === 0) {
         const fallback = await supabase
           .from('cars')
-          .select('id,znamka,model,gorivo,km_trenutni,slika_url,slika,slika_updated_at,updated_at,created_at,arhivirano,vrstni_red')
+          .select('*')
           .eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
         nextCars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
@@ -271,7 +271,17 @@ export default function GorivoPage() {
       const carParam = new URLSearchParams(window.location.search).get('car')
       if (carParam) {
         const selectedCar = nextCars.find((car: any) => car?.id === carParam)
-        if (selectedCar) nextCars = [selectedCar]
+        if (selectedCar) {
+          nextCars = [selectedCar]
+        } else {
+          const directCar = await supabase
+            .from('cars')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('id', carParam)
+            .maybeSingle()
+          if (directCar.data && directCar.data.arhivirano !== true) nextCars = [directCar.data]
+        }
       }
 
       setCars(nextCars)
