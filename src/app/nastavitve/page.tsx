@@ -87,7 +87,9 @@ export default function Nastavitve() {
   })
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
-  const [settingsView, setSettingsView] = useState('')
+  const [settingsView, setSettingsView] = useState('vse')
+  const [settingsReady, setSettingsReady] = useState(false)
+  const [settingsSaveState, setSettingsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [notificationSaveState, setNotificationSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
@@ -214,6 +216,7 @@ export default function Nastavitve() {
       trackEvent('settings_open')
       trackSettingsSnapshot('settings_snapshot', loadedSettings)
       setLoading(false)
+      setSettingsReady(true)
 
       checkCurrentUserAdmin().then((result) => setIsAdmin(result.isAdmin))
 
@@ -452,16 +455,45 @@ export default function Nastavitve() {
     setNotifikacijeLoading(false)
   }
 
-  const shrani = () => {
+  const shrani = (showMessage = true) => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
     const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     applyFontSize(pisava)
-    setMessage('✅ Nastavitve shranjene!')
-    setTimeout(() => setMessage(''), 2000)
+    setSettingsSaveState('saved')
+    if (showMessage) {
+      setMessage('✅ Nastavitve shranjene!')
+      setTimeout(() => setMessage(''), 2000)
+    }
   }
+
+  useEffect(() => {
+    if (!settingsReady) return
+    setSettingsSaveState('saving')
+    const timer = window.setTimeout(() => {
+      shrani(false)
+      window.setTimeout(() => setSettingsSaveState('idle'), 1800)
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [
+    settingsReady,
+    nacin,
+    jezik,
+    pisava,
+    prikazGaraze,
+    desktopStolpci,
+    mobileGridStolpci,
+    garazaPisava,
+    avtocomplete,
+    enotaRazdalje,
+    valuta,
+    tema,
+    gridNastavitve,
+    listaNastavitve,
+    notificationSettings,
+  ])
 
   const preklopiTemo = () => {
     const novaTema = tema === 'temna' ? 'svetla' : 'temna'
@@ -864,29 +896,28 @@ export default function Nastavitve() {
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider">
                 {jezik === 'en' ? 'Morning reminder time' : 'Ura jutranjega opomnika'}
               </label>
-              <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => setNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
+              <input type="time" step="60" value={notificationSettings.sendTime} onChange={(e) => shraniNotificationSettings({ ...notificationSettings, sendTime: e.target.value })}
                 className="mt-2 w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-3 py-3 text-white outline-none" />
               <p className="mt-2 text-[11px] text-[#5a5a80]">
                 {jezik === 'en'
                   ? 'Reminders are sent once per day at the selected time when active reminders exist.'
                   : 'Obvestila se pošljejo enkrat na dan ob izbrani uri, če imaš aktivne opomnike.'}
               </p>
-              <button type="button" onClick={() => shraniNotificationSettings(notificationSettings)} disabled={notificationSaveState === 'saving'}
-                className={`mt-3 w-full rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-70 ${
-                  notificationSaveState === 'saved'
-                    ? 'bg-[#16a34a] text-white shadow-lg shadow-[#16a34a33]'
-                    : notificationSaveState === 'error'
-                      ? 'bg-[#ef4444] text-white'
-                      : 'bg-[#6c63ff] text-white hover:bg-[#5a52e8]'
-                }`}>
+              <p className={`mt-3 rounded-xl border px-3 py-2 text-xs font-bold ${
+                notificationSaveState === 'saving'
+                  ? 'border-[#f59e0b55] bg-[#f59e0b11] text-[#fbbf24]'
+                  : notificationSaveState === 'error'
+                    ? 'border-[#ef444455] bg-[#ef444411] text-[#fca5a5]'
+                    : 'border-[#16a34a44] bg-[#16a34a11] text-[#4ade80]'
+              }`}>
                 {notificationSaveState === 'saving'
                   ? (jezik === 'en' ? 'Saving...' : 'Shranjujem...')
                   : notificationSaveState === 'saved'
                     ? (jezik === 'en' ? 'Saved ✓' : 'Shranjeno ✓')
                     : notificationSaveState === 'error'
                       ? (jezik === 'en' ? 'Not saved' : 'Ni shranjeno')
-                      : (jezik === 'en' ? 'Save notification settings' : 'Shrani nastavitve obvestil')}
-              </button>
+                      : (jezik === 'en' ? 'Saved automatically' : 'Shrani se samodejno')}
+              </p>
             </div>
             {isAdmin && (
               <div className="rounded-xl border border-[#6c63ff33] bg-[#6c63ff11] p-3">
@@ -1374,12 +1405,16 @@ export default function Nastavitve() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center">
-        <button onClick={shrani}
-          className="w-full rounded-xl bg-[#6c63ff] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5a52e0] sm:w-auto">
-          {tx('Shrani nastavitve', 'Save settings')}
-        </button>
-
+      <div className="flex flex-col gap-3 lg:col-span-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${
+          settingsSaveState === 'saving'
+            ? 'border-[#f59e0b55] bg-[#f59e0b11] text-[#fbbf24]'
+            : 'border-[#16a34a44] bg-[#16a34a11] text-[#4ade80]'
+        }`}>
+          {settingsSaveState === 'saving'
+            ? tx('Shranjujem spremembe...', 'Saving changes...')
+            : tx('Nastavitve se shranijo samodejno', 'Settings save automatically')}
+        </div>
         <button onClick={handleLogout}
           className="w-full rounded-xl border border-[#1e1e32] bg-[#13131f] px-5 py-2.5 text-sm font-semibold text-[#ef4444] transition-colors hover:bg-[#ef444411] sm:w-auto">
           {tx('Odjava', 'Sign out')}

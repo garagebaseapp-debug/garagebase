@@ -987,24 +987,24 @@ export default function Stroski() {
   }
   const chartTicks = (max: number) => [max, max / 2, 0]
   const chartColors = {
-    gorivo: '#55d6d2',
-    servis: '#f2b35f',
-    ostalo: '#8b7cf6',
+    gorivo: '#35c6c3',
+    servis: '#f2a13a',
+    ostalo: '#7467f3',
     grid: '#263049',
   }
 
   const GrafStolpci = () => (
-    <div className="grid grid-cols-[44px_1fr] gap-2">
+    <div className="grid min-w-0 grid-cols-[38px_minmax(0,1fr)] gap-2 sm:grid-cols-[44px_minmax(0,1fr)]">
       <div className="flex h-40 flex-col justify-between pb-8 pt-1 text-right">
         {chartTicks(maxVrednost).map((tick, i) => (
           <span key={i} className="text-[9px] font-semibold text-[#5a5a80]">{compactMoney(tick)}</span>
         ))}
       </div>
-      <div className="relative h-40">
+      <div className="relative h-40 min-w-0 overflow-hidden">
         <div className="absolute inset-x-0 top-1 bottom-8 flex flex-col justify-between pointer-events-none">
           {[0, 1, 2].map((line) => <div key={line} className="border-t border-[#1e1e32]" />)}
         </div>
-        <div className="relative flex h-full items-end justify-between gap-1.5 px-1">
+        <div className="relative flex h-full min-w-0 items-end justify-between gap-0.5 px-0.5 sm:gap-1.5 sm:px-1">
           {meseci.map((m, i) => {
             const skupaj = m.gorivo + m.servis + m.ostalo
             const visina = skupaj > 0 ? (skupaj / maxVrednost) * 100 : 0
@@ -1012,20 +1012,20 @@ export default function Stroski() {
             const servisH = skupaj > 0 ? (m.servis / skupaj) * visina : 0
             const ostaloH = skupaj > 0 ? (m.ostalo / skupaj) * visina : 0
             return (
-              <div key={i} className="flex flex-1 flex-col items-center gap-1">
+              <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                 <div className="flex w-full justify-center" style={{ height: '118px' }} title={`${m.label}: ${formatMoney(skupaj, valuta)}`}>
                   {skupaj === 0 ? (
-                    <div className="mt-auto h-1.5 w-3/4 rounded-full border border-[#1e1e32] bg-[#13131f]" />
+                    <div className="mt-auto h-1.5 w-3/4 rounded-full border border-[#1e1e32] bg-[#13131f] opacity-70" />
                   ) : (
-                    <div className="mt-auto flex w-10 max-w-[76%] flex-col justify-end overflow-hidden rounded-full border border-white/10 shadow-xl" style={{ height: `${Math.max(8, visina)}%` }}>
-                      {ostaloH > 0 && <div style={{ height: `${(ostaloH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.ostalo}, #a99dff)` }} className="w-full" />}
-                      {servisH > 0 && <div style={{ height: `${(servisH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.servis}, #ffd08a)` }} className="w-full" />}
-                      {gorivoH > 0 && <div style={{ height: `${(gorivoH / visina) * 100}%`, background: `linear-gradient(90deg, ${chartColors.gorivo}, #8be8e3)` }} className="w-full" />}
+                    <div className="mt-auto flex w-5 max-w-[82%] flex-col justify-end overflow-hidden rounded-b-md rounded-t-full border border-white/20 shadow-lg sm:w-8 md:w-10" style={{ height: `${Math.max(8, visina)}%` }}>
+                      {ostaloH > 0 && <div style={{ height: `${(ostaloH / visina) * 100}%`, background: `linear-gradient(180deg, #968dff, ${chartColors.ostalo})` }} className="w-full" />}
+                      {servisH > 0 && <div style={{ height: `${(servisH / visina) * 100}%`, background: `linear-gradient(180deg, #ffd59a, ${chartColors.servis})` }} className="w-full" />}
+                      {gorivoH > 0 && <div style={{ height: `${(gorivoH / visina) * 100}%`, background: `linear-gradient(180deg, #8be8e3, ${chartColors.gorivo})` }} className="w-full" />}
                     </div>
                   )}
                 </div>
-                <p className="text-[#5a5a80] text-[9px] uppercase">{m.label}</p>
-                {skupaj > 0 && <p className="text-white text-[8px] font-bold">{compactMoney(skupaj)}</p>}
+                <p className="max-w-full truncate text-[8px] uppercase text-[#5a5a80] sm:text-[9px]">{m.label.replace('.', '')}</p>
+                {skupaj > 0 && (grafObdobje === '6m' || i % 2 === 0) && <p className="text-[7px] font-bold text-white sm:text-[8px]">{compactMoney(skupaj)}</p>}
               </div>
             )
           })}
@@ -1280,7 +1280,7 @@ export default function Stroski() {
   const vidniVnosi = filtrirani.slice(0, visibleCostCount)
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen overflow-x-hidden bg-[#080810] px-4 py-6 pb-24">
 
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
@@ -1320,8 +1320,8 @@ export default function Stroski() {
         {prikazStrosekNaKm && <p className="text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
 
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
-        <div className="flex justify-between items-center mb-4">
+      <div className="overflow-hidden bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 mb-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[#5a5a80] text-xs uppercase tracking-wider">
             {grafTip === 'kolac'
               ? tx('Razmerje stroskov', 'Cost split')
@@ -1331,7 +1331,7 @@ export default function Stroski() {
                   ? tx('Zadnjih 12 mesecev', 'Last 12 months')
                   : tx('Zadnjih 6 mesecev', 'Last 6 months')}
           </p>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
           {grafTip !== 'kolac' && (
           <div className="flex gap-1 bg-[#13131f] rounded-xl p-1">
             <button onClick={() => setGrafObdobje('6m')} className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${grafObdobje === '6m' ? 'bg-[#3ecfcf] text-black' : 'text-[#5a5a80] hover:text-white'}`}>6M</button>

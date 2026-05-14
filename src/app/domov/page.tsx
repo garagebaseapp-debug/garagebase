@@ -77,8 +77,8 @@ function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield'
   )
   if (type === 'wrench') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M14.7 4.4a4.7 4.7 0 0 0 4.9 6.2l-8.9 8.9a2.7 2.7 0 0 1-3.8-3.8l8.9-8.9a4.7 4.7 0 0 0-1.1-2.4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M8.4 17.2h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path d="M16.8 3.6 14.2 6.2l2.9 2.9 2.7-2.6a5 5 0 0 1-6.4 6.5l-6.6 6.6a2.3 2.3 0 0 1-3.3-3.3l6.6-6.6a5 5 0 0 1 6.7-6.1Z" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6.3 17.7h.01" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
     </svg>
   )
   if (type === 'calendar') return (
@@ -94,8 +94,10 @@ function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield'
   )
   if (type === 'cost') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M5 19V9M12 19V5M19 19v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      <path d="M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M4 19.5h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M6.5 16.5v-4M12 16.5v-8M17.5 16.5v-6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <path d="m5.8 9.8 3.1-2.6 3.2 2.1 4.6-5" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16.7 4.3h-3.1M16.7 4.3v3.1" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
     </svg>
   )
   if (type === 'bell') return (

@@ -20,6 +20,7 @@ export default function NastavitveAvta() {
   const [model, setModel] = useState('')
   const [letnik, setLetnik] = useState('')
   const [gorivo, setGorivo] = useState('')
+  const [rezervarLitri, setRezervarLitri] = useState('')
   const [barva, setBarva] = useState('')
   const [tablica, setTabla] = useState('')
   const [vin, setVin] = useState('')
@@ -57,6 +58,14 @@ export default function NastavitveAvta() {
 
   const standardniTipi = ['avto', 'motor', 'kombi', 'tovornjak', 'plovilo']
   const imageError = (error: unknown) => imageCompressionErrorText(error, getStoredLanguage() === 'en' ? 'en' : 'sl')
+  const decimalValue = (value: string) => {
+    const parsed = Number(String(value || '').replace(',', '.'))
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+  const isMissingReservoirColumn = (error: any) => {
+    const message = String(error?.message || '')
+    return message.includes('rezervar_litri') || message.includes('tank_capacity')
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -81,6 +90,7 @@ export default function NastavitveAvta() {
         setModel(data.model || '')
         setLetnik(data.letnik?.toString() || '')
         setGorivo(data.gorivo || '')
+        setRezervarLitri((data.rezervar_litri ?? data.tank_capacity_liters ?? '')?.toString?.() || '')
         setBarva(data.barva || '')
         setTabla(data.tablica || '')
         setVin(data.vin || '')
@@ -168,12 +178,13 @@ export default function NastavitveAvta() {
     setSaving(true)
     setMessage('')
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
-    const { error } = await supabase.from('cars').update({
+    const payload: any = {
       tip_vozila: finalniTip,
       oblika: oblika || null,
       znamka, model,
       letnik: letnik ? parseInt(letnik) : null,
       gorivo, barva: barva || null,
+      rezervar_litri: decimalValue(rezervarLitri),
       tablica: tablica || null,
       vin: vin || null,
       kubikaza: kubikaza ? parseInt(kubikaza) : null,
@@ -188,11 +199,19 @@ export default function NastavitveAvta() {
       homologacija_stevilka: homologacijaStevilka || null,
       homologacija_opis: homologacijaOpis || null,
       homologacija_url: homologacijaUrl || null,
-    }).eq('id', avto.id)
+    }
+    let { error } = await supabase.from('cars').update(payload).eq('id', avto.id)
+    let reservoirFallback = false
+    if (error && isMissingReservoirColumn(error)) {
+      delete payload.rezervar_litri
+      const retry = await supabase.from('cars').update(payload).eq('id', avto.id)
+      error = retry.error
+      reservoirFallback = !retry.error
+    }
     if (error) setMessage(error.message.includes('homologacija') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql' : error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
     else {
       clearVehicleDataCaches(avto.id)
-      setMessage('✅ Nastavitve shranjene!')
+      setMessage(reservoirFallback ? '✅ Nastavitve shranjene. Za doseg zaženi SQL za polje rezervoarja.' : '✅ Nastavitve shranjene!')
       setAvto({ ...avto })
     }
     setSaving(false)
@@ -315,6 +334,12 @@ export default function NastavitveAvta() {
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Barva</label>
           <input value={barva} onChange={e => setBarva(e.target.value)} placeholder="npr. Siva metalik"
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+        </div>
+        <div>
+          <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Velikost rezervoarja (L)</label>
+          <input value={rezervarLitri} onChange={e => setRezervarLitri(e.target.value)} placeholder="npr. 70" inputMode="decimal"
+            className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          <p className="mt-2 text-xs text-[#5a5a80]">Opcijsko. Uporabi se za približen izračun dosega na strani Gorivo.</p>
         </div>
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Registrska tablica</label>

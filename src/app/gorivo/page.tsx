@@ -126,16 +126,20 @@ function MetricCard({ title, icon, total, garageBase, imported, garageBaseCount,
         <p className="text-base font-black leading-tight text-white">{title}</p>
       </div>
       {showBreakdown ? (
-        <div className="space-y-1.5 text-sm">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[#8a8aa8]">{labels.garageBase}</span>
-            <span className="font-black text-[#7c3aed]">{formatter(garageBase ?? null)}</span>
+        <div className="space-y-2 text-sm">
+          <div className="rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-black text-[#6d28d9]">{labels.garageBase}</span>
+              <span className="font-black text-[#6d28d9]">{formatter(garageBase ?? null)}</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[#8a8aa8]">{labels.imported}</span>
-            <span className="font-black text-[#f97316]">{formatter(imported ?? null)}</span>
+          <div className="rounded-2xl border border-[#16a34a55] bg-[#16a34a18] px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-black text-[#15803d]">{labels.imported}</span>
+              <span className="font-black text-[#15803d]">{formatter(imported ?? null)}</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3 border-t border-[#1e1e32] pt-1.5">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#1e1e32] bg-[#13131f] px-3 py-2">
             <span className="font-black text-white">{labels.total}</span>
             <span className="font-black text-white">{formatter(total)}</span>
           </div>
@@ -200,7 +204,7 @@ function FuelChart({
     <div className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
       <div className="mb-2 flex flex-wrap gap-3 text-[11px] font-bold text-[#8a8aa8]">
         {hasImported && <span><span className="mr-1 inline-block h-2 w-4 rounded-full bg-[#7c3aed]" />{labels.garageBase}</span>}
-        {hasImported && <span><span className="mr-1 inline-block h-2 w-4 rounded-full bg-[#f97316]" />{labels.imported}</span>}
+        {hasImported && <span><span className="mr-1 inline-block h-2 w-4 rounded-full bg-[#16a34a]" />{labels.imported}</span>}
         <span><span className="mr-1 inline-block h-2 w-4 rounded-full bg-[#3b82f6]" />{labels.total}</span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-48 w-full" role="img" aria-label={ariaLabel}>
@@ -211,7 +215,7 @@ function FuelChart({
           </g>
         ))}
         {hasImported && garagePath && <path d={garagePath} fill="none" stroke="#7c3aed" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />}
-        {hasImported && importedPath && <path d={importedPath} fill="none" stroke="#f97316" strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round" />}
+        {hasImported && importedPath && <path d={importedPath} fill="none" stroke="#16a34a" strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" strokeLinejoin="round" />}
         {totalPath && <path d={totalPath} fill="none" stroke="#3b82f6" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />}
         {points.map((point, index) => (
           <g key={point.label}>
@@ -329,7 +333,11 @@ export default function GorivoPage() {
   const importedConsumption = consumptionSegment(importedRows)
   const totalConsumption = combineConsumptionSegments([garageConsumption, importedConsumption])
   const hasImportedConsumption = importedConsumption.average !== null && importedRows.length > 0
+  const tankCapacityLiters = cars.length === 1
+    ? numberValue(cars[0]?.rezervar_litri ?? cars[0]?.tank_capacity_liters)
+    : 0
   const rangeFor = (rows: any[], average: number | null) => {
+    if (average && tankCapacityLiters > 0) return (tankCapacityLiters / average) * 100
     const avgLiters = averageLiters(rows)
     return average && avgLiters > 0 ? (avgLiters / average) * 100 : null
   }
@@ -531,7 +539,7 @@ export default function GorivoPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="truncate text-base font-black text-white">{vehicleDisplayName(car, tx('Vozilo', 'Vehicle'))}</p>
-                          {imported && <span className="rounded-lg bg-[#f9731618] px-2 py-1 text-[10px] font-black text-[#f97316]">{tx('Uvoz', 'Import')}</span>}
+                          {imported && <span className="rounded-lg border border-[#16a34a55] bg-[#16a34a18] px-2 py-1 text-[10px] font-black text-[#15803d]">{tx('Uvoz', 'Import')}</span>}
                         </div>
                         <p className="mt-1 truncate text-sm text-[#8a8aa8]">
                           {new Date(row.datum || row.created_at).toLocaleDateString(locale)} - {fuelLitersValue(row).toFixed(1)} L

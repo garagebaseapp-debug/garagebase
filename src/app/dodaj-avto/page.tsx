@@ -13,6 +13,7 @@ export default function DodajAvto() {
   const [model, setModel] = useState('')
   const [letnik, setLetnik] = useState('')
   const [gorivo, setGorivo] = useState('Bencin')
+  const [rezervarLitri, setRezervarLitri] = useState('')
   const [barva, setBarva] = useState('')
   const [tablica, setTabla] = useState('')
   const [km, setKm] = useState('')
@@ -48,6 +49,16 @@ export default function DodajAvto() {
     drugo: ['Traktor', 'Quad', 'ATV', 'Skuter', 'Drugo'],
   }
 
+  const decimalValue = (value: string) => {
+    const parsed = Number(String(value || '').replace(',', '.'))
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null
+  }
+
+  const isMissingReservoirColumn = (error: any) => {
+    const message = String(error?.message || '')
+    return message.includes('rezervar_litri') || message.includes('tank_capacity')
+  }
+
   const shrani = async () => {
     if (!znamka || !model) { setMessage(tx('Znamka in model sta obvezna!', 'Make and model are required!')); return }
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage(tx('Vnesi tip vozila!', 'Enter the vehicle type!')); return }
@@ -81,13 +92,14 @@ export default function DodajAvto() {
       return
     }
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
-    const { error } = await supabase.from('cars').insert({
+    const payload: any = {
       user_id: user.id,
       tip_vozila: finalniTip,
       oblika: oblika || null,
       znamka, model,
       letnik: letnik ? parseInt(letnik) : null,
       gorivo,
+      rezervar_litri: decimalValue(rezervarLitri),
       barva: barva || null,
       tablica: tablica || null,
       km_trenutni: km ? parseInt(km) : null,
@@ -96,9 +108,22 @@ export default function DodajAvto() {
       kw: kw ? parseInt(kw) : null,
       menjalnik: menjalnik || null,
       pogon: pogon || null,
-    })
+    }
+    let { error } = await supabase.from('cars').insert(payload)
+    let reservoirFallback = false
+    if (error && isMissingReservoirColumn(error)) {
+      delete payload.rezervar_litri
+      const retry = await supabase.from('cars').insert(payload)
+      error = retry.error
+      reservoirFallback = !retry.error
+    }
     if (error) setMessage(tx('Napaka: ', 'Error: ') + error.message)
-    else { setMessage(tx('Vozilo uspesno shranjeno!', 'Vehicle saved successfully!')); setTimeout(() => window.location.href = '/garaza', 1000) }
+    else {
+      setMessage(reservoirFallback
+        ? tx('Vozilo shranjeno. Za izračun dosega kasneje zaženi SQL za rezervoar.', 'Vehicle saved. Run the tank-capacity SQL later to enable range calculation.')
+        : tx('Vozilo uspesno shranjeno!', 'Vehicle saved successfully!'))
+      setTimeout(() => window.location.href = '/garaza', 1000)
+    }
     setLoading(false)
   }
 
@@ -278,6 +303,15 @@ export default function DodajAvto() {
               <input value={kw} onChange={e => setKw(e.target.value)} placeholder="npr. 140" type="number"
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             </div>
+          </div>
+
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Velikost rezervoarja (L)</label>
+            <input value={rezervarLitri} onChange={e => setRezervarLitri(e.target.value)} placeholder="npr. 70" inputMode="decimal"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            <p className="mt-2 text-xs text-[#5a5a80]">
+              {tx('Opcijsko. Uporabi se za približen doseg na strani Gorivo.', 'Optional. Used for estimated range on the Fuel page.')}
+            </p>
           </div>
 
           <div>
