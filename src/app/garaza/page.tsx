@@ -96,7 +96,13 @@ export default function Garaza() {
         return
       }
 
-      const cars = data || []
+      let cars = data || []
+      if (!arhiv && cars.length === 0) {
+        const fallback = await supabase
+          .from('cars').select('*').eq('user_id', user.id)
+          .order('vrstni_red', { ascending: true })
+        cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+      }
       setAvti(cars)
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
       const opomnikMap = await naloziOpomnike(cars)
@@ -172,11 +178,11 @@ export default function Garaza() {
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
       let cars = data || []
-      if (!data) {
+      if (!data || cars.length === 0) {
         const { data: fallback } = await supabase
           .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
-        cars = fallback || []
+        cars = (fallback || []).filter((car: any) => car?.arhivirano !== true)
       }
       setAvti(cars)
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
@@ -221,7 +227,13 @@ export default function Garaza() {
         setArchiveMessage(error.message.includes('arhivirano') ? 'Za arhiv najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql.' : error.message)
         return
       }
-      const cars = data || []
+      let cars = data || []
+      if (!arhiv && cars.length === 0) {
+        const fallback = await supabase
+          .from('cars').select('*').eq('user_id', user.id)
+          .order('vrstni_red', { ascending: true })
+        cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+      }
       setAvti(cars)
       setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
       setLoading(false)

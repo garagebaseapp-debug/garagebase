@@ -46,13 +46,13 @@ export default function StroškiGaraza() {
 
       let { data: avtiData, error: avtiError } = await supabase
         .from('cars').select('*').eq('user_id', user.id)
-        .eq('arhivirano', false)
+        .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
-      if (avtiError) {
+      if (avtiError || (avtiData || []).length === 0) {
         const fallback = await supabase
           .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
-        avtiData = fallback.data || []
+        avtiData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
       }
       const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
       setAvti(cars)

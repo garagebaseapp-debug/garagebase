@@ -2,25 +2,24 @@
 
 import { useEffect, useState } from 'react'
 import { useLanguage } from '@/lib/i18n'
-import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'admin'
 
 const mobilnePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
   { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
-  { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
+  { key: 'servis', href: '/servis', icon: 'service', labelKey: 'service' },
   { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
-  { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
+  { key: 'nastavitve', href: '/vec', icon: 'more', labelKey: 'more' },
 ] as const
 
 const namiznePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
   { key: 'garaza', href: '/garaza', icon: 'garage', labelKey: 'garage' },
   { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
-  { key: 'servis', href: '/vnos-servisa', icon: 'service', labelKey: 'service' },
+  { key: 'servis', href: '/servis', icon: 'service', labelKey: 'service' },
   { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
-  { key: 'nastavitve', href: '/nastavitve', icon: 'more', labelKey: 'more' },
+  { key: 'nastavitve', href: '/vec', icon: 'more', labelKey: 'more' },
 ] as const
 
 function pojdiNa(href: string) {
@@ -31,7 +30,7 @@ function activeKeyFromPath(path: string) {
   if (path.includes('gorivo') || path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
   if (path.includes('servis') || path.includes('opomniki') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
-  if (path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake')) return 'nastavitve'
+  if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov') || path.includes('admin')) return 'nastavitve'
   if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'domov'
   return 'domov'
 }
@@ -78,16 +77,7 @@ function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?
 }
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
-  const { language, t } = useLanguage()
-  const [isAdmin, setIsAdmin] = useState(false)
-
-  useEffect(() => {
-    let mounted = true
-    checkCurrentUserAdmin().then((result) => {
-      if (mounted) setIsAdmin(result.isAdmin)
-    })
-    return () => { mounted = false }
-  }, [])
+  const { t } = useLanguage()
 
   return (
     <div className="gb-desktop-nav fixed top-0 left-0 right-0 z-50 hidden bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]">
@@ -109,18 +99,6 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
                 <NavIcon type={item.icon} className="h-4 w-4" />
                 <span>{t(item.labelKey)}</span>
               </button>
-              {item.key === 'domov' && isAdmin && (
-                <button
-                  onClick={() => pojdiNa('/admin')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                    aktivna === 'admin'
-                      ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
-                      : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
-                  }`}
-                >
-                  <span>{language === 'en' ? 'Admin Panel' : 'Admin Panel'}</span>
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -132,7 +110,6 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 export function BottomNav({ aktivna }: { aktivna?: string }) {
   const { t } = useLanguage()
   const [lite, setLite] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     try {
@@ -140,11 +117,6 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
       const settings = settingsRaw ? JSON.parse(settingsRaw) : {}
       setLite(settings.nacin === 'lite')
     } catch {}
-    let mounted = true
-    checkCurrentUserAdmin().then((result) => {
-      if (mounted) setIsAdmin(result.isAdmin)
-    })
-    return () => { mounted = false }
   }, [])
 
   const litePovezave = [
@@ -152,13 +124,12 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   ]
   const mobileLinks = [
     ...(lite ? litePovezave : mobilnePovezave),
-    ...(isAdmin ? [{ key: 'admin', href: '/admin', icon: 'admin', label: 'Admin' }] : []),
   ]
 
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite && !isAdmin ? 'justify-center' : 'justify-around'} px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
+      <div className={`gb-mobile-nav fixed bottom-0 left-0 right-0 bg-[#0a0a12]/96 border-t border-[#1a1a28] flex ${lite ? 'justify-center' : 'justify-around'} px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 z-50 backdrop-blur-xl`}>
         {mobileLinks.map((item: any) => (
           <button
             key={item.key}

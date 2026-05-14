@@ -259,7 +259,7 @@ export default function GorivoPage() {
         .order('vrstni_red', { ascending: true })
 
       let nextCars = carsRes.data || []
-      if (carsRes.error) {
+      if (carsRes.error || nextCars.length === 0) {
         const fallback = await supabase
           .from('cars')
           .select('id,znamka,model,gorivo,km_trenutni,slika_url,slika,slika_updated_at,updated_at,created_at,arhivirano,vrstni_red')

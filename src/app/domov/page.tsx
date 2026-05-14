@@ -197,7 +197,7 @@ export default function DomovPage() {
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
 
-      if (carsError) {
+      if (carsError || (carsData || []).length === 0) {
         const fallback = await supabase
           .from('cars')
           .select('*')

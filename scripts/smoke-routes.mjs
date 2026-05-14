@@ -9,6 +9,8 @@ const requiredPaths = [
   'src/app/garaza/page.tsx',
   'src/app/dodaj-avto/page.tsx',
   'src/app/gorivo/page.tsx',
+  'src/app/servis/page.tsx',
+  'src/app/vec/page.tsx',
   'src/app/vnos-goriva/page.tsx',
   'src/app/vnos-servisa/page.tsx',
   'src/app/vnos-stroska/page.tsx',
