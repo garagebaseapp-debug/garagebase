@@ -229,13 +229,15 @@ const MiniIcon = ({ kind }: { kind: string }) => {
   )
 }
 
-const MenuTile = ({ kind, label, active = false }: { kind: string, label: string, active?: boolean }) => (
+const MenuTile = ({ kind, label, active = false, light = true }: { kind: string, label: string, active?: boolean, light?: boolean }) => (
   <div className={`flex min-h-16 items-center justify-center gap-3 rounded-2xl border p-4 text-center ${
     active
       ? 'border-[#6c63ff88] bg-[#23194d] text-white shadow-[0_18px_36px_rgba(108,99,255,0.22)]'
-      : 'border-[#d9ddf4] bg-white/72 text-[#27274a] shadow-[0_16px_34px_rgba(25,25,55,0.08)]'
+      : light
+        ? 'border-[#d9ddf4] bg-white/72 text-[#27274a] shadow-[0_16px_34px_rgba(25,25,55,0.08)]'
+        : 'border-[#2a2a40] bg-[#151527] text-[#d8d8e8] shadow-[0_16px_34px_rgba(0,0,0,0.2)]'
   }`}>
-    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${active ? 'bg-white/10' : 'bg-[#f3f0ff]'}`}>
+    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${active ? 'bg-white/10' : light ? 'bg-[#f3f0ff]' : 'bg-[#241a52]'}`}>
       <MiniIcon kind={kind} />
     </span>
     <span className="text-sm font-black sm:text-base">{label}</span>
@@ -273,8 +275,10 @@ const VehicleCardMini = ({ name, status, tone }: { name: string, status: string,
   </div>
 )
 
-const DeviceShowcase = () => (
-  <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-[#cfd7f3] bg-[#eef3ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+const DeviceShowcase = ({ light = true }: { light?: boolean }) => (
+  <div className={`relative mt-5 h-56 overflow-hidden rounded-2xl border p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${
+    light ? 'border-[#cfd7f3] bg-[#eef3ff]' : 'border-[#24243a] bg-[#080810]'
+  }`}>
     <img
       src="/landing-mobile-app.png"
       alt=""
@@ -283,8 +287,10 @@ const DeviceShowcase = () => (
   </div>
 )
 
-const VehicleTabletShowcase = () => (
-  <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-[#cfd7f3] bg-[#eef3ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
+const VehicleTabletShowcase = ({ light = true }: { light?: boolean }) => (
+  <div className={`relative mt-5 h-56 overflow-hidden rounded-2xl border p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${
+    light ? 'border-[#cfd7f3] bg-[#eef3ff]' : 'border-[#24243a] bg-[#080810]'
+  }`}>
     <img
       src="/landing-multi-vehicles.png"
       alt=""
@@ -293,12 +299,12 @@ const VehicleTabletShowcase = () => (
   </div>
 )
 
-const FeatureVisual = ({ kind, language }: { kind: string, language: Language }) => {
+const FeatureVisual = ({ kind, language, light = true }: { kind: string, language: Language, light?: boolean }) => {
   const labels = appLabels[language]
 
   if (kind === 'report') {
     return (
-      <div className="mt-5 rounded-2xl border border-[#d8ddf5] bg-[#f7f8ff] p-4">
+      <div className={`mt-5 rounded-2xl border p-4 ${light ? 'border-[#d8ddf5] bg-[#f7f8ff]' : 'border-[#24243a] bg-[#080810]'}`}>
         <div className="relative mx-auto w-[180px]">
           <div className="absolute inset-0 translate-x-4 -translate-y-3 rotate-3 rounded-md border border-white/10 bg-white/80 shadow-lg" />
           <div className="relative rotate-[-2deg] overflow-hidden rounded-md bg-white p-3 text-[#151527] shadow-[0_18px_38px_rgba(0,0,0,0.35)]">
@@ -337,11 +343,11 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   if (kind === 'mobile') {
-    return <DeviceShowcase />
+    return <DeviceShowcase light={light} />
   }
 
   if (kind === 'vehicles') {
-    return <VehicleTabletShowcase />
+    return <VehicleTabletShowcase light={light} />
   }
 
   if (kind === 'fuel' || kind === 'service' || kind === 'reminders') {
@@ -349,11 +355,11 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-white/70 p-3">
+    <div className={`mt-4 rounded-2xl p-3 ${light ? 'bg-white/70' : 'bg-[#080810]/80'}`}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        <MenuTile kind="costs" label={labels.costs} />
-        <MenuTile kind="settings" label={labels.settings} />
-        <MenuTile kind="report" label={labels.report} active />
+        <MenuTile kind="costs" label={labels.costs} light={light} />
+        <MenuTile kind="settings" label={labels.settings} light={light} />
+        <MenuTile kind="report" label={labels.report} active light={light} />
         <div className="flex min-h-16 items-center justify-center gap-3 rounded-2xl border border-[#2b2458] bg-[#25185a] p-4 text-sm font-black text-white shadow-[0_18px_36px_rgba(37,24,90,0.22)]">
           <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-xl">⌗</span>
           AI OCR
@@ -369,7 +375,7 @@ export default function LandingPage() {
   const { language } = useLanguage()
   const t = copy[language]
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
+  const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
 
   const updateTheme = (nextTheme: LandingTheme) => {
     setTheme(nextTheme)
@@ -534,7 +540,9 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="funkcije" className="bg-[#f4f6ff] px-5 py-24 text-[#09091b]">
+      <section id="funkcije" className={`px-5 py-24 transition-colors ${
+        isLightTheme ? 'bg-[#f4f6ff] text-[#09091b]' : 'bg-[#080810] text-white'
+      }`}>
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
             <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#8b5cf6]">{t.featuresKicker}</p>
@@ -551,16 +559,20 @@ export default function LandingPage() {
                   key={feature.title}
                   className={`rounded-[22px] border p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] transition-colors hover:border-[#8b5cf666] ${
                     isScanCard
-                      ? 'border-[#e3e7f8] bg-[linear-gradient(105deg,rgba(255,255,255,0.94),rgba(248,247,255,0.86))] lg:col-span-3'
-                      : 'border-[#d8ddf5] bg-white/82'
+                      ? isLightTheme
+                        ? 'border-[#e3e7f8] bg-[linear-gradient(105deg,rgba(255,255,255,0.94),rgba(248,247,255,0.86))] lg:col-span-3'
+                        : 'border-[#262644] bg-[linear-gradient(105deg,rgba(15,15,26,0.96),rgba(18,14,35,0.88))] lg:col-span-3'
+                      : isLightTheme
+                        ? 'border-[#d8ddf5] bg-white/82'
+                        : 'border-[#1e1e32] bg-[#0f0f1a]'
                   }`}
                 >
                   {isIconCard ? (
                     <div className="flex min-h-28 items-center gap-5">
-                      <FeatureVisual kind={kind} language={language} />
+                      <FeatureVisual kind={kind} language={language} light={isLightTheme} />
                       <div className="min-w-0 flex-1">
-                        <p className="mb-2 text-xl font-black text-[#09091b]">{feature.title}</p>
-                        <p className="text-base leading-relaxed text-[#38385f]">{feature.text}</p>
+                        <p className={`mb-2 text-xl font-black ${isLightTheme ? 'text-[#09091b]' : 'text-white'}`}>{feature.title}</p>
+                        <p className={`text-base leading-relaxed ${isLightTheme ? 'text-[#38385f]' : 'text-[#c8c8dc]'}`}>{feature.text}</p>
                       </div>
                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#d8d4ff] bg-[#f6f3ff] text-xl font-black text-[#6c63ff]">›</span>
                     </div>
@@ -569,14 +581,14 @@ export default function LandingPage() {
                       <div className={isScanCard ? 'grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.65fr)] lg:items-center' : ''}>
                         <div>
                           <div className="flex items-center gap-2">
-                            <p className="text-xl font-black text-[#09091b]">{feature.title}</p>
+                            <p className={`text-xl font-black ${isLightTheme ? 'text-[#09091b]' : 'text-white'}`}>{feature.title}</p>
                             {isScanCard && (
                               <span className="rounded-full bg-[#8b5cf622] px-3 py-1 text-xs font-black uppercase text-[#6c63ff]">Novo</span>
                             )}
                           </div>
-                          <p className="mt-3 text-base leading-relaxed text-[#38385f]">{feature.text}</p>
+                          <p className={`mt-3 text-base leading-relaxed ${isLightTheme ? 'text-[#38385f]' : 'text-[#c8c8dc]'}`}>{feature.text}</p>
                         </div>
-                        <FeatureVisual kind={kind} language={language} />
+                        <FeatureVisual kind={kind} language={language} light={isLightTheme} />
                       </div>
                     </>
                   )}
@@ -585,20 +597,24 @@ export default function LandingPage() {
             })}
           </div>
 
-          <div className="mt-16 rounded-[24px] border border-[#d8ddf5] bg-white/82 p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] sm:p-8">
+          <div className={`mt-16 rounded-[24px] border p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] sm:p-8 ${
+            isLightTheme ? 'border-[#d8ddf5] bg-white/82' : 'border-[#1e1e32] bg-[#0f0f1a]'
+          }`}>
             <div className="max-w-3xl">
               <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#3ecfcf]">{t.roadmapKicker}</p>
-              <h2 className="text-3xl font-black text-[#09091b] md:text-4xl">{t.roadmapTitle}</h2>
-              <p className="mt-4 text-base leading-relaxed text-[#38385f]">{t.roadmapText}</p>
+              <h2 className={`text-3xl font-black md:text-4xl ${isLightTheme ? 'text-[#09091b]' : 'text-white'}`}>{t.roadmapTitle}</h2>
+              <p className={`mt-4 text-base leading-relaxed ${isLightTheme ? 'text-[#38385f]' : 'text-[#c8c8dc]'}`}>{t.roadmapText}</p>
             </div>
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {t.roadmap.map((item) => (
-                <div key={item.title} className="rounded-2xl border border-[#e1e5f6] bg-white/72 p-5 shadow-[0_12px_28px_rgba(22,22,55,0.06)]">
-                  <p className="flex items-center gap-2 text-base font-black text-[#09091b]">
+                <div key={item.title} className={`rounded-2xl border p-5 shadow-[0_12px_28px_rgba(22,22,55,0.06)] ${
+                  isLightTheme ? 'border-[#e1e5f6] bg-white/72' : 'border-[#24243a] bg-[#13131f]'
+                }`}>
+                  <p className={`flex items-center gap-2 text-base font-black ${isLightTheme ? 'text-[#09091b]' : 'text-white'}`}>
                     <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#8b5cf666] text-sm text-[#6c63ff]">✓</span>
                     {item.title}
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-[#555579]">{item.text}</p>
+                  <p className={`mt-2 text-sm leading-relaxed ${isLightTheme ? 'text-[#555579]' : 'text-[#8a8aa8]'}`}>{item.text}</p>
                 </div>
               ))}
             </div>
