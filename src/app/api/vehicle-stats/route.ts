@@ -338,7 +338,7 @@ export async function GET(req: NextRequest) {
   }
 
   let userCarCounts: Array<{ id: string; name: string; fuel: number; service: number; expense: number }> = []
-  if (!hasRows(selectedRows)) {
+  if (process.env.NODE_ENV !== 'production' && !hasRows(selectedRows)) {
     const { data: carsForUser } = await dataClient
       .from('cars')
       .select('id,znamka,model')
@@ -368,10 +368,14 @@ export async function GET(req: NextRequest) {
   const stats = buildApiVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car)
   const sampleFuel = selectedRows.fuelRows[0] || null
 
-  return NextResponse.json({
+  const body: any = {
     ok: true,
     source: selectedRows.label,
-    debug: {
+    stats,
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    body.debug = {
       requestedCarId: carId,
       primary: { label: primaryRows.label, ...rowCounts(primaryRows) },
       fallback: fallbackRows ? { label: fallbackRows.label, ...rowCounts(fallbackRows) } : null,
@@ -389,7 +393,8 @@ export async function GET(req: NextRequest) {
         computedLiters: apiFuelLitersValue(sampleFuel),
       } : null,
       userCarsWithRows: userCarCounts.slice(0, 12),
-    },
-    stats,
-  })
+    }
+  }
+
+  return NextResponse.json(body)
 }
