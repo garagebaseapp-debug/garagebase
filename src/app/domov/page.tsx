@@ -136,7 +136,7 @@ export default function DomovPage() {
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
 
-  const heroImage = theme === 'svetla' ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
+  const heroImage = theme === 'svetla' ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
 
