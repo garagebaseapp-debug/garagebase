@@ -112,12 +112,12 @@ export default function VecPage() {
   }, [])
 
   const items: MenuItem[] = [
-    { title: tx('Obvestila', 'Notifications'), text: tx('Push in e-poštna obvestila, opomniki in testiranje.', 'Push and email notifications, reminders and tests.'), href: '/nastavitve#obvestila', icon: 'bell', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
-    { title: tx('Varnost', 'Security'), text: tx('Odklep aplikacije, geslo in zaščita računa.', 'App lock, password and account protection.'), href: '/nastavitve#varnost', icon: 'shield', tone: 'text-[#2563eb] bg-[#2563eb14]' },
-    { title: tx('Sinhronizacija', 'Sync'), text: tx('Uvoz, QR prenos in povezave z drugimi aplikacijami.', 'Import, QR transfer and app connections.'), href: '/nastavitve#prenos', icon: 'sync', tone: 'text-[#14b8a6] bg-[#14b8a614]' },
-    { title: tx('Videz', 'Appearance'), text: tx('Tema, pisava in prikaz garaže.', 'Theme, font and garage display.'), href: '/nastavitve#pisava', icon: 'paint', tone: 'text-[#8b5cf6] bg-[#8b5cf614]' },
-    { title: tx('Uporaba', 'Usage'), text: tx('Lite/Full način, enote in valuta.', 'Lite/Full mode, units and currency.'), href: '/nastavitve#uporaba', icon: 'grid', tone: 'text-[#f97316] bg-[#f9731614]' },
-    { title: tx('Pomoč in podpora', 'Help and support'), text: tx('Pomočnik, prijava napake in predlogi.', 'Assistant, bug reports and ideas.'), href: '/nastavitve#pomoc', icon: 'help', tone: 'text-[#16a34a] bg-[#16a34a14]' },
+    { title: tx('Obvestila', 'Notifications'), text: tx('Push in e-poštna obvestila, opomniki in testiranje.', 'Push and email notifications, reminders and tests.'), href: '/nastavitve?section=obvestila', icon: 'bell', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
+    { title: tx('Varnost', 'Security'), text: tx('Odklep aplikacije, geslo in zaščita računa.', 'App lock, password and account protection.'), href: '/nastavitve?section=varnost', icon: 'shield', tone: 'text-[#2563eb] bg-[#2563eb14]' },
+    { title: tx('Sinhronizacija', 'Sync'), text: tx('Uvoz, QR prenos in povezave z drugimi aplikacijami.', 'Import, QR transfer and app connections.'), href: '/nastavitve?section=prenos', icon: 'sync', tone: 'text-[#14b8a6] bg-[#14b8a614]' },
+    { title: tx('Videz', 'Appearance'), text: tx('Tema, pisava in prikaz garaže.', 'Theme, font and garage display.'), href: '/nastavitve?section=prikaz', icon: 'paint', tone: 'text-[#8b5cf6] bg-[#8b5cf614]' },
+    { title: tx('Uporaba', 'Usage'), text: tx('Lite/Full način, enote in valuta.', 'Lite/Full mode, units and currency.'), href: '/nastavitve?section=uporaba', icon: 'grid', tone: 'text-[#f97316] bg-[#f9731614]' },
+    { title: tx('Pomoč in podpora', 'Help and support'), text: tx('Pomočnik, prijava napake in predlogi.', 'Assistant, bug reports and ideas.'), href: '/nastavitve?section=pomoc', icon: 'help', tone: 'text-[#16a34a] bg-[#16a34a14]' },
     { title: tx('Moja vozila', 'My vehicles'), text: tx('Uredi vozila, arhiv in prikaz kartic.', 'Manage vehicles, archive and cards.'), href: '/garaza', icon: 'garage', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
     { title: tx('Uvoz podatkov', 'Data import'), text: tx('CSV, Drivvo in prenos zgodovine.', 'CSV, Drivvo and history transfer.'), href: '/uvoz-podatkov', icon: 'import', tone: 'text-[#0ea5e9] bg-[#0ea5e914]' },
     { title: 'Admin Panel', text: tx('Uporabniki, statistika in napake.', 'Users, statistics and errors.'), href: '/admin', icon: 'admin', tone: 'text-[#ef4444] bg-[#ef444414]', adminOnly: true },
@@ -143,7 +143,7 @@ export default function VecPage() {
         </header>
 
         <section className="mb-5 overflow-hidden rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a]">
-          <button onClick={() => window.location.href = '/nastavitve#profil'} className="flex w-full items-center gap-4 p-4 text-left">
+          <button onClick={() => window.location.href = '/nastavitve?section=profil'} className="flex w-full items-center gap-4 p-4 text-left">
             <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-[#6c63ff22] text-[#6c63ff]">
               <Icon type="profile" className="h-7 w-7" />
             </div>
@@ -211,7 +211,7 @@ export default function VecPage() {
               </div>
             </div>
 
-            <button onClick={() => window.location.href = '/nastavitve#aplikacija'} className="w-full rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4 text-left">
+            <button onClick={() => window.location.href = '/nastavitve?section=aplikacija'} className="w-full rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4 text-left">
               <p className="text-lg font-black text-white">GarageBase Premium</p>
               <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{tx('Odkleni več funkcij, ko bo paket pripravljen.', 'Unlock more features when the plan is ready.')}</p>
               <span className="mt-4 inline-flex rounded-2xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white">{tx('Poglej načrt', 'View plan')} →</span>

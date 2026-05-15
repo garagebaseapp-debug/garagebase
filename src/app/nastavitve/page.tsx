@@ -51,6 +51,20 @@ const defaultNotificationSettings = {
   sendTime: '08:00',
 }
 
+const settingsViewIds = ['vse', 'profil', 'obvestila', 'varnost', 'prenos', 'uporaba', 'prikaz', 'pomoc', 'aplikacija', 'brisanje']
+
+function normalizeSettingsView(value: string | null) {
+  if (!value) return 'vse'
+  return settingsViewIds.includes(value) ? value : 'vse'
+}
+
+function settingsViewFromUrl() {
+  if (typeof window === 'undefined') return 'vse'
+  const params = new URLSearchParams(window.location.search)
+  const hash = window.location.hash.replace('#', '')
+  return normalizeSettingsView(params.get('section') || hash)
+}
+
 export default function Nastavitve() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -87,7 +101,7 @@ export default function Nastavitve() {
   })
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
-  const [settingsView, setSettingsView] = useState('vse')
+  const [settingsView, setSettingsView] = useState(settingsViewFromUrl)
   const [settingsReady, setSettingsReady] = useState(false)
   const [settingsSaveState, setSettingsSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [notificationSaveState, setNotificationSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -131,7 +145,18 @@ export default function Nastavitve() {
   ]
   const selectedSection = settingsSections.find((section) => section.id === settingsView) || settingsSections[0]
   const selectSettingsSection = (sectionId: string) => {
-    setSettingsView(sectionId)
+    const nextSection = normalizeSettingsView(sectionId)
+    setSettingsView(nextSection)
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      if (nextSection === 'vse') {
+        url.searchParams.delete('section')
+      } else {
+        url.searchParams.set('section', nextSection)
+      }
+      url.hash = ''
+      window.history.replaceState(null, '', `${url.pathname}${url.search}`)
+    }
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
   }
 
@@ -165,6 +190,17 @@ export default function Nastavitve() {
       listSettings: values.listaNastavitve || listaNastavitve,
     })
   }
+
+  useEffect(() => {
+    const syncSettingsViewFromUrl = () => setSettingsView(settingsViewFromUrl())
+    syncSettingsViewFromUrl()
+    window.addEventListener('hashchange', syncSettingsViewFromUrl)
+    window.addEventListener('popstate', syncSettingsViewFromUrl)
+    return () => {
+      window.removeEventListener('hashchange', syncSettingsViewFromUrl)
+      window.removeEventListener('popstate', syncSettingsViewFromUrl)
+    }
+  }, [])
 
   const shraniPushSubscriptionNaServer = async (subscription: PushSubscription, settings = notificationSettings) => {
     const { data: sessionData } = await supabase.auth.getSession()
