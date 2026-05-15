@@ -525,10 +525,15 @@ export default function VnosGoriva() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
+      <div className="mx-auto w-full max-w-md xl:max-w-5xl">
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
-        <h1 className="text-xl font-bold text-white">⛽ {tx('Vnos goriva', 'Fuel entry')}</h1>
+        <div>
+          <p className="hidden text-sm font-black text-[#6c63ff] xl:block">GarageBase</p>
+          <h1 className="text-xl font-bold text-white xl:text-4xl">⛽ {tx('Vnos goriva', 'Fuel entry')}</h1>
+          <p className="mt-1 hidden text-sm font-semibold text-[#8a8aa8] xl:block">{tx('Vnesi točenje, kilometre in račun na enem preglednem mestu.', 'Enter fill-up, mileage and receipt in one clear place.')}</p>
+        </div>
       </div>
 
       {poslusam && (
@@ -538,7 +543,7 @@ export default function VnosGoriva() {
         </div>
       )}
 
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4">
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-4 shadow-xl shadow-black/10 xl:rounded-[28px] xl:p-8">
         {nacin === 'lite' && selectedCar && (
           <div className="rounded-2xl border border-[#3ecfcf66] bg-[#3ecfcf14] px-4 py-3">
             <p className="text-[#3ecfcf] text-xs font-black uppercase tracking-wide">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
@@ -562,13 +567,13 @@ export default function VnosGoriva() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">{tx('Tip goriva', 'Fuel type')}</label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-3 xl:gap-4">
             {tipiGoriva.map((tip) => (
               <button
                 key={tip.value}
                 type="button"
                 onClick={() => setTipGoriva(tipGoriva === tip.value ? '' : tip.value)}
-                className={`relative py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 ${
+                className={`relative py-4 rounded-xl border-2 transition-all flex flex-col items-center gap-1 xl:py-6 ${
                   tipGoriva === tip.value ? tip.border : 'border-[#1e1e32] bg-[#13131f]'
                 }`}
                 style={tipGoriva === tip.value ? { backgroundColor: tip.activeBg } : {}}
@@ -839,6 +844,7 @@ export default function VnosGoriva() {
         </button>
       </div>
 
+      </div>
       <HomeButton />
     </div>
   )

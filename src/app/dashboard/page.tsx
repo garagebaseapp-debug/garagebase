@@ -805,13 +805,17 @@ export default function Dashboard() {
     )
   }
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
+      <div className="mx-auto w-full max-w-md lg:max-w-6xl">
 
       <div className="flex items-center gap-3 mb-5">
         <BackButton href="/garaza" />
-        <h1 className="text-2xl font-bold text-white">
-          Garage<span className="text-[#6c63ff]">Base</span>
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-white lg:text-3xl">
+            Garage<span className="text-[#6c63ff]">Base</span>
+          </h1>
+          <p className="mt-1 hidden text-sm font-semibold text-[#8a8aa8] lg:block">{tx('Pregled izbranega vozila in hitre akcije.', 'Selected vehicle overview and quick actions.')}</p>
+        </div>
       </div>
 
       {loading && avti.length === 0 && (
@@ -856,11 +860,11 @@ export default function Dashboard() {
 
           {aktivniAvto && (
             <>
-              <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[minmax(340px,0.9fr)_minmax(520px,1.1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-2xl overflow-hidden mb-6">
-                <div className="relative min-h-[360px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-6">
+              <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[320px_minmax(0,1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-[28px] overflow-hidden mb-6 shadow-2xl shadow-black/20">
+                <div className="relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
                   {slikaVozila(aktivniAvto) ? (
                     <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
-                      loading="eager" decoding="async" className="max-w-full max-h-[330px] object-contain rounded-xl" />
+                      loading="eager" decoding="async" className="h-full max-h-[300px] w-full rounded-2xl object-cover" />
                   ) : (
                     <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
                       🚗
@@ -868,7 +872,7 @@ export default function Dashboard() {
                   )}
                 </div>
 
-                <div className="p-8 flex flex-col gap-6">
+                <div className="p-7 flex flex-col gap-5">
                   <div className="flex justify-between items-start gap-6">
                     <div>
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Izbrano vozilo</p>
@@ -894,7 +898,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-[0.9fr_1.25fr_1.25fr] gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
@@ -1167,6 +1171,7 @@ export default function Dashboard() {
         </>
       )}
 
+      </div>
       <HomeButton />
     </div>
   )

@@ -38,8 +38,19 @@ export default function Opomniki() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
-      const carId = params.get('car')
-      if (!carId) { window.location.href = '/garaza'; return }
+      let carId = params.get('car')
+      if (!carId) {
+        const { data: prviAvto } = await supabase
+          .from('cars')
+          .select('*')
+          .eq('user_id', user.id)
+          .or('arhivirano.is.null,arhivirano.eq.false')
+          .order('vrstni_red', { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        if (!prviAvto) { window.location.href = '/garaza'; return }
+        carId = prviAvto.id
+      }
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)

@@ -257,11 +257,16 @@ export default function VnosStroska() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
+      <div className="mx-auto w-full max-w-md xl:max-w-5xl">
 
       <div className="flex items-center gap-3 mb-8">
         <BackButton />
-        <h1 className="text-xl font-bold text-white">💰 Vnos stroška</h1>
+        <div>
+          <p className="hidden text-sm font-black text-[#6c63ff] xl:block">GarageBase</p>
+          <h1 className="text-xl font-bold text-white xl:text-4xl">💰 {tx('Vnos stroška', 'Expense entry')}</h1>
+          <p className="mt-1 hidden text-sm font-semibold text-[#8a8aa8] xl:block">{tx('Dodaj strošek vozila z dokazilom ali opombo.', 'Add a vehicle cost with proof or a note.')}</p>
+        </div>
       </div>
 
       {poslusam && (
@@ -271,7 +276,7 @@ export default function VnosStroska() {
         </div>
       )}
 
-      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-5">
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 flex flex-col gap-5 shadow-xl shadow-black/10 xl:rounded-[28px] xl:p-8">
 
         {avti.length > 0 && (
           <div>
@@ -287,7 +292,7 @@ export default function VnosStroska() {
         {/* Kategorije */}
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">Kategorija</label>
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:gap-3">
             {kategorije.map((kat) => (
               <button key={kat.vrednost} type="button"
                 onClick={() => setKategorija(kat.vrednost)}
@@ -406,6 +411,7 @@ export default function VnosStroska() {
         </button>
       </div>
 
+      </div>
       <HomeButton />
     </div>
   )

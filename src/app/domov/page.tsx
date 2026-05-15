@@ -383,10 +383,11 @@ export default function DomovPage() {
         </section>
 
         <section className="mb-5 hidden grid-cols-3 gap-4 xl:grid">
-          <button onClick={() => window.location.href = favoriteCar?.id ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+          <button onClick={() => window.location.href = '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Glavno vozilo', 'Main vehicle')}</p>
             <p className="mt-3 truncate text-2xl font-black text-white">{favoriteCarName || tx('Ni izbrano', 'Not selected')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{favoriteCar?.km_trenutni ? `${favoriteCar.km_trenutni.toLocaleString(locale)} ${distanceUnit}` : tx('Odpri garažo za pregled', 'Open garage to review')}</p>
+            <p className="mt-3 text-xs font-bold text-[#6c63ff]">{tx('To je prvo aktivno vozilo v garaži. Spremeni ga z vrstnim redom vozil.', 'This is the first active vehicle in the garage. Change it by changing vehicle order.')}</p>
           </button>
           <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Najbližji opomnik', 'Next reminder')}</p>
