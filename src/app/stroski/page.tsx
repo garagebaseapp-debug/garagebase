@@ -249,19 +249,21 @@ const mergeCostSummaries = (...summaries: any[]) => {
   summaries.forEach((summary) => {
     if (!summary) return
     const item = normalizeCostSummary(summary)
-    merged.fuel = Math.max(merged.fuel, item.fuel)
-    merged.service = Math.max(merged.service, item.service)
-    merged.expense = Math.max(merged.expense, item.expense)
-    merged.total = Math.max(merged.total, item.total, item.fuel + item.service + item.expense)
-    merged.imported = Math.max(merged.imported, item.imported)
-    merged.garageBase = Math.max(merged.garageBase, item.garageBase)
-    merged.rows.fuel = Math.max(merged.rows.fuel, item.rows.fuel)
-    merged.rows.service = Math.max(merged.rows.service, item.rows.service)
-    merged.rows.expense = Math.max(merged.rows.expense, item.rows.expense)
+    const calculatedTotal = item.fuel + item.service + item.expense
+    merged.fuel = item.fuel
+    merged.service = item.service
+    merged.expense = item.expense
+    merged.total = item.total > 0 ? item.total : calculatedTotal
+    merged.imported = item.imported
+    merged.garageBase = item.garageBase > 0 ? item.garageBase : (merged.total > 0 ? merged.total - item.imported : 0)
+    merged.rows.fuel = item.rows.fuel
+    merged.rows.service = item.rows.service
+    merged.rows.expense = item.rows.expense
   })
   if (merged.total <= 0) merged.total = merged.fuel + merged.service + merged.expense
   if (merged.garageBase <= 0 && merged.total > 0) {
-    merged.garageBase = Math.max(0, merged.total - merged.imported)
+    const ownCost = merged.total - merged.imported
+    merged.garageBase = ownCost > 0 ? ownCost : 0
   }
   return merged
 }
@@ -270,9 +272,13 @@ const costSummaryFromStats = (stats: any) => {
   const fuel = numericValue(stats?.costs?.fuel)
   const service = numericValue(stats?.costs?.service)
   const expense = numericValue(stats?.costs?.expense)
-  const total = Math.max(numericValue(stats?.costs?.total), fuel + service + expense)
+  const calculatedTotal = fuel + service + expense
+  const reportedTotal = numericValue(stats?.costs?.total)
+  const total = calculatedTotal > 0 ? calculatedTotal : reportedTotal
   const imported = numericValue(stats?.costs?.imported)
-  const garageBase = Math.max(numericValue(stats?.costs?.garageBase), total > 0 ? total - imported : 0)
+  const reportedGarageBase = numericValue(stats?.costs?.garageBase)
+  const calculatedGarageBase = total > 0 ? total - imported : 0
+  const garageBase = reportedGarageBase > 0 ? reportedGarageBase : (calculatedGarageBase > 0 ? calculatedGarageBase : 0)
 
   return {
     fuel,

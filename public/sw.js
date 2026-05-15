@@ -1,11 +1,30 @@
-﻿// GarageBase service worker for push notifications.
+// GarageBase service worker for push notifications and basic offline support.
 
-self.addEventListener('install', () => {
-  self.skipWaiting()
+const STATIC_CACHE = 'garagebase-static-v2'
+const OFFLINE_FALLBACK_URL = '/domov'
+const STATIC_ASSETS = [
+  '/',
+  OFFLINE_FALLBACK_URL,
+  '/manifest.json',
+  '/android-chrome-192x192.png',
+  '/android-chrome-512x512.png',
+  '/notification-badge.png',
+]
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE)
+      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((asset) => cache.add(asset))))
+      .then(() => self.skipWaiting())
+  )
 })
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(clients.claim())
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => key !== STATIC_CACHE).map((key) => caches.delete(key))))
+      .then(() => clients.claim())
+  )
 })
 
 function safeInternalUrl(value, fallback) {
@@ -17,6 +36,47 @@ function safeInternalUrl(value, fallback) {
     return fallback
   }
 }
+
+function isStaticRequest(requestUrl, request) {
+  if (requestUrl.origin !== self.location.origin) return false
+  if (requestUrl.pathname.startsWith('/api/')) return false
+  if (request.destination && ['style', 'script', 'worker', 'image', 'font', 'manifest'].includes(request.destination)) return true
+  return /\.(?:css|js|mjs|png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(requestUrl.pathname)
+}
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request
+  if (request.method !== 'GET') return
+
+  const requestUrl = new URL(request.url)
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(async () => {
+        const cachedDomov = await caches.match(OFFLINE_FALLBACK_URL)
+        return cachedDomov || caches.match('/') || Response.error()
+      })
+    )
+    return
+  }
+
+  if (!isStaticRequest(requestUrl, request)) return
+
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      const fresh = fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => cached)
+      return cached || fresh
+    })
+  )
+})
 
 self.addEventListener('push', (event) => {
   if (!event.data) return

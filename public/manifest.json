@@ -1,7 +1,7 @@
 ﻿{
   "name": "GarageBase",
   "short_name": "GarageBase",
-  "description": "Tvoja avto evidenca - vse na enem mestu",
+  "description": "Tvoja avto evidenca - vse na enem mestu. Your vehicle records - all in one place.",
   "start_url": "/domov",
   "scope": "/",
   "display": "standalone",

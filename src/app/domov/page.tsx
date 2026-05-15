@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
@@ -125,6 +126,7 @@ const asDateText = (value: string | null | undefined, locale: string) => {
 }
 
 export default function DomovPage() {
+  const router = useRouter()
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
@@ -207,7 +209,7 @@ export default function DomovPage() {
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        window.location.href = '/'
+        router.replace('/')
         return
       }
 
@@ -350,14 +352,14 @@ export default function DomovPage() {
     <div className="gb-app-home h-[100dvh] overflow-hidden bg-[#080810] px-4 pt-3 pb-[calc(5.9rem+env(safe-area-inset-bottom))] text-white md:h-auto md:min-h-screen md:overflow-visible md:pt-6">
       <div className="mx-auto max-w-md lg:max-w-5xl">
         <header className="mb-3 flex items-center justify-between">
-          <button onClick={() => window.location.href = '/domov'} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+          <button onClick={() => router.push('/domov')} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
           <div className="flex items-center gap-2">
             <button onClick={preklopiTemo} className="hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-4 py-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white xl:inline-flex">
               {theme === 'svetla' ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
             </button>
-            <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
+            <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
               <Icon type="bell" className="h-5 w-5" />
             </button>
           </div>
@@ -372,7 +374,7 @@ export default function DomovPage() {
 
         <section className="mb-2.5 grid grid-cols-4 gap-2">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => window.location.href = item.href} className="min-h-[clamp(68px,10dvh,82px)] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
+            <button key={item.label} onClick={() => router.push(item.href)} className="min-h-[clamp(68px,10dvh,82px)] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
               <div className={`mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone} sm:h-9 sm:w-9`}>
                 <Icon type={item.icon} className="h-5 w-5" />
               </div>
@@ -383,18 +385,18 @@ export default function DomovPage() {
         </section>
 
         <section className="mb-5 hidden grid-cols-3 gap-4 xl:grid">
-          <button onClick={() => window.location.href = '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+          <button onClick={() => router.push('/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Glavno vozilo', 'Main vehicle')}</p>
             <p className="mt-3 truncate text-2xl font-black text-white">{favoriteCarName || tx('Ni izbrano', 'Not selected')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{favoriteCar?.km_trenutni ? `${favoriteCar.km_trenutni.toLocaleString(locale)} ${distanceUnit}` : tx('Odpri garažo za pregled', 'Open garage to review')}</p>
             <p className="mt-3 text-xs font-bold text-[#6c63ff]">{tx('To je prvo aktivno vozilo v garaži. Spremeni ga z vrstnim redom vozil.', 'This is the first active vehicle in the garage. Change it by changing vehicle order.')}</p>
           </button>
-          <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+          <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Najbližji opomnik', 'Next reminder')}</p>
             <p className="mt-3 truncate text-2xl font-black text-white">{topReminders[0]?.title || tx('Brez opomnikov', 'No reminders')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{topReminders[0]?.value || tx('Vse je mirno', 'Everything is quiet')}</p>
           </button>
-          <button onClick={() => window.location.href = recentEvents[0]?.href || '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+          <button onClick={() => router.push(recentEvents[0]?.href || '/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Zadnji dogodek', 'Latest event')}</p>
             <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title || tx('Ni dogodkov', 'No events')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{recentEvents[0]?.subtitle || tx('Dodaj prvi vnos', 'Add the first entry')}</p>
@@ -403,7 +405,7 @@ export default function DomovPage() {
 
         <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
           <button
-            onClick={() => window.location.href = cars.length > 0 ? '/garaza' : '/dodaj-avto'}
+            onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
             className="relative block h-[clamp(118px,18dvh,155px)] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
           >
             <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
@@ -421,7 +423,7 @@ export default function DomovPage() {
           <section className="mb-8 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-black text-white">{tx('Glavno vozilo', 'Main vehicle')}</h2>
-              <button onClick={() => window.location.href = `/dashboard?car=${favoriteCar.id}`} className="text-sm font-bold text-[#a09aff]">{tx('Odpri', 'Open')} →</button>
+              <button onClick={() => router.push(`/dashboard?car=${favoriteCar.id}`)} className="text-sm font-bold text-[#a09aff]">{tx('Odpri', 'Open')} →</button>
             </div>
             <div className="flex items-center gap-4">
               <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#13131f]">
@@ -445,7 +447,7 @@ export default function DomovPage() {
         <section className="mb-3">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
-            <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
+            <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza')} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
           </div>
@@ -455,7 +457,7 @@ export default function DomovPage() {
             ) : topReminders.map((item, index) => {
               const tone = cardTone[item.tone]
               return (
-                <button key={item.id} onClick={() => window.location.href = `/opomniki?car=${item.carId}`} className={`flex w-full items-center gap-3 p-1.5 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-1.5 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
                   <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
                     {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                   </div>
@@ -473,7 +475,7 @@ export default function DomovPage() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
-            <button onClick={() => window.location.href = favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="text-sm font-bold text-[#d8d8e8]">
+            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza')} className="text-sm font-bold text-[#d8d8e8]">
               {tx('Prikaži vse', 'Show all')} →
             </button>
           </div>
@@ -481,7 +483,7 @@ export default function DomovPage() {
             {recentEvents.length === 0 ? (
               <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
             ) : recentEvents.slice(0, 1).map((event, index) => (
-              <button key={event.id} onClick={() => window.location.href = event.href} className={`flex w-full items-center gap-3 p-2 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+              <button key={event.id} onClick={() => router.push(event.href)} className={`flex w-full items-center gap-3 p-2 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
                 <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
                   <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
                 </div>

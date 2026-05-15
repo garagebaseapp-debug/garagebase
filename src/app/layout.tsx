@@ -6,8 +6,31 @@ import { AppAnalytics } from "@/lib/app-analytics";
 
 export const metadata: Metadata = {
   title: "GarageBase",
-  description: "Tvoja avto evidenca - vse na enem mestu",
+  description: "Tvoja avto evidenca - vse na enem mestu. Your vehicle records - all in one place.",
+  metadataBase: new URL("https://getgaragebase.com"),
   manifest: "/manifest.json",
+  openGraph: {
+    title: "GarageBase",
+    description: "Tvoja avto evidenca - vse na enem mestu. Your vehicle records - all in one place.",
+    url: "https://getgaragebase.com",
+    siteName: "GarageBase",
+    images: [
+      {
+        url: "/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "GarageBase",
+      },
+    ],
+    locale: "sl_SI",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GarageBase",
+    description: "Tvoja avto evidenca - vse na enem mestu. Your vehicle records - all in one place.",
+    images: ["/android-chrome-512x512.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

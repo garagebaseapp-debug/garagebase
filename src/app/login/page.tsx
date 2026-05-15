@@ -4,6 +4,50 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { hasAppLockCredential, unlockWithAppLock } from '@/lib/app-lock'
 
+const LOGIN_RATE_LIMIT_MAX = 10
+const LOGIN_RATE_LIMIT_WINDOW_MS = 60 * 1000
+const LOGIN_RATE_LIMIT_KEY = 'garagebase_login_attempts'
+
+const rateLimitBucket = (email: string) => email.trim().toLowerCase() || 'anonymous'
+
+const readLoginAttempts = () => {
+  try {
+    const raw = localStorage.getItem(LOGIN_RATE_LIMIT_KEY)
+    const parsed = raw ? JSON.parse(raw) : {}
+    return parsed && typeof parsed === 'object' ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+const writeLoginAttempts = (attempts: Record<string, number[]>) => {
+  try {
+    localStorage.setItem(LOGIN_RATE_LIMIT_KEY, JSON.stringify(attempts))
+  } catch {}
+}
+
+const checkLoginRateLimit = (email: string) => {
+  const now = Date.now()
+  const bucket = rateLimitBucket(email)
+  const attempts = readLoginAttempts() as Record<string, number[]>
+  const recent = (attempts[bucket] || []).filter((time) => now - time < LOGIN_RATE_LIMIT_WINDOW_MS)
+  if (recent.length >= LOGIN_RATE_LIMIT_MAX) {
+    const retryMs = LOGIN_RATE_LIMIT_WINDOW_MS - (now - recent[0])
+    return { allowed: false, retrySeconds: Math.max(1, Math.ceil(retryMs / 1000)) }
+  }
+  attempts[bucket] = [...recent, now]
+  writeLoginAttempts(attempts)
+  return { allowed: true, retrySeconds: 0 }
+}
+
+const clearLoginRateLimit = (email: string) => {
+  const bucket = rateLimitBucket(email)
+  const attempts = readLoginAttempts() as Record<string, number[]>
+  if (!attempts[bucket]) return
+  delete attempts[bucket]
+  writeLoginAttempts(attempts)
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -87,9 +131,16 @@ export default function LoginPage() {
       if (error) setMessage(error.message)
       else setMessage('Preveri email za potrditev registracije!')
     } else {
+      const rateLimit = checkLoginRateLimit(email)
+      if (!rateLimit.allowed) {
+        setMessage(`Prevec poskusov prijave. Poskusi znova cez ${rateLimit.retrySeconds} s. / Too many login attempts. Try again in ${rateLimit.retrySeconds}s.`)
+        setLoading(false)
+        return
+      }
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) setMessage(error.message)
       else {
+        clearLoginRateLimit(email)
         markAfterLoginHome()
         window.location.replace('/domov?login=1')
       }

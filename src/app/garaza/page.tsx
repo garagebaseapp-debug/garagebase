@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, NavIcon } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
@@ -10,6 +11,7 @@ import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/li
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
 export default function Garaza() {
+  const router = useRouter()
   const [avti, setAvti] = useState<any[]>([])
   const [brokenImageUrls, setBrokenImageUrls] = useState<Record<string, boolean>>({})
   const [opomniki, setOpomniki] = useState<{ [key: string]: any[] }>({})
@@ -131,7 +133,7 @@ export default function Garaza() {
 
   const odpriVozilo = (avto: any) => {
     if (!avto?.id || urejanje) return
-    window.location.href = nastavitveVozilMode ? `/nastavitve-avta?car=${avto.id}` : `/dashboard?car=${avto.id}`
+    router.push(nastavitveVozilMode ? `/nastavitve-avta?car=${avto.id}` : `/dashboard?car=${avto.id}`)
   }
 
   const naloziOpomnike = async (cars: any[]) => {
@@ -160,7 +162,7 @@ export default function Garaza() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        window.location.href = '/'
+        router.replace('/')
         return
       }
 
@@ -217,7 +219,7 @@ export default function Garaza() {
         if ((afterLogin && Date.now() - afterLogin < 30 * 60 * 1000) || (!seenDomov && !explicitGarageOpen)) {
           sessionStorage.removeItem('garagebase_after_login_home')
           localStorage.removeItem('garagebase_after_login_home')
-          window.location.replace('/domov')
+          router.replace('/domov')
           return
         }
       } catch {}
@@ -254,20 +256,20 @@ export default function Garaza() {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { router.replace('/'); return }
 
       const onboardingRaw = localStorage.getItem('garagebase_nastavitve')
       if (!onboardingRaw) {
-        window.location.href = '/onboarding'
+        router.push('/onboarding')
         return
       }
       try {
         if (JSON.parse(onboardingRaw).onboardingDone !== true) {
-          window.location.href = '/onboarding'
+          router.push('/onboarding')
           return
         }
       } catch {
-        window.location.href = '/onboarding'
+        router.push('/onboarding')
         return
       }
 
@@ -359,7 +361,7 @@ export default function Garaza() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    window.location.href = '/'
+    router.push('/')
   }
 
   const pojdiDodajAvto = async (anchor = 'header') => {
@@ -367,7 +369,7 @@ export default function Garaza() {
     setLimitAnchor(anchor)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      window.location.href = '/'
+      router.push('/')
       return
     }
 
@@ -400,7 +402,7 @@ export default function Garaza() {
       return
     }
 
-    window.location.href = '/dodaj-avto'
+    router.push('/dodaj-avto')
   }
 
   const prodajniOpomnik = avti.find((avto: any) => {
@@ -425,10 +427,10 @@ export default function Garaza() {
   const pojdiNaVnos = (pot: string) => {
     const targetAvto = liteAvto || avti[0]
     if (!targetAvto) {
-      window.location.href = '/dodaj-avto'
+      router.push('/dodaj-avto')
       return
     }
-    window.location.href = `${pot}?car=${targetAvto.id}`
+    router.push(`${pot}?car=${targetAvto.id}`)
   }
 
   const onDragStart = (index: number) => setDragIndex(index)
@@ -656,7 +658,7 @@ export default function Garaza() {
                 <button
                   key={action.label}
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); window.location.href = action.href }}
+                  onClick={(e) => { e.stopPropagation(); router.push(action.href) }}
                   className="rounded-2xl border border-white/15 bg-black/30 px-2 py-3 text-center text-xs font-black text-white shadow-lg shadow-black/20 backdrop-blur-md"
                 >
                   <span className="mb-1 block text-lg">{action.icon}</span>
@@ -800,7 +802,7 @@ export default function Garaza() {
     <div className={`gb-desktop-garage hidden min-h-screen xl:flex ${desktopLight ? 'bg-[#eef2fb] text-[#101225]' : 'bg-[#080810] text-white'}`}>
       <aside className={`flex w-[250px] shrink-0 flex-col border-r ${desktopLight ? 'border-[#dde3f2] bg-white' : 'border-[#1e1e32] bg-[#0b0b14]'}`}>
         <div className="px-7 py-7">
-          <button onClick={() => window.location.href = '/domov'} className={`text-xl font-black tracking-tight ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>
+          <button onClick={() => router.push('/domov')} className={`text-xl font-black tracking-tight ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
         </div>
@@ -815,7 +817,7 @@ export default function Garaza() {
           ].map((item) => (
             <button
               key={item.label}
-              onClick={() => window.location.href = item.href}
+              onClick={() => router.push(item.href)}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
                 ('active' in item && item.active)
                   ? (desktopLight ? 'bg-[#efe2ff] text-[#6c21c9]' : 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]')
@@ -1033,7 +1035,7 @@ export default function Garaza() {
           <p className="text-[#3ecfcf] font-bold text-sm">Je {imeVozila(prodajniOpomnik)} ze prodan?</p>
           <p className="text-[#7b7ba6] text-xs mt-1">Pred casom si pripravil izvoz zgodovine. Ce vozila ne uporabljas vec, ga arhiviraj in sprosti glavno garazo.</p>
           <div className="grid grid-cols-2 gap-2 mt-3">
-            <button onClick={() => window.location.href = `/nastavitve-avta?car=${prodajniOpomnik.id}`}
+            <button onClick={() => router.push(`/nastavitve-avta?car=${prodajniOpomnik.id}`)}
               className="rounded-xl bg-[#3ecfcf] text-black py-2 text-sm font-bold">Uredi/arhiviraj</button>
             <button onClick={() => preskociArhivOpomnik(prodajniOpomnik.id)}
               className="rounded-xl border border-[#1e1e32] text-[#8080a0] py-2 text-sm font-semibold">Se uporabljam</button>
@@ -1072,7 +1074,7 @@ export default function Garaza() {
                   {tx('Lite nacin prikaze samo najpogostejse akcije.', 'Lite mode shows only the most common actions.')}
                 </p>
               </div>
-              <button onClick={() => window.location.href = '/nastavitve'}
+              <button onClick={() => router.push('/nastavitve')}
                 className="bg-[#13131f] border border-[#1e1e32] text-[#8080a0] text-xs font-semibold px-3 py-2 rounded-xl">
                 {tx('Nastavitve', 'Settings')}
               </button>
@@ -1136,7 +1138,7 @@ export default function Garaza() {
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => window.location.href = `/dashboard?car=${liteAvto?.id}`}
+              <button onClick={() => router.push(`/dashboard?car=${liteAvto?.id}`)}
                 className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-3 text-sm font-bold text-white disabled:opacity-50"
                 disabled={!liteAvto?.id}>
                 {tx('Odpri pregled', 'Open overview')}

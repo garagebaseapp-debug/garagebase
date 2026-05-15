@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
@@ -209,6 +210,7 @@ const readVehicleStatsCache = (carId: string) => {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
   const activeLoadRef = useRef('')
   const [avti, setAvti] = useState<any[]>([])
   const [aktivniAvto, setAktivniAvto] = useState<any>(null)
@@ -284,7 +286,7 @@ export default function Dashboard() {
       }
 
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+      if (!user) { router.replace('/'); return }
       let selectedCar: any = null
       if (carIdFromUrl) {
         const { data } = await supabase
@@ -603,7 +605,7 @@ export default function Dashboard() {
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
     if (avto.id === aktivniAvto?.id) return
-    window.location.href = `/dashboard?car=${encodeURIComponent(avto.id)}`
+    router.push(`/dashboard?car=${encodeURIComponent(avto.id)}`)
   }
 
   const dniDo = (datum: string) => {
@@ -833,7 +835,7 @@ export default function Dashboard() {
           <p className="text-5xl mb-4">🚗</p>
           <p className="text-white font-semibold text-lg mb-2">Dodaj prvi avto</p>
           <p className="text-[#5a5a80] text-sm mb-6">Začni z vnosom svojega vozila</p>
-          <button onClick={() => window.location.href = '/dodaj-avto'}
+          <button onClick={() => router.push('/dodaj-avto')}
             className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
             + Dodaj avto
           </button>
@@ -852,7 +854,7 @@ export default function Dashboard() {
                 {vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))}
               </button>
             ))}
-            <button onClick={() => window.location.href = '/dodaj-avto'}
+            <button onClick={() => router.push('/dodaj-avto')}
               className="flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-semibold bg-transparent border border-dashed border-[#1e1e32] text-[#3a3a5a] hover:text-[#5a5a80] transition-all">
               + Dodaj
             </button>
@@ -908,7 +910,7 @@ export default function Dashboard() {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => window.location.href = '/gorivo?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
+                    <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Poraba', 'Consumption')}</p>
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -925,7 +927,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </button>
-                    <button onClick={() => window.location.href = '/stroski?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#6c63ff] transition-all">
+                    <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#6c63ff] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski', 'Costs')}</p>
                       <div className="space-y-2">
                         <div className="flex items-baseline justify-between gap-2">
@@ -944,12 +946,12 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-auto">
-                    <button onClick={() => window.location.href = '/gorivo?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
-                    <button onClick={() => window.location.href = '/servis?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
-                    <button onClick={() => window.location.href = '/opomniki?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>Opomniki</button>
-                    <button onClick={() => window.location.href = '/stroski?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>Stroški</button>
-                    <button onClick={() => window.location.href = '/nastavitve-avta?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>Nastavitve</button>
-                    <button onClick={() => window.location.href = '/report?car=' + aktivniAvto.id} className="bg-[#6c63ff22] border border-[#6c63ff55] text-[#a09aff] py-4 rounded-xl hover:border-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📄</span>Report</button>
+                    <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
+                    <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
+                    <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>Opomniki</button>
+                    <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>Stroški</button>
+                    <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>Nastavitve</button>
+                    <button onClick={() => router.push('/report?car=' + aktivniAvto.id)} className="bg-[#6c63ff22] border border-[#6c63ff55] text-[#a09aff] py-4 rounded-xl hover:border-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📄</span>Report</button>
                   </div>
                 </div>
               </div>
@@ -991,27 +993,27 @@ export default function Dashboard() {
                 </div>
 
                 <div className="px-5 pb-4 grid grid-cols-3 gap-2.5">
-                  <button onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/gorivo?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#3ecfcf] py-3.5 rounded-2xl hover:border-[#3ecfcf] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">Gorivo</span>
                   </button>
-                  <button onClick={() => window.location.href = `/servis?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/servis?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#f59e0b] py-3.5 rounded-2xl hover:border-[#f59e0b] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">🔧</span><span className="text-[12px] font-black text-[#d8d8e8]">Servis</span>
                   </button>
-                  <button onClick={() => window.location.href = `/opomniki?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/opomniki?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">🔔</span><span className="text-[12px] font-black text-[#d8d8e8]">Opomniki</span>
                   </button>
-                  <button onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/stroski?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#22c55e] py-3.5 rounded-2xl hover:border-[#22c55e] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">📊</span><span className="text-[12px] font-black text-[#d8d8e8]">Stroški</span>
                   </button>
-                  <button onClick={() => window.location.href = `/nastavitve-avta?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/nastavitve-avta?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#94a3b8] py-3.5 rounded-2xl hover:border-[#94a3b8] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">⚙️</span><span className="text-[12px] font-black text-[#d8d8e8]">Nastavitve</span>
                   </button>
-                  <button onClick={() => window.location.href = `/report?car=${aktivniAvto.id}`}
+                  <button onClick={() => router.push(`/report?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">📄</span><span className="text-[12px] font-black text-[#d8d8e8]">Report</span>
                   </button>
@@ -1039,7 +1041,7 @@ export default function Dashboard() {
                 {hasConsumptionBreakdown && (
                   <button
                     type="button"
-                    onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
+                    onClick={() => router.push(`/gorivo?car=${aktivniAvto.id}`)}
                     className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
                   >
                     <div className="mb-3 flex items-center gap-3">
@@ -1075,7 +1077,7 @@ export default function Dashboard() {
 
                 {/* Kalkulator stroškov €/km */}
                 {hasCostBreakdown && (
-                  <div onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`} className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4 cursor-pointer">
+                  <div onClick={() => router.push(`/stroski?car=${aktivniAvto.id}`)} className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4 cursor-pointer">
                     <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski vozila', 'Vehicle costs')}</p>
                     <div className="flex justify-between items-center">
                       <div>
