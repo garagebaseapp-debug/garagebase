@@ -240,6 +240,11 @@ export default function AdminPage() {
   const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
   const [settingsStats, setSettingsStats] = useState<any[]>([])
   const [clearLoading, setClearLoading] = useState('')
+  const [funnelStats, setFunnelStats] = useState<any[]>([])
+  const [retentionStats, setRetentionStats] = useState<any[]>([])
+  const [userActivity, setUserActivity] = useState<any[]>([])
+  const [adminAlerts, setAdminAlerts] = useState<any[]>([])
+  const [planSimulation, setPlanSimulation] = useState<any[]>([])
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -322,9 +327,9 @@ export default function AdminPage() {
         supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
         filteredSettingsQuery,
         supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
-        supabase.from('fuel_logs').select('cena_skupaj,receipt_url,created_at').limit(5000),
-        supabase.from('service_logs').select('cena,foto_url,created_at').limit(5000),
-        supabase.from('expenses').select('znesek,receipt_url,kategorija,created_at').neq('kategorija', 'km_sprememba').limit(5000),
+        supabase.from('fuel_logs').select('car_id,cena_skupaj,receipt_url,created_at').limit(5000),
+        supabase.from('service_logs').select('car_id,cena,foto_url,created_at').limit(5000),
+        supabase.from('expenses').select('car_id,znesek,receipt_url,kategorija,created_at').neq('kategorija', 'km_sprememba').limit(5000),
       ])
 
       if (carsData.error) throw carsData.error
@@ -365,6 +370,95 @@ export default function AdminPage() {
         serviceMoney.filter((row: any) => row.foto_url).length +
         expenseMoney.filter((row: any) => row.receipt_url).length
       const totalManualRows = Math.max(1, fuelMoney.length + serviceMoney.length + expenseMoney.length)
+      const carOwner = new Map<string, string>(
+        cars
+          .filter((car: any) => car.id && car.user_id)
+          .map((car: any) => [String(car.id), String(car.user_id)] as [string, string])
+      )
+      const userCarCounts = new Map<string, number>()
+      for (const car of cars) {
+        if (!car.user_id) continue
+        userCarCounts.set(car.user_id, (userCarCounts.get(car.user_id) || 0) + 1)
+      }
+      const ownerFromRow = (row: any) => carOwner.get(row.car_id)
+      const fuelUsers = new Set(fuelMoney.map(ownerFromRow).filter(Boolean))
+      const serviceUsers = new Set(serviceMoney.map(ownerFromRow).filter(Boolean))
+      const expenseUsers = new Set(expenseMoney.map(ownerFromRow).filter(Boolean))
+      const entryUsers = new Set([...fuelUsers, ...serviceUsers, ...expenseUsers])
+      const reportUsers = new Set(events.filter((event: any) => String(event.event_name).includes('report')).map((event: any) => event.user_id).filter(Boolean))
+      const qrUsers = new Set(events.filter((event: any) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).map((event: any) => event.user_id).filter(Boolean))
+      const baseUsersCount = Math.max(1, uniqueUsers.size)
+      const funnel = [
+        { label: tx('Znani uporabniki', 'Known users'), value: uniqueUsers.size, hint: tx('vozila ali dogodki', 'vehicles or events') },
+        { label: tx('Dodali vozilo', 'Added vehicle'), value: userCarCounts.size, hint: tx('vsaj eno vozilo', 'at least one vehicle') },
+        { label: tx('Prvi vnos', 'First entry'), value: entryUsers.size, hint: tx('gorivo, servis ali strošek', 'fuel, service or expense') },
+        { label: tx('Odprli report', 'Opened report'), value: reportUsers.size, hint: tx('PDF/report zanimanje', 'PDF/report interest') },
+        { label: tx('QR/prenos', 'QR/transfer'), value: qrUsers.size, hint: tx('prenos zgodovine', 'history transfer') },
+      ].map((item) => ({ ...item, percent: Math.round((item.value / baseUsersCount) * 100) }))
+      const firstSeen = new Map<string, number>()
+      const lastSeen = new Map<string, number>()
+      const eventCountByUser = new Map<string, number>()
+      for (const event of events) {
+        if (!event.user_id) continue
+        const time = new Date(event.created_at).getTime()
+        firstSeen.set(event.user_id, Math.min(firstSeen.get(event.user_id) || time, time))
+        lastSeen.set(event.user_id, Math.max(lastSeen.get(event.user_id) || time, time))
+        eventCountByUser.set(event.user_id, (eventCountByUser.get(event.user_id) || 0) + 1)
+      }
+      const retained = (daysAfter: number) => {
+        let count = 0
+        for (const [userId, first] of firstSeen.entries()) {
+          const last = lastSeen.get(userId) || first
+          if (last - first >= daysAfter * 24 * 60 * 60 * 1000) count += 1
+        }
+        return count
+      }
+      const retentionBase = Math.max(1, firstSeen.size)
+      const retention = [
+        { label: 'Day 1', value: retained(1) },
+        { label: 'Day 7', value: retained(7) },
+        { label: 'Day 30', value: retained(30) },
+      ].map((item) => ({ ...item, percent: Math.round((item.value / retentionBase) * 100) }))
+      const errorsByUser = new Map<string, number>()
+      for (const error of (errorsData.data || [])) {
+        if (!error.user_id) continue
+        errorsByUser.set(error.user_id, (errorsByUser.get(error.user_id) || 0) + 1)
+      }
+      const entriesByUser = new Map<string, number>()
+      for (const row of [...fuelMoney, ...serviceMoney, ...expenseMoney]) {
+        const owner = ownerFromRow(row)
+        if (!owner) continue
+        entriesByUser.set(owner, (entriesByUser.get(owner) || 0) + 1)
+      }
+      const userRows = Array.from(uniqueUsers).map((userId: any) => ({
+        userId,
+        label: String(userId).slice(0, 8),
+        cars: userCarCounts.get(userId) || 0,
+        entries: entriesByUser.get(userId) || 0,
+        events: eventCountByUser.get(userId) || 0,
+        errors: errorsByUser.get(userId) || 0,
+        lastSeen: lastSeen.get(userId) || 0,
+      })).sort((a, b) => b.events - a.events).slice(0, 8)
+      const planBuckets = [
+        { label: 'Free', range: tx('0-1 vozilo', '0-1 vehicle'), count: 0, color: 'bg-[#3ecfcf]' },
+        { label: 'Basic', range: tx('2-3 vozila', '2-3 vehicles'), count: 0, color: 'bg-[#6c63ff]' },
+        { label: 'Pro', range: tx('4-10 vozil', '4-10 vehicles'), count: 0, color: 'bg-[#a855f7]' },
+        { label: 'Business', range: tx('10+ / flota', '10+ / fleet'), count: 0, color: 'bg-[#f59e0b]' },
+      ]
+      for (const count of userCarCounts.values()) {
+        if (count <= 1) planBuckets[0].count += 1
+        else if (count <= 3) planBuckets[1].count += 1
+        else if (count <= 10) planBuckets[2].count += 1
+        else planBuckets[3].count += 1
+      }
+      const maxPlanCount = Math.max(1, ...planBuckets.map((item) => item.count))
+      const newErrorsCount = errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length
+      const alerts = [
+        ...(newErrorsCount > 0 ? [{ tone: 'red', title: tx('Nove napake', 'New errors'), text: tx(`${newErrorsCount} novih napak čaka pregled.`, `${newErrorsCount} new errors need review.`) }] : []),
+        ...(receiptRows / totalManualRows < 0.25 ? [{ tone: 'yellow', title: tx('Malo dokazil', 'Low proof rate'), text: tx('Manj kot 25% vnosov ima priložen račun.', 'Less than 25% of entries have attached receipts.') }] : []),
+        ...(Array.from(userCarCounts.values()).some((count) => count >= 10) ? [{ tone: 'purple', title: tx('Limit vozil', 'Vehicle limit'), text: tx('Nekateri uporabniki so blizu limita 10 vozil.', 'Some users are close to the 10 vehicle limit.') }] : []),
+        ...(active30 === 0 ? [{ tone: 'yellow', title: tx('Ni aktivnosti', 'No activity'), text: tx('V zadnjih 30 dneh ni zabeleženih aktivnih uporabnikov.', 'No active users recorded in the last 30 days.') }] : []),
+      ]
       const eventCounts = new Map<string, { count: number; users: Set<string> }>()
       const pageCounts = new Map<string, { count: number; users: Set<string> }>()
       const dayCounts = new Map<string, { count: number; users: Set<string> }>()
@@ -430,7 +524,7 @@ export default function AdminPage() {
         avgCarsPerUser: uniqueUsers.size > 0 ? carsCount / uniqueUsers.size : 0,
         eventsPerActiveUser: active30 > 0 ? events.length / active30 : 0,
         receiptRate: Math.round((receiptRows / totalManualRows) * 100),
-        errors: errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length,
+        errors: newErrorsCount,
       })
       setRecentCars(cars.slice(0, 8))
       setRecentFeedback(feedbackItems.slice(0, 8))
@@ -440,6 +534,11 @@ export default function AdminPage() {
       setVehicleTypes(types)
       setTopFeedbackTerms(topSuggestionTerms(feedbackItems))
       setRecentErrors(errorsData.error ? [] : (errorsData.data || []))
+      setFunnelStats(funnel)
+      setRetentionStats(retention)
+      setUserActivity(userRows)
+      setPlanSimulation(planBuckets.map((item) => ({ ...item, percent: Math.round((item.count / maxPlanCount) * 100) })))
+      setAdminAlerts(alerts)
       setSettingsStats([
         aggregateSetting(settingsEvents, 'usageMode', (m) => m.usageMode),
         aggregateSetting(settingsEvents, 'theme', (m) => m.theme),
@@ -725,6 +824,121 @@ export default function AdminPage() {
               <span className="text-sm font-bold text-white">{tx('Aktivni 30 dni', 'Active 30 days')}</span>
               <span className="text-lg font-black text-[#3ecfcf]">{stats.active30 || 0}</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-white font-bold">{tx('Uporabniški funnel', 'User funnel')}</h2>
+              <p className="text-[#5a5a80] text-xs">{tx('Registracija/aktivnost do reporta in QR prenosa.', 'From registration/activity to report and QR transfer.')}</p>
+            </div>
+            <span className="rounded-full bg-[#6c63ff22] px-3 py-1 text-xs font-black text-[#a09aff]">30d</span>
+          </div>
+          <div className="space-y-3">
+            {funnelStats.map((item, index) => (
+              <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-white">{index + 1}. {item.label}</p>
+                    <p className="text-xs text-[#8a8aa8]">{item.hint}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-black text-[#3ecfcf]">{item.value}</p>
+                    <p className="text-xs text-[#8a8aa8]">{item.percent}%</p>
+                  </div>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, item.percent)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Retention krivulja', 'Retention curve')}</h2>
+          <p className="mb-5 text-[#5a5a80] text-xs">{tx('Ocena iz prvih in zadnjih dogodkov uporabnika v zadnjih 30 dneh.', 'Estimate from first and last user events in the last 30 days.')}</p>
+          <div className="grid grid-cols-3 gap-3">
+            {retentionStats.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-center">
+                <p className="text-xs font-black text-[#8a8aa8]">{item.label}</p>
+                <p className="mt-2 text-3xl font-black text-[#a09aff]">{item.percent}%</p>
+                <p className="mt-1 text-xs text-[#8a8aa8]">{item.value} {tx('up.', 'users')}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 h-24 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
+            <div className="flex h-full items-end gap-3">
+              {retentionStats.map((item) => (
+                <div key={item.label} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="w-full rounded-xl bg-[#6c63ff]" style={{ height: `${Math.max(8, item.percent)}%` }} />
+                  <p className="text-[10px] font-bold text-[#8a8aa8]">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_1fr_0.9fr]">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Uporabniki za pregled', 'Users to inspect')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Najbolj aktivni anonimni uporabniki iz dogodkov in vozil.', 'Most active anonymous users from events and vehicles.')}</p>
+          <div className="space-y-2">
+            {userActivity.length === 0 ? (
+              <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>
+            ) : userActivity.map((user) => (
+              <div key={user.userId} className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-mono text-sm font-black text-white">U-{user.label}</p>
+                  <p className="text-xs font-bold text-[#3ecfcf]">{user.events} {tx('dog.', 'events')}</p>
+                </div>
+                <p className="mt-2 text-xs text-[#8a8aa8]">
+                  {user.cars} {tx('vozil', 'vehicles')} · {user.entries} {tx('vnosov', 'entries')} · {user.errors} {tx('napak', 'errors')}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Simulacija paketov 2027', '2027 plan simulation')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Osnutek segmentacije po številu vozil.', 'Draft segmentation by vehicle count.')}</p>
+          <div className="space-y-3">
+            {planSimulation.map((plan) => (
+              <div key={plan.label}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-sm font-black text-white">{plan.label}</span>
+                  <span className="text-xs font-bold text-[#8a8aa8]">{plan.count} · {plan.range}</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
+                  <div className={`h-full rounded-full ${plan.color}`} style={{ width: `${Math.max(4, plan.percent)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs leading-relaxed text-[#a09aff]">
+            {tx('To je samo simulacija za odločanje. Prave pakete veži še na PDF/QR, slike, AI/OCR in podporo.', 'This is only a decision simulation. Real plans should also account for PDF/QR, images, AI/OCR and support.')}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Admin opozorila', 'Admin alerts')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Stvari, ki jih je dobro preveriti pred rastjo.', 'Things worth checking before growth.')}</p>
+          <div className="space-y-3">
+            {adminAlerts.length === 0 ? (
+              <div className="rounded-xl border border-[#16a34a44] bg-[#16a34a14] p-4 text-sm font-bold text-[#4ade80]">
+                {tx('Ni nujnih opozoril.', 'No urgent alerts.')}
+              </div>
+            ) : adminAlerts.map((alert) => (
+              <div key={alert.title} className={`rounded-xl border p-3 ${alert.tone === 'red' ? 'border-[#ef444455] bg-[#ef444418] text-[#fca5a5]' : alert.tone === 'yellow' ? 'border-[#f59e0b55] bg-[#f59e0b18] text-[#fbbf24]' : 'border-[#6c63ff55] bg-[#6c63ff18] text-[#a09aff]'}`}>
+                <p className="text-sm font-black">{alert.title}</p>
+                <p className="mt-1 text-xs leading-relaxed">{alert.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
