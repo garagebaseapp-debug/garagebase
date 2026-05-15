@@ -216,7 +216,7 @@ export default function Garaza() {
         const n = JSON.parse(shranjene)
         setLanguage(n.jezik === 'en' ? 'en' : 'sl')
         setNacin(n.nacin || 'full')
-        setPrikaz(n.prikazGaraze || 'srednje')
+        setPrikaz(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
         setGarazaPisava(n.garazaPisava || 100)
@@ -410,10 +410,6 @@ export default function Garaza() {
 
   const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
   const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
-  const odpriOpomnike = () => {
-    const targetAvto = liteAvto || avti[0]
-    window.location.href = targetAvto?.id ? `/opomniki?car=${targetAvto.id}` : '/opomniki'
-  }
   const pojdiNaVnos = (pot: string) => {
     const targetAvto = liteAvto || avti[0]
     if (!targetAvto) {
@@ -561,7 +557,7 @@ export default function Garaza() {
   }
 
   const layoutChoices = [
-    { key: 'premium', label: tx('Premium', 'Premium'), desc: tx('Velika kartica', 'Large cards') },
+    { key: 'grid', label: '⊞ Grid', desc: tx('Kompaktno', 'Compact') },
     { key: 'kategorije', label: tx('Kategorije', 'Categories'), desc: tx('Po tipu vozila', 'By vehicle type') },
     { key: 'status', label: tx('Status', 'Status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
   ]
@@ -785,19 +781,6 @@ export default function Garaza() {
           Garage<span className="text-[#6c63ff]">Base</span>
         </h1>
         <div className="flex gap-2 items-center flex-wrap justify-end">
-          <button onClick={odpriOpomnike}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] text-[#a09aff] transition-colors hover:bg-[#6c63ff28]"
-            aria-label={tx('Opomniki', 'Reminders')}
-            title={tx('Opomniki', 'Reminders')}>
-            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M18 9a6 6 0 0 0-12 0v4l-2 4h16l-2-4V9Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" />
-              <path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
-            </svg>
-          </button>
-          <button onClick={osveziGarazo} disabled={refreshing}
-            className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] text-sm font-black px-4 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors disabled:opacity-60">
-            {refreshing ? tx('Osvezevanje...', 'Refreshing...') : `↻ ${tx('Osvezi', 'Refresh')}`}
-          </button>
           {installPrompt && (
             <button onClick={handleInstall}
               className="bg-[#3ecfcf22] border border-[#3ecfcf44] text-[#3ecfcf] text-xs font-semibold px-3 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors">
@@ -818,10 +801,6 @@ export default function Garaza() {
               + Avto
             </button>
           )}
-          <button onClick={handleLogout}
-            className="text-[#5a5a80] text-sm hover:text-white transition-colors">
-            Odjava
-          </button>
         </div>
       </div>
 
@@ -1005,8 +984,6 @@ export default function Garaza() {
             )}
           </div>
         </div>
-      ) : !arhiv && prikaz === 'premium' ? (
-        renderPremiumLayout()
       ) : !arhiv && prikaz === 'kategorije' ? (
         renderCategorizedLayout()
       ) : !arhiv && prikaz === 'status' ? (

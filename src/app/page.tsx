@@ -349,8 +349,8 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   return (
-    <div className="mt-5 rounded-2xl border border-[#d8ddf5] bg-[#f7f8ff] p-4">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mt-4 rounded-2xl bg-white/70 p-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         <MenuTile kind="costs" label={labels.costs} />
         <MenuTile kind="settings" label={labels.settings} />
         <MenuTile kind="report" label={labels.report} active />
@@ -369,7 +369,7 @@ export default function LandingPage() {
   const { language } = useLanguage()
   const t = copy[language]
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
+  const heroImage = isLightTheme ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
 
   const updateTheme = (nextTheme: LandingTheme) => {
     setTheme(nextTheme)
@@ -549,8 +549,10 @@ export default function LandingPage() {
               return (
                 <div
                   key={feature.title}
-                  className={`rounded-[22px] border border-[#d8ddf5] bg-white/82 p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] transition-colors hover:border-[#8b5cf666] ${
-                    isScanCard ? 'lg:col-span-3' : ''
+                  className={`rounded-[22px] border p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] transition-colors hover:border-[#8b5cf666] ${
+                    isScanCard
+                      ? 'border-[#e3e7f8] bg-[linear-gradient(105deg,rgba(255,255,255,0.94),rgba(248,247,255,0.86))] lg:col-span-3'
+                      : 'border-[#d8ddf5] bg-white/82'
                   }`}
                 >
                   {isIconCard ? (
@@ -564,7 +566,7 @@ export default function LandingPage() {
                     </div>
                   ) : (
                     <>
-                      <div className={isScanCard ? 'grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] lg:items-center' : ''}>
+                      <div className={isScanCard ? 'grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.65fr)] lg:items-center' : ''}>
                         <div>
                           <div className="flex items-center gap-2">
                             <p className="text-xl font-black text-[#09091b]">{feature.title}</p>

@@ -244,7 +244,7 @@ export default function Nastavitve() {
         const nextPisava = normalizeFontPercent(n.pisava)
         setPisava(nextPisava)
         applyFontSize(nextPisava)
-        setPrikazGaraze(n.prikazGaraze || 'srednje')
+        setPrikazGaraze(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
         setGarazaPisava(n.garazaPisava || 100)
@@ -797,68 +797,8 @@ export default function Nastavitve() {
           </div>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)]">
-          <aside className="hidden xl:block">
-            <nav className="sticky top-28 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
-              {settingsSections.map((section) => (
-                <button key={section.id} type="button" onClick={() => selectSettingsSection(section.id)}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
-                    settingsView === section.id
-                      ? section.id === 'brisanje'
-                        ? 'border-[#ef4444aa] bg-[#ef444422] text-[#fca5a5] shadow-lg shadow-[#ef444418]'
-                        : 'border-[#6c63ffaa] bg-[#6c63ff2e] text-white shadow-lg shadow-[#6c63ff18]'
-                      : 'border-transparent text-[#5a5a80] hover:bg-[#6c63ff11] hover:text-[#a09aff]'
-                  }`}>
-                  {section.title}
-                  <span className={settingsView === section.id ? 'text-current' : 'text-[#3a3a5a]'}>
-                    {settingsView === section.id ? tx('Izbrano', 'Selected') : '>'}
-                  </span>
-                </button>
-              ))}
-            </nav>
-          </aside>
-
+        <div>
           <main className="grid gap-4 lg:grid-cols-2">
-      {settingsView === 'vse' ? (
-        <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
-          <div className="grid grid-cols-2 gap-2">
-            {settingsSections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => selectSettingsSection(section.id)}
-                className={`relative overflow-hidden rounded-2xl border p-3 text-left transition-all ${
-                  section.id === 'vse'
-                    ? 'border-[#6c63ffaa] bg-[#6c63ff2e] shadow-lg shadow-[#6c63ff18] ring-2 ring-[#6c63ff33]'
-                    : 'border-[#1e1e32] bg-[#13131f]'
-                }`}
-              >
-                <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${section.tone}`} />
-                <span className="block text-sm font-bold text-white">{section.title}</span>
-                <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{section.desc}</span>
-                {section.id === 'vse' && (
-                  <span className="mt-2 inline-flex rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white">
-                    {tx('Izbrano', 'Selected')}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
-          <button
-            type="button"
-            onClick={() => selectSettingsSection('vse')}
-            className="mb-3 inline-flex items-center rounded-full border border-[#6c63ff44] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#a09aff]"
-          >
-            ← {tx('Vse nastavitve', 'All settings')}
-          </button>
-          <p className="text-xl font-black text-white">{selectedSection.title}</p>
-          <p className="mt-1 text-sm text-[#5a5a80]">{selectedSection.desc}</p>
-        </div>
-      )}
-
       {settingsView && (
         <>
       {/* Profil */}
@@ -1186,7 +1126,6 @@ export default function Nastavitve() {
         <p className="text-[#3a3a5a] text-xs mb-3">Višina kartic avtov na začetnem zaslonu</p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { vrednost: 'premium', naziv: tx('Premium', 'Premium'), opis: tx('Velika glavna kartica', 'Large main card') },
             { vrednost: 'kategorije', naziv: tx('Kategorije', 'Categories'), opis: tx('Vozila po tipu', 'Vehicles by type') },
             { vrednost: 'status', naziv: tx('Status', 'Status'), opis: tx('Opomniki v fokusu', 'Reminder focus') },
             { vrednost: 'malo', naziv: 'Malo', opis: 'Več avtov' },
