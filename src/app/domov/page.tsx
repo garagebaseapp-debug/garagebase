@@ -367,7 +367,7 @@ export default function DomovPage() {
           ))}
         </section>
 
-        <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10">
+        <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
           <button
             onClick={() => window.location.href = cars.length > 0 ? '/garaza' : '/dodaj-avto'}
             className="relative block h-[clamp(118px,18dvh,155px)] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"

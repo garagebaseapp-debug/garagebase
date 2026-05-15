@@ -295,8 +295,51 @@ body:not(.landing) {
 }
 
 .light-mode .gb-desktop-nav {
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  border-color: var(--gb-border) !important;
+  background-color: #ffffff !important;
+  border-color: #dfe5f4 !important;
+  box-shadow: 18px 0 44px rgba(24, 32, 56, 0.08) !important;
+}
+
+.light-mode .gb-desktop-brand,
+.light-mode .gb-desktop-brand .text-white {
+  color: #101225 !important;
+}
+
+.light-mode .gb-desktop-link {
+  color: #171827 !important;
+}
+
+.light-mode .gb-desktop-link svg,
+.light-mode .gb-desktop-link span {
+  color: inherit !important;
+}
+
+.light-mode .gb-desktop-link:not(.gb-desktop-link-active):hover {
+  background-color: #f3ebff !important;
+  border-color: #eadcff !important;
+  color: #5b21b6 !important;
+}
+
+.light-mode .gb-desktop-link-active {
+  background-color: #6c63ff !important;
+  border-color: #6c63ff !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 30px rgba(108, 99, 255, 0.24) !important;
+}
+
+.light-mode .gb-desktop-link-active svg,
+.light-mode .gb-desktop-link-active span {
+  color: #ffffff !important;
+}
+
+.light-mode .gb-sidebar-garage-card {
+  background-color: #eef2fb !important;
+  border-color: #dfe5f4 !important;
+  box-shadow: 0 16px 34px rgba(24, 32, 56, 0.10) !important;
+}
+
+.light-mode .gb-sidebar-garage-card .bg-\[\#6c63ff\] {
+  color: #ffffff !important;
 }
 
 .light-mode .gb-lite-selected {
