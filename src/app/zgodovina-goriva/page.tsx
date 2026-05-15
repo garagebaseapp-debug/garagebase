@@ -14,6 +14,8 @@ import {
 } from '@/lib/vehicle-costs'
 
 const PAGE_SIZE = 50
+const fuelHistoryColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
+const fuelSummaryColumns = 'litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis'
 
 const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
@@ -86,19 +88,19 @@ export default function ZgodovinaGoriva() {
       const selectedCarId = params.get('car')
       if (!selectedCarId) { window.location.href = '/garaza'; return }
       setCarId(selectedCarId)
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).maybeSingle()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
-        supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
-        supabase.from('fuel_logs').select('litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', selectedCarId),
+        supabase.from('fuel_logs').select(fuelHistoryColumns, { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
+        supabase.from('fuel_logs').select(fuelSummaryColumns).eq('car_id', selectedCarId),
         supabase.from('fuel_logs').select('km').eq('car_id', selectedCarId).order('km', { ascending: false }).limit(1),
       ])
       const gorivo = gorivoRes.data || []
       const fuelRows = sortRowsByMileageAndDate(gorivo || [])
       const maxFuelKm = numberValue(maxKmRes.data?.[0]?.km)
       if (avtoData?.id && maxFuelKm > (avtoData.km_trenutni || 0)) {
-        await supabase.from('cars').update({ km_trenutni: maxFuelKm }).eq('id', avtoData.id)
+        await supabase.from('cars').update({ km_trenutni: maxFuelKm }).eq('id', avtoData.id).eq('user_id', user.id)
         setAvto({ ...avtoData, km_trenutni: maxFuelKm })
       }
       setTotalCount(gorivoRes.count || fuelRows.length)
@@ -174,8 +176,8 @@ export default function ZgodovinaGoriva() {
 
   const refreshVnosi = async () => {
     const [gorivoRes, summaryRes] = await Promise.all([
-      supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
-      supabase.from('fuel_logs').select('litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis').eq('car_id', avto.id),
+      supabase.from('fuel_logs').select(fuelHistoryColumns, { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
+      supabase.from('fuel_logs').select(fuelSummaryColumns).eq('car_id', avto.id),
     ])
     const gorivo = sortRowsByMileageAndDate(gorivoRes.data || [])
     const summaryRows = (summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : gorivo) || []
@@ -198,7 +200,7 @@ export default function ZgodovinaGoriva() {
     setLoadingMore(true)
     const from = vnosi.length
     const to = from + PAGE_SIZE - 1
-    const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('km', { ascending: false }).order('datum', { ascending: false }).range(from, to)
+    const { data } = await supabase.from('fuel_logs').select(fuelHistoryColumns).eq('car_id', carId).order('km', { ascending: false }).order('datum', { ascending: false }).range(from, to)
     setVnosi(prev => sortRowsByMileageAndDate([...prev, ...(data || [])]))
     setLoadingMore(false)
   }
@@ -264,7 +266,7 @@ export default function ZgodovinaGoriva() {
         ? litri * cenaNaLiter
         : null,
       postaja: editData.postaja || null,
-    }).eq('id', id)
+    }).eq('id', id).eq('car_id', avto.id)
     await refreshVnosi()
     setUredi(null)
     setSaving(false)

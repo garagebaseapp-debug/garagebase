@@ -10,6 +10,10 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDist
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
+const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
+const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
+const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label,verification_level'
+
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -518,9 +522,9 @@ export default function Stroski() {
         if (!user) { window.location.href = '/'; return }
         const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
           supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle(),
-          supabase.from('fuel_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
-          supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
-          supabase.from('expenses').select('*', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
+          supabase.from('fuel_logs').select(fuelCostColumns, { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
+          supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
+          supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
         ])
       if (!shouldApply()) return
       if (!avtoRes.data) { window.location.href = '/garaza'; return }
@@ -1019,8 +1023,8 @@ export default function Stroski() {
       cena_na_liter: editData.cena_na_liter ? parseFloat(editData.cena_na_liter) : null,
       cena_skupaj: editData.litri && editData.cena_na_liter ? parseFloat(editData.litri) * parseFloat(editData.cena_na_liter) : null,
       postaja: editData.postaja || null,
-    }).eq('id', id)
-    const { data } = await supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
+    }).eq('id', id).eq('car_id', avto.id)
+    const { data } = await supabase.from('fuel_logs').select(fuelCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextGorivo = data || []
     const nextStats = buildRowStatsFromRows(nextGorivo, displayServisi, displayExpenses, avto || {})
     const nextRowSummary = costSummaryFromStats(nextStats)
@@ -1052,8 +1056,8 @@ export default function Stroski() {
       opis: editData.opis,
       servis: editData.servis || null,
       cena: editData.cena ? parseFloat(editData.cena) : null,
-    }).eq('id', id)
-    const { data } = await supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
+    }).eq('id', id).eq('car_id', avto.id)
+    const { data } = await supabase.from('service_logs').select(serviceCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextServisi = data || []
     const nextStats = buildRowStatsFromRows(displayGorivo, nextServisi, displayExpenses, avto || {})
     const nextRowSummary = costSummaryFromStats(nextStats)
@@ -1084,8 +1088,8 @@ export default function Stroski() {
       datum: editData.datum,
       opis: editData.opis || null,
       znesek: editData.znesek ? parseFloat(editData.znesek) : null,
-    }).eq('id', id)
-    const { data } = await supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
+    }).eq('id', id).eq('car_id', avto.id)
+    const { data } = await supabase.from('expenses').select(expenseCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextExpenses = (data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
     const nextStats = buildRowStatsFromRows(displayGorivo, displayServisi, nextExpenses, avto || {})
     const nextRowSummary = costSummaryFromStats(nextStats)

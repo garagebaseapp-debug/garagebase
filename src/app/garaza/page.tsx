@@ -401,7 +401,10 @@ export default function Garaza() {
   const preskociArhivOpomnik = async (carId: string) => {
     const until = new Date()
     until.setDate(until.getDate() + 30)
-    await supabase.from('cars').update({ archive_reminder_dismissed_until: until.toISOString() }).eq('id', carId)
+    const avto = avti.find((item: any) => item.id === carId)
+    let query = supabase.from('cars').update({ archive_reminder_dismissed_until: until.toISOString() }).eq('id', carId)
+    if (avto?.user_id) query = query.eq('user_id', avto.user_id)
+    await query
     setAvti(prev => prev.map(a => a.id === carId ? { ...a, archive_reminder_dismissed_until: until.toISOString() } : a))
   }
 
@@ -430,7 +433,9 @@ export default function Garaza() {
     setDragIndex(null)
     dragOver.current = null
     for (let i = 0; i < avti.length; i++) {
-      await supabase.from('cars').update({ vrstni_red: i }).eq('id', avti[i].id)
+      let query = supabase.from('cars').update({ vrstni_red: i }).eq('id', avti[i].id)
+      if (avti[i].user_id) query = query.eq('user_id', avti[i].user_id)
+      await query
     }
   }
 

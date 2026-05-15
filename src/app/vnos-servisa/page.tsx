@@ -322,7 +322,7 @@ export default function VnosServisa() {
       return
     }
 
-    const { error: carUpdateError } = await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId)
+    const { error: carUpdateError } = await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId).eq('user_id', user.id)
     if (carUpdateError) {
       setMessage(tx('Servis je shranjen, kilometrov vozila pa ni bilo mogoče posodobiti: ', 'Service was saved, but vehicle mileage could not be updated: ') + carUpdateError.message)
       setLoading(false)
@@ -346,7 +346,7 @@ export default function VnosServisa() {
         }
       }
       if (slikeUrls.length > 0) {
-        await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', servisData.id)
+        await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', servisData.id).eq('car_id', carId)
       }
       setUploadProgress(false)
     }
@@ -372,7 +372,7 @@ export default function VnosServisa() {
       verified_document_url: slike.length > 0 ? 'service_receipt_attached' : null,
       verification_level: verificationLevel,
       locked_at: zaklepPo24h,
-    }).eq('id', servisData.id)
+    }).eq('id', servisData.id).eq('car_id', carId)
     trackEvent('service_verification_set', { carId, verificationLevel, hasOdometerPhoto: !!odometerUrl, hasReceipt: slike.length > 0 })
 
     setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1500)

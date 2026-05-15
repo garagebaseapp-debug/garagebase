@@ -671,7 +671,7 @@ export default function Report() {
       setImportQr(await QRCode.toDataURL(scanUrl(token), { width: 180, margin: 1 }))
     }
     if (includeImportQr) {
-      await supabase.from('cars').update({ history_exported_at: new Date().toISOString() }).eq('id', carId)
+      await supabase.from('cars').update({ history_exported_at: new Date().toISOString() }).eq('id', carId).eq('user_id', userId)
     }
   }
   useEffect(() => {

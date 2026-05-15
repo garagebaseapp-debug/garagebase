@@ -741,9 +741,11 @@ export default function UvozPodatkov() {
 
       const maxKm = previewRows.reduce((max, row) => row.km && row.km > max ? row.km : max, 0)
       if (maxKm > 0) {
-        const { data: currentCar } = await supabase.from('cars').select('km_trenutni').eq('id', carId).maybeSingle()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) throw new Error(tx('Prijava ni vec veljavna.', 'The session is no longer valid.'))
+        const { data: currentCar } = await supabase.from('cars').select('km_trenutni').eq('id', carId).eq('user_id', user.id).maybeSingle()
         const safeKm = Math.max(currentCar?.km_trenutni || 0, maxKm)
-        const { error } = await supabase.from('cars').update({ km_trenutni: safeKm }).eq('id', carId)
+        const { error } = await supabase.from('cars').update({ km_trenutni: safeKm }).eq('id', carId).eq('user_id', user.id)
         if (error) throw error
       }
       const inserted = insertedByType.fuel + insertedByType.service + insertedByType.expense

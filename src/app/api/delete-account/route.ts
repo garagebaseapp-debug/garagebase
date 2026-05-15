@@ -5,6 +5,30 @@ import { rateLimit } from '@/lib/server-rate-limit'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const storageBuckets = ['car-images', 'service-documents']
+
+async function removeUserStorageFiles(admin: any, userId: string) {
+  const errors: string[] = []
+
+  for (const bucket of storageBuckets) {
+    const { data, error } = await admin.storage.from(bucket).list(userId, { limit: 1000 })
+    if (error) {
+      errors.push(`${bucket}: ${error.message}`)
+      continue
+    }
+
+    const paths = (data || [])
+      .filter((item: any) => item?.name)
+      .map((item: any) => `${userId}/${item.name}`)
+
+    if (paths.length === 0) continue
+
+    const { error: removeError } = await admin.storage.from(bucket).remove(paths)
+    if (removeError) errors.push(`${bucket}: ${removeError.message}`)
+  }
+
+  return errors
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,6 +63,13 @@ export async function POST(request: NextRequest) {
     const userId = userData.user.id
     const { data: cars } = await admin.from('cars').select('id').eq('user_id', userId)
     const carIds = (cars || []).map((car: any) => car.id)
+    const storageErrors = await removeUserStorageFiles(admin, userId)
+    if (storageErrors.length > 0) {
+      return NextResponse.json({
+        error: 'Brisanje datotek racuna ni uspelo. Racun se ni bil izbrisan, zato lahko poskusis znova.',
+        details: storageErrors,
+      }, { status: 500 })
+    }
 
     if (carIds.length > 0) {
       await admin.from('service_logs').delete().in('car_id', carIds)

@@ -7,6 +7,7 @@ import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSe
 import { useLanguage } from '@/lib/i18n'
 
 const PAGE_SIZE = 50
+const serviceHistoryColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
 
 export default function ZgodovinaServisa() {
   const { language } = useLanguage()
@@ -35,11 +36,11 @@ export default function ZgodovinaServisa() {
       const selectedCarId = params.get('car')
       if (!selectedCarId) { window.location.href = '/garaza'; return }
       setCarId(selectedCarId)
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).maybeSingle()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const [servisiRes, summaryRes] = await Promise.all([
-        supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
+        supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
         supabase.from('service_logs').select('cena').eq('car_id', selectedCarId),
       ])
       setVnosi(servisiRes.data || [])
@@ -63,7 +64,7 @@ export default function ZgodovinaServisa() {
 
   const refreshVnosi = async () => {
     const [servisiRes, summaryRes] = await Promise.all([
-      supabase.from('service_logs').select('*', { count: 'exact' }).eq('car_id', avto.id).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
+      supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', avto.id).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
       supabase.from('service_logs').select('cena').eq('car_id', avto.id),
     ])
     const servisi = servisiRes.data || []
@@ -87,7 +88,7 @@ export default function ZgodovinaServisa() {
     setLoadingMore(true)
     const from = vnosi.length
     const to = from + PAGE_SIZE - 1
-    const { data } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: false }).range(from, to)
+    const { data } = await supabase.from('service_logs').select(serviceHistoryColumns).eq('car_id', carId).order('datum', { ascending: false }).range(from, to)
     setVnosi(prev => [...prev, ...(data || [])])
     setLoadingMore(false)
   }
@@ -110,7 +111,7 @@ export default function ZgodovinaServisa() {
       servis: editData.servis || null,
       cena: editData.cena ? parseFloat(editData.cena) : null,
       edited_at: new Date().toISOString(),
-    }).eq('id', id)
+    }).eq('id', id).eq('car_id', avto.id)
     await refreshVnosi()
     setUredi(null)
     setSaving(false)

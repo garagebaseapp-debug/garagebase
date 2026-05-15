@@ -33,6 +33,7 @@ const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
 const pushConfigured = Boolean(vapidEmail && vapidPublicKey && vapidPrivateKey)
 const PUSH_TIMEOUT_MS = 8_000
+const SUBSCRIPTION_PAGE_SIZE = 1000
 
 const defaultNotificationSettings: NotificationSettings = {
   enabled: true,
@@ -178,6 +179,50 @@ function buildSummary(items: string[]) {
   return `${shown.join(' | ')}${extra > 0 ? ` | +${extra} dodatnih` : ''}`
 }
 
+async function loadDueSubscriptions(supabase: any) {
+  const dueSubs: any[] = []
+  let preskocenoCas = 0
+  let preskocenoIzklopljeno = 0
+  let from = 0
+
+  while (true) {
+    const to = from + SUBSCRIPTION_PAGE_SIZE - 1
+    const { data, error } = await supabase
+      .from('push_subscriptions')
+      .select('user_id, subscription, notification_settings, notification_state')
+      .order('updated_at', { ascending: false })
+      .range(from, to)
+
+    if (error) throw error
+
+    const page = data || []
+    for (const sub of uniqueSubscriptions(page)) {
+      const settings: NotificationSettings = {
+        ...defaultNotificationSettings,
+        ...(sub.notification_settings || {}),
+      }
+      if (!settings.enabled) {
+        preskocenoIzklopljeno++
+        continue
+      }
+      if (!shouldRunForSendTime(settings.sendTime)) {
+        preskocenoCas++
+        continue
+      }
+      dueSubs.push({ ...sub, notification_settings: settings })
+    }
+
+    if (page.length < SUBSCRIPTION_PAGE_SIZE) break
+    from += SUBSCRIPTION_PAGE_SIZE
+  }
+
+  return {
+    dueSubs: uniqueSubscriptions(dueSubs),
+    preskocenoCas,
+    preskocenoIzklopljeno,
+  }
+}
+
 export async function GET(req: Request) {
   const supabase = getSupabase()
   const authHeader = req.headers.get('authorization')
@@ -222,28 +267,10 @@ export async function GET(req: Request) {
     let preskocenoIzklopljeno = 0
     let napakePosiljanja = 0
 
-    const { data: allSubs, error: subsError } = await supabase
-      .from('push_subscriptions')
-      .select('user_id, subscription, notification_settings, notification_state')
-
-    if (subsError) throw subsError
-
-    const dueSubs: any[] = []
-    for (const sub of uniqueSubscriptions(allSubs || [])) {
-      const settings: NotificationSettings = {
-        ...defaultNotificationSettings,
-        ...(sub.notification_settings || {}),
-      }
-      if (!settings.enabled) {
-        preskocenoIzklopljeno++
-        continue
-      }
-      if (!shouldRunForSendTime(settings.sendTime)) {
-        preskocenoCas++
-        continue
-      }
-      dueSubs.push({ ...sub, notification_settings: settings })
-    }
+    const dueResult = await loadDueSubscriptions(supabase)
+    const dueSubs = dueResult.dueSubs
+    preskocenoCas = dueResult.preskocenoCas
+    preskocenoIzklopljeno = dueResult.preskocenoIzklopljeno
 
     const dueUserIds = Array.from(new Set(dueSubs.map((sub) => sub.user_id).filter(Boolean)))
     naprav = dueSubs.length

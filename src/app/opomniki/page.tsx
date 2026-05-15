@@ -40,7 +40,7 @@ export default function Opomniki() {
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/garaza'; return }
-      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
+      const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData)
       const { data: opData } = await supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true })
@@ -138,7 +138,7 @@ export default function Opomniki() {
   }
 
   const izbrisiOpomnik = async (id: string) => {
-    await supabase.from('reminders').delete().eq('id', id)
+    await supabase.from('reminders').delete().eq('id', id).eq('car_id', avto.id)
     setOpomniki(opomniki.filter(o => o.id !== id))
   }
 

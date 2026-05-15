@@ -452,6 +452,12 @@ export default function VnosGoriva() {
     setLoading(true)
     setMessage('')
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      window.location.href = '/'
+      return
+    }
+
     let receiptUrl: string | null = null
     try {
       receiptUrl = await naloziRacun()
@@ -500,7 +506,7 @@ export default function VnosGoriva() {
       return
     }
 
-    await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId)
+    await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId).eq('user_id', user.id)
     clearVehicleDataCaches(carId)
     trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl, verificationLevel: 'basic' })
     setMessage(tx('Tankanje uspesno shranjeno!', 'Fill-up saved successfully!'))

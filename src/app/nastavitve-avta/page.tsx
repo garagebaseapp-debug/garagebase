@@ -132,7 +132,7 @@ export default function NastavitveAvta() {
     const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { cacheControl: '31536000', upsert: false })
     if (uploadError) { setMessage('Napaka pri nalaganju slike'); setUploadingSlika(false); return }
     const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
-    const { error: updateError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', avto.id)
+    const { error: updateError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', avto.id).eq('user_id', user.id)
     if (updateError) { setMessage('Napaka pri shranjevanju slike'); setUploadingSlika(false); return }
     if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
     clearVehicleDataCaches(avto.id)
@@ -167,7 +167,7 @@ export default function NastavitveAvta() {
     }
     const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
     setHomologacijaUrl(urlData.publicUrl)
-    await supabase.from('cars').update({ homologacija_url: urlData.publicUrl }).eq('id', avto.id)
+    await supabase.from('cars').update({ homologacija_url: urlData.publicUrl }).eq('id', avto.id).eq('user_id', user.id)
     setAvto({ ...avto, homologacija_url: urlData.publicUrl })
     setMessage('✅ Homologacija uspešno naložena!')
     setUploadingHomologacija(false)
@@ -200,11 +200,11 @@ export default function NastavitveAvta() {
       homologacija_opis: homologacijaOpis || null,
       homologacija_url: homologacijaUrl || null,
     }
-    let { error } = await supabase.from('cars').update(payload).eq('id', avto.id)
+    let { error } = await supabase.from('cars').update(payload).eq('id', avto.id).eq('user_id', avto.user_id)
     let reservoirFallback = false
     if (error && isMissingReservoirColumn(error)) {
       delete payload.rezervar_litri
-      const retry = await supabase.from('cars').update(payload).eq('id', avto.id)
+      const retry = await supabase.from('cars').update(payload).eq('id', avto.id).eq('user_id', avto.user_id)
       error = retry.error
       reservoirFallback = !retry.error
     }
@@ -224,7 +224,7 @@ export default function NastavitveAvta() {
     const { error } = await supabase.from('cars').update({
       arhivirano: value,
       archived_at: value ? new Date().toISOString() : null,
-    }).eq('id', avto.id)
+    }).eq('id', avto.id).eq('user_id', avto.user_id)
     if (error) {
       setMessage(error.message.includes('arhivirano') ? 'Napaka: v Supabase najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql' : 'Napaka: ' + error.message)
     } else {
