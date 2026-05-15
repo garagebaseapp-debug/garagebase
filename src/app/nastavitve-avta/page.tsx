@@ -74,7 +74,7 @@ export default function NastavitveAvta() {
       const params = new URLSearchParams(window.location.search)
       const carId = params.get('car')
       if (!carId) { window.location.href = '/garaza'; return }
-      const { data } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
+      const { data } = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
       if (!data) { window.location.href = '/garaza'; return }
       if (data) {
         setAvto(data)
@@ -233,6 +233,58 @@ export default function NastavitveAvta() {
       setMessage(value ? 'Vozilo je premaknjeno v arhiv.' : 'Vozilo je vrnjeno med aktivna vozila.')
     }
     setSaving(false)
+  }
+
+  const izbrisiVozilo = async () => {
+    if (!avto?.id) return
+
+    const potrdi = window.confirm(`Ali res želiš izbrisati ${avto?.znamka || ''} ${avto?.model || ''}? Vsi podatki bodo trajno izgubljeni!`)
+    if (!potrdi) return
+    const potrdi2 = window.confirm('Si prepričan? Tega dejanja ni možno razveljaviti!')
+    if (!potrdi2) return
+
+    setSaving(true)
+    setMessage('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      setSaving(false)
+      window.location.href = '/'
+      return
+    }
+
+    const { data: ownedCar, error: ownershipError } = await supabase
+      .from('cars')
+      .select('id')
+      .eq('id', avto.id)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (ownershipError || !ownedCar) {
+      setMessage(ownershipError ? `Napaka: ${ownershipError.message}` : 'Vozila ni bilo možno potrditi za ta račun.')
+      setSaving(false)
+      return
+    }
+
+    const deleteSteps = [
+      () => supabase.from('fuel_logs').delete().eq('car_id', avto.id),
+      () => supabase.from('service_logs').delete().eq('car_id', avto.id),
+      () => supabase.from('expenses').delete().eq('car_id', avto.id),
+      () => supabase.from('reminders').delete().eq('car_id', avto.id),
+      () => supabase.from('cars').delete().eq('id', avto.id).eq('user_id', user.id),
+    ]
+
+    for (const step of deleteSteps) {
+      const { error } = await step()
+      if (error) {
+        setMessage(`Napaka pri brisanju vozila: ${error.message}`)
+        setSaving(false)
+        return
+      }
+    }
+
+    clearVehicleDataCaches(avto.id)
+    window.location.href = '/garaza'
   }
 
   if (loading) return (
@@ -509,19 +561,8 @@ export default function NastavitveAvta() {
       </button>
 
       {/* Gumb za brisanje vozila */}
-      <button onClick={async () => {
-        const potrdi = window.confirm(`Ali res želiš izbrisati ${avto?.znamka} ${avto?.model}? Vsi podatki bodo trajno izgubljeni!`)
-        if (!potrdi) return
-        const potrdi2 = window.confirm('Si prepričan? Tega dejanja ni možno razveljaviti!')
-        if (!potrdi2) return
-        await supabase.from('fuel_logs').delete().eq('car_id', avto.id)
-        await supabase.from('service_logs').delete().eq('car_id', avto.id)
-        await supabase.from('expenses').delete().eq('car_id', avto.id)
-        await supabase.from('reminders').delete().eq('car_id', avto.id)
-        await supabase.from('cars').delete().eq('id', avto.id)
-        window.location.href = '/garaza'
-      }}
-        className="w-full mt-3 bg-transparent border border-[#ef444433] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors">
+      <button onClick={izbrisiVozilo} disabled={saving}
+        className="w-full mt-3 bg-transparent border border-[#ef444433] text-[#ef4444] font-semibold py-3 rounded-xl hover:bg-[#ef444411] transition-colors disabled:opacity-50">
         🗑️ Izbriši vozilo
       </button>
 

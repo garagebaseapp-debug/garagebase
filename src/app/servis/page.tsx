@@ -91,11 +91,13 @@ async function loadActiveCars(userId: string) {
 
   let cars = query.data || []
   if (query.error || cars.length === 0) {
+    if (query.error) console.warn('[GarageBase service] active cars query failed', query.error)
     const fallback = await supabase
       .from('cars')
       .select('*')
       .eq('user_id', userId)
       .order('vrstni_red', { ascending: true })
+    if (fallback.error) console.warn('[GarageBase service] fallback cars query failed', fallback.error)
     cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
   }
   return cars
@@ -139,6 +141,8 @@ export default function ServisPage() {
         supabase.from('service_logs').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(1200),
         supabase.from('reminders').select('*').in('car_id', ids).order('datum', { ascending: true }).limit(80),
       ])
+      if (servicesRes.error) console.warn('[GarageBase service] service logs query failed', servicesRes.error)
+      if (remindersRes.error) console.warn('[GarageBase service] reminders query failed', remindersRes.error)
       setServices(servicesRes.data || [])
       setReminders(remindersRes.data || [])
       setLoading(false)
@@ -196,7 +200,7 @@ export default function ServisPage() {
   const latestService = services[0]
   const latestCar = latestService ? carById[latestService.car_id] : null
   const firstCarId = cars[0]?.id
-  const addServiceHref = firstCarId ? `/vnos-servisa?car=${firstCarId}` : '/dodaj-avto'
+  const addServiceHref = cars.length > 0 ? '/vnos-servisa' : '/dodaj-avto'
   const recentServices = services.slice(0, 5)
   const hasImported = importedServices.length > 0
 

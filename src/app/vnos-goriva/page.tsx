@@ -126,7 +126,9 @@ export default function VnosGoriva() {
         .or('arhivirano.is.null,arhivirano.eq.false')
       let data: any[] = activeCarsResult.data || []
       if (activeCarsResult.error || data.length === 0) {
+        if (activeCarsResult.error) console.warn('[GarageBase fuel entry] active cars query failed', activeCarsResult.error)
         const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano').eq('user_id', user.id)
+        if (fallback.error) console.warn('[GarageBase fuel entry] fallback cars query failed', fallback.error)
         data = fallback.data || []
       }
       data = (data || []).filter((car: any) => car?.arhivirano !== true)

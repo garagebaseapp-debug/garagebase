@@ -443,8 +443,12 @@ export default function Nastavitve() {
     try {
       const registration = await navigator.serviceWorker.getRegistration('/sw.js')
       const subscription = await registration?.pushManager.getSubscription()
-      await subscription?.unsubscribe()
-      if (user) await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
+      const unsubscribed = await subscription?.unsubscribe()
+      if (subscription && !unsubscribed) throw new Error('Browser push subscription could not be removed.')
+      if (user) {
+        const { error } = await supabase.from('push_subscriptions').delete().eq('user_id', user.id)
+        if (error) throw error
+      }
       setNotifikacije('neznano')
       setMessage('Obvestila so izklopljena na tej napravi.')
       setTimeout(() => setMessage(''), 3000)

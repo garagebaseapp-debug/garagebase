@@ -19,6 +19,7 @@ export default function VnosServisa() {
   const [carId, setCarId] = useState('')
   const [avti, setAvti] = useState<any[]>([])
   const [zadnjiKm, setZadnjiKm] = useState(0)
+  const [kmReady, setKmReady] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [slike, setSlike] = useState<File[]>([])
@@ -59,7 +60,9 @@ export default function VnosServisa() {
         .or('arhivirano.is.null,arhivirano.eq.false')
       let data: any[] = activeCarsResult.data || []
       if (activeCarsResult.error || data.length === 0) {
+        if (activeCarsResult.error) console.warn('[GarageBase service entry] active cars query failed', activeCarsResult.error)
         const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, arhivirano').eq('user_id', user.id)
+        if (fallback.error) console.warn('[GarageBase service entry] fallback cars query failed', fallback.error)
         data = fallback.data || []
       }
       data = (data || []).filter((car: any) => car?.arhivirano !== true)
@@ -69,10 +72,12 @@ export default function VnosServisa() {
         await naloziServisHistory(data.map((a: any) => a.id))
         if (izbrani) {
           setCarId(izbrani.id)
+          setKmReady(false)
           trackEvent('service_add_open', { carId: izbrani.id })
           await naloziZadnjiKm(izbrani.id, izbrani.km_trenutni || 0)
         } else {
           setCarId('')
+          setKmReady(false)
           setZadnjiKm(0)
           trackEvent('service_add_open', { carId: null })
         }
@@ -97,6 +102,16 @@ export default function VnosServisa() {
     const maxServis = servisData?.[0]?.km || 0
     const maxGorivo = gorivoData?.[0]?.km || 0
     setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
+    setKmReady(true)
+  }
+
+  const sveziMinimalniKm = async (id: string) => {
+    const [{ data: avtoData }, { data: servisData }, { data: gorivoData }] = await Promise.all([
+      supabase.from('cars').select('km_trenutni').eq('id', id).maybeSingle(),
+      supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+      supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
+    ])
+    return Math.max(avtoData?.km_trenutni || 0, servisData?.[0]?.km || 0, gorivoData?.[0]?.km || 0)
   }
 
   const naloziServisHistory = async (carIds: string[]) => {
@@ -116,6 +131,7 @@ export default function VnosServisa() {
 
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
+    setKmReady(false)
     const avto = avti.find((a: any) => a.id === noviId)
     if (!avto) {
       setZadnjiKm(0)
@@ -274,10 +290,16 @@ export default function VnosServisa() {
   }
   const shrani = async () => {
     if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
+    if (!kmReady) {
+      setMessage(tx('Počakaj, da se naložijo zadnji kilometri vozila.', 'Wait until the latest vehicle mileage is loaded.'))
+      return
+    }
     if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
     const vneseniKm = parseInt(km)
-    if (vneseniKm < zadnjiKm) {
-      setMessage(`⚠️ ${tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} ${formatDistance(zadnjiKm, enotaRazdalje)}!`)
+    const sveziKm = await sveziMinimalniKm(carId)
+    if (vneseniKm < sveziKm) {
+      setZadnjiKm(sveziKm)
+      setMessage(`⚠️ ${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${formatDistance(sveziKm, enotaRazdalje)}!`)
       return
     }
     setLoading(true)
@@ -294,8 +316,18 @@ export default function VnosServisa() {
     }).select().single()
 
     if (error) { setMessage(tx('Napaka: ', 'Error: ') + error.message); setLoading(false); return }
+    if (!servisData?.id) {
+      setMessage(tx('Napaka: servis ni bil potrjen po shranjevanju.', 'Error: service entry was not confirmed after saving.'))
+      setLoading(false)
+      return
+    }
 
-    await supabase.from('cars').update({ km_trenutni: Math.max(zadnjiKm, vneseniKm) }).eq('id', carId)
+    const { error: carUpdateError } = await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId)
+    if (carUpdateError) {
+      setMessage(tx('Servis je shranjen, kilometrov vozila pa ni bilo mogoče posodobiti: ', 'Service was saved, but vehicle mileage could not be updated: ') + carUpdateError.message)
+      setLoading(false)
+      return
+    }
     clearVehicleDataCaches(carId)
     trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
     await ustvariServisniOpomnik(vneseniKm)
@@ -388,11 +420,11 @@ export default function VnosServisa() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
-            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {formatDistance(zadnjiKm, enotaRazdalje)})</span>
+            {tx('Kilometri', 'Mileage')} * <span className="text-[#3a3a5a] normal-case">({tx('zadnji', 'last')}: {carId ? (kmReady ? formatDistance(zadnjiKm, enotaRazdalje) : tx('nalagam...', 'loading...')) : tx('izberi vozilo', 'choose vehicle')})</span>
           </label>
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
-              placeholder={`${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}`}
+              placeholder={carId ? (kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')) : tx('najprej izberi vozilo', 'choose a vehicle first')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
             <MicButton polje="km" />
           </div>

@@ -262,6 +262,7 @@ export default function GorivoPage() {
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
 
+      if (carsRes.error) console.warn('[GarageBase fuel] active cars query failed', carsRes.error)
       let nextCars = carsRes.data || []
       if (carsRes.error || nextCars.length === 0) {
         const fallback = await supabase
@@ -269,6 +270,7 @@ export default function GorivoPage() {
           .select('*')
           .eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
+        if (fallback.error) console.warn('[GarageBase fuel] fallback cars query failed', fallback.error)
         nextCars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
       }
 
@@ -284,6 +286,7 @@ export default function GorivoPage() {
             .eq('user_id', user.id)
             .eq('id', carParam)
             .maybeSingle()
+          if (directCar.error) console.warn('[GarageBase fuel] selected car query failed', directCar.error)
           if (directCar.data && directCar.data.arhivirano !== true) nextCars = [directCar.data]
         }
       }
@@ -296,13 +299,14 @@ export default function GorivoPage() {
         return
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('fuel_logs')
         .select('*')
         .in('car_id', carIds)
         .order('datum', { ascending: false })
         .limit(1200)
 
+      if (error) console.warn('[GarageBase fuel] fuel logs query failed', error)
       setFuelRows(data || [])
       setLoading(false)
     }
@@ -410,7 +414,7 @@ export default function GorivoPage() {
   const rangeText = (value: number | null) => value ? formatDistance(Math.round(value), distanceUnit) : '-'
   const recentRows = [...fuelRows].sort((a, b) => toDateValue(b.datum || b.created_at) - toDateValue(a.datum || a.created_at)).slice(0, 5)
   const firstCarId = cars[0]?.id
-  const addFuelHref = firstCarId ? `/vnos-goriva?car=${firstCarId}` : '/dodaj-avto'
+  const addFuelHref = cars.length > 0 ? '/vnos-goriva' : '/dodaj-avto'
   const hasImported = importedRows.length > 0
 
   if (loading) {
