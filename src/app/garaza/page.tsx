@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BottomNav } from '@/lib/nav'
+import { BottomNav, NavIcon } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
@@ -795,36 +795,24 @@ export default function Garaza() {
         </div>
         <nav className="flex-1 space-y-2 px-4 text-sm font-bold">
           {[
-            { label: tx('Garaža', 'Garage'), href: '/garaza', active: true, icon: '⌂' },
-            { label: tx('Gorivo', 'Fuel'), href: '/gorivo', icon: '▣' },
-            { label: tx('Servis', 'Service'), href: '/servis', icon: '⌘' },
-            { label: tx('Stroški', 'Costs'), href: '/stroski-garaza', icon: '▥' },
-            { label: tx('Vozilo', 'Vehicle'), href: desktopCars[0]?.id ? `/dashboard?car=${desktopCars[0].id}` : '/dodaj-avto', icon: '▱' },
+            { label: tx('Domov', 'Home'), href: '/domov', icon: 'home' as const },
+            { label: tx('Garaža', 'Garage'), href: '/garaza', active: true, icon: 'garage' as const },
+            { label: tx('Stroški', 'Costs'), href: '/stroski-garaza', icon: 'costs' as const },
+            { label: tx('Gorivo', 'Fuel'), href: '/gorivo', icon: 'fuel' as const },
+            { label: tx('Opomniki', 'Reminders'), href: '/opomniki', icon: 'reminders' as const },
+            { label: tx('Nastavitve', 'Settings'), href: '/vec', icon: 'settings' as const },
           ].map((item) => (
             <button
               key={item.label}
               onClick={() => window.location.href = item.href}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
-                item.active ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white'
+                ('active' in item && item.active) ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white'
               }`}
             >
-              <span className="w-5 text-center text-base">{item.icon}</span>
+              <NavIcon type={item.icon} className="h-5 w-5 shrink-0" />
               {item.label}
             </button>
           ))}
-          <div className="my-4 border-t border-[#1e1e32]" />
-          <button onClick={osveziGarazo} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#3ecfcf] hover:bg-[#3ecfcf14]">
-            <span className="w-5 text-center">↻</span>
-            {tx('Osveži', 'Refresh')}
-          </button>
-          <button onClick={() => setUrejanje(!urejanje)} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#c8c8dc] hover:bg-[#13131f] hover:text-white">
-            <span className="w-5 text-center">↕</span>
-            {urejanje ? tx('Končaj urejanje', 'Finish editing') : tx('Uredi', 'Edit')}
-          </button>
-          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#c8c8dc] hover:bg-[#13131f] hover:text-white">
-            <span className="w-5 text-center">⏻</span>
-            {tx('Odjava', 'Sign out')}
-          </button>
         </nav>
         <div className="p-4">
           <div className="h-48 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
 
-type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'admin'
+type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'reminders' | 'settings' | 'more' | 'admin'
 
 const mobilnePovezave = [
   { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
@@ -16,12 +16,12 @@ const mobilnePovezave = [
 ] as const
 
 const namiznePovezave = [
-  { key: 'domov', href: '/domov', icon: 'home', labelKey: 'home' },
-  { key: 'garaza', href: '/garaza', icon: 'garage', labelKey: 'garage' },
-  { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelKey: 'fuel' },
-  { key: 'servis', href: '/servis', icon: 'service', labelKey: 'service' },
-  { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelKey: 'costs' },
-  { key: 'nastavitve', href: '/vec', icon: 'more', labelKey: 'more' },
+  { key: 'domov', href: '/domov', icon: 'home', labelSl: 'Domov', labelEn: 'Home' },
+  { key: 'garaza', href: '/garaza', icon: 'garage', labelSl: 'Garaža', labelEn: 'Garage' },
+  { key: 'stroski', href: '/stroski-garaza', icon: 'costs', labelSl: 'Stroški', labelEn: 'Costs' },
+  { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelSl: 'Gorivo', labelEn: 'Fuel' },
+  { key: 'opomniki', href: '/opomniki', icon: 'reminders', labelSl: 'Opomniki', labelEn: 'Reminders' },
+  { key: 'nastavitve', href: '/vec', icon: 'settings', labelSl: 'Nastavitve', labelEn: 'Settings' },
 ] as const
 
 type AppRouter = ReturnType<typeof useRouter>
@@ -37,14 +37,15 @@ function pojdiNa(router: AppRouter, href: string) {
 
 function activeKeyFromPath(path: string) {
   if (path.includes('gorivo') || path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
-  if (path.includes('servis') || path.includes('opomniki') || path.includes('report') || path.includes('scan')) return 'servis'
+  if (path.includes('opomniki')) return 'opomniki'
+  if (path.includes('servis') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
   if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov') || path.includes('admin')) return 'nastavitve'
   if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'garaza'
   return 'domov'
 }
 
-function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?: string }) {
+export function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?: string }) {
   if (type === 'home') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 11.5 12 5l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-8.5Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
@@ -76,6 +77,19 @@ function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?
       <path d="M16.7 4.3h-3.1M16.7 4.3v3.1" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
     </svg>
   )
+  if (type === 'reminders') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6.5 10.8a5.5 5.5 0 0 1 11 0v3.9l1.6 2.6H4.9l1.6-2.6v-3.9Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round"/>
+      <path d="M9.6 19a2.6 2.6 0 0 0 4.8 0" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"/>
+      <path d="M12 4V3" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round"/>
+    </svg>
+  )
+  if (type === 'settings') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" strokeWidth="2.1"/>
+      <path d="M19.2 13.8a7.8 7.8 0 0 0 0-3.6l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-3.1-1.8L13.4 2H9.6l-.4 2.4a7.8 7.8 0 0 0-3.1 1.8l-2.3-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3.6l-2 1.5 2 3.5 2.3-1a7.8 7.8 0 0 0 3.1 1.8l.4 2.4h3.8l.3-2.4a7.8 7.8 0 0 0 3.1-1.8l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round"/>
+    </svg>
+  )
   if (type === 'admin') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l7 3v5c0 4.5-2.8 8.3-7 10-4.2-1.7-7-5.5-7-10V6l7-3Z" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round"/>
@@ -89,34 +103,31 @@ function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?
 }
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
-  const { t } = useLanguage()
+  const { language } = useLanguage()
   const router = useRouter()
 
   return (
-    <div className="gb-desktop-nav fixed top-0 left-0 right-0 z-50 hidden bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]">
-      <div className="w-full max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-        <button onClick={() => pojdiNa(router, '/domov')} className="text-2xl font-bold text-white">
-          Garage<span className="text-[#6c63ff]">Base</span>
-        </button>
-        <div className="flex items-center gap-2">
-          {namiznePovezave.map((item) => (
-            <div key={item.key} className="flex items-center gap-2">
-              <button
-                onClick={() => pojdiNa(router, item.href)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
-                  aktivna === item.key
-                    ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
-                    : 'bg-[#0f0f1a] border-[#1e1e32] text-[#5a5a80] hover:text-white hover:border-[#2a2a40]'
-              }`}
-              >
-                <NavIcon type={item.icon} className="h-4 w-4" />
-                <span>{t(item.labelKey)}</span>
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[228px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-4 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
+      <button onClick={() => pojdiNa(router, '/domov')} className="mb-8 px-3 text-left text-xl font-black tracking-tight text-white">
+        Garage<span className="text-[#6c63ff]">Base</span>
+      </button>
+      <nav className="flex flex-1 flex-col gap-2">
+        {namiznePovezave.map((item) => (
+          <button
+            key={item.key}
+            onClick={() => pojdiNa(router, item.href)}
+            className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-black transition-all ${
+              aktivna === item.key
+                ? 'border-[#6c63ff66] bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
+                : 'border-transparent bg-transparent text-[#c8c8dc] hover:border-[#1e1e32] hover:bg-[#13131f] hover:text-white'
+          }`}
+          >
+            <NavIcon type={item.icon} className="h-5 w-5 shrink-0" />
+            <span>{language === 'en' ? item.labelEn : item.labelSl}</span>
+          </button>
+        ))}
+      </nav>
+    </aside>
   )
 }
 

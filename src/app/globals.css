@@ -33,7 +33,7 @@ body:not(.landing) {
   background: #080810;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 1280px) {
   body:not(.landing) {
     max-width: none;
     margin: 0;
@@ -41,12 +41,17 @@ body:not(.landing) {
   }
 
   body:not(.landing) > div:first-child {
-    width: min(100%, 1800px);
+    width: 100%;
     margin: 0 auto;
-    padding-top: 88px;
+    padding-top: 0;
     padding-left: 32px;
     padding-right: 32px;
     padding-bottom: 48px;
+  }
+
+  body:not(.landing) > div:first-child:has(.gb-desktop-nav) {
+    padding-top: 40px;
+    padding-left: 260px;
   }
 
   body:not(.landing) .gb-mobile-nav {
@@ -62,7 +67,7 @@ body:not(.landing) {
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   body:not(.landing) > div:first-child {
     width: 100%;
     max-width: none;
