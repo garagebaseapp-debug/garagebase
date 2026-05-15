@@ -169,6 +169,16 @@ body:not(.landing) {
   color: #5b21b6 !important;
 }
 
+.light-mode .text-\[\#c8c4ff\] {
+  color: #4c1d95 !important;
+}
+
+.light-mode .text-\[\#86efac\],
+.light-mode .text-\[\#bbf7d0\],
+.light-mode .text-\[\#4ade80\] {
+  color: #15803d !important;
+}
+
 .light-mode .text-\[\#3a3a5a\],
 .light-mode .text-\[\#7b7ba6\] {
   color: var(--gb-faint) !important;
@@ -188,6 +198,19 @@ body:not(.landing) {
 .light-mode .bg-\[\#16a34a22\],
 .light-mode .bg-\[\#ef444422\] {
   background-color: #f3f5ff !important;
+}
+
+.light-mode .bg-\[\#6c63ff18\] {
+  background-color: #ede9fe !important;
+}
+
+.light-mode .bg-\[\#22c55e14\],
+.light-mode .bg-\[\#16a34a22\] {
+  background-color: #dcfce7 !important;
+}
+
+.light-mode .border-\[\#16a34a66\] {
+  border-color: #16a34a !important;
 }
 
 .light-mode .bg-\[\#6c63ff22\].border-\[\#6c63ff66\] {

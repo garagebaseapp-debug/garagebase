@@ -129,6 +129,11 @@ export default function Nastavitve() {
     { id: 'aplikacija', title: tx('Aplikacija', 'App'), desc: tx('Verzija in podpora', 'Version and support'), tone: 'from-[#64748b] to-[#94a3b8]' },
     { id: 'brisanje', title: tx('Izbris računa', 'Delete account'), desc: tx('Trajno brisanje podatkov', 'Permanent data deletion'), tone: 'from-[#ef4444] to-[#fb7185]' },
   ]
+  const selectedSection = settingsSections.find((section) => section.id === settingsView) || settingsSections[0]
+  const selectSettingsSection = (sectionId: string) => {
+    setSettingsView(sectionId)
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
+  }
 
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
@@ -751,7 +756,7 @@ export default function Nastavitve() {
           <aside className="hidden xl:block">
             <nav className="sticky top-28 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
               {settingsSections.map((section) => (
-                <button key={section.id} type="button" onClick={() => setSettingsView(section.id)}
+                <button key={section.id} type="button" onClick={() => selectSettingsSection(section.id)}
                   className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition-all ${
                     settingsView === section.id
                       ? section.id === 'brisanje'
@@ -769,33 +774,45 @@ export default function Nastavitve() {
           </aside>
 
           <main className="grid gap-4 lg:grid-cols-2">
-      <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
-        <div className="grid grid-cols-2 gap-2">
-          {settingsSections.map((section) => (
-            <button
-              key={section.id}
-              type="button"
-              onClick={() => setSettingsView(section.id)}
-              className={`relative overflow-hidden rounded-2xl border p-3 text-left transition-all ${
-                settingsView === section.id
-                  ? section.id === 'brisanje'
-                    ? 'border-[#ef4444aa] bg-[#ef444422] shadow-lg shadow-[#ef444418] ring-2 ring-[#ef444433]'
-                    : 'border-[#6c63ffaa] bg-[#6c63ff2e] shadow-lg shadow-[#6c63ff18] ring-2 ring-[#6c63ff33]'
-                  : 'border-[#1e1e32] bg-[#13131f]'
-              }`}
-            >
-              <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${section.tone}`} />
-              <span className="block text-sm font-bold text-white">{section.title}</span>
-              <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{section.desc}</span>
-              {settingsView === section.id && (
-                <span className="mt-2 inline-flex rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white">
-                  {tx('Izbrano', 'Selected')}
-                </span>
-              )}
-            </button>
-          ))}
+      {settingsView === 'vse' ? (
+        <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
+          <div className="grid grid-cols-2 gap-2">
+            {settingsSections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                onClick={() => selectSettingsSection(section.id)}
+                className={`relative overflow-hidden rounded-2xl border p-3 text-left transition-all ${
+                  section.id === 'vse'
+                    ? 'border-[#6c63ffaa] bg-[#6c63ff2e] shadow-lg shadow-[#6c63ff18] ring-2 ring-[#6c63ff33]'
+                    : 'border-[#1e1e32] bg-[#13131f]'
+                }`}
+              >
+                <span className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${section.tone}`} />
+                <span className="block text-sm font-bold text-white">{section.title}</span>
+                <span className="mt-1 block text-[11px] leading-snug text-[#5a5a80]">{section.desc}</span>
+                {section.id === 'vse' && (
+                  <span className="mt-2 inline-flex rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-white">
+                    {tx('Izbrano', 'Selected')}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="xl:hidden lg:col-span-2 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
+          <button
+            type="button"
+            onClick={() => selectSettingsSection('vse')}
+            className="mb-3 inline-flex items-center rounded-full border border-[#6c63ff44] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#a09aff]"
+          >
+            ← {tx('Vse nastavitve', 'All settings')}
+          </button>
+          <p className="text-xl font-black text-white">{selectedSection.title}</p>
+          <p className="mt-1 text-sm text-[#5a5a80]">{selectedSection.desc}</p>
+        </div>
+      )}
 
       {settingsView && (
         <>

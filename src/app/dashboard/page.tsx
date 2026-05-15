@@ -697,6 +697,11 @@ export default function Dashboard() {
     .map((op) => ({ ...op, dni: dniDo(op.datum), km: op.km_opomnik ? kmDo(op.km_opomnik) : null }))
     .sort((a, b) => Math.min(a.dni ?? 9999, a.km ?? 999999) - Math.min(b.dni ?? 9999, b.km ?? 999999))
     .slice(0, 3)
+  const vinjetaOpomnik = opomniki
+    .filter((op) => String(op.tip || '').toLowerCase().includes('vinjet'))
+    .sort((a, b) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())[0]
+  const vinjetaDatum = vinjetaOpomnik?.datum ? new Date(vinjetaOpomnik.datum).toLocaleDateString(datumLocale) : ''
+  const vinjetaLabel = vinjetaDatum ? `${tx('Vinjeta do', 'Vignette until')} ${vinjetaDatum}` : ''
 
   if (nacin === 'lite' && aktivniAvto) {
     const aktivniStatus = statusZaAvto(aktivniAvto)
@@ -893,6 +898,11 @@ export default function Dashboard() {
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
+                      {vinjetaLabel && (
+                        <p className="mt-3 inline-flex rounded-full border border-[#16a34a66] bg-[#16a34a22] px-2.5 py-1 text-xs font-black text-[#4ade80]">
+                          {vinjetaLabel}
+                        </p>
+                      )}
                     </div>
                     <button onClick={() => window.location.href = '/gorivo?car=' + aktivniAvto.id} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#3ecfcf] transition-all">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Poraba', 'Consumption')}</p>
@@ -976,78 +986,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {aktivniAvto.km_trenutni && (
-                  <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Trenutni km</p>
-                        <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni.toLocaleString()} km</p>
-                      </div>
-                      <div className="w-12 h-12 rounded-xl bg-[#1a1a2e] border border-[#2a2a40] flex items-center justify-center text-2xl">
-                        🛣️
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {hasConsumptionBreakdown && (
-                  <button
-                    type="button"
-                    onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
-                    className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
-                  >
-                    <div className="mb-3 flex items-center gap-3">
-                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6c63ff22] text-2xl">⛽</span>
-                      <div>
-                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#7d829a]">{tx('Poraba goriva', 'Fuel consumption')}</p>
-                        <p className="text-sm font-semibold text-[#d8d8e8]">{tx('Pregled po viru vnosa', 'Breakdown by source')}</p>
-                      </div>
-                    </div>
-                    {renderPoraba.imported !== null ? (
-                      <div className="grid grid-cols-3 gap-2">
-                        <div className="rounded-xl bg-[#6c63ff18] p-3">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-[#a09aff]">{tx('Naši vnosi', 'Our entries')}</p>
-                          <p className="mt-1 text-lg font-black text-[#c8c4ff]">{consumptionText(renderPoraba.garageBase)}</p>
-                        </div>
-                        <div className="rounded-xl bg-[#22c55e14] p-3">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-[#86efac]">{tx('Uvoz', 'Import')}</p>
-                          <p className="mt-1 text-lg font-black text-[#bbf7d0]">{consumptionText(renderPoraba.imported)}</p>
-                        </div>
-                        <div className="rounded-xl bg-white/[0.08] p-3">
-                          <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
-                          <p className="mt-1 text-lg font-black text-white">{consumptionText(renderPoraba.total)}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl bg-white/[0.08] p-4">
-                        <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
-                        <p className="mt-1 text-3xl font-black text-white">{consumptionText(renderPoraba.total ?? renderPoraba.garageBase)}</p>
-                      </div>
-                    )}
-                  </button>
-                )}
-
-                {/* Kalkulator stroškov €/km */}
-                {hasCostBreakdown && (
-                  <div onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`} className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4 cursor-pointer">
-                    <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski vozila', 'Vehicle costs')}</p>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-[#3ecfcf] text-xs mb-0.5">{tx('Skupaj', 'Total')}</p>
-          <p className="text-white font-bold text-xl">{formatMoney(renderStroski.total, valuta)}</p>
-                        <p className="text-[#a09aff] text-xs mt-1">{tx('GarageBase vnosi', 'GarageBase entries')}: {renderStroski.garageBase > 0 ? formatMoney(renderStroski.garageBase, valuta) : '-'}</p>
-                        <p className="text-[#86efac] text-xs">{tx('Uvozena zgodovina', 'Imported history')}: {renderStroski.imported > 0 ? formatMoney(renderStroski.imported, valuta) : '-'}</p>
-                      </div>
-                      {renderStroski.naKm !== null && (
-                        <div className="text-right">
-                          <p className="text-[#5a5a80] text-xs mb-0.5">{tx('Cena na km', 'Cost per km')}</p>
-          <p className="text-[#6c63ff] font-bold text-xl">{renderStroski.naKm.toFixed(3)} {znakValute}/km</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="px-5 pb-5 grid grid-cols-3 gap-2.5">
+                <div className="px-5 pb-4 grid grid-cols-3 gap-2.5">
                   <button onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#3ecfcf] py-3.5 rounded-2xl hover:border-[#3ecfcf] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">Gorivo</span>
@@ -1073,6 +1012,89 @@ export default function Dashboard() {
                     <span className="text-2xl leading-none">📄</span><span className="text-[12px] font-black text-[#d8d8e8]">Report</span>
                   </button>
                 </div>
+
+                {aktivniAvto.km_trenutni && (
+                  <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Trenutni km</p>
+                        <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni.toLocaleString()} km</p>
+                        {vinjetaLabel && (
+                          <p className="mt-2 inline-flex rounded-full border border-[#16a34a66] bg-[#16a34a22] px-2.5 py-1 text-[11px] font-black text-[#4ade80]">
+                            {vinjetaLabel}
+                          </p>
+                        )}
+                      </div>
+                      <div className="w-12 h-12 rounded-xl bg-[#1a1a2e] border border-[#2a2a40] flex items-center justify-center text-2xl">
+                        🛣️
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {hasConsumptionBreakdown && (
+                  <button
+                    type="button"
+                    onClick={() => window.location.href = `/gorivo?car=${aktivniAvto.id}`}
+                    className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#6c63ff22] text-2xl">⛽</span>
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#7d829a]">{tx('Poraba goriva', 'Fuel consumption')}</p>
+                        <p className="text-sm font-semibold text-[#d8d8e8]">{tx('Pregled po viru vnosa', 'Breakdown by source')}</p>
+                      </div>
+                    </div>
+                    {renderPoraba.imported !== null ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] p-3 shadow-[inset_4px_0_0_rgba(108,99,255,0.95)]">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#a09aff]">{tx('Naši vnosi', 'Our entries')}</p>
+                          <p className="mt-1 text-lg font-black text-[#c8c4ff]">{consumptionText(renderPoraba.garageBase)}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#16a34a66] bg-[#16a34a22] p-3 shadow-[inset_4px_0_0_rgba(22,163,74,0.95)]">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#86efac]">{tx('Uvoz', 'Import')}</p>
+                          <p className="mt-1 text-lg font-black text-[#bbf7d0]">{consumptionText(renderPoraba.imported)}</p>
+                        </div>
+                        <div className="rounded-xl border border-[#2a2a40] bg-[#0f0f1a] p-3 shadow-[inset_4px_0_0_rgba(62,207,207,0.95)]">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
+                          <p className="mt-1 text-lg font-black text-white">{consumptionText(renderPoraba.total)}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl bg-white/[0.08] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
+                        <p className="mt-1 text-3xl font-black text-white">{consumptionText(renderPoraba.total ?? renderPoraba.garageBase)}</p>
+                      </div>
+                    )}
+                  </button>
+                )}
+
+                {/* Kalkulator stroškov €/km */}
+                {hasCostBreakdown && (
+                  <div onClick={() => window.location.href = `/stroski?car=${aktivniAvto.id}`} className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4 cursor-pointer">
+                    <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Stroski vozila', 'Vehicle costs')}</p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="text-[#3ecfcf] text-xs mb-0.5">{tx('Skupaj', 'Total')}</p>
+          <p className="text-white font-bold text-xl">{formatMoney(renderStroski.total, valuta)}</p>
+                        <div className="mt-2 flex flex-col gap-1.5">
+                          <p className="inline-flex w-fit rounded-full border border-[#6c63ff66] bg-[#6c63ff22] px-2.5 py-1 text-[11px] font-black text-[#a09aff]">
+                            {tx('GarageBase vnosi', 'GarageBase entries')}: {renderStroski.garageBase > 0 ? formatMoney(renderStroski.garageBase, valuta) : '-'}
+                          </p>
+                          <p className="inline-flex w-fit rounded-full border border-[#16a34a66] bg-[#16a34a22] px-2.5 py-1 text-[11px] font-black text-[#4ade80]">
+                            {tx('Uvozena zgodovina', 'Imported history')}: {renderStroski.imported > 0 ? formatMoney(renderStroski.imported, valuta) : '-'}
+                          </p>
+                        </div>
+                      </div>
+                      {renderStroski.naKm !== null && (
+                        <div className="text-right">
+                          <p className="text-[#5a5a80] text-xs mb-0.5">{tx('Cena na km', 'Cost per km')}</p>
+          <p className="text-[#6c63ff] font-bold text-xl">{renderStroski.naKm.toFixed(3)} {znakValute}/km</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Opomniki z dni in km prikazom */}
