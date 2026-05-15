@@ -203,8 +203,17 @@ export default function Opomniki() {
     </div>
   )
 
+  const rdeciOpomniki = opomniki.filter((op) => {
+    const dni = dniDo(op.datum)
+    const preostaloKm = op.km_opomnik ? kmDo(op.km_opomnik) : null
+    return (dni !== null && dni < 0) || (preostaloKm !== null && preostaloKm <= 0)
+  })
+  const kmOpomniki = opomniki.filter((op) => op.km_opomnik)
+  const datumskiOpomniki = opomniki.filter((op) => op.datum)
+
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+      <div className="mx-auto w-full max-w-md xl:max-w-5xl">
 
       <div className="flex items-center gap-3 mb-6">
         <BackButton />
@@ -212,6 +221,20 @@ export default function Opomniki() {
           <h1 className="text-xl font-bold text-white">🔔 {tx('Opomniki', 'Reminders')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model} · {avto.km_trenutni?.toLocaleString(locale)} km</p>}
         </div>
+      </div>
+
+      <div className="mb-6 hidden grid-cols-4 gap-4 xl:grid">
+        {[
+          { label: tx('Vsi opomniki', 'All reminders'), value: opomniki.length, tone: 'text-[#a09aff]' },
+          { label: tx('Nujni', 'Urgent'), value: rdeciOpomniki.length, tone: 'text-[#ef4444]' },
+          { label: tx('Datumski opomniki', 'Date reminders'), value: datumskiOpomniki.length, tone: 'text-[#3ecfcf]' },
+          { label: tx('KM opomniki', 'Mileage reminders'), value: kmOpomniki.length, tone: 'text-[#22c55e]' },
+        ].map((item) => (
+          <div key={item.label} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-center shadow-xl shadow-black/10">
+            <p className={`text-3xl font-black ${item.tone}`}>{item.value}</p>
+            <p className="mt-2 text-sm font-bold text-[#8a8aa8]">{item.label}</p>
+          </div>
+        ))}
       </div>
 
       {/* Seznam opomnikov */}
@@ -407,6 +430,7 @@ export default function Opomniki() {
         </div>
       )}
 
+      </div>
       <HomeButton />
     </div>
   )

@@ -166,6 +166,16 @@ export default function DomovPage() {
     return 'green'
   }
 
+  const preklopiTemo = () => {
+    const next = theme === 'svetla' ? 'temna' : 'svetla'
+    setTheme(next)
+    try {
+      const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: next, onboardingDone: true }))
+      document.documentElement.classList.toggle('light-mode', next === 'svetla')
+    } catch {}
+  }
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -343,9 +353,14 @@ export default function DomovPage() {
           <button onClick={() => window.location.href = '/domov'} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
-          <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
-            <Icon type="bell" className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={preklopiTemo} className="hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-4 py-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white xl:inline-flex">
+              {theme === 'svetla' ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
+            </button>
+            <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki'} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
+              <Icon type="bell" className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <section className="mb-2.5">
@@ -365,6 +380,24 @@ export default function DomovPage() {
               <p className="mt-1 text-[10.5px] font-bold leading-tight text-[#8a8aa8] sm:text-xs">{item.label}</p>
             </button>
           ))}
+        </section>
+
+        <section className="mb-5 hidden grid-cols-3 gap-4 xl:grid">
+          <button onClick={() => window.location.href = favoriteCar?.id ? `/dashboard?car=${favoriteCar.id}` : '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+            <p className="text-sm font-black text-[#8a8aa8]">{tx('Glavno vozilo', 'Main vehicle')}</p>
+            <p className="mt-3 truncate text-2xl font-black text-white">{favoriteCarName || tx('Ni izbrano', 'Not selected')}</p>
+            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{favoriteCar?.km_trenutni ? `${favoriteCar.km_trenutni.toLocaleString(locale)} ${distanceUnit}` : tx('Odpri garažo za pregled', 'Open garage to review')}</p>
+          </button>
+          <button onClick={() => window.location.href = reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+            <p className="text-sm font-black text-[#8a8aa8]">{tx('Najbližji opomnik', 'Next reminder')}</p>
+            <p className="mt-3 truncate text-2xl font-black text-white">{topReminders[0]?.title || tx('Brez opomnikov', 'No reminders')}</p>
+            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{topReminders[0]?.value || tx('Vse je mirno', 'Everything is quiet')}</p>
+          </button>
+          <button onClick={() => window.location.href = recentEvents[0]?.href || '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+            <p className="text-sm font-black text-[#8a8aa8]">{tx('Zadnji dogodek', 'Latest event')}</p>
+            <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title || tx('Ni dogodkov', 'No events')}</p>
+            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{recentEvents[0]?.subtitle || tx('Dodaj prvi vnos', 'Add the first entry')}</p>
+          </button>
         </section>
 
         <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">

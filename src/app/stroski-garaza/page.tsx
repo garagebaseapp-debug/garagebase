@@ -108,6 +108,11 @@ export default function StroškiGaraza() {
     }
     init()
   }, [language])
+
+  const skupniStrosek = avti.reduce((sum, avto) => sum + (stroski[avto.id] || 0), 0)
+  const najdrazjeVozilo = [...avti].sort((a, b) => (stroski[b.id] || 0) - (stroski[a.id] || 0))[0]
+  const maxStrosek = Math.max(1, ...avti.map((avto) => stroski[avto.id] || 0))
+
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
 
@@ -137,6 +142,57 @@ export default function StroškiGaraza() {
         </div>
       )}
 
+      {avti.length > 0 && (
+        <div className="mx-auto hidden w-full max-w-5xl flex-1 px-0 xl:block">
+          <div className="mb-7 grid grid-cols-3 gap-4">
+            <button onClick={() => window.location.href = '/vnos-stroska'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10">
+              <p className="text-sm font-black text-[#8a8aa8]">{tx('Skupni stroški', 'Total costs')}</p>
+              <p className="mt-3 text-3xl font-black text-white">{skupniStrosek.toFixed(0)} {currencySymbol(valuta)}</p>
+            </button>
+            <button onClick={() => najdrazjeVozilo && (window.location.href = `/stroski?car=${najdrazjeVozilo.id}`)} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10">
+              <p className="text-sm font-black text-[#8a8aa8]">{tx('Največ stroškov', 'Highest cost')}</p>
+              <p className="mt-3 truncate text-2xl font-black text-white">{najdrazjeVozilo ? vehicleDisplayName(najdrazjeVozilo) : '-'}</p>
+            </button>
+            <button onClick={() => window.location.href = '/garaza'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10">
+              <p className="text-sm font-black text-[#8a8aa8]">{tx('Vozil v pregledu', 'Vehicles in overview')}</p>
+              <p className="mt-3 text-3xl font-black text-white">{avti.length}</p>
+            </button>
+          </div>
+
+          <div className="rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a] p-5 shadow-xl shadow-black/10">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-black text-white">{tx('Stroški po vozilih', 'Costs by vehicle')}</h2>
+              <button onClick={() => window.location.href = '/vnos-stroska'} className="rounded-2xl bg-[#6c63ff] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
+                + {tx('Dodaj strošek', 'Add expense')}
+              </button>
+            </div>
+            <div className="space-y-3">
+              {avti.map((avto) => {
+                const cost = stroski[avto.id] || 0
+                const width = Math.max(4, Math.round((cost / maxStrosek) * 100))
+                return (
+                  <button key={avto.id} onClick={() => window.location.href = `/stroski?car=${avto.id}`} className="grid w-full grid-cols-[72px_minmax(0,1fr)_150px] items-center gap-4 rounded-2xl border border-[#1e1e32] bg-[#11111d] p-3 text-left transition-colors hover:border-[#6c63ff66]">
+                    <div className="h-14 overflow-hidden rounded-xl bg-[#151527]">
+                      {slikaVozila(avto) ? <img src={slikaVozila(avto)} alt={vehicleDisplayName(avto)} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : null}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-black text-white">{vehicleDisplayName(avto)}</p>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#24243a]">
+                        <div className="h-full rounded-full bg-[#6c63ff]" style={{ width: `${width}%` }} />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black text-[#3ecfcf]">{cost.toFixed(0)} {currencySymbol(valuta)}</p>
+                      <p className="text-xs font-semibold text-[#8a8aa8]">{tx('skupaj', 'total')}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {!loading && avti.length === 0 && (
         <div className="flex-1 flex items-center justify-center px-5 text-center">
           <div>
@@ -146,7 +202,7 @@ export default function StroškiGaraza() {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto xl:hidden">
         {avti.map((avto, index) => (
           <div key={avto.id} onClick={() => window.location.href = `/stroski?car=${avto.id}`}
             className="relative cursor-pointer overflow-hidden bg-[#0f0f1a] border-t border-[#1a1a28] flex"
