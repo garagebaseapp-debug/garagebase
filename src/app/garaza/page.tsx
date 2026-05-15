@@ -24,6 +24,7 @@ export default function Garaza() {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
+  const [tema, setTema] = useState<'temna' | 'svetla'>('temna')
   const [prikaz, setPrikaz] = useState('srednje')
   const [nastavitveVozilMode, setNastavitveVozilMode] = useState(false)
   const [desktopStolpci, setDesktopStolpci] = useState(5)
@@ -216,6 +217,7 @@ export default function Garaza() {
         const n = JSON.parse(shranjene)
         setLanguage(n.jezik === 'en' ? 'en' : 'sl')
         setNacin(n.nacin || 'full')
+        setTema(n.tema === 'svetla' ? 'svetla' : 'temna')
         setPrikaz(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
@@ -773,8 +775,194 @@ export default function Garaza() {
     </div>
   )
 
+  const desktopSidebarImage = tema === 'svetla' ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
+  const desktopCars = avti
+  const desktopListMode = prikaz !== 'grid'
+
+  const DesktopReminderBadges = ({ car }: { car: any }) => (
+    <div className="flex min-h-[24px] flex-wrap items-center gap-1.5">
+      <OpomnikiBadgi carId={car.id} avtoKm={car.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
+    </div>
+  )
+
+  const renderDesktopGarage = () => (
+    <div className="hidden min-h-screen bg-[#080810] text-white xl:flex">
+      <aside className="flex w-[240px] shrink-0 flex-col border-r border-[#1e1e32] bg-[#0b0b14]">
+        <div className="px-7 py-7">
+          <button onClick={() => window.location.href = '/domov'} className="text-xl font-black tracking-tight text-white">
+            Garage<span className="text-[#6c63ff]">Base</span>
+          </button>
+        </div>
+        <nav className="flex-1 space-y-2 px-4 text-sm font-bold">
+          {[
+            { label: tx('Garaža', 'Garage'), href: '/garaza', active: true, icon: '⌂' },
+            { label: tx('Gorivo', 'Fuel'), href: '/gorivo', icon: '▣' },
+            { label: tx('Servis', 'Service'), href: '/servis', icon: '⌘' },
+            { label: tx('Stroški', 'Costs'), href: '/stroski-garaza', icon: '▥' },
+            { label: tx('Vozilo', 'Vehicle'), href: desktopCars[0]?.id ? `/dashboard?car=${desktopCars[0].id}` : '/dodaj-avto', icon: '▱' },
+          ].map((item) => (
+            <button
+              key={item.label}
+              onClick={() => window.location.href = item.href}
+              className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
+                item.active ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white'
+              }`}
+            >
+              <span className="w-5 text-center text-base">{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+          <div className="my-4 border-t border-[#1e1e32]" />
+          <button onClick={osveziGarazo} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#3ecfcf] hover:bg-[#3ecfcf14]">
+            <span className="w-5 text-center">↻</span>
+            {tx('Osveži', 'Refresh')}
+          </button>
+          <button onClick={() => setUrejanje(!urejanje)} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#c8c8dc] hover:bg-[#13131f] hover:text-white">
+            <span className="w-5 text-center">↕</span>
+            {urejanje ? tx('Končaj urejanje', 'Finish editing') : tx('Uredi', 'Edit')}
+          </button>
+          <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left text-[#c8c8dc] hover:bg-[#13131f] hover:text-white">
+            <span className="w-5 text-center">⏻</span>
+            {tx('Odjava', 'Sign out')}
+          </button>
+        </nav>
+        <div className="p-4">
+          <div className="h-48 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
+            <img src={desktopSidebarImage} alt="" className="h-full w-full object-cover object-center" />
+          </div>
+        </div>
+      </aside>
+
+      <main className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top_right,rgba(108,99,255,0.16),transparent_34%),#080810] px-8 py-7">
+        <header className="mb-6 flex items-start justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-black text-white">{tx('Aktivna vozila', 'Active vehicles')}</h1>
+            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">
+              {desktopCars.length} {tx('vozil v garaži', 'vehicles in garage')}
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={osveziGarazo} disabled={refreshing} className="rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] px-4 py-2 text-sm font-black text-[#3ecfcf] disabled:opacity-60">
+              {refreshing ? tx('Osveževanje...', 'Refreshing...') : tx('Osveži garažo', 'Refresh garage')}
+            </button>
+            <div className="flex overflow-hidden rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
+              <button onClick={() => shraniPrikazGaraze('srednje')} className={`h-9 w-9 rounded-lg text-sm font-black ${desktopListMode ? 'bg-[#24243a] text-white' : 'text-[#8a8aa8]'}`}>☰</button>
+              <button onClick={() => shraniPrikazGaraze('grid')} className={`h-9 w-9 rounded-lg text-sm font-black ${!desktopListMode ? 'bg-[#24243a] text-white' : 'text-[#8a8aa8]'}`}>⊞</button>
+            </div>
+            {!arhiv && (
+              <button onClick={() => pojdiDodajAvto('desktop')} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
+                + {tx('Vozilo', 'Vehicle')}
+              </button>
+            )}
+          </div>
+        </header>
+
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div className="flex w-[300px] overflow-hidden rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
+            <button onClick={() => setArhiv(false)} className={`flex-1 rounded-lg px-4 py-2 text-sm font-black ${!arhiv ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8]'}`}>
+              {tx('Aktivna vozila', 'Active vehicles')}
+            </button>
+            <button onClick={() => setArhiv(true)} className={`flex-1 rounded-lg px-4 py-2 text-sm font-black ${arhiv ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8]'}`}>
+              {tx('Arhiv', 'Archive')}
+            </button>
+          </div>
+          <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8]">•••</button>
+        </div>
+
+        {archiveMessage && (
+          <div className="mb-4 rounded-2xl border border-[#f59e0b44] bg-[#f59e0b18] p-3 text-sm text-[#fbbf24]">
+            {archiveMessage}
+          </div>
+        )}
+
+        {loading && desktopCars.length === 0 ? (
+          <div className="grid gap-4">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item} className="h-24 animate-pulse rounded-2xl border border-[#1e1e32] bg-[#0f0f1a]" />
+            ))}
+          </div>
+        ) : desktopCars.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a]">
+            <div className="text-center">
+              <p className="text-2xl font-black text-white">{arhiv ? tx('Arhiv je prazen', 'Archive is empty') : tx('Tvoja garaža je prazna', 'Your garage is empty')}</p>
+              {!arhiv && (
+                <button onClick={() => pojdiDodajAvto('desktop-empty')} className="mt-5 rounded-xl bg-[#6c63ff] px-6 py-3 text-sm font-black text-white">
+                  + {tx('Dodaj vozilo', 'Add vehicle')}
+                </button>
+              )}
+            </div>
+          </div>
+        ) : desktopListMode ? (
+          <div className="space-y-3">
+            {desktopCars.map((avto, index) => {
+              const imageSrc = slikaVozila(avto)
+              return (
+                <button
+                  key={avto.id}
+                  onClick={() => odpriVozilo(avto)}
+                  className="group grid w-full grid-cols-[116px_minmax(0,1fr)_minmax(280px,0.8fr)_120px_38px] items-center gap-5 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-3 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]"
+                >
+                  <div className="h-20 overflow-hidden rounded-xl bg-[#13131f]">
+                    {imageSrc ? (
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(avto)}</div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-black text-white">{imeVozila(avto)}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{metaVozila(avto) || '-'}</p>
+                  </div>
+                  <DesktopReminderBadges car={avto} />
+                  <div className="text-right">
+                    {avto.tablica && <p className="font-mono text-sm font-black tracking-[0.12em] text-white">{avto.tablica.toUpperCase()}</p>}
+                  </div>
+                  <span className="text-lg font-black text-[#8a8aa8]">•••</span>
+                </button>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-5 2xl:grid-cols-4">
+            {desktopCars.map((avto, index) => {
+              const imageSrc = slikaVozila(avto)
+              return (
+                <button
+                  key={avto.id}
+                  onClick={() => odpriVozilo(avto)}
+                  className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]"
+                >
+                  <div className="h-40 bg-[#13131f]">
+                    {imageSrc ? (
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(avto)}</div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-black text-white">{imeVozila(avto)}</p>
+                        <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{metaVozila(avto) || '-'}</p>
+                      </div>
+                      <span className="font-black text-[#8a8aa8]">•••</span>
+                    </div>
+                    <DesktopReminderBadges car={avto} />
+                    {avto.tablica && <p className="mt-3 font-mono text-xs font-black tracking-[0.12em] text-white">{avto.tablica.toUpperCase()}</p>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
+    <>
+    {renderDesktopGarage()}
+    <div className="flex min-h-screen flex-col bg-[#080810] pb-20 xl:hidden">
 
       <div className="flex justify-between items-center px-5 py-5 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">
@@ -1210,5 +1398,6 @@ export default function Garaza() {
 
       <BottomNav aktivna="garaza" />
     </div>
+    </>
   )
 }
