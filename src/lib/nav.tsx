@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
+import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'reminders' | 'settings' | 'more' | 'admin'
 
@@ -22,6 +23,7 @@ const namiznePovezave = [
   { key: 'gorivo', href: '/gorivo', icon: 'fuel', labelSl: 'Gorivo', labelEn: 'Fuel' },
   { key: 'opomniki', href: '/opomniki', icon: 'reminders', labelSl: 'Opomniki', labelEn: 'Reminders' },
   { key: 'nastavitve', href: '/vec', icon: 'settings', labelSl: 'Nastavitve', labelEn: 'Settings' },
+  { key: 'admin', href: '/admin', icon: 'admin', labelSl: 'Admin', labelEn: 'Admin', adminOnly: true },
 ] as const
 
 type AppRouter = ReturnType<typeof useRouter>
@@ -36,11 +38,12 @@ function pojdiNa(router: AppRouter, href: string) {
 }
 
 function activeKeyFromPath(path: string) {
+  if (path.includes('admin')) return 'admin'
   if (path.includes('gorivo') || path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
   if (path.includes('opomniki')) return 'opomniki'
   if (path.includes('servis') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
-  if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov') || path.includes('admin')) return 'nastavitve'
+  if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov')) return 'nastavitve'
   if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'garaza'
   return 'domov'
 }
@@ -105,6 +108,23 @@ export function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, cla
 function DesktopNav({ aktivna }: { aktivna?: string }) {
   const { language } = useLanguage()
   const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    checkCurrentUserAdmin()
+      .then((result) => {
+        if (active) setIsAdmin(result.isAdmin)
+      })
+      .catch(() => {
+        if (active) setIsAdmin(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const desktopLinks = namiznePovezave.filter((item) => !('adminOnly' in item) || !item.adminOnly || isAdmin)
 
   return (
     <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[228px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-4 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
@@ -112,7 +132,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         Garage<span className="text-[#6c63ff]">Base</span>
       </button>
       <nav className="flex flex-col gap-2">
-        {namiznePovezave.map((item) => (
+        {desktopLinks.map((item) => (
           <button
             key={item.key}
             onClick={() => pojdiNa(router, item.href)}

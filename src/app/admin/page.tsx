@@ -245,8 +245,16 @@ export default function AdminPage() {
   const [userActivity, setUserActivity] = useState<any[]>([])
   const [adminAlerts, setAdminAlerts] = useState<any[]>([])
   const [planSimulation, setPlanSimulation] = useState<any[]>([])
+  const [recordMix, setRecordMix] = useState<any[]>([])
+  const [costMix, setCostMix] = useState<any[]>([])
+  const [conversionStats, setConversionStats] = useState<any[]>([])
+  const [errorStatusStats, setErrorStatusStats] = useState<any[]>([])
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
+
+  const scrollToAdminSection = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -453,6 +461,44 @@ export default function AdminPage() {
       }
       const maxPlanCount = Math.max(1, ...planBuckets.map((item) => item.count))
       const newErrorsCount = errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length
+      const recordTotal = Math.max(1, fuelMoney.length + serviceMoney.length + expenseMoney.length)
+      const recordItems = [
+        { label: tx('Gorivo', 'Fuel'), value: fuelMoney.length, color: 'bg-[#6c63ff]' },
+        { label: tx('Servisi', 'Services'), value: serviceMoney.length, color: 'bg-[#3ecfcf]' },
+        { label: tx('Stroski', 'Costs'), value: expenseMoney.length, color: 'bg-[#f59e0b]' },
+      ].map((item) => ({ ...item, percent: Math.round((item.value / recordTotal) * 100) }))
+      const fuelCost = fuelMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0)
+      const serviceCost = serviceMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
+      const expenseCost = expenseMoney.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
+      const costTotal = Math.max(1, fuelCost + serviceCost + expenseCost)
+      const costItems = [
+        { label: tx('Gorivo', 'Fuel'), value: fuelCost, color: 'bg-[#6c63ff]' },
+        { label: tx('Servisi', 'Services'), value: serviceCost, color: 'bg-[#3ecfcf]' },
+        { label: tx('Stroski', 'Costs'), value: expenseCost, color: 'bg-[#f59e0b]' },
+      ].map((item) => ({ ...item, percent: Math.round((item.value / costTotal) * 100) }))
+      const eventCount = (name: string) => events.filter((event: any) => event.event_name === name).length
+      const eventIncludesCount = (needle: string) => events.filter((event: any) => String(event.event_name).includes(needle)).length
+      const ocrClicks = eventCount('receipt_scan_clicked')
+      const ocrSuccess = eventCount('receipt_scan_success')
+      const reportOpen = eventIncludesCount('report')
+      const qrTransfer = events.filter((event: any) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).length
+      const saveOpens = eventCount('fuel_add_open') + eventCount('service_add_open') + eventCount('expense_add_open')
+      const saves = eventCount('fuel_saved') + eventCount('service_saved') + eventCount('expense_saved')
+      const conversionItems = [
+        { label: tx('Vnos odprt -> shranjen', 'Entry opened -> saved'), value: saveOpens ? Math.round((saves / saveOpens) * 100) : 0, detail: `${saves}/${saveOpens}` },
+        { label: tx('OCR klik -> uspeh', 'OCR click -> success'), value: ocrClicks ? Math.round((ocrSuccess / ocrClicks) * 100) : 0, detail: `${ocrSuccess}/${ocrClicks}` },
+        { label: tx('Report -> QR/prenos', 'Report -> QR/transfer'), value: reportOpen ? Math.round((qrTransfer / reportOpen) * 100) : 0, detail: `${qrTransfer}/${reportOpen}` },
+        { label: tx('Napake na 100 dogodkov', 'Errors per 100 events'), value: events.length ? Math.round((newErrorsCount / events.length) * 100) : 0, detail: `${newErrorsCount}/${events.length}` },
+      ]
+      const errorStatusCounts = new Map<string, number>()
+      for (const error of (errorsData.data || [])) {
+        const key = error.status || 'new'
+        errorStatusCounts.set(key, (errorStatusCounts.get(key) || 0) + 1)
+      }
+      const errorStatusTotal = Math.max(1, Array.from(errorStatusCounts.values()).reduce((sum, count) => sum + count, 0))
+      const errorStatuses = Array.from(errorStatusCounts.entries())
+        .map(([label, count]) => ({ label, count, percent: Math.round((count / errorStatusTotal) * 100) }))
+        .sort((a, b) => b.count - a.count)
       const alerts = [
         ...(newErrorsCount > 0 ? [{ tone: 'red', title: tx('Nove napake', 'New errors'), text: tx(`${newErrorsCount} novih napak čaka pregled.`, `${newErrorsCount} new errors need review.`) }] : []),
         ...(receiptRows / totalManualRows < 0.25 ? [{ tone: 'yellow', title: tx('Malo dokazil', 'Low proof rate'), text: tx('Manj kot 25% vnosov ima priložen račun.', 'Less than 25% of entries have attached receipts.') }] : []),
@@ -539,6 +585,10 @@ export default function AdminPage() {
       setUserActivity(userRows)
       setPlanSimulation(planBuckets.map((item) => ({ ...item, percent: Math.round((item.count / maxPlanCount) * 100) })))
       setAdminAlerts(alerts)
+      setRecordMix(recordItems)
+      setCostMix(costItems)
+      setConversionStats(conversionItems)
+      setErrorStatusStats(errorStatuses)
       setSettingsStats([
         aggregateSetting(settingsEvents, 'usageMode', (m) => m.usageMode),
         aggregateSetting(settingsEvents, 'theme', (m) => m.theme),
@@ -757,11 +807,26 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-5">
-        {[tx('Pregled', 'Overview'), tx('Uporabniki', 'Users'), tx('Analitika', 'Analytics'), 'A/B', tx('Monetizacija', 'Monetization')].map((item, index) => (
-          <div key={item} className={`rounded-2xl border px-4 py-3 text-center text-sm font-black ${index === 2 ? 'border-[#a855f7] bg-[#7c3aed] text-white shadow-lg shadow-[#7c3aed55]' : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8]'}`}>
-            {item}
-          </div>
+      <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-6">
+        {[
+          { label: tx('Pregled', 'Overview'), target: 'admin-overview' },
+          { label: tx('Analitika', 'Analytics'), target: 'admin-analytics' },
+          { label: tx('Uporabniki', 'Users'), target: 'admin-users' },
+          { label: tx('Napake', 'Errors'), target: 'admin-errors' },
+          { label: tx('Monetizacija', 'Monetization'), target: 'admin-plans' },
+          { label: tx('Nastavitve', 'Settings'), target: 'admin-settings' },
+        ].map((item, index) => (
+          <button
+            key={item.target}
+            onClick={() => scrollToAdminSection(item.target)}
+            className={`rounded-2xl border px-4 py-3 text-center text-sm font-black transition-all ${
+              index === 1
+                ? 'border-[#a855f7] bg-[#7c3aed] text-white shadow-lg shadow-[#7c3aed55]'
+                : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8] hover:border-[#6c63ff66] hover:text-white'
+            }`}
+          >
+            {item.label}
+          </button>
         ))}
       </div>
       </div>
@@ -778,7 +843,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div id="admin-overview" className="grid scroll-mt-6 grid-cols-2 gap-3 mb-5 lg:grid-cols-4">
         {statCards.map((card) => (
           <div key={card.label} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider">{card.label}</p>
@@ -786,6 +851,63 @@ export default function AdminPage() {
             <p className="mt-1 text-xs text-[#5a5a80]">{card.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div id="admin-analytics" className="mb-4 grid scroll-mt-6 gap-4 xl:grid-cols-[0.85fr_0.85fr_1.3fr]">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Miks zapisov', 'Record mix')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Razmerje med gorivom, servisi in stroski.', 'Split between fuel, services and expenses.')}</p>
+          <div className="space-y-3">
+            {recordMix.map((item) => (
+              <div key={item.label}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-black text-white">{item.label}</span>
+                  <span className="text-xs font-bold text-[#8a8aa8]">{item.value} / {item.percent}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
+                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, item.percent)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Stroskovni miks', 'Cost mix')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Kje uporabniki beležijo najvec denarja.', 'Where users record the most money.')}</p>
+          <div className="space-y-3">
+            {costMix.map((item) => (
+              <div key={item.label}>
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-black text-white">{item.label}</span>
+                  <span className="text-xs font-bold text-[#8a8aa8]">{moneyText(item.value)} / {item.percent}%</span>
+                </div>
+                <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
+                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, item.percent)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Kriticni tokovi', 'Critical flows')}</h2>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Formule za shranjevanje, OCR, report in napake.', 'Formulas for saving, OCR, report and errors.')}</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {conversionStats.map((item) => (
+              <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-black text-white">{item.label}</p>
+                  <p className="text-2xl font-black text-[#3ecfcf]">{item.value}%</p>
+                </div>
+                <p className="mt-1 text-xs text-[#8a8aa8]">{item.detail}</p>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, Math.max(3, item.value))}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-4 lg:grid-cols-3">
@@ -884,7 +1006,7 @@ export default function AdminPage() {
       </div>
 
       <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_1fr_0.9fr]">
-        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+        <div id="admin-users" className="scroll-mt-6 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Uporabniki za pregled', 'Users to inspect')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Najbolj aktivni anonimni uporabniki iz dogodkov in vozil.', 'Most active anonymous users from events and vehicles.')}</p>
           <div className="space-y-2">
@@ -943,7 +1065,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <div className="mb-4 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+      <div id="admin-settings" className="mb-4 scroll-mt-6 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
         <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-white font-bold">{tx('Nastavitve uporabnikov', 'User settings')}</h2>
@@ -1051,13 +1173,29 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+        <div id="admin-errors" className="scroll-mt-6 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Napake v sistemu', 'System errors')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnje napake iz brskalnika uporabnikov.', 'Latest browser errors from users.')}</p>
           <button onClick={() => window.location.href = '/admin-napake'}
             className="mb-4 w-full rounded-xl border border-[#ef444455] bg-[#ef444418] px-3 py-2 text-xs font-bold text-[#fca5a5]">
             {tx('Odpri prijave napak uporabnikov', 'Open user bug reports')}
           </button>
+          <div className="mb-4 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
+            <p className="mb-3 text-xs font-black uppercase tracking-wider text-[#8a8aa8]">{tx('Status napak', 'Error status')}</p>
+            {errorStatusStats.length === 0 ? (
+              <p className="text-xs text-[#5a5a80]">{tx('Ni statusov napak.', 'No error statuses.')}</p>
+            ) : errorStatusStats.map((item) => (
+              <div key={item.label} className="mb-2 last:mb-0">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">{item.label}</span>
+                  <span className="text-xs font-black text-[#fca5a5]">{item.count} / {item.percent}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
+                  <div className="h-full rounded-full bg-[#ef4444]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
           <div className="flex flex-col gap-2">
             {recentErrors.length === 0 ? (
               <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#5a5a80]">
@@ -1141,7 +1279,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+        <div id="admin-plans" className="scroll-mt-6 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Paketi uporabnikov', 'User packages')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Trenutno je app odprta, tu pa pripravljas pakete za cas po promociji.', 'The app is currently open; this prepares plans for after the promotion.')}</p>
           <div className="mb-4 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-3">
