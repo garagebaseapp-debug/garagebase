@@ -131,7 +131,8 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         onClick={() => pojdiNa(router, '/garaza')}
         className="gb-sidebar-garage-card group relative mt-6 h-44 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-xl shadow-black/15"
       >
-        <img src="/garage-web-light-sidebar.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
+        <img src="/landing-hero-dark-garage.png" alt="" className="gb-sidebar-image-dark absolute inset-0 h-full w-full object-cover object-center" />
+        <img src="/garage-web-light-sidebar.png" alt="" className="gb-sidebar-image-light absolute inset-0 hidden h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#080810]/20 via-transparent to-transparent" />
       </button>
     </aside>

@@ -338,6 +338,14 @@ body:not(.landing) {
   box-shadow: 0 16px 34px rgba(24, 32, 56, 0.10) !important;
 }
 
+.light-mode .gb-sidebar-image-dark {
+  display: none !important;
+}
+
+.light-mode .gb-sidebar-image-light {
+  display: block !important;
+}
+
 .light-mode .gb-sidebar-garage-card .bg-\[\#6c63ff\] {
   color: #ffffff !important;
 }
