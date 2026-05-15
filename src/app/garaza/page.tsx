@@ -25,6 +25,7 @@ export default function Garaza() {
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [prikaz, setPrikaz] = useState('srednje')
+  const [nastavitveVozilMode, setNastavitveVozilMode] = useState(false)
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [liteCarId, setLiteCarId] = useState('')
@@ -117,6 +118,11 @@ export default function Garaza() {
     } catch {}
   }
 
+  const odpriVozilo = (avto: any) => {
+    if (!avto?.id || urejanje) return
+    window.location.href = nastavitveVozilMode ? `/nastavitve-avta?car=${avto.id}` : `/dashboard?car=${avto.id}`
+  }
+
   const naloziOpomnike = async (cars: any[]) => {
     const opomnikMap: { [key: string]: any[] } = {}
     for (const avto of cars) opomnikMap[avto.id] = []
@@ -189,8 +195,10 @@ export default function Garaza() {
     const init = async () => {
       try {
         const search = new URLSearchParams(window.location.search)
+        const manageVehicles = search.get('mode') === 'nastavitve' || search.get('mode') === 'urejanje'
+        setNastavitveVozilMode(manageVehicles)
         const seenDomov = sessionStorage.getItem('garagebase_seen_domov_this_session') === '1'
-        const explicitGarageOpen = search.get('direct') === '1'
+        const explicitGarageOpen = search.get('direct') === '1' || search.has('mode')
         const afterLogin = Math.max(
           Number(sessionStorage.getItem('garagebase_after_login_home') || 0),
           Number(localStorage.getItem('garagebase_after_login_home') || 0),
@@ -604,19 +612,24 @@ export default function Garaza() {
     return (
       <div className="flex-1 overflow-y-auto px-5 pb-6">
         <div
-          onClick={() => !urejanje && (window.location.href = `/dashboard?car=${glavni.id}`)}
-          className="relative mb-4 min-h-[360px] overflow-hidden rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a] shadow-2xl shadow-black/20"
+          onClick={() => odpriVozilo(glavni)}
+          className="relative mb-4 min-h-[330px] overflow-hidden rounded-[30px] border border-[#6c63ff55] bg-[#0f0f1a] shadow-[0_26px_70px_rgba(108,99,255,0.22)]"
         >
-          {renderVehicleImage(glavni, 0, 'absolute inset-0 h-full w-full object-cover')}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
-          <div className="absolute left-4 top-4 rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-black text-white backdrop-blur">
+          {renderVehicleImage(glavni, 0, 'absolute inset-0 h-full w-full object-cover object-center')}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/10 to-black/0" />
+          <div className="absolute left-4 top-4 rounded-full border border-white/25 bg-black/30 px-3 py-1 text-xs font-black text-white shadow-lg shadow-black/25 backdrop-blur-md">
             {tx('Glavno vozilo', 'Main vehicle')}
           </div>
           <div className="absolute bottom-0 left-0 right-0 p-5">
             <h2 className="text-3xl font-black leading-none text-white drop-shadow">{imeVozila(glavni)}</h2>
             <p className="mt-2 text-sm font-semibold text-white/80">{metaVozila(glavni)}</p>
             {renderVinjetaLine(glavni)}
-            <div className="mt-4 grid grid-cols-4 gap-2">
+            {nastavitveVozilMode && (
+              <p className="mt-3 inline-flex rounded-full border border-[#3ecfcf66] bg-[#3ecfcf22] px-3 py-1.5 text-xs font-black text-[#3ecfcf]">
+                {tx('Klikni vozilo za nastavitve', 'Tap a vehicle to edit settings')}
+              </p>
+            )}
+            <div className="mt-4 grid grid-cols-4 gap-2 rounded-3xl border border-white/15 bg-white/10 p-2 shadow-xl shadow-black/20 backdrop-blur-md">
               {[
                 { label: tx('Stroški', 'Costs'), href: `/stroski?car=${glavni.id}`, icon: '▥' },
                 { label: tx('Servis', 'Service'), href: `/servis?car=${glavni.id}`, icon: '⌘' },
@@ -627,7 +640,7 @@ export default function Garaza() {
                   key={action.label}
                   type="button"
                   onClick={(e) => { e.stopPropagation(); window.location.href = action.href }}
-                  className="rounded-2xl border border-white/10 bg-black/35 px-2 py-3 text-center text-xs font-black text-white/90 backdrop-blur"
+                  className="rounded-2xl border border-white/15 bg-black/30 px-2 py-3 text-center text-xs font-black text-white shadow-lg shadow-black/20 backdrop-blur-md"
                 >
                   <span className="mb-1 block text-lg">{action.icon}</span>
                   {action.label}
@@ -648,7 +661,7 @@ export default function Garaza() {
           {avti.map((avto, index) => (
             <button
               key={avto.id}
-              onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+              onClick={() => odpriVozilo(avto)}
               className="w-[150px] shrink-0 overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
             >
               <div className="h-36 w-full overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
@@ -690,7 +703,7 @@ export default function Garaza() {
                 {cars.map((avto, index) => (
                   <button
                     key={avto.id}
-                    onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                    onClick={() => odpriVozilo(avto)}
                     className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
                   >
                     <div className="h-28 overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
@@ -729,7 +742,7 @@ export default function Garaza() {
           return (
             <button
               key={avto.id}
-              onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+              onClick={() => odpriVozilo(avto)}
               className={`flex w-full items-center gap-3 rounded-2xl border border-[#1e1e32] border-l-4 ${statusColor} p-3 text-left shadow-lg shadow-black/10`}
             >
               <div className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
@@ -817,6 +830,12 @@ export default function Garaza() {
       {limitMessage && limitAnchor === 'header' && (
         <div className="mx-5 mb-3 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-[#fecaca] text-base font-black leading-snug shadow-lg shadow-[#ef444422]">
           {limitMessage}
+        </div>
+      )}
+
+      {nastavitveVozilMode && !arhiv && (
+        <div className="mx-5 mb-3 rounded-2xl border border-[#3ecfcf66] bg-[#3ecfcf18] p-3 text-sm font-black leading-snug text-[#3ecfcf]">
+          {tx('Način urejanja vozil: klikni vozilo za njegove nastavitve.', 'Vehicle settings mode: tap a vehicle to edit its settings.')}
         </div>
       )}
 
@@ -988,7 +1007,7 @@ export default function Garaza() {
                   onDragEnter={() => onDragEnter(index)}
                   onDragEnd={onDragEnd}
                   onDragOver={(e) => e.preventDefault()}
-                  onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                  onClick={() => odpriVozilo(avto)}
                   className={`relative rounded-xl overflow-hidden border-2 ${barvaBorder(barva)} aspect-square transition-all ${
                     urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
@@ -1067,7 +1086,7 @@ export default function Garaza() {
                 onDragEnter={() => onDragEnter(index)}
                 onDragEnd={onDragEnd}
                 onDragOver={(e) => e.preventDefault()}
-                onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                onClick={() => odpriVozilo(avto)}
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] ${barvaBorder(barva)} ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
@@ -1123,7 +1142,7 @@ export default function Garaza() {
                 onDragEnter={() => onDragEnter(index)}
                 onDragEnd={onDragEnd}
                 onDragOver={(e) => e.preventDefault()}
-                onClick={() => !urejanje && (window.location.href = `/dashboard?car=${avto.id}`)}
+                onClick={() => odpriVozilo(avto)}
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] flex ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}

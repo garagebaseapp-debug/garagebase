@@ -118,7 +118,7 @@ export default function VecPage() {
     { title: tx('Videz', 'Appearance'), text: tx('Tema, pisava in prikaz garaže.', 'Theme, font and garage display.'), href: '/nastavitve?section=prikaz', icon: 'paint', tone: 'text-[#8b5cf6] bg-[#8b5cf614]' },
     { title: tx('Uporaba', 'Usage'), text: tx('Lite/Full način, enote in valuta.', 'Lite/Full mode, units and currency.'), href: '/nastavitve?section=uporaba', icon: 'grid', tone: 'text-[#f97316] bg-[#f9731614]' },
     { title: tx('Pomoč in podpora', 'Help and support'), text: tx('Pomočnik, prijava napake in predlogi.', 'Assistant, bug reports and ideas.'), href: '/nastavitve?section=pomoc', icon: 'help', tone: 'text-[#16a34a] bg-[#16a34a14]' },
-    { title: tx('Moja vozila', 'My vehicles'), text: tx('Uredi vozila, arhiv in prikaz kartic.', 'Manage vehicles, archive and cards.'), href: '/garaza', icon: 'garage', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
+    { title: tx('Moja vozila', 'My vehicles'), text: tx('Uredi vozila, arhiv in prikaz kartic.', 'Manage vehicles, archive and cards.'), href: '/garaza?mode=nastavitve', icon: 'garage', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
     { title: tx('Uvoz podatkov', 'Data import'), text: tx('CSV, Drivvo in prenos zgodovine.', 'CSV, Drivvo and history transfer.'), href: '/uvoz-podatkov', icon: 'import', tone: 'text-[#0ea5e9] bg-[#0ea5e914]' },
     { title: 'Admin Panel', text: tx('Uporabniki, statistika in napake.', 'Users, statistics and errors.'), href: '/admin', icon: 'admin', tone: 'text-[#ef4444] bg-[#ef444414]', adminOnly: true },
   ]
@@ -131,15 +131,12 @@ export default function VecPage() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 pt-5 pb-28 text-white md:px-8">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6 flex items-center justify-between gap-3">
+        <header className="mb-6">
           <div>
             <p className="text-lg font-black text-white">Garage<span className="text-[#6c63ff]">Base</span></p>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-white">{tx('Nastavitve.', 'Settings.')}</h1>
             <p className="mt-2 text-sm font-semibold text-[#8a8aa8]">{tx('Upravljaj svoj račun in aplikacijo.', 'Manage your account and app.')}</p>
           </div>
-          <button onClick={() => window.location.href = '/opomniki'} className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8]">
-            <Icon type="bell" className="h-6 w-6" />
-          </button>
         </header>
 
         <section className="mb-5 overflow-hidden rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a]">

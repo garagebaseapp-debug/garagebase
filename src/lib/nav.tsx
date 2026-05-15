@@ -179,11 +179,8 @@ export function BackButton({ href, label }: { href?: string, label?: string }) {
     <button
       aria-label={label || t('back')}
       onClick={() => {
-        if (href) {
-          pojdiNa(router, href)
-          return
-        }
         if (window.history.length > 1) router.back()
+        else if (href) pojdiNa(router, href)
         else router.push('/domov')
       }}
       className="w-10 h-10 rounded-xl bg-[#13131f] border border-[#2a2a40] flex items-center justify-center text-[#8080a0] hover:text-white hover:border-[#6c63ff] hover:bg-[#1a1a30] transition-all active:scale-95">

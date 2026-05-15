@@ -122,6 +122,9 @@ export default function DodajAvto() {
       setMessage(reservoirFallback
         ? tx('Vozilo shranjeno. Za izračun dosega kasneje zaženi SQL za rezervoar.', 'Vehicle saved. Run the tank-capacity SQL later to enable range calculation.')
         : tx('Vozilo uspesno shranjeno!', 'Vehicle saved successfully!'))
+      if (!km.trim()) {
+        setMessage(prev => prev + ' ' + tx('Opomba: brez kilometrov PDF/QR porocilo ne bo popolnoma verodostojno.', 'Note: without mileage the PDF/QR report will not be fully credible.'))
+      }
       setTimeout(() => window.location.href = '/garaza', 1000)
     }
     setLoading(false)
@@ -255,6 +258,14 @@ export default function DodajAvto() {
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Trenutni km</label>
             <input value={km} onChange={e => setKm(e.target.value)} placeholder="npr. 54200" type="number"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            {!km.trim() && (
+              <p className="mt-2 rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] px-3 py-2 text-xs font-black leading-snug text-[#fbbf24]">
+                {tx(
+                  'Brez začetnih kilometrov bo PDF/QR poročilo manj verodostojno. Vozilo lahko vseeno shraniš, če poročila ne potrebuješ.',
+                  'Without starting mileage the PDF/QR report will be less credible. You can still save the vehicle if you do not need the report.'
+                )}
+              </p>
+            )}
           </div>
 
           <div>

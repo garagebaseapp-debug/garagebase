@@ -52,10 +52,20 @@ const defaultNotificationSettings = {
 }
 
 const settingsViewIds = ['vse', 'profil', 'obvestila', 'varnost', 'prenos', 'uporaba', 'prikaz', 'pomoc', 'aplikacija', 'brisanje']
+const settingsViewAliases: Record<string, string> = {
+  videz: 'prikaz',
+  tema: 'prikaz',
+  pisava: 'prikaz',
+  'garaza-prikaz': 'prikaz',
+  feedback: 'pomoc',
+  predlogi: 'pomoc',
+  'brisanje-racuna': 'brisanje',
+}
 
 function normalizeSettingsView(value: string | null) {
   if (!value) return 'vse'
-  return settingsViewIds.includes(value) ? value : 'vse'
+  const normalized = settingsViewAliases[value] || value
+  return settingsViewIds.includes(normalized) ? normalized : 'vse'
 }
 
 function settingsViewFromUrl() {
@@ -883,7 +893,7 @@ export default function Nastavitve() {
       </div>
 
       {/* Tema */}
-      <div id="tema" style={{ display: showSection('profil') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
+      <div id="tema" style={{ display: showSection('prikaz') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <div className="flex justify-between items-center">
           <div>
             <p className="text-white font-semibold text-sm">
