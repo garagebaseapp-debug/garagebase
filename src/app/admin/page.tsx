@@ -127,6 +127,14 @@ const valueLabel = (value: any) => {
   return String(value)
 }
 
+const numberValue = (value: unknown) => {
+  const parsed = Number(String(value ?? '').replace(',', '.'))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const moneyText = (value: number) =>
+  `${Math.round(value).toLocaleString('sl-SI')} €`
+
 const reminderChoice = (settings: any, prefix: 'opomnik' | 'opomnikKm') => {
   const red = settings?.[`${prefix}Rdeci`]
   const yellow = settings?.[`${prefix}Rumeni`]
@@ -205,6 +213,10 @@ export default function AdminPage() {
     active7: 0,
     active30: 0,
     errors: 0,
+    totalRevenue: 0,
+    avgCarsPerUser: 0,
+    eventsPerActiveUser: 0,
+    receiptRate: 0,
   })
   const [recentFeedback, setRecentFeedback] = useState<any[]>([])
   const [recentCars, setRecentCars] = useState<any[]>([])
@@ -292,6 +304,9 @@ export default function AdminPage() {
         errorsData,
         settingsData,
         plansData,
+        fuelMoneyData,
+        serviceMoneyData,
+        expenseMoneyData,
       ] = await Promise.all([
         countTable('cars'),
         countTable('fuel_logs'),
@@ -307,6 +322,9 @@ export default function AdminPage() {
         supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
         filteredSettingsQuery,
         supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
+        supabase.from('fuel_logs').select('cena_skupaj,receipt_url,created_at').limit(5000),
+        supabase.from('service_logs').select('cena,foto_url,created_at').limit(5000),
+        supabase.from('expenses').select('znesek,receipt_url,kategorija,created_at').neq('kategorija', 'km_sprememba').limit(5000),
       ])
 
       if (carsData.error) throw carsData.error
@@ -314,10 +332,16 @@ export default function AdminPage() {
       if (eventsData.error) throw eventsData.error
       if (settingsData.error) throw settingsData.error
       if (plansData.error) throw plansData.error
+      if (fuelMoneyData.error) throw fuelMoneyData.error
+      if (serviceMoneyData.error) throw serviceMoneyData.error
+      if (expenseMoneyData.error) throw expenseMoneyData.error
 
       const cars = carsData.data || []
       const events = eventsData.data || []
       const feedbackItems = feedbackData.data || []
+      const fuelMoney = fuelMoneyData.data || []
+      const serviceMoney = serviceMoneyData.data || []
+      const expenseMoney = expenseMoneyData.data || []
       const archivedCars = cars.filter((car: any) => car.arhivirano === true).length
       const receiptAttachments = events.filter((event: any) => event.event_name === 'fuel_saved' || event.event_name === 'service_saved' || event.event_name === 'expense_saved')
         .filter((event: any) => event.metadata?.hasReceipt === true).length
@@ -332,6 +356,15 @@ export default function AdminPage() {
       const active7 = new Set(events.filter((event: any) => event.created_at >= since7).map((event: any) => event.user_id).filter(Boolean)).size
       const active30 = new Set(events.map((event: any) => event.user_id).filter(Boolean)).size
       const newFeedback = feedbackItems.filter((item: any) => item.status === 'new').length
+      const totalRevenue =
+        fuelMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0) +
+        serviceMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0) +
+        expenseMoney.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
+      const receiptRows =
+        fuelMoney.filter((row: any) => row.receipt_url).length +
+        serviceMoney.filter((row: any) => row.foto_url).length +
+        expenseMoney.filter((row: any) => row.receipt_url).length
+      const totalManualRows = Math.max(1, fuelMoney.length + serviceMoney.length + expenseMoney.length)
       const eventCounts = new Map<string, { count: number; users: Set<string> }>()
       const pageCounts = new Map<string, { count: number; users: Set<string> }>()
       const dayCounts = new Map<string, { count: number; users: Set<string> }>()
@@ -393,6 +426,10 @@ export default function AdminPage() {
         activeToday,
         active7,
         active30,
+        totalRevenue,
+        avgCarsPerUser: uniqueUsers.size > 0 ? carsCount / uniqueUsers.size : 0,
+        eventsPerActiveUser: active30 > 0 ? events.length / active30 : 0,
+        receiptRate: Math.round((receiptRows / totalManualRows) * 100),
         errors: errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length,
       })
       setRecentCars(cars.slice(0, 8))
@@ -468,8 +505,11 @@ export default function AdminPage() {
     { label: tx('Aktivni danes', 'Active today'), value: stats.activeToday || 0, hint: tx('uporabniki danes', 'users today'), color: 'text-[#4ade80]' },
     { label: tx('Aktivni 7 dni', 'Active 7 days'), value: stats.active7 || 0, hint: tx('zadnji teden', 'last week'), color: 'text-[#3ecfcf]' },
     { label: tx('Aktivni 30 dni', 'Active 30 days'), value: stats.active30 || 0, hint: tx('zadnji mesec', 'last month'), color: 'text-[#a09aff]' },
+    { label: tx('Evidentirani stroški', 'Recorded costs'), value: moneyText(stats.totalRevenue || 0), hint: tx('gorivo + servisi + stroški', 'fuel + services + expenses'), color: 'text-[#f59e0b]' },
     { label: tx('Vozila', 'Vehicles'), value: stats.cars, hint: tx('vsa vozila v sistemu', 'all vehicles in the system'), color: 'text-[#a09aff]' },
     { label: tx('Znani uporabniki', 'Known users'), value: stats.users, hint: tx('iz zadnjih vozil', 'from recent vehicles'), color: 'text-[#3ecfcf]' },
+    { label: tx('Vozil/uporabnika', 'Vehicles/user'), value: (stats.avgCarsPerUser || 0).toFixed(1), hint: tx('povprečje za paketne limite', 'average for plan limits'), color: 'text-[#a09aff]' },
+    { label: tx('Računi pri vnosih', 'Receipts on entries'), value: `${stats.receiptRate || 0}%`, hint: tx('delež vnosov z dokazilom', 'share with proof'), color: 'text-[#4ade80]' },
     { label: tx('Tankanja', 'Fill-ups'), value: stats.fuel, hint: tx('vnosi goriva', 'fuel entries'), color: 'text-[#3ecfcf]' },
     { label: tx('Servisi', 'Services'), value: stats.services, hint: tx('servisni vnosi', 'service entries'), color: 'text-[#f59e0b]' },
     { label: tx('Stroski', 'Expenses'), value: stats.expenses, hint: tx('dodatni stroski', 'additional expenses'), color: 'text-[#a09aff]' },
@@ -591,23 +631,40 @@ export default function AdminPage() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
+      <div className="mx-auto max-w-7xl">
+      <div className="mb-6 rounded-[28px] border border-[#1e1e32] bg-[radial-gradient(circle_at_top_right,rgba(108,99,255,0.22),transparent_38%),#0f0f1a] p-5 shadow-2xl shadow-black/20">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <BackButton href="/nastavitve" />
           <div>
-            <h1 className="text-xl font-bold text-white">GarageBase Admin</h1>
-            <p className="text-[#5a5a80] text-sm">{tx('Osnovni pregled sistema.', 'Basic system overview.')}</p>
+            <p className="text-xs font-black uppercase tracking-[0.28em] text-[#6c63ff]">GB GarageBase</p>
+            <h1 className="mt-2 text-2xl font-black text-white md:text-4xl">{tx('Globalna analitika in uporabniški insights', 'Global analytics and user insights')}</h1>
+            <p className="mt-2 text-[#8a8aa8] text-sm">{tx('Pregled uporabnikov, dogodkov, stroškov, napak, paketov in nastavitev.', 'Overview of users, events, costs, errors, plans and settings.')}</p>
           </div>
         </div>
-        <button onClick={loadAdminData}
-          className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-sm font-semibold text-[#a09aff]">
-          {tx('Osvezi', 'Refresh')}
-        </button>
-        <button onClick={() => window.location.href = '/vnos-goriva'}
-          className="rounded-xl border border-[#f59e0b66] bg-[#f59e0b22] px-4 py-2 text-sm font-semibold text-[#fbbf24]">
-          {tx('Scan racuna', 'Receipt scan')}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={loadAdminData}
+            className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-sm font-semibold text-[#a09aff]">
+            {tx('Osveži podatke', 'Refresh data')}
+          </button>
+          <button onClick={() => window.location.href = '/admin-napake'}
+            className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-sm font-semibold text-[#fca5a5]">
+            {tx('Napake', 'Errors')}
+          </button>
+          <button onClick={() => window.location.href = '/admin-feedback'}
+            className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] px-4 py-2 text-sm font-semibold text-[#3ecfcf]">
+            Feedback
+          </button>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-5">
+        {[tx('Pregled', 'Overview'), tx('Uporabniki', 'Users'), tx('Analitika', 'Analytics'), 'A/B', tx('Monetizacija', 'Monetization')].map((item, index) => (
+          <div key={item} className={`rounded-2xl border px-4 py-3 text-center text-sm font-black ${index === 2 ? 'border-[#a855f7] bg-[#7c3aed] text-white shadow-lg shadow-[#7c3aed55]' : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8]'}`}>
+            {item}
+          </div>
+        ))}
+      </div>
       </div>
 
       {message && (
@@ -630,6 +687,46 @@ export default function AdminPage() {
             <p className="mt-1 text-xs text-[#5a5a80]">{card.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div className="mb-4 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Ključni insighti', 'Key insights')}</h2>
+          <p className="mt-3 text-sm leading-relaxed text-[#8a8aa8]">
+            {tx('Povprečje vozil na uporabnika pomaga določiti Free/Basic/Pro omejitve. Delež računov pokaže, koliko uporabnikov gradi verodostojno zgodovino.', 'Average vehicles per user helps define Free/Basic/Pro limits. Receipt share shows how many users build trustworthy history.')}
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-[#13131f] p-3">
+              <p className="text-xs text-[#8a8aa8]">{tx('Vozil/up.', 'Vehicles/user')}</p>
+              <p className="mt-1 text-2xl font-black text-[#a09aff]">{(stats.avgCarsPerUser || 0).toFixed(1)}</p>
+            </div>
+            <div className="rounded-xl bg-[#13131f] p-3">
+              <p className="text-xs text-[#8a8aa8]">{tx('Dokazila', 'Proof')}</p>
+              <p className="mt-1 text-2xl font-black text-[#4ade80]">{stats.receiptRate || 0}%</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Monetizacija', 'Monetization')}</h2>
+          <p className="mt-3 text-sm leading-relaxed text-[#8a8aa8]">
+            {tx('Za 2027 spremljaj vozila na uporabnika, uporabo PDF/QR, AI/OCR klike, dokazila in aktivnost 30 dni.', 'For 2027 watch vehicles per user, PDF/QR usage, AI/OCR clicks, proof uploads and 30-day activity.')}
+          </p>
+          <p className="mt-4 text-3xl font-black text-[#f59e0b]">{moneyText(stats.totalRevenue || 0)}</p>
+          <p className="text-xs text-[#8a8aa8]">{tx('evidentirani stroški uporabnikov', 'recorded user costs')}</p>
+        </div>
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+          <h2 className="text-white font-bold">{tx('Zdravje sistema', 'System health')}</h2>
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-xl bg-[#13131f] p-3">
+              <span className="text-sm font-bold text-white">{tx('Nove napake', 'New errors')}</span>
+              <span className="text-lg font-black text-[#fca5a5]">{stats.errors || 0}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-[#13131f] p-3">
+              <span className="text-sm font-bold text-white">{tx('Aktivni 30 dni', 'Active 30 days')}</span>
+              <span className="text-lg font-black text-[#3ecfcf]">{stats.active30 || 0}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mb-4 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
@@ -991,6 +1088,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )

@@ -226,12 +226,20 @@ export default function Opomniki() {
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
       <div className="mx-auto w-full max-w-md xl:max-w-5xl">
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
         <BackButton />
         <div>
           <h1 className="text-xl font-bold text-white">🔔 {tx('Opomniki', 'Reminders')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model} · {avto.km_trenutni?.toLocaleString(locale)} km</p>}
         </div>
+        </div>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)}
+            className="rounded-2xl bg-[#6c63ff] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
+            + {tx('Dodaj opomnik', 'Add reminder')}
+          </button>
+        )}
       </div>
 
       <div className="mb-6 hidden grid-cols-4 gap-4 xl:grid">
