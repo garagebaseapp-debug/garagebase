@@ -18,6 +18,7 @@ export default function LoginPage() {
   const markAfterLoginHome = () => {
     const stamp = String(Date.now())
     try {
+      sessionStorage.removeItem('garagebase_seen_domov_this_session')
       sessionStorage.setItem('garagebase_after_login_home', stamp)
       localStorage.setItem('garagebase_after_login_home', stamp)
     } catch {}

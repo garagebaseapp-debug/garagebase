@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import { useLanguage } from '@/lib/i18n'
 
 type NavIconKey = 'home' | 'garage' | 'fuel' | 'service' | 'costs' | 'more' | 'admin'
@@ -23,8 +24,15 @@ const namiznePovezave = [
   { key: 'nastavitve', href: '/vec', icon: 'more', labelKey: 'more' },
 ] as const
 
-function pojdiNa(href: string) {
-  window.location.href = href
+type AppRouter = ReturnType<typeof useRouter>
+
+function pojdiNa(router: AppRouter, href: string) {
+  if (!href) return
+  if (/^(https?:|mailto:|tel:)/i.test(href)) {
+    window.location.href = href
+    return
+  }
+  router.push(href)
 }
 
 function activeKeyFromPath(path: string) {
@@ -82,18 +90,19 @@ function NavIcon({ type, className = 'h-6 w-6' }: { type: NavIconKey, className?
 
 function DesktopNav({ aktivna }: { aktivna?: string }) {
   const { t } = useLanguage()
+  const router = useRouter()
 
   return (
     <div className="gb-desktop-nav fixed top-0 left-0 right-0 z-50 hidden bg-[#080810]/95 backdrop-blur-md border-b border-[#1e1e32]">
       <div className="w-full max-w-6xl mx-auto px-8 py-4 flex items-center justify-between">
-        <button onClick={() => pojdiNa('/domov')} className="text-2xl font-bold text-white">
+        <button onClick={() => pojdiNa(router, '/domov')} className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
         </button>
         <div className="flex items-center gap-2">
           {namiznePovezave.map((item) => (
             <div key={item.key} className="flex items-center gap-2">
               <button
-                onClick={() => pojdiNa(item.href)}
+                onClick={() => pojdiNa(router, item.href)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
                   aktivna === item.key
                     ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
@@ -113,6 +122,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 
 export function BottomNav({ aktivna }: { aktivna?: string }) {
   const { t } = useLanguage()
+  const router = useRouter()
 
   const mobileLinks = mobilnePovezave
 
@@ -125,7 +135,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
           return (
             <button
               key={item.key}
-              onClick={() => pojdiNa(item.href)}
+              onClick={() => pojdiNa(router, item.href)}
               className="flex min-w-0 flex-1 flex-col items-center gap-1 transition-transform active:scale-95"
             >
               <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${
@@ -147,6 +157,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
 }
 
 export function HomeButton({ aktivna }: { aktivna?: string } = {}) {
+  const pathname = usePathname()
   const [resolvedActive, setResolvedActive] = useState(aktivna || 'domov')
 
   useEffect(() => {
@@ -154,19 +165,27 @@ export function HomeButton({ aktivna }: { aktivna?: string } = {}) {
       setResolvedActive(aktivna)
       return
     }
-    setResolvedActive(activeKeyFromPath(window.location.pathname))
-  }, [aktivna])
+    setResolvedActive(activeKeyFromPath(pathname || '/domov'))
+  }, [aktivna, pathname])
 
   return <BottomNav aktivna={resolvedActive} />
 }
 
 export function BackButton({ href, label }: { href?: string, label?: string }) {
   const { t } = useLanguage()
+  const router = useRouter()
 
   return (
     <button
       aria-label={label || t('back')}
-      onClick={() => href ? pojdiNa(href) : window.history.back()}
+      onClick={() => {
+        if (href) {
+          pojdiNa(router, href)
+          return
+        }
+        if (window.history.length > 1) router.back()
+        else router.push('/domov')
+      }}
       className="w-10 h-10 rounded-xl bg-[#13131f] border border-[#2a2a40] flex items-center justify-center text-[#8080a0] hover:text-white hover:border-[#6c63ff] hover:bg-[#1a1a30] transition-all active:scale-95">
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
