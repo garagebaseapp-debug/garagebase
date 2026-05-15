@@ -132,11 +132,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         className="gb-sidebar-garage-card group relative mt-6 h-44 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-xl shadow-black/15"
       >
         <img src="/garage-web-light-sidebar.png" alt="" className="absolute inset-0 h-full w-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#080810]/70 via-[#080810]/12 to-transparent" />
-        <span className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-2xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white shadow-lg shadow-[#6c63ff44]">
-          {language === 'en' ? 'Open garage' : 'Odpri garažo'}
-          <span aria-hidden="true">-&gt;</span>
-        </span>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#080810]/20 via-transparent to-transparent" />
       </button>
     </aside>
   )
