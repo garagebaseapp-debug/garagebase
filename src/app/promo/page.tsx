@@ -9,6 +9,14 @@ const copy = {
     subtitle: 'Velja v obdobju beta/lansiranja.',
     summary: 'Promocijski povzetek',
     lead: 'V obdobju lansiranja so funkcije GarageBase odklenjene brez doplačila do 31. 12. 2026, v okviru poštene uporabe.',
+    packagesTitle: 'Okvirni paketi 2027',
+    packagesText: 'Paketi so še v pripravi. Trenutno služijo kot roadmap, da uporabniki vidijo smer razvoja.',
+    packages: [
+      { name: 'Free', badge: 'Beta', text: 'Osnovna garaža, vnosi goriva, servisov, stroškov in opomnikov za vsakdanjo uporabo.' },
+      { name: 'Basic', badge: '2027', text: 'Več prostora za slike, urejen izvoz podatkov in boljši pregled zgodovine vozila.' },
+      { name: 'Pro', badge: '2027', text: 'Napredna poročila, primerjava vozil, boljši grafi in več avtomatizacije.' },
+      { name: 'Premium', badge: '2027', text: 'AI/OCR, pametni predlogi, večje omejitve in dodatne funkcije za zahtevnejšo uporabo.' },
+    ],
     sections: [
       {
         title: 'Kaj pomeni odklenjeno do 31. 12. 2026',
@@ -38,6 +46,14 @@ const copy = {
     subtitle: 'Applies during the beta/launch period.',
     summary: 'Promotion summary',
     lead: 'During the launch period, GarageBase features are unlocked at no extra charge until 31 Dec 2026, within fair use.',
+    packagesTitle: 'Early 2027 plans',
+    packagesText: 'Plans are still being prepared. For now they act as a roadmap so users can see where GarageBase is heading.',
+    packages: [
+      { name: 'Free', badge: 'Beta', text: 'Basic garage, fuel, service, expense and reminder entries for everyday use.' },
+      { name: 'Basic', badge: '2027', text: 'More room for images, organized data export and a better vehicle history overview.' },
+      { name: 'Pro', badge: '2027', text: 'Advanced reports, vehicle comparison, better charts and more automation.' },
+      { name: 'Premium', badge: '2027', text: 'AI/OCR, smart suggestions, higher limits and extra features for heavier use.' },
+    ],
     sections: [
       {
         title: 'What unlocked until 31 Dec 2026 means',
@@ -78,6 +94,27 @@ export default function PromoPage() {
           <div className="rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-5">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[#3ecfcf]">{t.summary}</p>
             <p className="mt-2 text-lg text-white">{t.lead}</p>
+          </div>
+
+          <div className="rounded-2xl border border-[#6c63ff55] bg-[#6c63ff12] p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#a09aff]">Roadmap</p>
+                <h2 className="mt-2 text-2xl font-black text-white">{t.packagesTitle}</h2>
+              </div>
+              <p className="max-w-md text-sm text-[#d8d8e8]">{t.packagesText}</p>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              {t.packages.map((plan) => (
+                <div key={plan.name} className="rounded-2xl border border-[#2a2a40] bg-[#0f0f1a] p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xl font-black text-white">{plan.name}</p>
+                    <span className="rounded-full bg-[#6c63ff22] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#a09aff]">{plan.badge}</span>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-[#c8c8dc]">{plan.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
 
           {t.sections.map((section) => (

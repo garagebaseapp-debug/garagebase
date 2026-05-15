@@ -117,7 +117,6 @@ export default function VecPage() {
   }, [])
 
   const items: MenuItem[] = [
-    { title: tx('Obvestila', 'Notifications'), text: tx('Push in e-poštna obvestila, opomniki in testiranje.', 'Push and email notifications, reminders and tests.'), href: '/nastavitve?section=obvestila', icon: 'bell', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
     { title: tx('Varnost', 'Security'), text: tx('Odklep aplikacije, geslo in zaščita računa.', 'App lock, password and account protection.'), href: '/nastavitve?section=varnost', icon: 'shield', tone: 'text-[#2563eb] bg-[#2563eb14]' },
     { title: tx('Sinhronizacija', 'Sync'), text: tx('Uvoz, QR prenos in povezave z drugimi aplikacijami.', 'Import, QR transfer and app connections.'), href: '/nastavitve?section=prenos', icon: 'sync', tone: 'text-[#14b8a6] bg-[#14b8a614]' },
     { title: tx('Videz', 'Appearance'), text: tx('Tema, pisava in prikaz garaže.', 'Theme, font and garage display.'), href: '/nastavitve?section=prikaz', icon: 'paint', tone: 'text-[#8b5cf6] bg-[#8b5cf614]' },
@@ -194,28 +193,23 @@ export default function VecPage() {
           <aside className="space-y-3">
             <div className="rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4">
               <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6c63ff]">{tx('Hitri pregled', 'Quick overview')}</p>
-              <div className="mt-4 space-y-3">
+              <div className="mt-4 rounded-2xl border border-dashed border-[#2a2a40] bg-[#13131f]/70 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-[#8a8aa8]">{tx('Shramba', 'Storage')}</span>
-                  <span className="text-sm font-black text-white">1.2 GB / 5 GB</span>
+                  <span className="rounded-full bg-[#6c63ff18] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#a09aff]">Beta</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#13131f]">
-                  <div className="h-full w-[24%] rounded-full bg-[#6c63ff]" />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-[#8a8aa8]">{tx('Zadnja sinhronizacija', 'Last sync')}</span>
-                  <span className="text-sm font-black text-[#16a34a]">{tx('Danes', 'Today')}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-[#8a8aa8]">Drivvo</span>
-                  <span className="rounded-full bg-[#16a34a18] px-3 py-1 text-xs font-black text-[#16a34a]">{tx('Pripravljeno', 'Ready')}</span>
-                </div>
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#6f6f91]">
+                  {tx(
+                    'Prostor je pripravljen za prihodnji pregled paketa, slik in porabe.',
+                    'This space is reserved for a future overview of plan, images and usage.'
+                  )}
+                </p>
               </div>
             </div>
 
-            <button onClick={() => window.location.href = '/nastavitve?section=aplikacija'} className="w-full rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4 text-left">
-              <p className="text-lg font-black text-white">GarageBase Premium</p>
-              <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{tx('Odkleni več funkcij, ko bo paket pripravljen.', 'Unlock more features when the plan is ready.')}</p>
+            <button onClick={() => window.location.href = '/promo'} className="w-full rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4 text-left">
+              <p className="text-lg font-black text-white">GarageBase 2027</p>
+              <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{tx('Poglej okvirni roadmap in pakete v pripravi.', 'View the early roadmap and plans in preparation.')}</p>
               <span className="mt-4 inline-flex rounded-2xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white">{tx('Poglej načrt', 'View plan')} →</span>
             </button>
 

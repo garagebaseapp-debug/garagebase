@@ -230,25 +230,24 @@ const MiniIcon = ({ kind }: { kind: string }) => {
 }
 
 const MenuTile = ({ kind, label, active = false }: { kind: string, label: string, active?: boolean }) => (
-  <div className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center ${
+  <div className={`flex min-h-16 items-center justify-center gap-3 rounded-2xl border p-4 text-center ${
     active
-      ? 'border-[#6c63ff88] bg-[#241a52] text-[#d8d4ff] shadow-[0_0_34px_rgba(108,99,255,0.28)]'
-      : 'border-white/10 bg-[#11111f] text-[#8e8ac0]'
+      ? 'border-[#6c63ff88] bg-[#23194d] text-white shadow-[0_18px_36px_rgba(108,99,255,0.22)]'
+      : 'border-[#d9ddf4] bg-white/72 text-[#27274a] shadow-[0_16px_34px_rgba(25,25,55,0.08)]'
   }`}>
-    <MiniIcon kind={kind} />
+    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${active ? 'bg-white/10' : 'bg-[#f3f0ff]'}`}>
+      <MiniIcon kind={kind} />
+    </span>
     <span className="text-sm font-black sm:text-base">{label}</span>
   </div>
 )
 
 const FeatureIconShowcase = ({ kind, label }: { kind: string, label: string }) => (
-  <div className="mt-5 flex h-44 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[radial-gradient(circle_at_50%_35%,rgba(108,99,255,0.20),transparent_42%),#080810] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex h-20 w-20 items-center justify-center rounded-3xl border border-white/12 bg-[#11111f] shadow-[0_18px_42px_rgba(0,0,0,0.42)]">
-        <div className="[&_svg]:h-11 [&_svg]:w-11">
-          <MiniIcon kind={kind} />
-        </div>
+  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-[#d8d4ff] bg-[radial-gradient(circle_at_45%_38%,rgba(139,92,246,0.22),rgba(255,255,255,0.92)_58%)] shadow-[0_18px_42px_rgba(108,99,255,0.18)]">
+    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]" title={label}>
+      <div className="[&_svg]:h-10 [&_svg]:w-10">
+        <MiniIcon kind={kind} />
       </div>
-      <p className="text-base font-black text-[#d8d4ff]">{label}</p>
     </div>
   </div>
 )
@@ -275,7 +274,7 @@ const VehicleCardMini = ({ name, status, tone }: { name: string, status: string,
 )
 
 const DeviceShowcase = () => (
-  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#3ecfcf44] bg-[#080810] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+  <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-[#cfd7f3] bg-[#eef3ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
     <img
       src="/landing-mobile-app.png"
       alt=""
@@ -285,7 +284,7 @@ const DeviceShowcase = () => (
 )
 
 const VehicleTabletShowcase = () => (
-  <div className="relative mt-5 h-64 overflow-hidden rounded-2xl border border-[#6c63ff44] bg-[#080810] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+  <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-[#cfd7f3] bg-[#eef3ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
     <img
       src="/landing-multi-vehicles.png"
       alt=""
@@ -299,7 +298,7 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
 
   if (kind === 'report') {
     return (
-      <div className="mt-5 rounded-xl border border-[#6c63ff33] bg-[#080810] p-4">
+      <div className="mt-5 rounded-2xl border border-[#d8ddf5] bg-[#f7f8ff] p-4">
         <div className="relative mx-auto w-[180px]">
           <div className="absolute inset-0 translate-x-4 -translate-y-3 rotate-3 rounded-md border border-white/10 bg-white/80 shadow-lg" />
           <div className="relative rotate-[-2deg] overflow-hidden rounded-md bg-white p-3 text-[#151527] shadow-[0_18px_38px_rgba(0,0,0,0.35)]">
@@ -350,12 +349,15 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
   }
 
   return (
-    <div className="mt-5 rounded-xl border border-[#1e1e32] bg-[#080810] p-4">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="mt-5 rounded-2xl border border-[#d8ddf5] bg-[#f7f8ff] p-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MenuTile kind="costs" label={labels.costs} />
         <MenuTile kind="settings" label={labels.settings} />
         <MenuTile kind="report" label={labels.report} active />
-        <div className="flex items-center justify-center rounded-xl border border-[#6c63ff55] bg-[#6c63ff16] text-sm font-black text-[#b9b2ff]">AI OCR</div>
+        <div className="flex min-h-16 items-center justify-center gap-3 rounded-2xl border border-[#2b2458] bg-[#25185a] p-4 text-sm font-black text-white shadow-[0_18px_36px_rgba(37,24,90,0.22)]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 text-xl">⌗</span>
+          AI OCR
+        </div>
       </div>
     </div>
   )
@@ -532,36 +534,69 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="funkcije" className="bg-[#080810] px-5 py-24">
+      <section id="funkcije" className="bg-[#f4f6ff] px-5 py-24 text-[#09091b]">
         <div className="mx-auto max-w-6xl">
           <div className="mb-12">
             <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#8b5cf6]">{t.featuresKicker}</p>
             <h2 className="text-3xl font-black md:text-5xl">{t.featuresTitle}</h2>
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {t.features.map((feature, index) => (
-              <div key={feature.title} className="rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-6 transition-colors hover:border-[#8b5cf666]">
-                <p className="mb-2 text-lg font-bold text-white">{feature.title}</p>
-                <p className="text-sm leading-relaxed text-[#8a8aa8]">{feature.text}</p>
-                <FeatureVisual
-                  kind={feature.report ? 'report' : index === 0 ? 'fuel' : index === 1 ? 'service' : index === 2 ? 'reminders' : index === 4 ? 'mobile' : index === 5 ? 'vehicles' : 'scan'}
-                  language={language}
-                />
-              </div>
-            ))}
+            {t.features.map((feature, index) => {
+              const kind = feature.report ? 'report' : index === 0 ? 'fuel' : index === 1 ? 'service' : index === 2 ? 'reminders' : index === 4 ? 'mobile' : index === 5 ? 'vehicles' : 'scan'
+              const isIconCard = kind === 'fuel' || kind === 'service' || kind === 'reminders'
+              const isScanCard = kind === 'scan'
+
+              return (
+                <div
+                  key={feature.title}
+                  className={`rounded-[22px] border border-[#d8ddf5] bg-white/82 p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] transition-colors hover:border-[#8b5cf666] ${
+                    isScanCard ? 'lg:col-span-3' : ''
+                  }`}
+                >
+                  {isIconCard ? (
+                    <div className="flex min-h-28 items-center gap-5">
+                      <FeatureVisual kind={kind} language={language} />
+                      <div className="min-w-0 flex-1">
+                        <p className="mb-2 text-xl font-black text-[#09091b]">{feature.title}</p>
+                        <p className="text-base leading-relaxed text-[#38385f]">{feature.text}</p>
+                      </div>
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#d8d4ff] bg-[#f6f3ff] text-xl font-black text-[#6c63ff]">›</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className={isScanCard ? 'grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.6fr)] lg:items-center' : ''}>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-xl font-black text-[#09091b]">{feature.title}</p>
+                            {isScanCard && (
+                              <span className="rounded-full bg-[#8b5cf622] px-3 py-1 text-xs font-black uppercase text-[#6c63ff]">Novo</span>
+                            )}
+                          </div>
+                          <p className="mt-3 text-base leading-relaxed text-[#38385f]">{feature.text}</p>
+                        </div>
+                        <FeatureVisual kind={kind} language={language} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
 
-          <div className="mt-16 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-6 sm:p-8">
+          <div className="mt-16 rounded-[24px] border border-[#d8ddf5] bg-white/82 p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] sm:p-8">
             <div className="max-w-3xl">
               <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#3ecfcf]">{t.roadmapKicker}</p>
-              <h2 className="text-3xl font-black text-white md:text-4xl">{t.roadmapTitle}</h2>
-              <p className="mt-4 text-base leading-relaxed text-[#8a8aa8]">{t.roadmapText}</p>
+              <h2 className="text-3xl font-black text-[#09091b] md:text-4xl">{t.roadmapTitle}</h2>
+              <p className="mt-4 text-base leading-relaxed text-[#38385f]">{t.roadmapText}</p>
             </div>
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {t.roadmap.map((item) => (
-                <div key={item.title} className="rounded-xl border border-[#24243a] bg-[#13131f] p-5">
-                  <p className="text-base font-black text-white">{item.title}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-[#8a8aa8]">{item.text}</p>
+                <div key={item.title} className="rounded-2xl border border-[#e1e5f6] bg-white/72 p-5 shadow-[0_12px_28px_rgba(22,22,55,0.06)]">
+                  <p className="flex items-center gap-2 text-base font-black text-[#09091b]">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#8b5cf666] text-sm text-[#6c63ff]">✓</span>
+                    {item.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#555579]">{item.text}</p>
                 </div>
               ))}
             </div>

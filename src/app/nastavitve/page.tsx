@@ -51,7 +51,7 @@ const defaultNotificationSettings = {
   sendTime: '08:00',
 }
 
-const settingsViewIds = ['vse', 'profil', 'obvestila', 'varnost', 'prenos', 'uporaba', 'prikaz', 'pomoc', 'aplikacija', 'brisanje']
+const settingsViewIds = ['vse', 'profil', 'varnost', 'prenos', 'uporaba', 'prikaz', 'pomoc', 'aplikacija', 'brisanje']
 const settingsViewAliases: Record<string, string> = {
   videz: 'prikaz',
   tema: 'prikaz',
@@ -124,7 +124,7 @@ export default function Nastavitve() {
   const [repeatPassword, setRepeatPassword] = useState('')
   const [passwordLoading, setPasswordLoading] = useState(false)
 
-  const showSection = (section: string) => settingsView === 'vse' || settingsView === section
+  const showSection = (section: string) => section !== 'obvestila' && (settingsView === 'vse' || settingsView === section)
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
@@ -144,7 +144,6 @@ export default function Nastavitve() {
   const settingsSections = [
     { id: 'vse', title: tx('Vse nastavitve', 'All settings'), desc: tx('Pregled vseh nastavitev', 'Overview of all settings'), tone: 'from-[#6c63ff] to-[#8b5cf6]' },
     { id: 'profil', title: tx('Profil', 'Profile'), desc: tx('Račun, paket in geslo', 'Account, plan and password'), tone: 'from-[#8b5cf6] to-[#3b82f6]' },
-    { id: 'obvestila', title: tx('Obvestila', 'Notifications'), desc: tx('Ura, prioritete in telefon', 'Time, priorities and phone'), tone: 'from-[#f59e0b] to-[#ef4444]' },
     { id: 'varnost', title: tx('Varnost', 'Security'), desc: tx('Odklep in zasebnost', 'Unlock and privacy'), tone: 'from-[#22c55e] to-[#14b8a6]' },
     { id: 'prenos', title: tx('Prenos', 'Transfer'), desc: tx('QR, uvoz in računi', 'QR, import and receipts'), tone: 'from-[#14b8a6] to-[#06b6d4]' },
     { id: 'uporaba', title: tx('Uporaba', 'Usage'), desc: tx('Lite ali Full način', 'Lite or Full mode'), tone: 'from-[#3b82f6] to-[#6c63ff]' },

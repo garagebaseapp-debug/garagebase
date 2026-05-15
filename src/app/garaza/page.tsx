@@ -410,6 +410,10 @@ export default function Garaza() {
 
   const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
   const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
+  const odpriOpomnike = () => {
+    const targetAvto = liteAvto || avti[0]
+    window.location.href = targetAvto?.id ? `/opomniki?car=${targetAvto.id}` : '/opomniki'
+  }
   const pojdiNaVnos = (pot: string) => {
     const targetAvto = liteAvto || avti[0]
     if (!targetAvto) {
@@ -781,6 +785,15 @@ export default function Garaza() {
           Garage<span className="text-[#6c63ff]">Base</span>
         </h1>
         <div className="flex gap-2 items-center flex-wrap justify-end">
+          <button onClick={odpriOpomnike}
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] text-[#a09aff] transition-colors hover:bg-[#6c63ff28]"
+            aria-label={tx('Opomniki', 'Reminders')}
+            title={tx('Opomniki', 'Reminders')}>
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M18 9a6 6 0 0 0-12 0v4l-2 4h16l-2-4V9Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round" />
+              <path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" />
+            </svg>
+          </button>
           <button onClick={osveziGarazo} disabled={refreshing}
             className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] text-sm font-black px-4 py-2 rounded-xl hover:bg-[#3ecfcf33] transition-colors disabled:opacity-60">
             {refreshing ? tx('Osvezevanje...', 'Refreshing...') : `↻ ${tx('Osvezi', 'Refresh')}`}
