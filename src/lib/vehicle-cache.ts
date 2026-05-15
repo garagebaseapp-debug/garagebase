@@ -1,6 +1,6 @@
 'use client'
 
-export const GARAGE_CACHE_VERSION = 'garaza-2026-05-13-1325'
+export const GARAGE_CACHE_VERSION = 'garaza-2026-05-15-0915'
 export const VEHICLE_STATS_CACHE_VERSION = 'vehicle-stats-2026-05-13-1145'
 export const GARAGE_CACHE_MAX_AGE_MS = 5 * 60 * 1000
 
@@ -19,13 +19,16 @@ export const readGarageCache = () => {
     const savedAt = Number(parsed?.savedAt || 0)
     const age = Date.now() - savedAt
     const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
+    const activeMode = parsed?.arhiv === false
+    const cars = Array.isArray(parsed?.avti) ? parsed.avti : []
+    const hasArchivedCars = cars.some((car: any) => car?.arhivirano === true)
 
-    if (parsed?.version !== GARAGE_CACHE_VERSION || parsed?.arhiv === true || !fresh) {
+    if (parsed?.version !== GARAGE_CACHE_VERSION || !activeMode || !fresh || hasArchivedCars) {
       clearGarageCache()
       return null
     }
 
-    return parsed
+    return { ...parsed, avti: cars }
   } catch {
     clearGarageCache()
     return null

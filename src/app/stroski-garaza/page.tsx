@@ -3,15 +3,19 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
+import { useLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
-import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
 export default function StroškiGaraza() {
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const [avti, setAvti] = useState<any[]>([])
   const [stroski, setStroski] = useState<{ [key: string]: number }>({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const slikaVozila = (avto: any) => {
     const rawUrl = avto?.slika_url || avto?.slika || ''
@@ -21,72 +25,89 @@ export default function StroškiGaraza() {
 
   useEffect(() => {
     const init = async () => {
-      setValuta(getCurrencyFromSettings())
-      const parsedGarage = readGarageCache()
-      if (parsedGarage) {
-        const cachedCars = Array.isArray(parsedGarage.avti)
-          ? parsedGarage.avti.filter((car: any) => car?.arhivirano !== true)
-          : []
-        if (cachedCars.length > 0) {
-          setAvti(cachedCars)
-          setLoading(false)
+      let hasUsableCache = false
+      try {
+        setLoadError('')
+        setValuta(getCurrencyFromSettings())
+        const parsedGarage = readGarageCache()
+        if (parsedGarage) {
+          const cachedCars = Array.isArray(parsedGarage.avti)
+            ? parsedGarage.avti.filter((car: any) => car?.arhivirano !== true)
+            : []
+          if (cachedCars.length > 0) {
+            hasUsableCache = true
+            setAvti(cachedCars)
+            setLoading(false)
+          }
         }
-      }
 
-      const cachedCosts = localStorage.getItem('garagebase_stroski_garaza_cache')
-      if (cachedCosts) {
-        try {
-          const parsed = JSON.parse(cachedCosts)
-          if (parsed.stroski) setStroski(parsed.stroski)
-        } catch {}
-      }
+        const cachedCosts = localStorage.getItem('garagebase_stroski_garaza_cache')
+        if (cachedCosts) {
+          try {
+            const parsed = JSON.parse(cachedCosts)
+            const savedAt = Number(parsed?.savedAt || 0)
+            const age = Date.now() - savedAt
+            const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
+            if (fresh && parsed.stroski) setStroski(parsed.stroski)
+          } catch {}
+        }
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/'; return }
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) { window.location.href = '/'; return }
 
-      let { data: avtiData, error: avtiError } = await supabase
-        .from('cars').select('*').eq('user_id', user.id)
-        .or('arhivirano.is.null,arhivirano.eq.false')
-        .order('vrstni_red', { ascending: true })
-      if (avtiError || (avtiData || []).length === 0) {
-        const fallback = await supabase
+        let { data: avtiData, error: avtiError } = await supabase
           .from('cars').select('*').eq('user_id', user.id)
+          .or('arhivirano.is.null,arhivirano.eq.false')
           .order('vrstni_red', { ascending: true })
-        avtiData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        if (avtiError) {
+          const fallback = await supabase
+            .from('cars').select('*').eq('user_id', user.id)
+            .order('vrstni_red', { ascending: true })
+          if (fallback.error) throw fallback.error
+          avtiData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        }
+        const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
+        setAvti(cars)
+
+        const stroskoviMap: { [key: string]: number } = {}
+        for (const avto of cars) stroskoviMap[avto.id] = 0
+
+        if (cars.length > 0) {
+          const ids = cars.map((avto: any) => avto.id)
+          const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
+            supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter').in('car_id', ids),
+            supabase.from('service_logs').select('car_id,cena').in('car_id', ids),
+            supabase.from('expenses').select('car_id,znesek,kategorija').in('car_id', ids),
+          ])
+          const queryError = gorivoRes.error || servisiRes.error || expensesRes.error
+          if (queryError) throw queryError
+
+          for (const row of gorivoRes.data || []) {
+            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + fuelCostValue(row)
+          }
+          for (const row of servisiRes.data || []) {
+            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.cena)
+          }
+          for (const row of expensesRes.data || []) {
+            if (row.kategorija === 'km_sprememba') continue
+            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.znesek)
+          }
+        }
+
+        setStroski(stroskoviMap)
+        localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ version: GARAGE_CACHE_VERSION, avti: cars, arhiv: false, savedAt: Date.now() }))
+        localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
+      } catch (error) {
+        console.warn('[GarageBase costs garage] load failed', error)
+        setLoadError(hasUsableCache
+          ? tx('Stroskov trenutno ni bilo mogoce posodobiti. Prikazani so zadnji shranjeni podatki.', 'Costs could not be updated right now. Showing the last saved data.')
+          : tx('Stroskov trenutno ni bilo mogoce naloziti. Poskusi znova.', 'Costs could not be loaded right now. Try again.'))
+      } finally {
+        setLoading(false)
       }
-      const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
-      setAvti(cars)
-
-      const stroskoviMap: { [key: string]: number } = {}
-      for (const avto of cars) stroskoviMap[avto.id] = 0
-
-      if (cars.length > 0) {
-        const ids = cars.map((avto: any) => avto.id)
-        const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
-          supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter').in('car_id', ids),
-          supabase.from('service_logs').select('car_id,cena').in('car_id', ids),
-          supabase.from('expenses').select('car_id,znesek,kategorija').in('car_id', ids),
-        ])
-
-        for (const row of gorivoRes.data || []) {
-          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + fuelCostValue(row)
-        }
-        for (const row of servisiRes.data || []) {
-          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.cena)
-        }
-        for (const row of expensesRes.data || []) {
-          if (row.kategorija === 'km_sprememba') continue
-          stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.znesek)
-        }
-      }
-
-      setStroski(stroskoviMap)
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ version: GARAGE_CACHE_VERSION, avti: cars, arhiv: false, savedAt: Date.now() }))
-      localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
-      setLoading(false)
     }
     init()
-  }, [])
+  }, [language])
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
 
@@ -94,6 +115,12 @@ export default function StroškiGaraza() {
         <BackButton href="/garaza" />
         <h1 className="text-2xl font-bold text-white">📊 Stroški</h1>
       </div>
+
+      {loadError && (
+        <div className="mx-5 mb-4 rounded-2xl border border-[#f2a13a55] bg-[#f2a13a14] px-4 py-3 text-sm font-semibold text-[#f2a13a]">
+          {loadError}
+        </div>
+      )}
 
       {loading && avti.length === 0 && (
         <div className="px-5 pb-4 space-y-3">
