@@ -119,6 +119,16 @@ export default function Garaza() {
     } catch {}
   }
 
+  const preklopiTemo = () => {
+    const next = tema === 'svetla' ? 'temna' : 'svetla'
+    setTema(next)
+    try {
+      const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: next, onboardingDone: true }))
+      document.documentElement.classList.toggle('light-mode', next === 'svetla')
+    } catch {}
+  }
+
   const odpriVozilo = (avto: any) => {
     if (!avto?.id || urejanje) return
     window.location.href = nastavitveVozilMode ? `/nastavitve-avta?car=${avto.id}` : `/dashboard?car=${avto.id}`
@@ -775,9 +785,10 @@ export default function Garaza() {
     </div>
   )
 
-  const desktopSidebarImage = tema === 'svetla' ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
+  const desktopSidebarImage = tema === 'svetla' ? '/garage-web-light-sidebar.png' : '/landing-hero-dark-garage.png'
   const desktopCars = avti
   const desktopListMode = prikaz !== 'grid'
+  const desktopLight = tema === 'svetla'
 
   const DesktopReminderBadges = ({ car }: { car: any }) => (
     <div className="flex min-h-[24px] flex-wrap items-center gap-1.5">
@@ -786,10 +797,10 @@ export default function Garaza() {
   )
 
   const renderDesktopGarage = () => (
-    <div className="hidden min-h-screen bg-[#080810] text-white xl:flex">
-      <aside className="flex w-[240px] shrink-0 flex-col border-r border-[#1e1e32] bg-[#0b0b14]">
+    <div className={`gb-desktop-garage hidden min-h-screen xl:flex ${desktopLight ? 'bg-[#eef2fb] text-[#101225]' : 'bg-[#080810] text-white'}`}>
+      <aside className={`flex w-[250px] shrink-0 flex-col border-r ${desktopLight ? 'border-[#dde3f2] bg-white' : 'border-[#1e1e32] bg-[#0b0b14]'}`}>
         <div className="px-7 py-7">
-          <button onClick={() => window.location.href = '/domov'} className="text-xl font-black tracking-tight text-white">
+          <button onClick={() => window.location.href = '/domov'} className={`text-xl font-black tracking-tight ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
         </div>
@@ -806,7 +817,9 @@ export default function Garaza() {
               key={item.label}
               onClick={() => window.location.href = item.href}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
-                ('active' in item && item.active) ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white'
+                ('active' in item && item.active)
+                  ? (desktopLight ? 'bg-[#efe2ff] text-[#6c21c9]' : 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]')
+                  : (desktopLight ? 'text-[#121421] hover:bg-[#f4f0ff] hover:text-[#6c21c9]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white')
               }`}
             >
               <NavIcon type={item.icon} className="h-5 w-5 shrink-0" />
@@ -815,27 +828,30 @@ export default function Garaza() {
           ))}
         </nav>
         <div className="p-4">
-          <div className="h-48 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
+          <div className={`h-52 overflow-hidden rounded-[24px] border shadow-xl ${desktopLight ? 'border-[#dde3f2] bg-[#eef2fb] shadow-[#101225]/8' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/20'}`}>
             <img src={desktopSidebarImage} alt="" className="h-full w-full object-cover object-center" />
           </div>
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col bg-[radial-gradient(circle_at_top_right,rgba(108,99,255,0.16),transparent_34%),#080810] px-8 py-7">
+      <main className={`flex min-w-0 flex-1 flex-col px-8 py-7 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[radial-gradient(circle_at_top_right,rgba(108,99,255,0.16),transparent_34%),#080810]'}`}>
         <header className="mb-6 flex items-start justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black text-white">{tx('Aktivna vozila', 'Active vehicles')}</h1>
-            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">
+            <h1 className={`text-3xl font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Aktivna vozila', 'Active vehicles')}</h1>
+            <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#4f5870]' : 'text-[#8a8aa8]'}`}>
               {desktopCars.length} {tx('vozil v garaži', 'vehicles in garage')}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={osveziGarazo} disabled={refreshing} className="rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] px-4 py-2 text-sm font-black text-[#3ecfcf] disabled:opacity-60">
+            <button onClick={preklopiTemo} className={`rounded-xl border px-4 py-2 text-sm font-black ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#d8d8e8]'}`}>
+              {desktopLight ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
+            </button>
+            <button onClick={osveziGarazo} disabled={refreshing} className={`rounded-xl border px-4 py-2 text-sm font-black disabled:opacity-60 ${desktopLight ? 'border-[#6c21c9] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#3ecfcf55] bg-[#3ecfcf12] text-[#3ecfcf]'}`}>
               {refreshing ? tx('Osveževanje...', 'Refreshing...') : tx('Osveži garažo', 'Refresh garage')}
             </button>
-            <div className="flex overflow-hidden rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
-              <button onClick={() => shraniPrikazGaraze('srednje')} className={`h-9 w-9 rounded-lg text-sm font-black ${desktopListMode ? 'bg-[#24243a] text-white' : 'text-[#8a8aa8]'}`}>☰</button>
-              <button onClick={() => shraniPrikazGaraze('grid')} className={`h-9 w-9 rounded-lg text-sm font-black ${!desktopListMode ? 'bg-[#24243a] text-white' : 'text-[#8a8aa8]'}`}>⊞</button>
+            <div className={`flex overflow-hidden rounded-xl border p-1 ${desktopLight ? 'border-[#d8def0] bg-white shadow-lg shadow-[#101225]/5' : 'border-[#1e1e32] bg-[#0f0f1a]'}`}>
+              <button onClick={() => shraniPrikazGaraze('srednje')} className={`h-9 w-9 rounded-lg text-sm font-black ${desktopListMode ? (desktopLight ? 'bg-[#f0e7ff] text-[#6c21c9]' : 'bg-[#24243a] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}>L</button>
+              <button onClick={() => shraniPrikazGaraze('grid')} className={`h-9 w-9 rounded-lg text-sm font-black ${!desktopListMode ? (desktopLight ? 'bg-[#f0e7ff] text-[#6c21c9]' : 'bg-[#24243a] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}>G</button>
             </div>
             {!arhiv && (
               <button onClick={() => pojdiDodajAvto('desktop')} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
@@ -846,15 +862,15 @@ export default function Garaza() {
         </header>
 
         <div className="mb-5 flex items-center justify-between gap-4">
-          <div className="flex w-[300px] overflow-hidden rounded-xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
-            <button onClick={() => setArhiv(false)} className={`flex-1 rounded-lg px-4 py-2 text-sm font-black ${!arhiv ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8]'}`}>
+          <div className={`flex w-[360px] overflow-hidden border-b ${desktopLight ? 'border-[#d8def0]' : 'border-[#1e1e32]'}`}>
+            <button onClick={() => setArhiv(false)} className={`px-0 py-3 text-left text-sm font-black ${!arhiv ? (desktopLight ? 'border-b-4 border-[#6c21c9] text-[#6c21c9]' : 'border-b-4 border-[#6c63ff] text-white') : (desktopLight ? 'text-[#101225]' : 'text-[#8a8aa8]')}`}>
               {tx('Aktivna vozila', 'Active vehicles')}
             </button>
-            <button onClick={() => setArhiv(true)} className={`flex-1 rounded-lg px-4 py-2 text-sm font-black ${arhiv ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8]'}`}>
+            <button onClick={() => setArhiv(true)} className={`ml-8 px-0 py-3 text-left text-sm font-black ${arhiv ? (desktopLight ? 'border-b-4 border-[#6c21c9] text-[#6c21c9]' : 'border-b-4 border-[#6c63ff] text-white') : (desktopLight ? 'text-[#101225]' : 'text-[#8a8aa8]')}`}>
               {tx('Arhiv', 'Archive')}
             </button>
           </div>
-          <button className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8]">•••</button>
+          <button className={`flex h-10 w-10 items-center justify-center rounded-xl border ${desktopLight ? 'border-[#d8def0] bg-white text-[#4f5870]' : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8]'}`}>...</button>
         </div>
 
         {archiveMessage && (
@@ -888,9 +904,9 @@ export default function Garaza() {
                 <button
                   key={avto.id}
                   onClick={() => odpriVozilo(avto)}
-                  className="group grid w-full grid-cols-[116px_minmax(0,1fr)_minmax(280px,0.8fr)_120px_38px] items-center gap-5 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-3 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]"
+                  className={`group grid w-full grid-cols-[116px_minmax(0,1fr)_minmax(280px,0.8fr)_120px_38px] items-center gap-5 rounded-2xl border p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
                 >
-                  <div className="h-20 overflow-hidden rounded-xl bg-[#13131f]">
+                  <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
                       <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
                     ) : (
@@ -898,14 +914,14 @@ export default function Garaza() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-lg font-black text-white">{imeVozila(avto)}</p>
-                    <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{metaVozila(avto) || '-'}</p>
+                    <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</p>
+                    <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(avto) || '-'}</p>
                   </div>
                   <DesktopReminderBadges car={avto} />
                   <div className="text-right">
-                    {avto.tablica && <p className="font-mono text-sm font-black tracking-[0.12em] text-white">{avto.tablica.toUpperCase()}</p>}
+                    {avto.tablica && <p className={`font-mono text-sm font-black tracking-[0.12em] ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{avto.tablica.toUpperCase()}</p>}
                   </div>
-                  <span className="text-lg font-black text-[#8a8aa8]">•••</span>
+                  <span className={`text-lg font-black ${desktopLight ? 'text-[#5a6278]' : 'text-[#8a8aa8]'}`}>...</span>
                 </button>
               )
             })}
@@ -918,9 +934,9 @@ export default function Garaza() {
                 <button
                   key={avto.id}
                   onClick={() => odpriVozilo(avto)}
-                  className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]"
+                  className={`overflow-hidden rounded-2xl border text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
                 >
-                  <div className="h-40 bg-[#13131f]">
+                  <div className={`h-40 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
                       <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
                     ) : (
@@ -930,13 +946,13 @@ export default function Garaza() {
                   <div className="p-4">
                     <div className="mb-3 flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-base font-black text-white">{imeVozila(avto)}</p>
-                        <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{metaVozila(avto) || '-'}</p>
+                        <p className={`truncate text-base font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</p>
+                        <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(avto) || '-'}</p>
                       </div>
-                      <span className="font-black text-[#8a8aa8]">•••</span>
+                      <span className={`font-black ${desktopLight ? 'text-[#5a6278]' : 'text-[#8a8aa8]'}`}>...</span>
                     </div>
                     <DesktopReminderBadges car={avto} />
-                    {avto.tablica && <p className="mt-3 font-mono text-xs font-black tracking-[0.12em] text-white">{avto.tablica.toUpperCase()}</p>}
+                    {avto.tablica && <p className={`mt-3 font-mono text-xs font-black tracking-[0.12em] ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{avto.tablica.toUpperCase()}</p>}
                   </div>
                 </button>
               )

@@ -54,6 +54,10 @@ body:not(.landing) {
     padding-left: 260px;
   }
 
+  body:not(.landing) > div:first-child:has(.gb-desktop-garage) {
+    padding: 0;
+  }
+
   body:not(.landing) .gb-mobile-nav {
     display: none;
   }
