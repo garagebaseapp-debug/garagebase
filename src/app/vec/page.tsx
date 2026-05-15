@@ -91,22 +91,27 @@ export default function VecPage() {
 
   useEffect(() => {
     const load = async () => {
-      const admin = await checkCurrentUserAdmin()
-      setIsAdmin(admin.isAdmin)
-      setEmail(admin.user?.email || '')
-      const userId = admin.user?.id
-      if (!userId) return
-      const { count, error } = await supabase
-        .from('cars')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .or('arhivirano.is.null,arhivirano.eq.false')
-      if (error) {
-        console.warn('[GarageBase more] vehicle count query failed', error)
+      try {
+        const admin = await checkCurrentUserAdmin()
+        setIsAdmin(admin.isAdmin)
+        setEmail(admin.user?.email || '')
+        const userId = admin.user?.id
+        if (!userId) return
+        const { count, error } = await supabase
+          .from('cars')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .or('arhivirano.is.null,arhivirano.eq.false')
+        if (error) {
+          console.warn('[GarageBase more] vehicle count query failed', error)
+          setVehicleCount(0)
+          return
+        }
+        setVehicleCount(count || 0)
+      } catch (err) {
+        console.warn('[GarageBase more] load failed', err)
         setVehicleCount(0)
-        return
       }
-      setVehicleCount(count || 0)
     }
     load()
   }, [])

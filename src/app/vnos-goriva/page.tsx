@@ -28,6 +28,7 @@ const optionalFuelInsertColumns = new Set([
   'verified_document_url',
   'verification_level',
 ])
+const KM_ANOMALY_THRESHOLD = 2000
 
 const getMissingSchemaColumn = (error: any) => {
   const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`
@@ -449,6 +450,13 @@ export default function VnosGoriva() {
       return
     }
 
+    if (sveziKm > 0 && vneseniKm - sveziKm > KM_ANOMALY_THRESHOLD) {
+      const ok = window.confirm(tx(
+        `Razlika od zadnjega vnosa je ${formatDistance(vneseniKm - sveziKm, enotaRazdalje)}. Je to pravilno?`,
+        `The difference from the last entry is ${formatDistance(vneseniKm - sveziKm, enotaRazdalje)}. Is this correct?`
+      ))
+      if (!ok) return
+    }
     setLoading(true)
     setMessage('')
 

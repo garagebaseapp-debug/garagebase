@@ -10,6 +10,8 @@ import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 
+const KM_ANOMALY_THRESHOLD = 2000
+
 export default function VnosServisa() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
@@ -153,7 +155,7 @@ export default function VnosServisa() {
 
   const dodajSliko = async (e: any) => {
     const files = Array.from(e.target.files) as File[]
-    if (slike.length + files.length > 3) { setMessage('Največ 3 slike na servis!'); return }
+    if (slike.length + files.length > 3) { setMessage(tx('Največ 3 slike na servis!', 'Max 3 images per service entry!')); return }
     try {
       const compressed = await Promise.all(files.map((file) => compressImageFile(file, uploadImageProfiles.receipt)))
       const noveSlike = [...slike, ...compressed.map((item) => item.file)].slice(0, 3)
@@ -227,7 +229,7 @@ export default function VnosServisa() {
 
   const glasovniVnos = (polje: string) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) { setMessage('Glasovni vnos ni podprt v tem brskalniku.'); return }
+    if (!SpeechRecognition) { setMessage(tx('Glasovni vnos ni podprt v tem brskalniku.', 'Voice input is not supported in this browser.')); return }
 
     const recognition = new SpeechRecognition()
     recognition.lang = 'sl-SI'
@@ -302,6 +304,13 @@ export default function VnosServisa() {
       setMessage(`⚠️ ${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${formatDistance(sveziKm, enotaRazdalje)}!`)
       return
     }
+    if (sveziKm > 0 && vneseniKm - sveziKm > KM_ANOMALY_THRESHOLD) {
+      const ok = window.confirm(tx(
+        `Razlika od zadnjega vnosa je ${formatDistance(vneseniKm - sveziKm, enotaRazdalje)}. Je to pravilno?`,
+        `The difference from the last entry is ${formatDistance(vneseniKm - sveziKm, enotaRazdalje)}. Is this correct?`
+      ))
+      if (!ok) return
+    }
     setLoading(true)
     setMessage('')
 
@@ -351,7 +360,7 @@ export default function VnosServisa() {
       setUploadProgress(false)
     }
 
-    setMessage('✅ Servis uspešno shranjen!')
+    setMessage(tx('✅ Servis uspešno shranjen!', '✅ Service saved successfully!'))
     let odometerUrl: string | null = null
     if (stevec) {
       setUploadProgress(true)

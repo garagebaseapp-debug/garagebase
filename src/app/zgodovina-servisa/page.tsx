@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 
 const PAGE_SIZE = 50
 const serviceHistoryColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
+const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
 export default function ZgodovinaServisa() {
   const { language } = useLanguage()
@@ -105,13 +106,20 @@ export default function ZgodovinaServisa() {
     const existing = vnosi.find(v => v.id === id)
     if (existing && !editable(existing)) return
     setSaving(true)
-    await supabase.from('service_logs').update({
+    const { error } = await supabase.from('service_logs').update({
       datum: editData.datum,
       opis: editData.opis,
       servis: editData.servis || null,
       cena: editData.cena ? parseFloat(editData.cena) : null,
       edited_at: new Date().toISOString(),
     }).eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Shranjevanje ni uspelo: ${error.message}`, `Saving failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     await refreshVnosi()
     setUredi(null)
     setSaving(false)
@@ -123,7 +131,14 @@ export default function ZgodovinaServisa() {
     const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
     if (!ok) return
     setSaving(true)
-    await supabase.from('service_logs').delete().eq('id', id).eq('car_id', avto.id)
+    const { error } = await supabase.from('service_logs').delete().eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     setSelectedImported(prev => prev.filter(item => item !== id))
     await refreshVnosi()
     setUredi(null)
@@ -150,7 +165,14 @@ export default function ZgodovinaServisa() {
     ))
     if (!ok) return
     setSaving(true)
-    await supabase.from('service_logs').delete().in('id', ids).eq('car_id', avto.id)
+    const { error } = await supabase.from('service_logs').delete().in('id', ids).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Nekateri izbrani vnosi so starejši od 24 ur in so zaščiteni pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'Some selected entries are older than 24 hours and are protected from changes. If something is wrong, contact support.')
+        : tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     setSelectedImported([])
     await refreshVnosi()
     setSaving(false)

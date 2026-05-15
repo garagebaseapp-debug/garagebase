@@ -16,6 +16,7 @@ import {
 const PAGE_SIZE = 50
 const fuelHistoryColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
 const fuelSummaryColumns = 'litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis'
+const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
 const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
@@ -258,7 +259,7 @@ export default function ZgodovinaGoriva() {
     setSaving(true)
     const litri = numberValue(editData.litri)
     const cenaNaLiter = numberValue(editData.cena_na_liter)
-    await supabase.from('fuel_logs').update({
+    const { error } = await supabase.from('fuel_logs').update({
       datum: editData.datum,
       litri,
       cena_na_liter: cenaNaLiter > 0 ? cenaNaLiter : null,
@@ -267,6 +268,13 @@ export default function ZgodovinaGoriva() {
         : null,
       postaja: editData.postaja || null,
     }).eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx('Shranjevanje ni uspelo: ', 'Saving failed: ') + error.message)
+      setSaving(false)
+      return
+    }
     await refreshVnosi()
     setUredi(null)
     setSaving(false)
@@ -280,7 +288,9 @@ export default function ZgodovinaGoriva() {
     setSaving(true)
     const { error } = await supabase.from('fuel_logs').delete().eq('id', id).eq('car_id', avto.id)
     if (error) {
-      window.alert(tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
       setSaving(false)
       return
     }
@@ -312,7 +322,9 @@ export default function ZgodovinaGoriva() {
     setSaving(true)
     const { error } = await supabase.from('fuel_logs').delete().eq('car_id', avto.id).in('id', ids)
     if (error) {
-      window.alert(tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
+      window.alert(isLockedRecordError(error)
+        ? tx('Nekateri izbrani vnosi so starejši od 24 ur in so zaščiteni pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'Some selected entries are older than 24 hours and are protected from changes. If something is wrong, contact support.')
+        : tx(`Izbris ni uspel: ${error.message}`, `Delete failed: ${error.message}`))
       setSaving(false)
       return
     }

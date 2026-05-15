@@ -62,6 +62,19 @@ export default function DodajAvto() {
   const shrani = async () => {
     if (!znamka || !model) { setMessage(tx('Znamka in model sta obvezna!', 'Make and model are required!')); return }
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage(tx('Vnesi tip vozila!', 'Enter the vehicle type!')); return }
+    if (!km.trim()) {
+      const ok = window.confirm(tx(
+        'Brez začetnih kilometrov bo PDF/QR poročilo manj verodostojno, ker ni jasno, pri katerih kilometrih se evidenca začne. Vozilo lahko vseeno shraniš, začetne kilometre pa priporočamo za bolj zanesljivo zgodovino.',
+        'Without initial mileage, the PDF/QR report will be less credible because it is not clear at which mileage the history starts. You can still save the vehicle, but initial mileage is recommended for a more reliable history.'
+      ))
+      if (!ok) return
+    } else {
+      const ok = window.confirm(tx(
+        'Preveri začetne kilometre pred shranjevanjem. Ti kilometri določijo začetek zgodovine vozila in jih kasneje ni mogoče ročno spreminjati.',
+        'Check the initial mileage before saving. This mileage defines the start of the vehicle history and cannot be manually changed later.'
+      ))
+      if (!ok) return
+    }
     setLoading(true)
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()

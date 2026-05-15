@@ -58,6 +58,10 @@ export default function NastavitveAvta() {
 
   const standardniTipi = ['avto', 'motor', 'kombi', 'tovornjak', 'plovilo']
   const imageError = (error: unknown) => imageCompressionErrorText(error, getStoredLanguage() === 'en' ? 'en' : 'sl')
+  const lockedRecordMessage = () => getStoredLanguage() === 'en'
+    ? 'Some vehicle records are older than 24 hours and are protected from changes. If something is wrong, contact support.'
+    : 'Nekateri zapisi vozila so starejši od 24 ur in so zaščiteni pred spremembami. Če je prišlo do napake, kontaktiraj podporo.'
+  const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
   const decimalValue = (value: string) => {
     const parsed = Number(String(value || '').replace(',', '.'))
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null
@@ -277,7 +281,7 @@ export default function NastavitveAvta() {
     for (const step of deleteSteps) {
       const { error } = await step()
       if (error) {
-        setMessage(`Napaka pri brisanju vozila: ${error.message}`)
+        setMessage(isLockedRecordError(error) ? lockedRecordMessage() : `Napaka pri brisanju vozila: ${error.message}`)
         setSaving(false)
         return
       }

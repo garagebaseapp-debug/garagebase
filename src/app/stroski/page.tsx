@@ -13,6 +13,7 @@ const COST_LIST_SIZE = 60
 const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
 const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
 const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label,verification_level'
+const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -1017,13 +1018,20 @@ export default function Stroski() {
 
   const shraniUrediGorivo = async (id: string) => {
     setSaving(true)
-    await supabase.from('fuel_logs').update({
+    const { error } = await supabase.from('fuel_logs').update({
       datum: editData.datum,
       litri: parseFloat(editData.litri),
       cena_na_liter: editData.cena_na_liter ? parseFloat(editData.cena_na_liter) : null,
       cena_skupaj: editData.litri && editData.cena_na_liter ? parseFloat(editData.litri) * parseFloat(editData.cena_na_liter) : null,
       postaja: editData.postaja || null,
     }).eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Shranjevanje ni uspelo: ${error.message}`, `Saving failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     const { data } = await supabase.from('fuel_logs').select(fuelCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextGorivo = data || []
     const nextStats = buildRowStatsFromRows(nextGorivo, displayServisi, displayExpenses, avto || {})
@@ -1051,12 +1059,19 @@ export default function Stroski() {
 
   const shraniUrediServis = async (id: string) => {
     setSaving(true)
-    await supabase.from('service_logs').update({
+    const { error } = await supabase.from('service_logs').update({
       datum: editData.datum,
       opis: editData.opis,
       servis: editData.servis || null,
       cena: editData.cena ? parseFloat(editData.cena) : null,
     }).eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Shranjevanje ni uspelo: ${error.message}`, `Saving failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     const { data } = await supabase.from('service_logs').select(serviceCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextServisi = data || []
     const nextStats = buildRowStatsFromRows(displayGorivo, nextServisi, displayExpenses, avto || {})
@@ -1084,11 +1099,18 @@ export default function Stroski() {
 
   const shraniUrediExpense = async (id: string) => {
     setSaving(true)
-    await supabase.from('expenses').update({
+    const { error } = await supabase.from('expenses').update({
       datum: editData.datum,
       opis: editData.opis || null,
       znesek: editData.znesek ? parseFloat(editData.znesek) : null,
     }).eq('id', id).eq('car_id', avto.id)
+    if (error) {
+      window.alert(isLockedRecordError(error)
+        ? tx('Ta vnos je starejši od 24 ur in je zaščiten pred spremembami. Če je prišlo do napake, kontaktiraj podporo.', 'This entry is older than 24 hours and is protected from changes. If something is wrong, contact support.')
+        : tx(`Shranjevanje ni uspelo: ${error.message}`, `Saving failed: ${error.message}`))
+      setSaving(false)
+      return
+    }
     const { data } = await supabase.from('expenses').select(expenseCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
     const nextExpenses = (data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
     const nextStats = buildRowStatsFromRows(displayGorivo, displayServisi, nextExpenses, avto || {})
