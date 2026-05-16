@@ -68,6 +68,15 @@ export default function LoginPage() {
     } catch {}
   }
 
+  const afterLoginPath = () => {
+    try {
+      const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      return settings?.nacin === 'lite' ? '/garaza?direct=1' : '/domov?login=1'
+    } catch {
+      return '/domov?login=1'
+    }
+  }
+
   useEffect(() => {
     document.body.classList.add('landing')
     setBiometricReady(hasAppLockCredential())
@@ -92,7 +101,7 @@ export default function LoginPage() {
       }
       await unlockWithAppLock()
       markAfterLoginHome()
-      window.location.replace('/domov?login=1')
+      window.location.replace(afterLoginPath())
     } catch {
       setMessage('Biometrična prijava ni uspela. Poskusi znova ali uporabi geslo.')
     }
@@ -142,7 +151,7 @@ export default function LoginPage() {
       else {
         clearLoginRateLimit(email)
         markAfterLoginHome()
-        window.location.replace('/domov?login=1')
+        window.location.replace(afterLoginPath())
       }
     }
     setLoading(false)

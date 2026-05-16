@@ -211,6 +211,11 @@ export default function Garaza() {
   useEffect(() => {
     const init = async () => {
       try {
+        let savedMode: 'lite' | 'full' = 'full'
+        try {
+          const savedSettings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+          savedMode = savedSettings?.nacin === 'lite' ? 'lite' : 'full'
+        } catch {}
         const search = new URLSearchParams(window.location.search)
         const manageVehicles = search.get('mode') === 'nastavitve' || search.get('mode') === 'urejanje'
         setNastavitveVozilMode(manageVehicles)
@@ -220,7 +225,7 @@ export default function Garaza() {
           Number(sessionStorage.getItem('garagebase_after_login_home') || 0),
           Number(localStorage.getItem('garagebase_after_login_home') || 0),
         )
-        if ((afterLogin && Date.now() - afterLogin < 30 * 60 * 1000) || (!seenDomov && !explicitGarageOpen)) {
+        if (savedMode !== 'lite' && ((afterLogin && Date.now() - afterLogin < 30 * 60 * 1000) || (!seenDomov && !explicitGarageOpen))) {
           sessionStorage.removeItem('garagebase_after_login_home')
           localStorage.removeItem('garagebase_after_login_home')
           router.replace('/domov')
@@ -520,6 +525,9 @@ export default function Garaza() {
     }
     const addParam = pot === '/opomniki' ? '&add=1' : ''
     router.push(`${pot}?car=${targetAvto.id}${addParam}`)
+  }
+  const shraniLitePrikaz = (next: 'srednje' | 'grid') => {
+    shraniPrikazGaraze(next)
   }
 
   const onDragStart = (index: number) => setDragIndex(index)
@@ -1201,6 +1209,7 @@ export default function Garaza() {
     {renderDesktopGarage()}
     <div className="flex min-h-screen flex-col bg-[#080810] pb-20 xl:hidden">
 
+      {!showLiteHome && (
       <div className="flex justify-between items-center px-5 py-5 flex-shrink-0">
         <h1 className="text-2xl font-bold text-white">
           Garage<span className="text-[#6c63ff]">Base</span>
@@ -1228,7 +1237,9 @@ export default function Garaza() {
           )}
         </div>
       </div>
+      )}
 
+      {!showLiteHome && (
       <div className="px-5 pb-3">
         <div className="flex gap-2">
         <button onClick={() => setArhiv(false)}
@@ -1242,6 +1253,7 @@ export default function Garaza() {
         </div>
         {!arhiv && avti.length > 0 && !showLiteHome && <GarageLayoutPicker />}
       </div>
+      )}
 
       {archiveMessage && (
         <div className="mx-5 mb-3 rounded-xl border border-[#f59e0b44] bg-[#f59e0b18] p-3 text-[#fbbf24] text-sm">
@@ -1304,13 +1316,69 @@ export default function Garaza() {
                 </p>
                 <p className={`mt-2 text-[calc(14px*var(--gb-card-font-scale,1))] font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Moja vozila', 'My vehicles')}</p>
               </div>
-              <button onClick={() => pojdiDodajAvto('lite')}
-                className="rounded-2xl bg-[#6c63ff] px-5 py-3 text-base font-black text-white shadow-xl shadow-[#6c63ff44]">
-                + {tx('Avto', 'Vehicle')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false) }}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#6c63ff]' : 'border-[#253142] bg-[#101720] text-[#c8c4ff]'}`}>
+                  {tx('Domov', 'Home')}
+                </button>
+                <button onClick={() => router.push('/vec')}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}>
+                  {tx('Nastavitve', 'Settings')}
+                </button>
+              </div>
             </div>
 
             {!liteDetailOpen && (
+            <>
+            <div className={`grid grid-cols-3 gap-2 rounded-2xl border p-2 ${desktopLight ? 'border-[#e2e7f2] bg-white' : 'border-[#253142] bg-[#101720]'}`}>
+              <button onClick={() => shraniLitePrikaz('srednje')}
+                className={`rounded-xl px-3 py-3 text-sm font-black ${prikaz !== 'grid' ? 'bg-[#6c63ff] text-white' : (desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]')}`}>
+                {tx('Srednje', 'Medium')}
+              </button>
+              <button onClick={() => shraniLitePrikaz('grid')}
+                className={`rounded-xl px-3 py-3 text-sm font-black ${prikaz === 'grid' ? 'bg-[#6c63ff] text-white' : (desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]')}`}>
+                Grid
+              </button>
+              <button onClick={() => pojdiDodajAvto('lite')}
+                className="rounded-xl bg-[#6c63ff14] px-3 py-3 text-sm font-black text-[#6c63ff]">
+                + {tx('Avto', 'Vehicle')}
+              </button>
+            </div>
+            {prikaz === 'grid' ? (
+            <div className="grid grid-cols-2 gap-3">
+              {avti.map((avto: any, index: number) => {
+                const imageSrc = slikaVozila(avto)
+                const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
+                return (
+                  <button
+                    key={avto.id}
+                    onClick={() => { setLiteCarId(avto.id); setLiteDetailOpen(true); setLiteHistoryOpen(false) }}
+                    className={`overflow-hidden rounded-[22px] border text-left shadow-xl transition-all ${
+                      desktopLight ? 'border-[#e2e7f2] bg-white shadow-[#101225]/6' : 'border-[#253142] bg-[#101720] shadow-black/20'
+                    }`}
+                  >
+                    <span className="relative block h-32 bg-[#111827]">
+                      {imageSrc ? (
+                        <img src={imageSrc} alt={imeVozila(avto)}
+                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
+                          {imeVozila(avto)}
+                        </span>
+                      )}
+                      <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/60`} />
+                    </span>
+                    <span className="block p-3">
+                      <span className={`block truncate text-base font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</span>
+                      <span className={`mt-1 block truncate text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>
+                        {avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : avto.gorivo || '-'}
+                      </span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            ) : (
             <div className="space-y-3">
               {avti.map((avto: any, index: number) => {
                 const selected = liteAvto?.id === avto.id
@@ -1351,6 +1419,8 @@ export default function Garaza() {
                 )
               })}
             </div>
+            )}
+            </>
             )}
 
             {liteDetailOpen && liteAvto && (
@@ -1708,7 +1778,7 @@ export default function Garaza() {
         </div>
       )}
 
-      <BottomNav aktivna="garaza" />
+      {showLiteHome ? null : <BottomNav aktivna="garaza" />}
     </div>
     </>
   )
