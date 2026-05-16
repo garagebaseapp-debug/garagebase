@@ -375,7 +375,7 @@ export default function DomovPage() {
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={preklopiTemo} className="hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-4 py-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white xl:inline-flex">
+            <button onClick={preklopiTemo} className="flex h-10 items-center gap-2 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white sm:h-11 sm:px-4">
               {theme === 'svetla' ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
             </button>
             <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">

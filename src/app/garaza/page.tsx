@@ -1321,6 +1321,13 @@ export default function Garaza() {
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#6c63ff]' : 'border-[#253142] bg-[#101720] text-[#c8c4ff]'}`}>
                   {tx('Domov', 'Home')}
                 </button>
+                <button
+                  onClick={preklopiTemo}
+                  className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}
+                  aria-label={desktopLight ? tx('Preklopi na temni naÄŤin', 'Switch to dark mode') : tx('Preklopi na svetli naÄŤin', 'Switch to light mode')}
+                >
+                  {desktopLight ? '☾' : '☀'}
+                </button>
                 <button onClick={() => router.push('/vec')}
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}>
                   {tx('Nastavitve', 'Settings')}
