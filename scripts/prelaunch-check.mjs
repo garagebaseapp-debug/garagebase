@@ -27,6 +27,7 @@ const recommendedEnvKeys = [
 
 const textRoots = ['src/app', 'src/lib']
 const textExtensions = new Set(['.ts', '.tsx', '.js', '.jsx'])
+const dataApiGrantFile = 'SUPABASE_MIGRACIJA_DATA_API_GRANTS.sql'
 const mojibakePatterns = [/�/, /Ä/, /Ĺ/, /â/, /đź/, /Ĺˇ/, /ÄŤ/]
 
 function extensionOf(path) {
@@ -78,6 +79,23 @@ for (const file of textRoots.flatMap((dir) => walk(dir))) {
   if (hasSuspiciousText) suspiciousText.push(file)
 }
 
+const sqlFiles = readdirSync(root).filter((name) => name.toLowerCase().endsWith('.sql'))
+const createdPublicTables = new Set()
+for (const file of sqlFiles) {
+  const text = readFileSync(join(root, file), 'utf8')
+  for (const match of text.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?public\.([a-z0-9_]+)/gi)) {
+    createdPublicTables.add(match[1])
+  }
+}
+
+const grantFileText = existsSync(join(root, dataApiGrantFile))
+  ? readFileSync(join(root, dataApiGrantFile), 'utf8')
+  : ''
+const missingDataApiGrants = [...createdPublicTables].filter((table) => {
+  const tablePattern = new RegExp(`['"]${table}['"]`, 'i')
+  return !tablePattern.test(grantFileText)
+})
+
 console.log('GarageBase prelaunch check')
 
 if (missingFiles.length) {
@@ -101,7 +119,16 @@ if (suspiciousText.length) {
   if (suspiciousText.length > 20) console.warn(`- ...and ${suspiciousText.length - 20} more`)
 }
 
-if (missingFiles.length || missingRequiredEnv.length) {
+if (!grantFileText) {
+  console.error(`\nMissing Supabase Data API grant file: ${dataApiGrantFile}`)
+}
+
+if (missingDataApiGrants.length) {
+  console.error('\nPublic tables created in SQL migrations but missing from Data API grants:')
+  for (const table of missingDataApiGrants) console.error(`- public.${table}`)
+}
+
+if (missingFiles.length || missingRequiredEnv.length || !grantFileText || missingDataApiGrants.length) {
   console.error('\nPrelaunch check failed.')
   process.exit(1)
 }
