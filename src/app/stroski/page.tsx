@@ -538,12 +538,26 @@ export default function Stroski() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { window.location.href = '/'; return }
-        const [avtoRes, gorivoRes, servisRes, expensesRes] = await Promise.all([
+        let [avtoRes, gorivoRes, servisRes, expensesRes]: any[] = await Promise.all([
           supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle(),
           supabase.from('fuel_logs').select(fuelCostColumns, { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
           supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
           supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
         ])
+        if (gorivoRes.error) {
+          console.warn('[GarageBase costs] fuel full select failed, retrying minimal columns', gorivoRes.error.message)
+          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999)
+        }
+        if (servisRes.error) {
+          console.warn('[GarageBase costs] service full select failed, retrying minimal columns', servisRes.error.message)
+          servisRes = await supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999)
+        }
+        if (expensesRes.error) {
+          console.warn('[GarageBase costs] expenses full select failed, retrying minimal columns', expensesRes.error.message)
+          expensesRes = await supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999)
+        }
+        const dataError = gorivoRes.error || servisRes.error || expensesRes.error
+        if (dataError) throw dataError
       if (!shouldApply()) return
       if (!avtoRes.data) { window.location.href = '/garaza'; return }
       setActiveCarId(carId)
@@ -1199,17 +1213,17 @@ export default function Stroski() {
           </button>
         </div>
         {hasImportedCosts ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
             <div className="rounded-2xl border border-[#22c55e44] bg-[#22c55e12] p-4">
               <p className="text-[#22c55e] text-xs font-black uppercase tracking-wide">{tx('Uvoženi stroški', 'Imported costs')}</p>
               <p className="mt-2 text-2xl font-black text-[#22c55e]">{formatMoney(prikazUvoz, valuta)}</p>
             </div>
-            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] text-xl font-black text-white sm:flex">+</div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] text-xl font-black text-white md:flex">+</div>
             <div className="rounded-2xl border border-[#6c63ff44] bg-[#6c63ff12] p-4">
               <p className="text-[#a09aff] text-xs font-black uppercase tracking-wide">{tx('GarageBase stroški', 'GarageBase costs')}</p>
               <p className="mt-2 text-2xl font-black text-[#a09aff]">{formatMoney(prikazGarageBase, valuta)}</p>
             </div>
-            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-xl font-black text-white sm:flex">=</div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-xl font-black text-white md:flex">=</div>
             <div className="rounded-2xl border border-[#d8d8e833] bg-[#ffffff08] p-4">
               <p className="text-[#d8d8e8] text-xs font-black uppercase tracking-wide">{tx('Skupaj', 'Total')}</p>
               <p className="mt-2 text-2xl font-black text-white">{formatMoney(prikazSkupaj, valuta)}</p>

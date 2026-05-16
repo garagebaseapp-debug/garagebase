@@ -941,12 +941,14 @@ export default function Garaza() {
                 { key: 'srednje', label: 'M', title: tx('Srednji seznam', 'Medium list') },
                 { key: 'veliko', label: 'L', title: tx('Velik prikaz', 'Large view') },
                 { key: 'grid', label: 'G', title: tx('Grid prikaz', 'Grid view') },
+                { key: 'kategorije', label: 'K', title: tx('Kategorije', 'Categories') },
+                { key: 'status', label: 'ST', title: tx('Status', 'Status') },
               ].map((item) => (
                 <button
                   key={item.key}
                   title={item.title}
                   onClick={() => shraniPrikazGaraze(item.key)}
-                  className={`h-9 w-9 rounded-lg text-sm font-black ${prikaz === item.key ? (desktopLight ? 'bg-[#6c63ff] text-white' : 'bg-[#6c63ff] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}
+                  className={`h-9 min-w-9 rounded-lg px-2 text-sm font-black ${prikaz === item.key ? (desktopLight ? 'bg-[#6c63ff] text-white' : 'bg-[#6c63ff] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}
                 >
                   {item.label}
                 </button>
