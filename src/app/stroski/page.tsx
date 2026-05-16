@@ -11,9 +11,9 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDist
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
-const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
-const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
-const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label,verification_level'
+const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
+const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,import_batch_id,source_owner_label'
+const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label'
 const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
 const numericValue = (value: unknown) => {
@@ -556,7 +556,7 @@ export default function Stroski() {
         ])
         if (gorivoRes.error) {
           console.warn('[GarageBase costs] fuel full select failed, retrying minimal columns', gorivoRes.error.message)
-          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999)
+          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999)
         }
         if (servisRes.error) {
           console.warn('[GarageBase costs] service full select failed, retrying minimal columns', servisRes.error.message)

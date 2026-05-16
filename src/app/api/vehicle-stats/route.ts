@@ -6,7 +6,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-const fuelColumns = 'id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,opis,created_at,import_batch_id,source_owner_label,polni_rezervar'
+const fuelColumns = 'id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar'
 const serviceColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label'
 const expenseColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label'
 

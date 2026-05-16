@@ -14,8 +14,8 @@ import {
 } from '@/lib/vehicle-costs'
 
 const PAGE_SIZE = 50
-const fuelHistoryColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,opis,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
-const fuelSummaryColumns = 'litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja,opis'
+const fuelHistoryColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
+const fuelSummaryColumns = 'litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja'
 const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
 const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {

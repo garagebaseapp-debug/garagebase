@@ -9,7 +9,7 @@ import { buildVehicleStats } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
-const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v3'
+const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v4'
 type CostSummary = { garageBase: number; imported: number; total: number }
 
 const emptyCostSummary = (): CostSummary => ({ garageBase: 0, imported: 0, total: 0 })
@@ -98,9 +98,9 @@ export default function StroškiGaraza() {
         if (cars.length > 0) {
           const ids = cars.map((avto: any) => avto.id)
           const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
-            supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter,import_batch_id,source_owner_label,created_at').in('car_id', ids),
-            supabase.from('service_logs').select('car_id,cena,import_batch_id,source_owner_label,created_at').in('car_id', ids),
-            supabase.from('expenses').select('car_id,znesek,kategorija,import_batch_id,source_owner_label,created_at').in('car_id', ids),
+            supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar').in('car_id', ids),
+            supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label').in('car_id', ids),
+            supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label').in('car_id', ids),
           ])
           const queryError = gorivoRes.error || servisiRes.error || expensesRes.error
           if (queryError) throw queryError
