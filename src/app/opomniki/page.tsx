@@ -39,6 +39,7 @@ export default function Opomniki() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       let carId = params.get('car')
+      if (params.get('add') === '1') setShowForm(true)
       if (!carId) {
         const { data: prviAvto } = await supabase
           .from('cars')

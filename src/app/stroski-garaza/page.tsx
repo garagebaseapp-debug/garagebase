@@ -9,6 +9,8 @@ import { buildVehicleStats } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
+const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v2'
+
 export default function StroškiGaraza() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
@@ -41,7 +43,7 @@ export default function StroškiGaraza() {
           }
         }
 
-        const cachedCosts = localStorage.getItem('garagebase_stroski_garaza_cache')
+        const cachedCosts = localStorage.getItem(COSTS_GARAGE_CACHE_KEY)
         if (cachedCosts) {
           try {
             const parsed = JSON.parse(cachedCosts)
@@ -86,13 +88,13 @@ export default function StroškiGaraza() {
             const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
             const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
             const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
-            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.garageBase
+            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.total
           }
         }
 
         setStroski(stroskoviMap)
         localStorage.setItem('garagebase_garaza_cache', JSON.stringify({ version: GARAGE_CACHE_VERSION, avti: cars, arhiv: false, savedAt: Date.now() }))
-        localStorage.setItem('garagebase_stroski_garaza_cache', JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
+        localStorage.setItem(COSTS_GARAGE_CACHE_KEY, JSON.stringify({ stroski: stroskoviMap, savedAt: Date.now() }))
       } catch (error) {
         console.warn('[GarageBase costs garage] load failed', error)
         setLoadError(hasUsableCache

@@ -32,6 +32,10 @@ export default function Garaza() {
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [liteCarId, setLiteCarId] = useState('')
+  const [liteDetailOpen, setLiteDetailOpen] = useState(false)
+  const [liteHistoryOpen, setLiteHistoryOpen] = useState(false)
+  const [liteHistory, setLiteHistory] = useState<any[]>([])
+  const [liteHistoryLoading, setLiteHistoryLoading] = useState(false)
   const [garazaPisava, setGarazaPisava] = useState(100)
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [gridNastavitve, setGridNastavitve] = useState({
@@ -312,6 +316,9 @@ export default function Garaza() {
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
+  const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
+  const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
+
   useEffect(() => {
     const refreshArchive = async () => {
       if (loading) return
@@ -351,6 +358,89 @@ export default function Garaza() {
     }
     refreshArchive()
   }, [arhiv])
+
+  useEffect(() => {
+    const loadLiteHistory = async () => {
+      if (!showLiteHome || !liteDetailOpen || !liteCarId) {
+        setLiteHistory([])
+        return
+      }
+      setLiteHistoryLoading(true)
+      try {
+        const [fuelRes, serviceRes, expenseRes] = await Promise.all([
+          supabase
+            .from('fuel_logs')
+            .select('id,datum,created_at,km,litri,cena_skupaj,postaja')
+            .eq('car_id', liteCarId)
+            .order('datum', { ascending: false })
+            .limit(20),
+          supabase
+            .from('service_logs')
+            .select('id,datum,created_at,km,opis,servis,cena')
+            .eq('car_id', liteCarId)
+            .order('datum', { ascending: false })
+            .limit(20),
+          supabase
+            .from('expenses')
+            .select('id,datum,created_at,znesek,opis,kategorija')
+            .eq('car_id', liteCarId)
+            .order('datum', { ascending: false })
+            .limit(20),
+        ])
+
+        const rows = [
+          ...(fuelRes.data || []).map((row: any) => ({
+            id: `fuel-${row.id}`,
+            type: tx('Gorivo', 'Fuel'),
+            icon: 'F',
+            date: row.datum || row.created_at,
+            title: row.postaja || tx('Tankanje', 'Fill-up'),
+            meta: [row.km ? formatDistance(row.km, enotaRazdalje) : null, row.litri ? `${row.litri} L` : null].filter(Boolean).join(' · '),
+            amount: row.cena_skupaj ? `${Number(row.cena_skupaj).toFixed(2)} €` : '',
+          })),
+          ...(serviceRes.data || []).map((row: any) => ({
+            id: `service-${row.id}`,
+            type: tx('Servis', 'Service'),
+            icon: 'S',
+            date: row.datum || row.created_at,
+            title: row.opis || row.servis || tx('Servis', 'Service'),
+            meta: row.km ? formatDistance(row.km, enotaRazdalje) : '',
+            amount: row.cena ? `${Number(row.cena).toFixed(2)} €` : '',
+          })),
+          ...(expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba').map((row: any) => ({
+            id: `expense-${row.id}`,
+            type: tx('Strosek', 'Cost'),
+            icon: '€',
+            date: row.datum || row.created_at,
+            title: row.opis || row.kategorija || tx('Strosek', 'Cost'),
+            meta: row.kategorija || '',
+            amount: row.znesek ? `${Number(row.znesek).toFixed(2)} €` : '',
+          })),
+          ...(opomniki[liteCarId] || []).map((row: any) => ({
+            id: `reminder-${row.id}`,
+            type: tx('Opomnik', 'Reminder'),
+            icon: '!',
+            date: row.datum || row.created_at,
+            title: row.tip || tx('Opomnik', 'Reminder'),
+            meta: row.km_opomnik ? formatDistance(row.km_opomnik, enotaRazdalje) : '',
+            amount: '',
+          })),
+        ]
+          .filter((row: any) => row.date)
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .slice(0, 30)
+
+        setLiteHistory(rows)
+      } catch (error) {
+        console.warn('[GarageBase lite] history load failed', error)
+        setLiteHistory([])
+      } finally {
+        setLiteHistoryLoading(false)
+      }
+    }
+
+    loadLiteHistory()
+  }, [showLiteHome, liteDetailOpen, liteCarId, opomniki, enotaRazdalje, language])
 
   const handleInstall = async () => {
     if (!installPrompt) return
@@ -422,15 +512,14 @@ export default function Garaza() {
     setAvti(prev => prev.map(a => a.id === carId ? { ...a, archive_reminder_dismissed_until: until.toISOString() } : a))
   }
 
-  const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
-  const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
   const pojdiNaVnos = (pot: string) => {
     const targetAvto = liteAvto || avti[0]
     if (!targetAvto) {
       router.push('/dodaj-avto')
       return
     }
-    router.push(`${pot}?car=${targetAvto.id}`)
+    const addParam = pot === '/opomniki' ? '&add=1' : ''
+    router.push(`${pot}?car=${targetAvto.id}${addParam}`)
   }
 
   const onDragStart = (index: number) => setDragIndex(index)
@@ -1221,6 +1310,7 @@ export default function Garaza() {
               </button>
             </div>
 
+            {!liteDetailOpen && (
             <div className="space-y-3">
               {avti.map((avto: any, index: number) => {
                 const selected = liteAvto?.id === avto.id
@@ -1229,7 +1319,7 @@ export default function Garaza() {
                 return (
                   <button
                     key={avto.id}
-                    onClick={() => { setLiteCarId(avto.id); odpriVozilo(avto) }}
+                    onClick={() => { setLiteCarId(avto.id); setLiteDetailOpen(true); setLiteHistoryOpen(false) }}
                     className={`grid w-full grid-cols-[136px_minmax(0,1fr)_24px] items-center gap-4 rounded-[22px] border p-2.5 text-left shadow-xl transition-all ${
                       desktopLight
                         ? `bg-white text-[#101225] shadow-[#101225]/6 ${selected ? 'border-[#6c63ff]' : 'border-[#e2e7f2]'}`
@@ -1261,9 +1351,23 @@ export default function Garaza() {
                 )
               })}
             </div>
+            )}
 
-            {liteAvto && (
+            {liteDetailOpen && liteAvto && (
               <div className={`overflow-hidden rounded-[28px] border shadow-xl ${desktopLight ? 'border-[#e2e7f2] bg-white shadow-[#101225]/6' : 'border-[#253142] bg-[#101720] shadow-black/20'}`}>
+                <div className={`flex items-center gap-3 border-b px-4 py-3 ${desktopLight ? 'border-[#e2e7f2]' : 'border-[#253142]'}`}>
+                  <button
+                    onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false) }}
+                    className={`h-11 w-11 rounded-2xl border text-xl font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}
+                    aria-label={tx('Nazaj na vozila', 'Back to vehicles')}
+                  >
+                    ‹
+                  </button>
+                  <div className="min-w-0">
+                    <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(liteAvto)}</p>
+                    <p className={`text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Dodaj nov vnos', 'Add a new entry')}</p>
+                  </div>
+                </div>
                 <div className="relative h-44">
                   {renderVehicleImage(liteAvto, 0, 'h-full w-full object-cover')}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -1315,17 +1419,41 @@ export default function Garaza() {
                 {tx('Opomnik', 'Reminder')}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => router.push(`/dashboard?car=${liteAvto?.id}`)}
-                className="rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-3 text-sm font-bold text-white disabled:opacity-50"
-                disabled={!liteAvto?.id}>
-                {tx('Odpri pregled', 'Open overview')}
+            {liteDetailOpen && liteAvto && (
+            <div className="grid grid-cols-1 gap-3">
+              <button onClick={() => setLiteHistoryOpen(prev => !prev)}
+                className={`rounded-2xl border px-4 py-4 text-base font-black ${desktopLight ? 'border-[#6c63ff33] bg-white text-[#6c63ff]' : 'border-[#6c63ff55] bg-[#6c63ff14] text-[#c8c4ff]'}`}>
+                {liteHistoryOpen ? tx('Skrij zgodovino', 'Hide history') : tx('Pregled zgodovine', 'History overview')}
               </button>
+              {liteHistoryOpen && (
+                <div className={`rounded-[24px] border p-3 ${desktopLight ? 'border-[#e2e7f2] bg-white' : 'border-[#253142] bg-[#101720]'}`}>
+                  <p className={`mb-3 px-1 text-sm font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Zadnje aktivnosti', 'Latest activity')}</p>
+                  {liteHistoryLoading ? (
+                    <p className={`px-1 py-4 text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Nalagam...', 'Loading...')}</p>
+                  ) : liteHistory.length === 0 ? (
+                    <p className={`px-1 py-4 text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Ni zgodovine za to vozilo.', 'No history for this vehicle yet.')}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {liteHistory.map((item: any) => (
+                        <div key={item.id} className={`grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#edf0f7] bg-[#f8f9fd]' : 'border-[#253142] bg-[#0c121a]'}`}>
+                          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6c63ff18] text-sm font-black text-[#6c63ff]">{item.icon}</span>
+                          <span className="min-w-0">
+                            <span className={`block truncate text-sm font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{item.title}</span>
+                            <span className={`block truncate text-xs font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{item.type} · {datumFormat(item.date)}{item.meta ? ` · ${item.meta}` : ''}</span>
+                          </span>
+                          {item.amount && <span className="text-sm font-black text-[#3ecfcf]">{item.amount}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <button onClick={() => pojdiDodajAvto('lite')}
                 className="rounded-xl border border-dashed border-[#6c63ff66] bg-[#6c63ff11] px-3 py-3 text-sm font-bold text-[#a09aff]">
                 + {tx('Dodaj vozilo', 'Add vehicle')}
               </button>
             </div>
+            )}
             {limitMessage && limitAnchor === 'lite' && (
               <p className="rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-base font-black leading-snug text-[#fecaca] shadow-lg shadow-[#ef444422]">
                 {limitMessage}

@@ -50,6 +50,7 @@ export const clearVehicleDataCaches = (carId?: string | null) => {
     `garagebase_cost_totals_${carId}`,
     `garagebase_fuel_history_cache_${carId}`,
     'garagebase_stroski_garaza_cache',
+    'garagebase_stroski_garaza_cache_v2',
     'garagebase_garaza_cache',
   ]
   keys.forEach((key) => localStorage.removeItem(key))
