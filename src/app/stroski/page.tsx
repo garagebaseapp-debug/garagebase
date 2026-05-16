@@ -255,20 +255,30 @@ const mergeCostSummaries = (...summaries: any[]) => {
     const hasRows = item.rows.fuel > 0 || item.rows.service > 0 || item.rows.expense > 0
     if (!hasValues && !hasRows) return
     if (!hasValues && hasRows) {
-      merged.rows.fuel = item.rows.fuel
-      merged.rows.service = item.rows.service
-      merged.rows.expense = item.rows.expense
+      merged.rows.fuel = Math.max(merged.rows.fuel, item.rows.fuel)
+      merged.rows.service = Math.max(merged.rows.service, item.rows.service)
+      merged.rows.expense = Math.max(merged.rows.expense, item.rows.expense)
       return
     }
-    merged.fuel = item.fuel
-    merged.service = item.service
-    merged.expense = item.expense
-    merged.total = item.total > 0 ? item.total : calculatedTotal
-    merged.imported = item.imported
-    merged.garageBase = item.garageBase > 0 ? item.garageBase : (merged.total > 0 ? merged.total - item.imported : 0)
-    merged.rows.fuel = item.rows.fuel
-    merged.rows.service = item.rows.service
-    merged.rows.expense = item.rows.expense
+    const itemTotal = item.total > 0 ? item.total : calculatedTotal
+    const mergedRowCount = merged.rows.fuel + merged.rows.service + merged.rows.expense
+    const itemRowCount = item.rows.fuel + item.rows.service + item.rows.expense
+    const shouldReplace =
+      merged.total <= 0 ||
+      itemTotal > merged.total ||
+      (Math.abs(itemTotal - merged.total) < 0.01 && itemRowCount > mergedRowCount)
+
+    if (shouldReplace) {
+      merged.fuel = item.fuel
+      merged.service = item.service
+      merged.expense = item.expense
+      merged.total = itemTotal
+      merged.imported = item.imported
+      merged.garageBase = item.garageBase > 0 ? item.garageBase : (merged.total > 0 ? merged.total - item.imported : 0)
+    }
+    merged.rows.fuel = Math.max(merged.rows.fuel, item.rows.fuel)
+    merged.rows.service = Math.max(merged.rows.service, item.rows.service)
+    merged.rows.expense = Math.max(merged.rows.expense, item.rows.expense)
   })
   if (merged.total <= 0) merged.total = merged.fuel + merged.service + merged.expense
   if (merged.garageBase <= 0 && merged.total > 0) {
@@ -795,9 +805,7 @@ export default function Stroski() {
     refSummary,
     committedSummary,
   )
-  const renderSummary = hasRowCosts
-    ? mergeCostSummaries(rowManualSummary, fallbackSummary)
-    : fallbackSummary
+  const renderSummary = hasRowCosts ? rowManualSummary : fallbackSummary
   const skupajGorivo = renderSummary.fuel
   const skupajServis = renderSummary.service
   const skupajExpenses = renderSummary.expense
@@ -1205,7 +1213,7 @@ export default function Stroski() {
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
-            <p className="break-words text-3xl font-black leading-none text-white sm:text-4xl">{formatMoney(prikazSkupaj, valuta)}</p>
+            <p className="break-words text-2xl font-black leading-none text-white min-[390px]:text-3xl sm:text-4xl">{formatMoney(prikazSkupaj, valuta)}</p>
           </div>
           <button
             onClick={() => router.push(`/vnos-stroska?car=${avto?.id}`)}
@@ -1218,17 +1226,17 @@ export default function Stroski() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
             <div className="min-w-0 rounded-2xl border border-[#22c55e44] bg-[#22c55e12] p-3 sm:p-4">
               <p className="text-[#22c55e] text-xs font-black uppercase tracking-wide">{tx('Uvoženi stroški', 'Imported costs')}</p>
-              <p className="mt-2 break-words text-xl font-black text-[#22c55e] sm:text-2xl">{formatMoney(prikazUvoz, valuta)}</p>
+              <p className="mt-2 break-words text-lg font-black text-[#22c55e] min-[390px]:text-xl sm:text-2xl">{formatMoney(prikazUvoz, valuta)}</p>
             </div>
-            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] text-xl font-black text-white md:flex">+</div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-[#22c55e55] bg-[#22c55e18] text-xl font-black text-[#22c55e] md:flex">+</div>
             <div className="min-w-0 rounded-2xl border border-[#6c63ff44] bg-[#6c63ff12] p-3 sm:p-4">
               <p className="text-[#a09aff] text-xs font-black uppercase tracking-wide">{tx('GarageBase stroški', 'GarageBase costs')}</p>
-              <p className="mt-2 break-words text-xl font-black text-[#a09aff] sm:text-2xl">{formatMoney(prikazGarageBase, valuta)}</p>
+              <p className="mt-2 break-words text-lg font-black text-[#a09aff] min-[390px]:text-xl sm:text-2xl">{formatMoney(prikazGarageBase, valuta)}</p>
             </div>
-            <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-xl font-black text-white md:flex">=</div>
+            <div className="hidden h-10 w-10 items-center justify-center rounded-full border border-[#6c63ff55] bg-[#6c63ff18] text-xl font-black text-[#a09aff] md:flex">=</div>
             <div className="min-w-0 rounded-2xl border border-[#d8d8e833] bg-[#ffffff08] p-3 sm:p-4">
               <p className="text-[#d8d8e8] text-xs font-black uppercase tracking-wide">{tx('Skupaj', 'Total')}</p>
-              <p className="mt-2 break-words text-xl font-black text-white sm:text-2xl">{formatMoney(prikazSkupaj, valuta)}</p>
+              <p className="mt-2 break-words text-lg font-black text-white min-[390px]:text-xl sm:text-2xl">{formatMoney(prikazSkupaj, valuta)}</p>
             </div>
           </div>
         ) : (
