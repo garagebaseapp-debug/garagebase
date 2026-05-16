@@ -182,6 +182,14 @@ export default function DomovPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        const settings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+        if (settings?.nacin === 'lite') {
+          router.replace('/garaza?direct=1')
+          return
+        }
+      } catch {}
+
+      try {
         if (window.location.search.includes('login=1')) {
           window.history.replaceState({}, '', '/domov')
         }
