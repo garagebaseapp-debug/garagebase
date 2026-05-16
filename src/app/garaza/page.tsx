@@ -571,6 +571,9 @@ export default function Garaza() {
   }
 
   const layoutChoices = [
+    { key: 'malo', label: 'S', desc: tx('Mali seznam', 'Small list') },
+    { key: 'srednje', label: 'M', desc: tx('Srednji seznam', 'Medium list') },
+    { key: 'veliko', label: 'L', desc: tx('Velik prikaz', 'Large view') },
     { key: 'grid', label: '⊞ Grid', desc: tx('Kompaktno', 'Compact') },
     { key: 'kategorije', label: tx('Kategorije', 'Categories'), desc: tx('Po tipu vozila', 'By vehicle type') },
     { key: 'status', label: tx('Status', 'Status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
@@ -798,6 +801,81 @@ export default function Garaza() {
     </div>
   )
 
+  const renderDesktopCategorized = () => {
+    const sections: [string, any[]][] = Array.from(desktopCars.reduce<Map<string, any[]>>((map, car) => {
+      const key = kategorijaVozila(car)
+      map.set(key, [...(map.get(key) || []), car])
+      return map
+    }, new Map<string, any[]>()))
+    return (
+      <div className="space-y-6">
+        {sections.map(([title, cars]) => (
+          <section key={title}>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className={`text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{title}</h2>
+              <span className={`text-sm font-black ${desktopLight ? 'text-[#4f5870]' : 'text-[#8a8aa8]'}`}>{cars.length}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-4 2xl:grid-cols-4">
+              {cars.map((car, index) => {
+                const imageSrc = slikaVozila(car)
+                return (
+                  <button
+                    key={car.id}
+                    onClick={() => odpriVozilo(car)}
+                    className={`overflow-hidden rounded-2xl border text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
+                  >
+                    <div className={`h-36 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
+                      {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(car)}</div>}
+                    </div>
+                    <div className="p-4">
+                      <p className={`truncate text-base font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
+                      <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(car) || '-'}</p>
+                      <div className="mt-3"><DesktopReminderBadges car={car} /></div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    )
+  }
+
+  const renderDesktopStatus = () => (
+    <div className="space-y-3">
+      {desktopCars.map((car, index) => {
+        const imageSrc = slikaVozila(car)
+        const status = statusOpomnika(car)
+        const statusColor = status.tone.includes('ef4444')
+          ? 'border-l-[#ef4444] bg-[#ef44440d]'
+          : status.tone.includes('f59e0b')
+            ? 'border-l-[#f59e0b] bg-[#f59e0b0d]'
+            : status.tone.includes('16a34a')
+              ? 'border-l-[#16a34a] bg-[#16a34a0d]'
+              : ''
+        return (
+          <button
+            key={car.id}
+            onClick={() => odpriVozilo(car)}
+            className={`grid w-full grid-cols-[96px_minmax(0,1fr)_260px] items-center gap-5 rounded-2xl border border-l-4 p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${statusColor} ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
+          >
+            <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
+              {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
+            </div>
+            <div className="min-w-0">
+              <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
+              <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(car) || '-'}</p>
+            </div>
+            <div className={`justify-self-end rounded-2xl border px-4 py-3 text-right text-sm font-black ${status.tone}`}>
+              {status.text}
+            </div>
+          </button>
+        )
+      })}
+    </div>
+  )
+
   const renderDesktopGarage = () => (
     <div className={`gb-desktop-garage hidden min-h-screen xl:flex ${desktopLight ? 'bg-[#eef2fb] text-[#101225]' : 'bg-[#080810] text-white'}`}>
       <aside className={`flex w-[250px] shrink-0 flex-col border-r ${desktopLight ? 'border-[#dde3f2] bg-white' : 'border-[#1e1e32] bg-[#0b0b14]'}`}>
@@ -917,17 +995,53 @@ export default function Garaza() {
               )}
             </div>
           </div>
-        ) : desktopListMode ? (
-          <div className="space-y-3">
+        ) : !arhiv && prikaz === 'kategorije' ? (
+          renderDesktopCategorized()
+        ) : !arhiv && prikaz === 'status' ? (
+          renderDesktopStatus()
+        ) : prikaz === 'veliko' ? (
+          <div className="grid grid-cols-2 gap-5 2xl:grid-cols-3">
             {desktopCars.map((avto, index) => {
               const imageSrc = slikaVozila(avto)
               return (
                 <button
                   key={avto.id}
                   onClick={() => odpriVozilo(avto)}
-                  className={`group grid w-full grid-cols-[116px_minmax(0,1fr)_minmax(280px,0.8fr)_120px_38px] items-center gap-5 rounded-2xl border p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
+                  className={`overflow-hidden rounded-[28px] border text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
                 >
-                  <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
+                  <div className={`h-64 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
+                    {imageSrc ? (
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-lg font-black text-[#6c63ff]">{imeVozila(avto)}</div>
+                    )}
+                  </div>
+                  <div className="p-5">
+                    <div className="mb-4 flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className={`truncate text-2xl font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</p>
+                        <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(avto) || '-'}</p>
+                      </div>
+                      {avto.tablica && <p className={`font-mono text-sm font-black tracking-[0.12em] ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{avto.tablica.toUpperCase()}</p>}
+                    </div>
+                    <DesktopReminderBadges car={avto} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        ) : desktopListMode ? (
+          <div className="space-y-3">
+            {desktopCars.map((avto, index) => {
+              const imageSrc = slikaVozila(avto)
+              const compact = prikaz === 'malo'
+              return (
+                <button
+                  key={avto.id}
+                  onClick={() => odpriVozilo(avto)}
+                  className={`group grid w-full items-center rounded-2xl border text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${compact ? 'grid-cols-[78px_minmax(0,1fr)_220px_110px_32px] gap-4 p-2' : 'grid-cols-[116px_minmax(0,1fr)_minmax(280px,0.8fr)_120px_38px] gap-5 p-3'} ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
+                >
+                  <div className={`${compact ? 'h-14' : 'h-20'} overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
                       <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
                     ) : (
@@ -935,8 +1049,8 @@ export default function Garaza() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</p>
-                    <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(avto) || '-'}</p>
+                    <p className={`truncate font-black ${compact ? 'text-base' : 'text-lg'} ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</p>
+                    <p className={`mt-1 font-semibold ${compact ? 'text-xs' : 'text-sm'} ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(avto) || '-'}</p>
                   </div>
                   <DesktopReminderBadges car={avto} />
                   <div className="text-right">

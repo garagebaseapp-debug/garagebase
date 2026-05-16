@@ -251,6 +251,15 @@ const mergeCostSummaries = (...summaries: any[]) => {
     if (!summary) return
     const item = normalizeCostSummary(summary)
     const calculatedTotal = item.fuel + item.service + item.expense
+    const hasValues = calculatedTotal > 0 || item.total > 0 || item.imported > 0 || item.garageBase > 0
+    const hasRows = item.rows.fuel > 0 || item.rows.service > 0 || item.rows.expense > 0
+    if (!hasValues && !hasRows) return
+    if (!hasValues && hasRows) {
+      merged.rows.fuel = item.rows.fuel
+      merged.rows.service = item.rows.service
+      merged.rows.expense = item.rows.expense
+      return
+    }
     merged.fuel = item.fuel
     merged.service = item.service
     merged.expense = item.expense
@@ -720,16 +729,10 @@ export default function Stroski() {
   const fuelHistoryRows = currentCarId ? readFuelHistoryCache(currentCarId) : []
   const firstRows = (...sets: any[][]) => sets.find((set) => Array.isArray(set) && set.length > 0) || []
   const refRows = latestRowsRef.current
-  const displayGorivo = loadedRows.ready
-    ? gorivo
-    : firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, refRows.gorivo, renderCache?.gorivo || [], fuelHistoryRows)
-  const displayServisi = loadedRows.ready
-    ? servisi
-    : firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, refRows.servisi, renderCache?.servisi || [])
-  const displayExpenses = loadedRows.ready
-    ? expenses
-    : firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, refRows.expenses, renderCache?.expenses || [])
-  const cachedVehicleStats = !loadedRows.ready && currentCarId ? readVehicleStatsCache(currentCarId) : null
+  const displayGorivo = firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, refRows.gorivo, renderCache?.gorivo || [], fuelHistoryRows)
+  const displayServisi = firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, refRows.servisi, renderCache?.servisi || [])
+  const displayExpenses = firstRows(expenses, loadedRows.expenses, costSnapshot.expenses, refRows.expenses, renderCache?.expenses || [])
+  const cachedVehicleStats = currentCarId ? readVehicleStatsCache(currentCarId) : null
   const hasRowCosts = displayGorivo.length > 0 || displayServisi.length > 0 || displayExpenses.length > 0
   const rowsDerivedStats = hasRowCosts
     ? buildRowStatsFromRows(displayGorivo, displayServisi, displayExpenses, avto || {})
@@ -772,11 +775,11 @@ export default function Stroski() {
   const fallbackSummary = mergeCostSummaries(
     statsRowSummary,
     liveCostSummary,
-    loadedRows.ready ? emptyCostSummary() : loadedSummary,
-    loadedRows.ready ? emptyCostSummary() : directCostSummary,
-    loadedRows.ready ? emptyCostSummary() : costSnapshot.summary,
-    loadedRows.ready ? emptyCostSummary() : refSummary,
-    loadedRows.ready ? emptyCostSummary() : committedSummary,
+    loadedSummary,
+    directCostSummary,
+    costSnapshot.summary,
+    refSummary,
+    committedSummary,
   )
   const renderSummary = hasRowCosts ? rowManualSummary : fallbackSummary
   const skupajGorivo = renderSummary.fuel
