@@ -795,7 +795,9 @@ export default function Stroski() {
     refSummary,
     committedSummary,
   )
-  const renderSummary = hasRowCosts ? rowManualSummary : fallbackSummary
+  const renderSummary = hasRowCosts
+    ? mergeCostSummaries(rowManualSummary, fallbackSummary)
+    : fallbackSummary
   const skupajGorivo = renderSummary.fuel
   const skupajServis = renderSummary.service
   const skupajExpenses = renderSummary.expense
@@ -1199,34 +1201,34 @@ export default function Stroski() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-[#6c63ff33] bg-[#0f0f1a] p-6 mb-4 shadow-2xl shadow-black/10">
+      <div className="mb-4 max-w-full overflow-hidden rounded-3xl border border-[#6c63ff33] bg-[#0f0f1a] p-4 shadow-2xl shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
+          <div className="min-w-0">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
-            <p className="text-white font-black text-4xl leading-none">{formatMoney(prikazSkupaj, valuta)}</p>
+            <p className="break-words text-3xl font-black leading-none text-white sm:text-4xl">{formatMoney(prikazSkupaj, valuta)}</p>
           </div>
           <button
             onClick={() => router.push(`/vnos-stroska?car=${avto?.id}`)}
-            className="rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]"
+            className="shrink-0 rounded-2xl bg-[#6c63ff] px-3 py-2.5 text-xs font-black text-white shadow-lg shadow-[#6c63ff33] sm:px-4 sm:py-3 sm:text-sm"
           >
             + {tx('Dodaj', 'Add')}
           </button>
         </div>
         {hasImportedCosts ? (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-center">
-            <div className="rounded-2xl border border-[#22c55e44] bg-[#22c55e12] p-4">
+            <div className="min-w-0 rounded-2xl border border-[#22c55e44] bg-[#22c55e12] p-3 sm:p-4">
               <p className="text-[#22c55e] text-xs font-black uppercase tracking-wide">{tx('Uvoženi stroški', 'Imported costs')}</p>
-              <p className="mt-2 text-2xl font-black text-[#22c55e]">{formatMoney(prikazUvoz, valuta)}</p>
+              <p className="mt-2 break-words text-xl font-black text-[#22c55e] sm:text-2xl">{formatMoney(prikazUvoz, valuta)}</p>
             </div>
             <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#22c55e] text-xl font-black text-white md:flex">+</div>
-            <div className="rounded-2xl border border-[#6c63ff44] bg-[#6c63ff12] p-4">
+            <div className="min-w-0 rounded-2xl border border-[#6c63ff44] bg-[#6c63ff12] p-3 sm:p-4">
               <p className="text-[#a09aff] text-xs font-black uppercase tracking-wide">{tx('GarageBase stroški', 'GarageBase costs')}</p>
-              <p className="mt-2 text-2xl font-black text-[#a09aff]">{formatMoney(prikazGarageBase, valuta)}</p>
+              <p className="mt-2 break-words text-xl font-black text-[#a09aff] sm:text-2xl">{formatMoney(prikazGarageBase, valuta)}</p>
             </div>
             <div className="hidden h-10 w-10 items-center justify-center rounded-full bg-[#111827] text-xl font-black text-white md:flex">=</div>
-            <div className="rounded-2xl border border-[#d8d8e833] bg-[#ffffff08] p-4">
+            <div className="min-w-0 rounded-2xl border border-[#d8d8e833] bg-[#ffffff08] p-3 sm:p-4">
               <p className="text-[#d8d8e8] text-xs font-black uppercase tracking-wide">{tx('Skupaj', 'Total')}</p>
-              <p className="mt-2 text-2xl font-black text-white">{formatMoney(prikazSkupaj, valuta)}</p>
+              <p className="mt-2 break-words text-xl font-black text-white sm:text-2xl">{formatMoney(prikazSkupaj, valuta)}</p>
             </div>
           </div>
         ) : (

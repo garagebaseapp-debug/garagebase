@@ -815,22 +815,29 @@ export default function Garaza() {
               <h2 className={`text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{title}</h2>
               <span className={`text-sm font-black ${desktopLight ? 'text-[#4f5870]' : 'text-[#8a8aa8]'}`}>{cars.length}</span>
             </div>
-            <div className="grid grid-cols-3 gap-4 2xl:grid-cols-4">
+            <div className="space-y-3">
               {cars.map((car, index) => {
                 const imageSrc = slikaVozila(car)
+                const status = statusOpomnika(car)
                 return (
                   <button
                     key={car.id}
                     onClick={() => odpriVozilo(car)}
-                    className={`overflow-hidden rounded-2xl border text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
+                    className={`grid w-full grid-cols-[88px_minmax(0,1fr)_190px] items-center gap-4 rounded-2xl border p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
                   >
-                    <div className={`h-36 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
-                      {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(car)}</div>}
+                    <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
+                      {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
                     </div>
-                    <div className="p-4">
-                      <p className={`truncate text-base font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
+                    <div className="min-w-0">
+                      <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
                       <p className={`mt-1 text-sm font-semibold ${desktopLight ? 'text-[#333a4f]' : 'text-[#8a8aa8]'}`}>{metaVozila(car) || '-'}</p>
-                      <div className="mt-3"><DesktopReminderBadges car={car} /></div>
+                      <div className="mt-2"><DesktopReminderBadges car={car} /></div>
+                    </div>
+                    <div className="justify-self-end text-right">
+                      {car.tablica && <p className={`mb-2 font-mono text-sm font-black tracking-[0.12em] ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{car.tablica.toUpperCase()}</p>}
+                      <span className={`inline-flex max-w-[190px] rounded-2xl border px-3 py-2 text-xs font-black ${status.tone}`}>
+                        {status.text}
+                      </span>
                     </div>
                   </button>
                 )

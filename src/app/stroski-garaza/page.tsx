@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
-import { fuelCostValue, numberValue } from '@/lib/vehicle-costs'
+import { buildVehicleStats } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
@@ -82,15 +82,11 @@ export default function StroškiGaraza() {
           const queryError = gorivoRes.error || servisiRes.error || expensesRes.error
           if (queryError) throw queryError
 
-          for (const row of gorivoRes.data || []) {
-            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + fuelCostValue(row)
-          }
-          for (const row of servisiRes.data || []) {
-            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.cena)
-          }
-          for (const row of expensesRes.data || []) {
-            if (row.kategorija === 'km_sprememba') continue
-            stroskoviMap[row.car_id] = (stroskoviMap[row.car_id] || 0) + numberValue(row.znesek)
+          for (const avto of cars) {
+            const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
+            const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
+            const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
+            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.total
           }
         }
 
