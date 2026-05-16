@@ -9,7 +9,7 @@ import { buildVehicleStats } from '@/lib/vehicle-costs'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
-const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v2'
+const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v3'
 type CostSummary = { garageBase: number; imported: number; total: number }
 
 const emptyCostSummary = (): CostSummary => ({ garageBase: 0, imported: 0, total: 0 })
@@ -137,8 +137,8 @@ export default function StroškiGaraza() {
   const skupniGarageBase = avti.reduce((sum, avto) => sum + costForCar(avto.id).garageBase, 0)
   const skupniUvoz = avti.reduce((sum, avto) => sum + costForCar(avto.id).imported, 0)
   const skupniStrosek = avti.reduce((sum, avto) => sum + costForCar(avto.id).total, 0)
-  const najdrazjeVozilo = [...avti].sort((a, b) => costForCar(b.id).garageBase - costForCar(a.id).garageBase)[0]
-  const maxStrosek = Math.max(1, ...avti.map((avto) => costForCar(avto.id).garageBase))
+  const najdrazjeVozilo = [...avti].sort((a, b) => costForCar(b.id).total - costForCar(a.id).total)[0]
+  const maxStrosek = Math.max(1, ...avti.map((avto) => costForCar(avto.id).total))
 
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
@@ -198,7 +198,7 @@ export default function StroškiGaraza() {
             <div className="space-y-3">
               {avti.map((avto) => {
                 const summary = costForCar(avto.id)
-                const cost = summary.garageBase
+                const cost = summary.total
                 const width = Math.max(4, Math.round((cost / maxStrosek) * 100))
                 return (
                   <button key={avto.id} onClick={() => window.location.href = `/stroski?car=${avto.id}`} className="grid w-full grid-cols-[72px_minmax(0,1fr)_150px] items-center gap-4 rounded-2xl border border-[#1e1e32] bg-[#11111d] p-3 text-left transition-colors hover:border-[#6c63ff66]">
@@ -213,9 +213,9 @@ export default function StroškiGaraza() {
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-black text-[#3ecfcf]">{cost.toFixed(0)} {currencySymbol(valuta)}</p>
-                      <p className="text-xs font-semibold text-[#8a8aa8]">GarageBase</p>
+                      <p className="text-xs font-semibold text-[#8a8aa8]">{tx('skupaj', 'total')}</p>
+                      <p className="text-[11px] font-semibold text-[#c8c4ff]">GarageBase: {summary.garageBase.toFixed(0)} {currencySymbol(valuta)}</p>
                       {summary.imported > 0 && <p className="text-[11px] font-semibold text-[#86efac]">{tx('uvoz', 'import')}: {summary.imported.toFixed(0)} {currencySymbol(valuta)}</p>}
-                      <p className="text-[11px] font-semibold text-[#5a5a80]">{tx('skupaj', 'total')}: {summary.total.toFixed(0)} {currencySymbol(valuta)}</p>
                     </div>
                   </button>
                 )
@@ -256,8 +256,9 @@ export default function StroškiGaraza() {
                 <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="text-right">
-                    <p className="text-[#3ecfcf] font-bold text-xl">{costForCar(avto.id).garageBase.toFixed(0)} {currencySymbol(valuta)}</p>
-                <p className="text-[#5a5a80] text-xs">GarageBase</p>
+                    <p className="text-[#3ecfcf] font-bold text-xl">{costForCar(avto.id).total.toFixed(0)} {currencySymbol(valuta)}</p>
+                <p className="text-[#5a5a80] text-xs">{tx('skupaj', 'total')}</p>
+                <p className="text-[#c8c4ff] text-[11px]">GarageBase: {costForCar(avto.id).garageBase.toFixed(0)} {currencySymbol(valuta)}</p>
                 {costForCar(avto.id).imported > 0 && <p className="text-[#86efac] text-[11px]">{tx('uvoz', 'import')}: {costForCar(avto.id).imported.toFixed(0)} {currencySymbol(valuta)}</p>}
               </div>
             </div>
