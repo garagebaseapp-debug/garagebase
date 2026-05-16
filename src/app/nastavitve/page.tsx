@@ -797,8 +797,67 @@ export default function Nastavitve() {
           </div>
         </div>
 
-        <div>
+        <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-5">
+          <div className="mb-4 overflow-x-auto rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3 lg:hidden">
+            <div className="flex min-w-max gap-2">
+              {settingsSections.map((section) => {
+                const active = section.id === settingsView
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => selectSettingsSection(section.id)}
+                    className={`rounded-2xl border px-4 py-2 text-sm font-black transition-colors ${
+                      active
+                        ? 'border-[#6c63ff] bg-[#6c63ff] text-white'
+                        : 'border-[#1e1e32] bg-[#13131f] text-[#8a8aa8]'
+                    }`}
+                  >
+                    {section.title}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-6 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
+              <p className="px-3 pb-2 text-xs font-black uppercase tracking-[0.18em] text-[#5a5a80]">
+                {tx('Razdelki', 'Sections')}
+              </p>
+              <div className="flex flex-col gap-2">
+                {settingsSections.map((section) => {
+                  const active = section.id === settingsView
+                  return (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => selectSettingsSection(section.id)}
+                      className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
+                        active
+                          ? 'border-[#6c63ff] bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff22]'
+                          : 'border-transparent bg-transparent text-[#8a8aa8] hover:border-[#1e1e32] hover:bg-[#13131f] hover:text-white'
+                      }`}
+                    >
+                      <span className="block text-sm font-black">{section.title}</span>
+                      <span className={`mt-1 block text-xs ${active ? 'text-white/75' : 'text-[#5a5a80]'}`}>
+                        {section.desc}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </aside>
+
           <main className="grid gap-4 lg:grid-cols-2">
+      {settingsView !== 'vse' && (
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5 lg:col-span-2">
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6c63ff]">{tx('Izbrano', 'Selected')}</p>
+          <h2 className="mt-2 text-2xl font-black text-white">{selectedSection.title}</h2>
+          <p className="mt-1 text-sm text-[#5a5a80]">{selectedSection.desc}</p>
+        </div>
+      )}
       {settingsView && (
         <>
       {/* Profil */}
