@@ -10,12 +10,27 @@ import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 
 const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v2'
+type CostSummary = { garageBase: number; imported: number; total: number }
+
+const emptyCostSummary = (): CostSummary => ({ garageBase: 0, imported: 0, total: 0 })
+
+const normalizeCostSummary = (value: any): CostSummary => {
+  if (typeof value === 'number') return { garageBase: value, imported: 0, total: value }
+  const garageBase = Number(value?.garageBase || 0)
+  const imported = Number(value?.imported || 0)
+  const total = Number(value?.total || garageBase + imported || 0)
+  return {
+    garageBase: Number.isFinite(garageBase) ? garageBase : 0,
+    imported: Number.isFinite(imported) ? imported : 0,
+    total: Number.isFinite(total) ? total : 0,
+  }
+}
 
 export default function StroškiGaraza() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const [avti, setAvti] = useState<any[]>([])
-  const [stroski, setStroski] = useState<{ [key: string]: number }>({})
+  const [stroski, setStroski] = useState<{ [key: string]: CostSummary }>({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -50,7 +65,13 @@ export default function StroškiGaraza() {
             const savedAt = Number(parsed?.savedAt || 0)
             const age = Date.now() - savedAt
             const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
-            if (fresh && parsed.stroski) setStroski(parsed.stroski)
+            if (fresh && parsed.stroski) {
+              const normalized: { [key: string]: CostSummary } = {}
+              Object.entries(parsed.stroski).forEach(([carId, value]) => {
+                normalized[carId] = normalizeCostSummary(value)
+              })
+              setStroski(normalized)
+            }
           } catch {}
         }
 
@@ -71,8 +92,8 @@ export default function StroškiGaraza() {
         const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
         setAvti(cars)
 
-        const stroskoviMap: { [key: string]: number } = {}
-        for (const avto of cars) stroskoviMap[avto.id] = 0
+        const stroskoviMap: { [key: string]: CostSummary } = {}
+        for (const avto of cars) stroskoviMap[avto.id] = emptyCostSummary()
 
         if (cars.length > 0) {
           const ids = cars.map((avto: any) => avto.id)
@@ -88,7 +109,12 @@ export default function StroškiGaraza() {
             const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
             const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
             const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
-            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.garageBase
+            const stats = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs
+            stroskoviMap[avto.id] = {
+              garageBase: stats.garageBase,
+              imported: stats.imported,
+              total: stats.total,
+            }
           }
         }
 
@@ -107,9 +133,12 @@ export default function StroškiGaraza() {
     init()
   }, [language])
 
-  const skupniStrosek = avti.reduce((sum, avto) => sum + (stroski[avto.id] || 0), 0)
-  const najdrazjeVozilo = [...avti].sort((a, b) => (stroski[b.id] || 0) - (stroski[a.id] || 0))[0]
-  const maxStrosek = Math.max(1, ...avti.map((avto) => stroski[avto.id] || 0))
+  const costForCar = (carId: string) => normalizeCostSummary(stroski[carId])
+  const skupniGarageBase = avti.reduce((sum, avto) => sum + costForCar(avto.id).garageBase, 0)
+  const skupniUvoz = avti.reduce((sum, avto) => sum + costForCar(avto.id).imported, 0)
+  const skupniStrosek = avti.reduce((sum, avto) => sum + costForCar(avto.id).total, 0)
+  const najdrazjeVozilo = [...avti].sort((a, b) => costForCar(b.id).garageBase - costForCar(a.id).garageBase)[0]
+  const maxStrosek = Math.max(1, ...avti.map((avto) => costForCar(avto.id).garageBase))
 
   return (
     <div className="min-h-screen bg-[#080810] flex flex-col pb-20">
@@ -146,6 +175,8 @@ export default function StroškiGaraza() {
             <button onClick={() => window.location.href = '/vnos-stroska'} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10">
               <p className="text-sm font-black text-[#8a8aa8]">{tx('Skupni stroški', 'Total costs')}</p>
               <p className="mt-3 text-3xl font-black text-white">{skupniStrosek.toFixed(0)} {currencySymbol(valuta)}</p>
+              <p className="mt-2 text-xs font-bold text-[#c8c4ff]">{tx('GarageBase vnosi', 'GarageBase entries')}: {skupniGarageBase.toFixed(0)} {currencySymbol(valuta)}</p>
+              <p className="text-xs font-bold text-[#86efac]">{tx('Uvozena zgodovina', 'Imported history')}: {skupniUvoz.toFixed(0)} {currencySymbol(valuta)}</p>
             </button>
             <button onClick={() => najdrazjeVozilo && (window.location.href = `/stroski?car=${najdrazjeVozilo.id}`)} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10">
               <p className="text-sm font-black text-[#8a8aa8]">{tx('Največ stroškov', 'Highest cost')}</p>
@@ -166,7 +197,8 @@ export default function StroškiGaraza() {
             </div>
             <div className="space-y-3">
               {avti.map((avto) => {
-                const cost = stroski[avto.id] || 0
+                const summary = costForCar(avto.id)
+                const cost = summary.garageBase
                 const width = Math.max(4, Math.round((cost / maxStrosek) * 100))
                 return (
                   <button key={avto.id} onClick={() => window.location.href = `/stroski?car=${avto.id}`} className="grid w-full grid-cols-[72px_minmax(0,1fr)_150px] items-center gap-4 rounded-2xl border border-[#1e1e32] bg-[#11111d] p-3 text-left transition-colors hover:border-[#6c63ff66]">
@@ -181,7 +213,9 @@ export default function StroškiGaraza() {
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-black text-[#3ecfcf]">{cost.toFixed(0)} {currencySymbol(valuta)}</p>
-                      <p className="text-xs font-semibold text-[#8a8aa8]">{tx('skupaj', 'total')}</p>
+                      <p className="text-xs font-semibold text-[#8a8aa8]">GarageBase</p>
+                      {summary.imported > 0 && <p className="text-[11px] font-semibold text-[#86efac]">{tx('uvoz', 'import')}: {summary.imported.toFixed(0)} {currencySymbol(valuta)}</p>}
+                      <p className="text-[11px] font-semibold text-[#5a5a80]">{tx('skupaj', 'total')}: {summary.total.toFixed(0)} {currencySymbol(valuta)}</p>
                     </div>
                   </button>
                 )
@@ -222,8 +256,9 @@ export default function StroškiGaraza() {
                 <p className="text-[#5a5a80] text-xs mt-1">{[avto.letnik, avto.gorivo].filter(Boolean).join(' · ')}</p>
               </div>
               <div className="text-right">
-                    <p className="text-[#3ecfcf] font-bold text-xl">{(stroski[avto.id] || 0).toFixed(0)} {currencySymbol(valuta)}</p>
-                <p className="text-[#5a5a80] text-xs">{tx('skupaj', 'total')}</p>
+                    <p className="text-[#3ecfcf] font-bold text-xl">{costForCar(avto.id).garageBase.toFixed(0)} {currencySymbol(valuta)}</p>
+                <p className="text-[#5a5a80] text-xs">GarageBase</p>
+                {costForCar(avto.id).imported > 0 && <p className="text-[#86efac] text-[11px]">{tx('uvoz', 'import')}: {costForCar(avto.id).imported.toFixed(0)} {currencySymbol(valuta)}</p>}
               </div>
             </div>
           </div>
