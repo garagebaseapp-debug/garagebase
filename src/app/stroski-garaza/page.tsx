@@ -75,9 +75,9 @@ export default function StroškiGaraza() {
         if (cars.length > 0) {
           const ids = cars.map((avto: any) => avto.id)
           const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
-            supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter').in('car_id', ids),
-            supabase.from('service_logs').select('car_id,cena').in('car_id', ids),
-            supabase.from('expenses').select('car_id,znesek,kategorija').in('car_id', ids),
+            supabase.from('fuel_logs').select('car_id,cena_skupaj,litri,cena_na_liter,import_batch_id,source_owner_label,created_at').in('car_id', ids),
+            supabase.from('service_logs').select('car_id,cena,import_batch_id,source_owner_label,created_at').in('car_id', ids),
+            supabase.from('expenses').select('car_id,znesek,kategorija,import_batch_id,source_owner_label,created_at').in('car_id', ids),
           ])
           const queryError = gorivoRes.error || servisiRes.error || expensesRes.error
           if (queryError) throw queryError
@@ -86,7 +86,7 @@ export default function StroškiGaraza() {
             const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
             const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
             const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
-            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.total
+            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.garageBase
           }
         }
 

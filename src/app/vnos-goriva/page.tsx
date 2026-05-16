@@ -495,7 +495,8 @@ export default function VnosGoriva() {
     }
 
     let payloadForInsert: Record<string, unknown> = fuelPayload
-    let { error } = await supabase.from('fuel_logs').insert(payloadForInsert)
+    let insertResult = await supabase.from('fuel_logs').insert(payloadForInsert).select('id,car_id,km,datum').single()
+    let error = insertResult.error
     const removedColumns = new Set<string>()
 
     while (error) {
@@ -504,12 +505,20 @@ export default function VnosGoriva() {
 
       removedColumns.add(missingColumn)
       payloadForInsert = stripColumns(fuelPayload, removedColumns)
-      const retry = await supabase.from('fuel_logs').insert(payloadForInsert)
-      error = retry.error
+      insertResult = await supabase.from('fuel_logs').insert(payloadForInsert).select('id,car_id,km,datum').single()
+      error = insertResult.error
     }
 
     if (error) {
       setMessage(tx('Napaka: ', 'Error: ') + error.message)
+      setLoading(false)
+      return
+    }
+    if (!insertResult.data?.id) {
+      setMessage(tx(
+        'Tankanje ni bilo potrjeno v bazi. Osvezi stran in poskusi znova.',
+        'The fill-up was not confirmed in the database. Refresh the page and try again.'
+      ))
       setLoading(false)
       return
     }

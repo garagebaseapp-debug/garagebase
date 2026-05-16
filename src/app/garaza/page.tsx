@@ -1206,58 +1206,94 @@ export default function Garaza() {
       )}
 
       {showLiteHome && (
-        <div className="px-5 pb-4">
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-4 space-y-4"
-            style={{ '--gb-card-font-scale': garazaPisava / 100 } as any}>
-            <div className="flex items-start justify-between gap-3 mb-3">
+        <div className={`flex-1 overflow-y-auto px-5 pb-4 ${desktopLight ? 'bg-[#f6f7fb]' : 'bg-[#080c12]'}`}>
+          <div className="space-y-5" style={{ '--gb-card-font-scale': garazaPisava / 100 } as any}>
+            <div className="flex items-center justify-between gap-3 pt-1">
               <div>
-                <p className="text-white font-bold text-[calc(18px*var(--gb-card-font-scale,1))]">{tx('Hitri vnos', 'Quick entry')}</p>
-                <p className="text-[#8a8ab0] text-[calc(12px*var(--gb-card-font-scale,1))] mt-0.5">
-                  {tx('Lite nacin prikaze samo najpogostejse akcije.', 'Lite mode shows only the most common actions.')}
+                <p className={`text-[calc(26px*var(--gb-card-font-scale,1))] font-black leading-none ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>
+                  GarageBase <span className="rounded-lg bg-[#6c63ff] px-2 py-1 text-sm text-white">Lite</span>
                 </p>
+                <p className={`mt-2 text-[calc(14px*var(--gb-card-font-scale,1))] font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Moja vozila', 'My vehicles')}</p>
               </div>
-              <button onClick={() => router.push('/nastavitve')}
-                className="bg-[#13131f] border border-[#1e1e32] text-[#8080a0] text-xs font-semibold px-3 py-2 rounded-xl">
-                {tx('Nastavitve', 'Settings')}
+              <button onClick={() => pojdiDodajAvto('lite')}
+                className="rounded-2xl bg-[#6c63ff] px-5 py-3 text-base font-black text-white shadow-xl shadow-[#6c63ff44]">
+                + {tx('Avto', 'Vehicle')}
               </button>
             </div>
-            <div className="rounded-2xl border border-[#2a2a40] bg-[#13131f] p-3">
-              <p className="text-[#8a8ab0] text-xs uppercase tracking-wider mb-2">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {avti.map((avto: any, index: number) => {
-                  const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
-                  const selected = liteAvto?.id === avto.id
-                  const imageSrc = slikaVozila(avto)
-                  return (
-                    <button key={avto.id} onClick={() => setLiteCarId(avto.id)}
-                      className={`relative shrink-0 rounded-xl border-2 ${priority.border} ${priority.glow} px-2 py-2 text-left min-w-[118px] shadow-md transition-all ${
-                        selected
-                          ? 'gb-lite-selected bg-[#3ecfcf22] text-white ring-4 ring-[#3ecfcfaa] border-[#3ecfcf] shadow-[#3ecfcf44]'
-                          : 'bg-[#0f0f1a] text-[#8a8ab0]'
-                      }`}>
-                      {selected && (
-                        <span className="absolute left-2 top-2 z-10 rounded-full bg-[#3ecfcf] px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-black">
-                          {tx('Izbrano', 'Selected')}
+
+            <div className="space-y-3">
+              {avti.map((avto: any, index: number) => {
+                const selected = liteAvto?.id === avto.id
+                const imageSrc = slikaVozila(avto)
+                const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
+                return (
+                  <button
+                    key={avto.id}
+                    onClick={() => { setLiteCarId(avto.id); odpriVozilo(avto) }}
+                    className={`grid w-full grid-cols-[136px_minmax(0,1fr)_24px] items-center gap-4 rounded-[22px] border p-2.5 text-left shadow-xl transition-all ${
+                      desktopLight
+                        ? `bg-white text-[#101225] shadow-[#101225]/6 ${selected ? 'border-[#6c63ff]' : 'border-[#e2e7f2]'}`
+                        : `bg-[#101720] text-white shadow-black/20 ${selected ? 'border-[#6c63ff]' : 'border-[#253142]'}`
+                    }`}
+                  >
+                    <span className="relative h-24 overflow-hidden rounded-[18px] bg-[#111827]">
+                      {imageSrc ? (
+                        <img src={imageSrc} alt={imeVozila(avto)}
+                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
+                          {imeVozila(avto)}
                         </span>
                       )}
-                      <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/40 shadow`} />
-                      <span className="mb-2 block h-14 w-full overflow-hidden rounded-lg bg-[#080810]">
-                        {imageSrc ? (
-                          <img src={imageSrc} alt={imeVozila(avto)}
-                            loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
-                            {imeVozila(avto)}
-                          </span>
-                        )}
+                      <span className={`absolute right-2 top-2 h-3 w-3 rounded-full ${priority.dot} border border-white/60`} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className={`block truncate text-[calc(21px*var(--gb-card-font-scale,1))] font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(avto)}</span>
+                      <span className={`mt-2 block truncate text-[calc(15px*var(--gb-card-font-scale,1))] font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>
+                        ⛽ {avto.gorivo || tx('Gorivo', 'Fuel')}
                       </span>
-                      <span className="block max-w-[100px] truncate text-sm font-black">{imeVozila(avto)}</span>
-                    </button>
-                  )
-                })}
-              </div>
+                      <span className={`mt-2 block text-[calc(15px*var(--gb-card-font-scale,1))] font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>
+                        {avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : '-'}
+                      </span>
+                    </span>
+                    <span className={`text-3xl font-light ${desktopLight ? 'text-[#6b7280]' : 'text-[#a8b0c0]'}`}>›</span>
+                  </button>
+                )
+              })}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+
+            {liteAvto && (
+              <div className={`overflow-hidden rounded-[28px] border shadow-xl ${desktopLight ? 'border-[#e2e7f2] bg-white shadow-[#101225]/6' : 'border-[#253142] bg-[#101720] shadow-black/20'}`}>
+                <div className="relative h-44">
+                  {renderVehicleImage(liteAvto, 0, 'h-full w-full object-cover')}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <button onClick={() => router.push(`/nastavitve-avta?car=${liteAvto.id}`)}
+                    className="absolute right-4 top-4 rounded-2xl bg-white/15 px-4 py-2 text-sm font-black text-white backdrop-blur-md">
+                    {tx('Uredi', 'Edit')}
+                  </button>
+                  <div className="absolute bottom-4 left-4 right-4">
+                    <p className="truncate text-3xl font-black text-white">{imeVozila(liteAvto)}</p>
+                    <p className="mt-2 text-base font-semibold text-white/75">⛽ {liteAvto.gorivo || '-'} <span className="float-right">{liteAvto.km_trenutni ? formatDistance(liteAvto.km_trenutni, enotaRazdalje) : '-'}</span></p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 p-4">
+                  <button onClick={() => pojdiNaVnos('/vnos-goriva')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
+                    <span className="mb-2 block text-3xl">⛽</span>{tx('Gorivo', 'Fuel')}
+                  </button>
+                  <button onClick={() => pojdiNaVnos('/vnos-servisa')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
+                    <span className="mb-2 block text-3xl">🔧</span>{tx('Servis', 'Service')}
+                  </button>
+                  <button onClick={() => pojdiNaVnos('/vnos-stroska')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
+                    <span className="mb-2 block text-3xl">💵</span>{tx('Strosek', 'Cost')}
+                  </button>
+                  <button onClick={() => pojdiNaVnos('/opomniki')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
+                    <span className="mb-2 block text-3xl">🔔</span>{tx('Opomnik', 'Reminder')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="hidden grid-cols-2 gap-2">
               <button onClick={() => pojdiNaVnos('/vnos-goriva')}
                 className="bg-[#3ecfcf22] border border-[#3ecfcf66] text-[#3ecfcf] rounded-xl py-4 px-3 text-left font-bold">
                 <span className="block text-2xl mb-1">⛽</span>
