@@ -107,7 +107,7 @@ export default function VnosStroska() {
 
   const glasovniVnos = (polje: string) => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) { setMessage('Glasovni vnos ni podprt v tem brskalniku.'); return }
+    if (!SpeechRecognition) { setMessage(tx('Glasovni vnos ni podprt v tem brskalniku.', 'Voice input is not supported in this browser.')); return }
 
     const recognition = new SpeechRecognition()
     recognition.lang = 'sl-SI'
@@ -122,12 +122,12 @@ export default function VnosStroska() {
       } else if (polje === 'znesek') {
         const stevilka = pretвориVStevilko(tekst)
         if (stevilka !== null) setZnesek(stevilka.toString())
-        else setMessage(`Nisem razumel: "${tekst}". Poskusi znova.`)
+        else setMessage(`${tx('Nisem razumel', 'I did not understand')}: "${tekst}". ${tx('Poskusi znova.', 'Try again.')}`)
       }
       setPoslusam(null)
     }
 
-    recognition.onerror = () => { setMessage('Napaka pri glasovnem vnosu.'); setPoslusam(null) }
+    recognition.onerror = () => { setMessage(tx('Napaka pri glasovnem vnosu.', 'Voice input error.')); setPoslusam(null) }
     recognition.onend = () => setPoslusam(null)
     recognition.start()
   }
@@ -222,8 +222,8 @@ export default function VnosStroska() {
 
   const shrani = async () => {
     if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
-    if (!znesek) { setMessage('Znesek je obvezen!'); return }
-    if (kategorija === 'custom' && !kategorijaCustom) { setMessage('Vnesi naziv stroška!'); return }
+    if (!znesek) { setMessage(tx('Znesek je obvezen!', 'Amount is required!')); return }
+    if (kategorija === 'custom' && !kategorijaCustom) { setMessage(tx('Vnesi naziv stroska!', 'Enter the expense name!')); return }
 
     setLoading(true)
     setMessage('')
@@ -251,7 +251,7 @@ export default function VnosStroska() {
     clearVehicleDataCaches(carId)
     trackEvent('expense_saved', { carId, category: finalnaKategorija, hasReceipt: !!receiptUrl })
 
-    setMessage('✅ Strošek uspešno shranjen!')
+    setMessage(tx('✅ Strosek uspesno shranjen!', '✅ Expense saved successfully!'))
     setTimeout(() => window.location.href = `/stroski?car=${carId}`, 1000)
     setLoading(false)
   }

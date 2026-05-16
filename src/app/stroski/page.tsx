@@ -211,7 +211,7 @@ const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], ex
       garageBase,
       imported,
       total: totalCost,
-      perKm: drivenKm > 0 && totalCost > 0 ? totalCost / drivenKm : null,
+      perKm: drivenKm > 0 && garageBase > 0 ? garageBase / drivenKm : null,
     },
     consumption: {},
   }
@@ -274,7 +274,7 @@ const mergeCostSummaries = (...summaries: any[]) => {
       merged.expense = item.expense
       merged.total = itemTotal
       merged.imported = item.imported
-      merged.garageBase = item.garageBase > 0 ? item.garageBase : (merged.total > 0 ? merged.total - item.imported : 0)
+      merged.garageBase = item.garageBase > 0 ? item.garageBase : (itemTotal > 0 ? itemTotal - item.imported : 0)
     }
     merged.rows.fuel = Math.max(merged.rows.fuel, item.rows.fuel)
     merged.rows.service = Math.max(merged.rows.service, item.rows.service)
@@ -816,7 +816,7 @@ export default function Stroski() {
   const stServis = renderSummary.rows.service
   const stOstalo = renderSummary.rows.expense
   const kmPrevozeni = costDistanceFromFuelRows(displayGorivo, avto || {})
-  const strosekNaKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
+  const strosekNaKm = kmPrevozeni > 0 && skupajGarageBase > 0 ? (skupajGarageBase / kmPrevozeni).toFixed(3) : null
   const znakValute = currencySymbol(valuta)
 
   const kategorijaIkona: { [key: string]: string } = {
@@ -862,7 +862,7 @@ export default function Stroski() {
   const prikazStGorivo = stGorivo
   const prikazStServis = stServis
   const prikazStOstalo = stOstalo
-  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
+  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazGarageBase > 0 ? (prikazGarageBase / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {

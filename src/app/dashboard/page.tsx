@@ -833,11 +833,11 @@ export default function Dashboard() {
       {!loading && avti.length === 0 ? (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-8 text-center">
           <p className="text-5xl mb-4">🚗</p>
-          <p className="text-white font-semibold text-lg mb-2">Dodaj prvi avto</p>
-          <p className="text-[#5a5a80] text-sm mb-6">Začni z vnosom svojega vozila</p>
+          <p className="text-white font-semibold text-lg mb-2">{tx('Dodaj prvi avto', 'Add your first vehicle')}</p>
+          <p className="text-[#5a5a80] text-sm mb-6">{tx('Zacni z vnosom svojega vozila', 'Start by adding your vehicle')}</p>
           <button onClick={() => router.push('/dodaj-avto')}
             className="bg-[#6c63ff] text-white font-semibold px-8 py-3 rounded-xl hover:bg-[#5a52e0] transition-colors">
-            + Dodaj avto
+            + {tx('Dodaj avto', 'Add vehicle')}
           </button>
         </div>
       ) : (
@@ -877,7 +877,7 @@ export default function Dashboard() {
                 <div className="p-7 flex flex-col gap-5">
                   <div className="flex justify-between items-start gap-6">
                     <div>
-                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">Izbrano vozilo</p>
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Izbrano vozilo', 'Selected vehicle')}</p>
                       <h2 className="text-white font-bold text-4xl leading-tight">
                         {vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       </h2>
@@ -946,11 +946,11 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-auto">
-                    <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>Gorivo</button>
-                    <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>Servis</button>
-                    <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>Opomniki</button>
-                    <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>Stroški</button>
-                    <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>Nastavitve</button>
+                    <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>{tx('Gorivo', 'Fuel')}</button>
+                    <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>{tx('Servis', 'Service')}</button>
+                    <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>{tx('Opomniki', 'Reminders')}</button>
+                    <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>{tx('Stroski', 'Costs')}</button>
+                    <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>{tx('Nastavitve', 'Settings')}</button>
                     <button onClick={() => router.push('/report?car=' + aktivniAvto.id)} className="bg-[#6c63ff22] border border-[#6c63ff55] text-[#a09aff] py-4 rounded-xl hover:border-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📄</span>Report</button>
                   </div>
                 </div>
@@ -995,23 +995,23 @@ export default function Dashboard() {
                 <div className="px-5 pb-4 grid grid-cols-3 gap-2.5">
                   <button onClick={() => router.push(`/gorivo?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#3ecfcf] py-3.5 rounded-2xl hover:border-[#3ecfcf] transition-all flex flex-col items-center gap-1.5">
-                    <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">Gorivo</span>
+                    <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Gorivo', 'Fuel')}</span>
                   </button>
                   <button onClick={() => router.push(`/servis?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#f59e0b] py-3.5 rounded-2xl hover:border-[#f59e0b] transition-all flex flex-col items-center gap-1.5">
-                    <span className="text-2xl leading-none">🔧</span><span className="text-[12px] font-black text-[#d8d8e8]">Servis</span>
+                    <span className="text-2xl leading-none">🔧</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Servis', 'Service')}</span>
                   </button>
                   <button onClick={() => router.push(`/opomniki?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] transition-all flex flex-col items-center gap-1.5">
-                    <span className="text-2xl leading-none">🔔</span><span className="text-[12px] font-black text-[#d8d8e8]">Opomniki</span>
+                    <span className="text-2xl leading-none">🔔</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Opomniki', 'Reminders')}</span>
                   </button>
                   <button onClick={() => router.push(`/stroski?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#22c55e] py-3.5 rounded-2xl hover:border-[#22c55e] transition-all flex flex-col items-center gap-1.5">
-                    <span className="text-2xl leading-none">📊</span><span className="text-[12px] font-black text-[#d8d8e8]">Stroški</span>
+                    <span className="text-2xl leading-none">📊</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Stroski', 'Costs')}</span>
                   </button>
                   <button onClick={() => router.push(`/nastavitve-avta?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#94a3b8] py-3.5 rounded-2xl hover:border-[#94a3b8] transition-all flex flex-col items-center gap-1.5">
-                    <span className="text-2xl leading-none">⚙️</span><span className="text-[12px] font-black text-[#d8d8e8]">Nastavitve</span>
+                    <span className="text-2xl leading-none">⚙️</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Nastavitve', 'Settings')}</span>
                   </button>
                   <button onClick={() => router.push(`/report?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1.5">
@@ -1023,7 +1023,7 @@ export default function Dashboard() {
                   <div className="mx-5 mb-4 bg-[#13131f] rounded-xl p-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Trenutni km</p>
+                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Trenutni km', 'Current mileage')}</p>
                         <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni.toLocaleString()} km</p>
                         {vinjetaLabel && (
                           <p className="mt-2 inline-flex rounded-full border border-[#16a34a66] bg-[#16a34a22] px-2.5 py-1 text-[11px] font-black text-[#4ade80]">
@@ -1106,7 +1106,7 @@ export default function Dashboard() {
               {/* Opomniki z dni in km prikazom */}
               {opomniki.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Opomniki</p>
+                  <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">{tx('Opomniki', 'Reminders')}</p>
                   <div className="flex flex-col gap-2">
                     {opomniki.map((op) => {
                       const dni = dniDo(op.datum)

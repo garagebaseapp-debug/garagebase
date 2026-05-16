@@ -322,7 +322,7 @@ export default function Garaza() {
   }, [])
 
   const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
-  const showLiteHome = nacin === 'lite' && avti.length > 0 && !urejanje && !arhiv
+  const showLiteHome = nacin === 'lite' && !urejanje && !arhiv
 
   useEffect(() => {
     const refreshArchive = async () => {

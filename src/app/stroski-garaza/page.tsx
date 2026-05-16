@@ -88,7 +88,7 @@ export default function StroškiGaraza() {
             const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
             const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
             const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
-            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.total
+            stroskoviMap[avto.id] = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs.garageBase
           }
         }
 
@@ -194,8 +194,8 @@ export default function StroškiGaraza() {
       {!loading && avti.length === 0 && (
         <div className="flex-1 flex items-center justify-center px-5 text-center">
           <div>
-            <p className="text-white font-semibold text-xl mb-2">Ni vozil</p>
-            <p className="text-[#5a5a80] text-sm">Dodaj avto, da vidiš stroške.</p>
+            <p className="text-white font-semibold text-xl mb-2">{tx('Ni vozil', 'No vehicles')}</p>
+            <p className="text-[#5a5a80] text-sm">{tx('Dodaj avto, da vidis stroske.', 'Add a vehicle to see costs.')}</p>
           </div>
         </div>
       )}
@@ -223,7 +223,7 @@ export default function StroškiGaraza() {
               </div>
               <div className="text-right">
                     <p className="text-[#3ecfcf] font-bold text-xl">{(stroski[avto.id] || 0).toFixed(0)} {currencySymbol(valuta)}</p>
-                <p className="text-[#5a5a80] text-xs">skupaj</p>
+                <p className="text-[#5a5a80] text-xs">{tx('skupaj', 'total')}</p>
               </div>
             </div>
           </div>
