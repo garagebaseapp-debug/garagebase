@@ -38,6 +38,8 @@ body:not(.landing) {
     max-width: none;
     margin: 0;
     min-height: 100vh;
+    font-size: 15px;
+    text-rendering: geometricPrecision;
   }
 
   body:not(.landing) > div:first-child {
@@ -64,6 +66,23 @@ body:not(.landing) {
 
   body:not(.landing) .gb-desktop-nav {
     display: flex;
+  }
+
+  body:not(.landing) .gb-desktop-link,
+  body:not(.landing) .gb-theme-toggle {
+    font-size: 0.9375rem;
+  }
+
+  body:not(.landing) a,
+  body:not(.landing) button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body:not(.landing) > div:first-child,
+  body:not(.landing) main,
+  body:not(.landing) aside,
+  body:not(.landing) .gb-desktop-link {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
   }
 
   .gb-car-grid {
@@ -330,6 +349,13 @@ body:not(.landing) {
 .light-mode .gb-desktop-link-active svg,
 .light-mode .gb-desktop-link-active span {
   color: #ffffff !important;
+}
+
+.light-mode .gb-theme-toggle {
+  background-color: #ffffff !important;
+  border-color: #7c3aed !important;
+  color: #4c1d95 !important;
+  box-shadow: 0 14px 30px rgba(108, 99, 255, 0.16) !important;
 }
 
 .light-mode .gb-sidebar-garage-card {

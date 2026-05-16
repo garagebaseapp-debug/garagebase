@@ -256,6 +256,92 @@ export default function Opomniki() {
         ))}
       </div>
 
+      {/* Forma za nov opomnik je nad zgodovino, da uporabnik ne išče vnosa na dnu strani. */}
+      {showForm && (
+        <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4 flex flex-col gap-4">
+          <h2 className="text-white font-semibold">{tx('Dodaj opomnik', 'Add reminder')}</h2>
+
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">{tx('Tip', 'Type')}</label>
+            <div className="grid grid-cols-4 gap-2">
+              {tipi.map((t) => (
+                <button key={t.vrednost} type="button"
+                  onClick={() => setTip(t.vrednost)}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl border transition-all ${
+                    tip === t.vrednost
+                      ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
+                      : 'bg-[#13131f] border-[#1e1e32] text-[#5a5a80] hover:border-[#6c63ff33]'
+                  }`}>
+                  <span className="text-lg">{t.ikona}</span>
+                  <span className="text-[8px] uppercase tracking-wider text-center leading-tight">{tipNaziv[t.vrednost] || t.naziv}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {tip === 'custom' && (
+            <div>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Naziv opomnika', 'Reminder name')} *</label>
+              <input type="text" value={tipCustom} onChange={e => setTipCustom(e.target.value)}
+                placeholder={tx('npr. Menjava žarnic...', 'e.g. Bulb replacement...')}
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            </div>
+          )}
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Datum poteka', 'Due date')}</label>
+              <input type="date" value={datum} onChange={e => setDatum(e.target.value)}
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            </div>
+
+            <div>
+              <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
+                {tx('Km opomnik', 'Mileage reminder')} <span className="text-[#3a3a5a] normal-case">({tx('trenutni', 'current')}: {avto?.km_trenutni?.toLocaleString(locale)} km)</span>
+              </label>
+              <input type="number" value={kmOpomnik} onChange={e => setKmOpomnik(e.target.value)}
+                placeholder={`${tx('npr.', 'e.g.')} ${(avto?.km_trenutni || 0) + 15000}`}
+                className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Opozori X dni prej', 'Alert X days before')}</label>
+            <div className="grid grid-cols-5 gap-2">
+              {['7', '14', '30', '60', 'custom'].map((d) => (
+                <button key={d} type="button"
+                  onClick={() => setOpozoriloDni(d)}
+                  className={`py-2 rounded-xl text-sm font-semibold border transition-all ${
+                    opozoriloDni === d
+                      ? 'bg-[#6c63ff22] border-[#6c63ff66] text-[#a09aff]'
+                      : 'bg-[#13131f] border-[#1e1e32] text-[#5a5a80] hover:border-[#6c63ff33]'
+                  }`}>
+                  {d === 'custom' ? '✎' : d}
+                </button>
+              ))}
+            </div>
+            {opozoriloDni === 'custom' && (
+              <input type="number" value={opozoriloDniCustom} onChange={e => setOpozoriloDniCustom(e.target.value)}
+                placeholder={tx('npr. 45', 'e.g. 45')}
+                className="w-full mt-2 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            )}
+          </div>
+
+          {message && <div className="p-3 rounded-xl text-sm border bg-[#ef444422] border-[#ef444444] text-[#fca5a5]">{message}</div>}
+
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => { setShowForm(false); setMessage('') }}
+              className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-3 rounded-xl text-sm">
+              {tx('Prekliči', 'Cancel')}
+            </button>
+            <button onClick={shrani} disabled={saving}
+              className="bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 text-sm">
+              {saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Seznam opomnikov */}
       {opomniki.length > 0 && (
         <div className="flex flex-col gap-3 mb-4">
@@ -351,7 +437,7 @@ export default function Opomniki() {
       )}
 
       {/* Forma */}
-      {showForm && (
+      {false && showForm && (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4 flex flex-col gap-4">
           <h2 className="text-white font-semibold">{tx('Dodaj opomnik', 'Add reminder')}</h2>
 

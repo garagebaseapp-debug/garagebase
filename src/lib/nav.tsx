@@ -109,6 +109,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
   const { language } = useLanguage()
   const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
+  const [tema, setTema] = useState<'temna' | 'svetla'>('temna')
 
   useEffect(() => {
     let active = true
@@ -125,6 +126,28 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
   }, [])
 
   const desktopLinks = namiznePovezave.filter((item) => !('adminOnly' in item) || !item.adminOnly || isAdmin)
+  const preklopiTemo = () => {
+    const next = tema === 'svetla' ? 'temna' : 'svetla'
+    setTema(next)
+    try {
+      const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: next, onboardingDone: true }))
+      document.documentElement.classList.toggle('light-mode', next === 'svetla')
+    } catch {
+      document.documentElement.classList.toggle('light-mode', next === 'svetla')
+    }
+  }
+
+  useEffect(() => {
+    try {
+      const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      const next = current.tema === 'svetla' ? 'svetla' : 'temna'
+      setTema(next)
+      document.documentElement.classList.toggle('light-mode', next === 'svetla')
+    } catch {
+      setTema(document.documentElement.classList.contains('light-mode') ? 'svetla' : 'temna')
+    }
+  }, [])
 
   return (
     <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[228px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-4 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
@@ -148,12 +171,28 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         ))}
       </nav>
       <button
+        type="button"
+        onClick={preklopiTemo}
+        className="gb-theme-toggle mt-5 flex w-full items-center justify-between rounded-2xl border border-[#2a2a40] bg-[#13131f] px-4 py-3 text-left text-sm font-black text-white shadow-xl shadow-black/10 transition-all hover:border-[#6c63ff66]"
+        title={language === 'en' ? 'Switch between light and dark mode' : 'Preklopi med svetlim in temnim načinom'}
+      >
+        <span>{tema === 'svetla' ? (language === 'en' ? 'Dark mode' : 'Temni način') : (language === 'en' ? 'Light mode' : 'Svetli način')}</span>
+        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff] text-base text-white">{tema === 'svetla' ? '☾' : '☀'}</span>
+      </button>
+      <button
         onClick={() => pojdiNa(router, '/garaza')}
         className="gb-sidebar-garage-card group relative mt-6 h-44 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-xl shadow-black/15"
       >
         <img src="/landing-hero-dark-garage.png" alt="" className="gb-sidebar-image-dark absolute inset-0 h-full w-full object-cover object-center" />
         <img src="/garage-web-light-sidebar.png" alt="" className="gb-sidebar-image-light absolute inset-0 hidden h-full w-full object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#080810]/20 via-transparent to-transparent" />
+      </button>
+      <button
+        type="button"
+        onClick={() => pojdiNa(router, '/')}
+        className="mt-auto rounded-2xl border border-[#1e1e32] bg-transparent px-4 py-3 text-left text-sm font-black text-[#c8c8dc] transition-all hover:border-[#6c63ff66] hover:bg-[#13131f] hover:text-white"
+      >
+        {language === 'en' ? 'Intro page' : 'Uvodna stran'}
       </button>
     </aside>
   )

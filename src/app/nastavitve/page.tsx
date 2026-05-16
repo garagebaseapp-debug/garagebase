@@ -1506,8 +1506,8 @@ export default function Nastavitve() {
           <div className="rounded-xl border border-[#ef444455] bg-[#ef444411] p-4">
             <p className="text-sm font-semibold text-[#fca5a5]">
               {tx(
-                'Pozor: po potrditvi podatkov ne moremo več obnoviti. Če si prepričan, vpiši IZBRISI.',
-                'Warning: after confirmation, data cannot be restored. If you are sure, type DELETE.'
+                'Ali ste prepričani, da želite izbrisati račun? Pozor: po potrditvi podatkov ne moremo več obnoviti. Če si prepričan, vpiši IZBRISI.',
+                'Are you sure you want to delete the account? Warning: after confirmation, data cannot be restored. If you are sure, type DELETE.'
               )}
             </p>
             <input value={deleteConfirmText} onChange={(e) => setDeleteConfirmText(e.target.value)}

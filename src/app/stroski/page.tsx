@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
@@ -383,6 +384,7 @@ const writeCostTotalsCache = (carId: string, stats: any) => {
 }
 
 export default function Stroski() {
+  const router = useRouter()
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
@@ -797,7 +799,14 @@ export default function Stroski() {
 
   const grafMeseci = () => {
     const meseci: { kljuc: string, label: string, gorivo: number, servis: number, ostalo: number }[] = []
-    const danes = new Date()
+    const datumi = [
+      ...displayGorivo.map((v) => v?.datum || v?.created_at),
+      ...displayServisi.map((v) => v?.datum || v?.created_at),
+      ...displayExpenses.map((v) => v?.datum || v?.created_at),
+    ]
+      .map((value) => new Date(value || '').getTime())
+      .filter((value) => Number.isFinite(value))
+    const danes = datumi.length > 0 ? new Date(Math.max(...datumi)) : new Date()
     const stMesecev = grafObdobje === '12m' ? 12 : 6
     for (let i = stMesecev - 1; i >= 0; i--) {
       const d = new Date(danes.getFullYear(), danes.getMonth() - i, 1)
@@ -1151,6 +1160,7 @@ export default function Stroski() {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#080810] px-4 py-6 pb-24">
+      <div className="mx-auto w-full max-w-6xl">
 
       <div className="flex items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
@@ -1179,7 +1189,7 @@ export default function Stroski() {
             <p className="text-white font-black text-4xl leading-none">{formatMoney(prikazSkupaj, valuta)}</p>
           </div>
           <button
-            onClick={() => window.location.href = `/vnos-stroska?car=${avto?.id}`}
+            onClick={() => router.push(`/vnos-stroska?car=${avto?.id}`)}
             className="rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]"
           >
             + {tx('Dodaj', 'Add')}
@@ -1255,6 +1265,11 @@ export default function Stroski() {
           </div>
           </div>
         </div>
+        {grafTip !== 'kolac' && graphTotals.gorivo + graphTotals.servis + graphTotals.ostalo === 0 && prikazSkupaj > 0 && (
+          <div className="mb-3 rounded-2xl border border-[#6c63ff33] bg-[#6c63ff10] p-3 text-sm font-semibold text-[#a09aff]">
+            {tx('V tem obdobju ni stroškov. Graf se zato opira na zadnje obdobje z vnesenimi podatki oziroma spodnje skupne zneske.', 'There are no costs in this period. The chart uses the latest period with data where possible, and the totals below remain available.')}
+          </div>
+        )}
         {grafTip === 'stolpci' && <GrafStolpci />}
         {grafTip === 'crta' && <GrafCrta />}
         {grafTip === 'kategorije' && <GrafKategorije />}
@@ -1289,7 +1304,7 @@ export default function Stroski() {
         </button>
       </div>
 
-      <button onClick={() => window.location.href = `/vnos-stroska?car=${avto?.id}`}
+      <button onClick={() => router.push(`/vnos-stroska?car=${avto?.id}`)}
         className="w-full bg-[#3ecfcf] hover:bg-[#2eb8b8] text-black font-semibold py-3 rounded-xl transition-colors mb-4">
         + {tx('Dodaj strošek', 'Add expense')}
       </button>
@@ -1486,6 +1501,7 @@ export default function Stroski() {
             {tx(`Nalozi se ${Math.min(COST_LIST_SIZE, filtrirani.length - vidniVnosi.length)} zapisov`, `Load ${Math.min(COST_LIST_SIZE, filtrirani.length - vidniVnosi.length)} more records`)}
           </button>
         )}
+      </div>
       </div>
 
       <HomeButton />

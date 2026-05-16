@@ -137,6 +137,7 @@ export default function DomovPage() {
   const [theme, setTheme] = useState<'temna' | 'svetla'>('temna')
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
+  const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
 
   const heroImage = theme === 'svetla' ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
   const favoriteCar = cars[0]
@@ -340,6 +341,16 @@ export default function DomovPage() {
   const expiredReminders = reminders.filter((item) => item.tone === 'red')
   const serviceSoon = reminders.filter((item) => item.title.toLowerCase().includes('servis') || item.title.toLowerCase().includes('service'))
   const topReminders = reminders.slice(0, 3)
+  const displayedRecentEvents = showAllRecentEvents ? recentEvents : recentEvents.slice(0, 1)
+  const translateLabel = (value: string) => {
+    const normalized = String(value || '').toLowerCase()
+    if (normalized === 'registracija') return tx('Registracija', 'Registration')
+    if (normalized === 'olje') return tx('Olje', 'Oil')
+    if (normalized === 'tankanje') return tx('Tankanje', 'Fill-up')
+    if (normalized === 'servis') return tx('Servis', 'Service')
+    if (normalized === 'strošek' || normalized === 'strosek') return tx('Strošek', 'Expense')
+    return value
+  }
 
   const statCards = [
     { label: tx('Vozil', 'Vehicles'), value: cars.length, icon: 'car' as const, tone: 'text-[#6c63ff]', href: '/garaza' },
@@ -391,14 +402,14 @@ export default function DomovPage() {
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{favoriteCar?.km_trenutni ? `${favoriteCar.km_trenutni.toLocaleString(locale)} ${distanceUnit}` : tx('Odpri garažo za pregled', 'Open garage to review')}</p>
             <p className="mt-3 text-xs font-bold text-[#6c63ff]">{tx('To je prvo aktivno vozilo v garaži. Spremeni ga z vrstnim redom vozil.', 'This is the first active vehicle in the garage. Change it by changing vehicle order.')}</p>
           </button>
-          <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
+          <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki')} className={`rounded-3xl border bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] ${topReminders[0] ? `${cardTone[topReminders[0].tone].border} ring-1 ring-inset ring-current/10` : 'border-[#1e1e32]'}`}>
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Najbližji opomnik', 'Next reminder')}</p>
-            <p className="mt-3 truncate text-2xl font-black text-white">{topReminders[0]?.title || tx('Brez opomnikov', 'No reminders')}</p>
+            <p className="mt-3 truncate text-2xl font-black text-white">{topReminders[0]?.title ? translateLabel(topReminders[0].title) : tx('Brez opomnikov', 'No reminders')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{topReminders[0]?.value || tx('Vse je mirno', 'Everything is quiet')}</p>
           </button>
           <button onClick={() => router.push(recentEvents[0]?.href || '/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Zadnji dogodek', 'Latest event')}</p>
-            <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title || tx('Ni dogodkov', 'No events')}</p>
+            <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title ? translateLabel(recentEvents[0].title) : tx('Ni dogodkov', 'No events')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{recentEvents[0]?.subtitle || tx('Dodaj prvi vnos', 'Add the first entry')}</p>
           </button>
         </section>
@@ -457,13 +468,13 @@ export default function DomovPage() {
             ) : topReminders.map((item, index) => {
               const tone = cardTone[item.tone]
               return (
-                <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-1.5 text-left sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-1.5 text-left transition-colors hover:bg-white/5 sm:p-2.5 ${index > 0 ? 'border-t border-[#1e1e32]' : ''} ${item.tone === 'red' ? 'ring-1 ring-inset ring-[#ef444433]' : item.tone === 'orange' ? 'ring-1 ring-inset ring-[#f59e0b33]' : ''}`}>
                   <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
                     {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-black text-white">{item.carName}</p>
-                    <p className="mt-0.5 truncate text-xs text-[#d8d8e8]">{item.title} - {item.subtitle}</p>
+                    <p className="mt-0.5 truncate text-xs text-[#d8d8e8]">{translateLabel(item.title)} - {item.subtitle}</p>
                   </div>
                   <span className={`rounded-xl px-2.5 py-1.5 text-xs font-black sm:px-3 sm:py-2 ${tone.pill}`}>{item.value}</span>
                 </button>
@@ -475,20 +486,20 @@ export default function DomovPage() {
         <section>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
-            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/garaza')} className="text-sm font-bold text-[#d8d8e8]">
-              {tx('Prikaži vse', 'Show all')} →
+            <button onClick={() => setShowAllRecentEvents((value) => !value)} className="text-sm font-bold text-[#d8d8e8]">
+              {showAllRecentEvents ? tx('Prikaži manj', 'Show less') : tx('Prikaži vse', 'Show all')} →
             </button>
           </div>
           <div className="overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
             {recentEvents.length === 0 ? (
               <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
-            ) : recentEvents.slice(0, 1).map((event, index) => (
+            ) : displayedRecentEvents.map((event, index) => (
               <button key={event.id} onClick={() => router.push(event.href)} className={`flex w-full items-center gap-3 p-2 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
                 <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
                   <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-white">{event.title}</p>
+                  <p className="truncate text-sm font-black text-white">{translateLabel(event.title)}</p>
                   <p className="mt-0.5 truncate text-xs text-[#8a8aa8]">{event.subtitle}</p>
                 </div>
                 <span className="text-xs text-[#8a8aa8]">{event.dateText}</span>

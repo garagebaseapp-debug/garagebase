@@ -820,7 +820,7 @@ export default function Garaza() {
               onClick={() => router.push(item.href)}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${
                 ('active' in item && item.active)
-                  ? (desktopLight ? 'bg-[#efe2ff] text-[#6c21c9]' : 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]')
+                  ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
                   : (desktopLight ? 'text-[#121421] hover:bg-[#f4f0ff] hover:text-[#6c21c9]' : 'text-[#c8c8dc] hover:bg-[#13131f] hover:text-white')
               }`}
             >
@@ -833,6 +833,12 @@ export default function Garaza() {
           <div className={`h-52 overflow-hidden rounded-[24px] border shadow-xl ${desktopLight ? 'border-[#dde3f2] bg-[#eef2fb] shadow-[#101225]/8' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/20'}`}>
             <img src={desktopSidebarImage} alt="" className="h-full w-full object-cover object-center" />
           </div>
+          <button
+            onClick={() => router.push('/')}
+            className={`mt-4 w-full rounded-2xl border px-4 py-3 text-left text-sm font-black transition-colors ${desktopLight ? 'border-[#dde3f2] bg-white text-[#4f5870] hover:border-[#6c63ff] hover:text-[#6c21c9]' : 'border-[#1e1e32] bg-transparent text-[#c8c8dc] hover:bg-[#13131f] hover:text-white'}`}
+          >
+            {tx('Uvodna stran', 'Intro page')}
+          </button>
         </div>
       </aside>
 
@@ -852,8 +858,21 @@ export default function Garaza() {
               {refreshing ? tx('Osveževanje...', 'Refreshing...') : tx('Osveži garažo', 'Refresh garage')}
             </button>
             <div className={`flex overflow-hidden rounded-xl border p-1 ${desktopLight ? 'border-[#d8def0] bg-white shadow-lg shadow-[#101225]/5' : 'border-[#1e1e32] bg-[#0f0f1a]'}`}>
-              <button onClick={() => shraniPrikazGaraze('srednje')} className={`h-9 w-9 rounded-lg text-sm font-black ${desktopListMode ? (desktopLight ? 'bg-[#f0e7ff] text-[#6c21c9]' : 'bg-[#24243a] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}>L</button>
-              <button onClick={() => shraniPrikazGaraze('grid')} className={`h-9 w-9 rounded-lg text-sm font-black ${!desktopListMode ? (desktopLight ? 'bg-[#f0e7ff] text-[#6c21c9]' : 'bg-[#24243a] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}>G</button>
+              {[
+                { key: 'malo', label: 'S', title: tx('Mali seznam', 'Small list') },
+                { key: 'srednje', label: 'M', title: tx('Srednji seznam', 'Medium list') },
+                { key: 'veliko', label: 'L', title: tx('Velik prikaz', 'Large view') },
+                { key: 'grid', label: 'G', title: tx('Grid prikaz', 'Grid view') },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  title={item.title}
+                  onClick={() => shraniPrikazGaraze(item.key)}
+                  className={`h-9 w-9 rounded-lg text-sm font-black ${prikaz === item.key ? (desktopLight ? 'bg-[#6c63ff] text-white' : 'bg-[#6c63ff] text-white') : (desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]')}`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
             {!arhiv && (
               <button onClick={() => pojdiDodajAvto('desktop')} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
