@@ -139,7 +139,7 @@ export default function DomovPage() {
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
 
-  const heroImage = theme === 'svetla' ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
+  const heroImage = theme === 'svetla' ? '/domov-full-light.jpg' : '/domov-full-dark.png'
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
 
@@ -420,6 +420,13 @@ export default function DomovPage() {
             <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title ? translateLabel(recentEvents[0].title) : tx('Ni dogodkov', 'No events')}</p>
             <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{recentEvents[0]?.subtitle || tx('Dodaj prvi vnos', 'Add the first entry')}</p>
           </button>
+          <button
+            onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
+            className="m-2 mt-3 flex w-[calc(100%-1rem)] items-center justify-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-3 text-base font-black text-white shadow-lg shadow-[#6c63ff44] transition-transform active:scale-[0.98]"
+          >
+            {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
+            <span aria-hidden="true">→</span>
+          </button>
         </section>
 
         <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
@@ -430,7 +437,7 @@ export default function DomovPage() {
             <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7">
-              <span className="inline-flex w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] sm:py-3">
+              <span className="hidden w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] sm:py-3">
                 {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
               </span>

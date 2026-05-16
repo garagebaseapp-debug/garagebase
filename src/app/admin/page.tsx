@@ -21,6 +21,8 @@ type AdminUser = {
   plan?: any
 }
 
+type AdminTab = 'overview' | 'analytics' | 'users' | 'errors' | 'plans' | 'settings'
+
 const statusLabel: Record<string, { sl: string; en: string }> = {
   new: { sl: 'Novo', en: 'New' },
   planned: { sl: 'Planirano', en: 'Planned' },
@@ -238,6 +240,7 @@ export default function AdminPage() {
   const [paidConfirm, setPaidConfirm] = useState('')
   const [planSaving, setPlanSaving] = useState(false)
   const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('overview')
   const [settingsStats, setSettingsStats] = useState<any[]>([])
   const [clearLoading, setClearLoading] = useState('')
   const [funnelStats, setFunnelStats] = useState<any[]>([])
@@ -252,8 +255,9 @@ export default function AdminPage() {
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
-  const scrollToAdminSection = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const openAdminTab = (tab: AdminTab) => {
+    setActiveAdminTab(tab)
+    try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
   }
 
   useEffect(() => {
@@ -730,6 +734,16 @@ export default function AdminPage() {
   }
 
   const clearAnalyticsHistory = async (range: '24h' | '7d' | '30d' | 'all') => {
+    const confirmedRange = window.confirm(range === 'all'
+      ? tx(
+        'POZOR: to bo izbrisalo celotno zgodovino klikov in analitike od zacetka. Tega ni mogoce razveljaviti. Res zelis nadaljevati?',
+        'WARNING: this will delete the entire click and analytics history from the beginning. This cannot be undone. Do you really want to continue?'
+      )
+      : tx(
+        `POZOR: izbrisal bos zgodovino analitike za obdobje ${rangeLabel[range]}. Tega ni mogoce razveljaviti. Nadaljujem?`,
+        `WARNING: you are deleting analytics history for ${rangeLabel[range]}. This cannot be undone. Continue?`
+      ))
+    if (!confirmedRange) return
     if (range === 'all') {
       const confirmed = window.confirm(tx(
         'To bo izbrisalo celotno zgodovino klikov in analitike od začetka. Tega ni mogoče razveljaviti. Res želiš nadaljevati?',
@@ -809,18 +823,18 @@ export default function AdminPage() {
       </div>
       <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-6">
         {[
-          { label: tx('Pregled', 'Overview'), target: 'admin-overview' },
-          { label: tx('Analitika', 'Analytics'), target: 'admin-analytics' },
-          { label: tx('Uporabniki', 'Users'), target: 'admin-users' },
-          { label: tx('Napake', 'Errors'), target: 'admin-errors' },
-          { label: tx('Monetizacija', 'Monetization'), target: 'admin-plans' },
-          { label: tx('Nastavitve', 'Settings'), target: 'admin-settings' },
-        ].map((item, index) => (
+          { label: tx('Pregled', 'Overview'), tab: 'overview' as AdminTab },
+          { label: tx('Analitika', 'Analytics'), tab: 'analytics' as AdminTab },
+          { label: tx('Uporabniki', 'Users'), tab: 'users' as AdminTab },
+          { label: tx('Napake', 'Errors'), tab: 'errors' as AdminTab },
+          { label: tx('Monetizacija', 'Monetization'), tab: 'plans' as AdminTab },
+          { label: tx('Nastavitve', 'Settings'), tab: 'settings' as AdminTab },
+        ].map((item) => (
           <button
-            key={item.target}
-            onClick={() => scrollToAdminSection(item.target)}
+            key={item.tab}
+            onClick={() => openAdminTab(item.tab)}
             className={`rounded-2xl border px-4 py-3 text-center text-sm font-black transition-all ${
-              index === 1
+              activeAdminTab === item.tab
                 ? 'border-[#a855f7] bg-[#7c3aed] text-white shadow-lg shadow-[#7c3aed55]'
                 : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8] hover:border-[#6c63ff66] hover:text-white'
             }`}
@@ -842,6 +856,112 @@ export default function AdminPage() {
           {tx(`Pozor: ${stats.errors} novih napak v aplikaciji.`, `Attention: ${stats.errors} new app errors.`)}
         </div>
       )}
+
+      <div className="mb-5 rounded-[28px] border border-[#2b2b45] bg-[#0f0f1a] p-5 shadow-2xl shadow-black/20">
+        {activeAdminTab === 'overview' && (
+          <>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Pregled', 'Overview')}</p>
+                <h2 className="mt-1 text-2xl font-black text-white">{tx('Stanje aplikacije', 'Application status')}</h2>
+              </div>
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${stats.errors > 0 ? 'bg-[#ef444422] text-[#fca5a5]' : 'bg-[#16a34a22] text-[#4ade80]'}`}>
+                {stats.errors > 0 ? tx('Preveri napake', 'Check errors') : tx('Stabilno', 'Stable')}
+              </span>
+            </div>
+            <div className="grid gap-3 md:grid-cols-4">
+              {statCards.slice(0, 4).map((card) => (
+                <div key={card.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#8a8aa8]">{card.label}</p>
+                  <p className={`mt-2 text-2xl font-black ${card.color}`}>{card.value}</p>
+                  <p className="mt-1 text-xs text-[#5a5a80]">{card.hint}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'analytics' && (
+          <>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Analitika', 'Analytics')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Uporaba in tokovi', 'Usage and flows')}</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {conversionStats.slice(0, 3).map((item) => (
+                <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <p className="text-sm font-black text-white">{item.label}</p>
+                  <p className="mt-2 text-3xl font-black text-[#3ecfcf]">{item.value}%</p>
+                  <p className="mt-1 text-xs text-[#8a8aa8]">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'users' && (
+          <>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Uporabniki', 'Users')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Najbolj aktivni uporabniki', 'Most active users')}</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {userActivity.slice(0, 6).map((user) => (
+                <div key={user.userId} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <p className="font-mono text-sm font-black text-white">U-{user.label}</p>
+                  <p className="mt-2 text-xs text-[#8a8aa8]">{user.cars} {tx('vozil', 'vehicles')} · {user.entries} {tx('vnosov', 'entries')}</p>
+                </div>
+              ))}
+              {userActivity.length === 0 && <p className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-sm text-[#8a8aa8]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'errors' && (
+          <>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#ef4444]">{tx('Napake', 'Errors')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Sistemske napake in prijave', 'System errors and reports')}</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              <button onClick={() => window.location.href = '/admin-napake'} className="rounded-2xl border border-[#ef444455] bg-[#ef444418] p-4 text-left text-[#fca5a5]">
+                <p className="text-sm font-black">{tx('Odpri napake', 'Open errors')}</p>
+                <p className="mt-2 text-3xl font-black">{stats.errors || 0}</p>
+              </button>
+              {errorStatusStats.slice(0, 2).map((item) => (
+                <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <p className="text-sm font-black text-white">{item.label}</p>
+                  <p className="mt-2 text-2xl font-black text-[#fca5a5]">{item.count}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'plans' && (
+          <>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Monetizacija', 'Monetization')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Paketi in 2027 simulacija', 'Plans and 2027 simulation')}</h2>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              {planSimulation.map((plan) => (
+                <div key={plan.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <p className="text-sm font-black text-white">{plan.label}</p>
+                  <p className="mt-2 text-2xl font-black text-[#a09aff]">{plan.count}</p>
+                  <p className="text-xs text-[#8a8aa8]">{plan.range}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'settings' && (
+          <>
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[#fca5a5]">{tx('Nastavitve', 'Settings')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Varno čiščenje in nastavitve', 'Safe clearing and settings')}</h2>
+            <div className="mt-4 rounded-2xl border-2 border-[#ef4444] bg-[#2a0710] p-4">
+              <p className="text-sm font-black text-[#fecaca]">{tx('Nevarno območje: brisanje analitike', 'Danger zone: analytics deletion')}</p>
+              <p className="mt-1 text-xs text-[#fca5a5]">{tx('Vsaka tipka pred brisanjem pokaže potrditveno opozorilo.', 'Every button shows a confirmation warning before deleting.')}</p>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {(['24h', '7d', '30d', 'all'] as const).map((range) => (
+                  <button key={range} onClick={() => clearAnalyticsHistory(range)} disabled={!!clearLoading}
+                    className={`rounded-xl border px-3 py-2 text-xs font-black disabled:opacity-50 ${range === 'all' ? 'border-[#fecaca] bg-[#ef4444] text-white' : 'border-[#f97316] bg-[#f9731622] text-[#fdba74]'}`}>
+                    {clearLoading === range ? tx('Brišem...', 'Deleting...') : range === 'all' ? tx('Vse', 'All') : rangeLabel[range]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       <div id="admin-overview" className="grid scroll-mt-6 grid-cols-2 gap-3 mb-5 lg:grid-cols-4">
         {statCards.map((card) => (
