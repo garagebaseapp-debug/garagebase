@@ -139,7 +139,6 @@ export default function DomovPage() {
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
 
-  const heroImage = theme === 'svetla' ? '/domov-full-light.jpg' : '/domov-full-dark.png'
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
 
@@ -148,6 +147,11 @@ export default function DomovPage() {
     if (!raw) return ''
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
+  const favoriteCarImage = favoriteCar ? carImage(favoriteCar) : ''
+  const heroImage = favoriteCarImage || (theme === 'svetla' ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg')
+  const favoriteMeta = favoriteCar
+    ? [favoriteCar.barva, favoriteCar.gorivo].filter(Boolean).join(' · ')
+    : tx('Dodaj prvo vozilo', 'Add your first vehicle')
 
   const carNameById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -384,14 +388,14 @@ export default function DomovPage() {
           </div>
         </header>
 
-        <section className="mb-2.5">
+        <section className="hidden mb-2.5">
           <h1 className="max-w-2xl text-[clamp(1.36rem,6.2vw,1.72rem)] font-black leading-[1.04] text-white sm:text-5xl">
             {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />
             {tx('Pripravljen ', 'Ready for the ')}<span className="text-[#6c63ff]">{tx('na pot?', 'road?')}</span>
           </h1>
         </section>
 
-        <section className="mb-2.5 grid grid-cols-4 gap-2">
+        <section className="hidden mb-2.5 grid-cols-4 gap-2">
           {statCards.map((item) => (
             <button key={item.label} onClick={() => router.push(item.href)} className="min-h-[clamp(68px,10dvh,82px)] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
               <div className={`mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone} sm:h-9 sm:w-9`}>
@@ -403,7 +407,7 @@ export default function DomovPage() {
           ))}
         </section>
 
-        <section className="mb-5 hidden grid-cols-3 gap-4 xl:grid">
+        <section className="mb-5 hidden grid-cols-3 gap-4">
           <button onClick={() => router.push('/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
             <p className="text-sm font-black text-[#8a8aa8]">{tx('Glavno vozilo', 'Main vehicle')}</p>
             <p className="mt-3 truncate text-2xl font-black text-white">{favoriteCarName || tx('Ni izbrano', 'Not selected')}</p>
@@ -429,7 +433,57 @@ export default function DomovPage() {
           </button>
         </section>
 
-        <section className="mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
+        <section className="mb-3 overflow-hidden rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a] shadow-2xl shadow-black/10">
+          <div className="relative h-[clamp(150px,25dvh,230px)] overflow-hidden">
+            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080810] via-[#08081033] to-transparent" />
+            <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
+              <span className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-[#101225]">GarageBase</span>
+              <button onClick={preklopiTemo} className="rounded-full border border-white/25 bg-black/25 px-3 py-1.5 text-xs font-black text-white backdrop-blur">
+                {theme === 'svetla' ? tx('Temno', 'Dark') : tx('Svetlo', 'Light')}
+              </button>
+            </div>
+          </div>
+          <div className="px-5 pb-5 pt-4">
+            <p className="text-[clamp(1.45rem,7vw,2.15rem)] font-black leading-tight text-white">
+              {tx('Dobrodošel nazaj.', 'Welcome back.')}
+            </p>
+            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/dodaj-avto')} className="mt-4 flex w-full items-center gap-4 rounded-3xl border border-[#1e1e32] bg-white p-3 text-left text-[#101225] shadow-xl shadow-black/10">
+              <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#eef2ff]">
+                {favoriteCarImage ? <img src={favoriteCarImage} alt={favoriteCarName} className="h-full w-full object-cover" loading="eager" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xl font-black">{favoriteCarName || tx('Tvoja garaža', 'Your garage')}</p>
+                <p className="mt-1 text-sm font-semibold text-[#596174]">{favoriteMeta}</p>
+                <p className="mt-2 text-sm font-black text-[#6c63ff]">{favoriteCar?.km_trenutni ? formatDistance(favoriteCar.km_trenutni, distanceUnit) : tx('Pripravljeno za prvo vozilo', 'Ready for the first vehicle')}</p>
+              </div>
+              <span className="text-2xl text-[#6c63ff]">→</span>
+            </button>
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-white p-3 text-[#101225]">
+                <p className="text-xs font-bold text-[#596174]">{tx('Vozil', 'Vehicles')}</p>
+                <p className="text-2xl font-black">{cars.length || '-'}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-[#101225]">
+                <p className="text-xs font-bold text-[#596174]">{tx('Opomniki', 'Reminders')}</p>
+                <p className="text-2xl font-black">{reminders.length || '-'}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-[#101225]">
+                <p className="text-xs font-bold text-[#596174]">{tx('Zadnje', 'Latest')}</p>
+                <p className="truncate text-sm font-black">{recentEvents[0]?.dateText || '-'}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
+              className="mt-3 flex w-full items-center justify-center gap-3 rounded-3xl bg-[#6c63ff] px-5 py-4 text-lg font-black text-white shadow-xl shadow-[#6c63ff44] transition-transform active:scale-[0.98]"
+            >
+              {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
+              <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </section>
+
+        <section className="hidden mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
           <button
             onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
             className="relative block h-[clamp(118px,18dvh,155px)] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
