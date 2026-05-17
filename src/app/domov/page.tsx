@@ -7,10 +7,9 @@ import { BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { formatMoney, getCurrencyFromSettings, type GarageBaseCurrency } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { clearVehicleDataCaches, GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { fuelCostValue } from '@/lib/vehicle-costs'
-import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 
 type RecentEvent = {
   id: string
@@ -139,8 +138,7 @@ export default function DomovPage() {
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
-  const [uploadingHeroImage, setUploadingHeroImage] = useState(false)
-  const [homeMessage, setHomeMessage] = useState('')
+  const [garageOpening, setGarageOpening] = useState(false)
 
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
@@ -187,47 +185,14 @@ export default function DomovPage() {
     } catch {}
   }
 
-  const naloziSlikoPrvegaVozila = async (event: any) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    if (!favoriteCar?.id) {
+  const vstopiVGarazo = () => {
+    if (garageOpening) return
+    if (cars.length === 0) {
       router.push('/dodaj-avto')
       return
     }
-    setUploadingHeroImage(true)
-    setHomeMessage('')
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.replace('/')
-        return
-      }
-      const preparedFile = (await compressImageFile(file, uploadImageProfiles.vehicle)).file
-      const fileExt = preparedFile.name.split('.').pop() || 'jpg'
-      const previousPath = String(favoriteCar?.slika_url || '').split('/car-images/')[1]?.split('?')[0]
-      const fileName = `${user.id}/${favoriteCar.id}-${Date.now()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { cacheControl: '31536000', upsert: false })
-      if (uploadError) throw uploadError
-      const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
-      const { error: updateError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', favoriteCar.id).eq('user_id', user.id)
-      if (updateError) throw updateError
-      if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
-      const updatedCars = cars.map((car) => car.id === favoriteCar.id ? { ...car, slika_url: urlData.publicUrl, slika_updated_at: new Date().toISOString() } : car)
-      setCars(updatedCars)
-      localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
-        version: GARAGE_CACHE_VERSION,
-        avti: updatedCars,
-        arhiv: false,
-        savedAt: Date.now(),
-      }))
-      clearVehicleDataCaches(favoriteCar.id)
-      setHomeMessage(tx('Slika vozila je shranjena.', 'Vehicle photo saved.'))
-    } catch (error: any) {
-      setHomeMessage(imageCompressionErrorText(error, language === 'en' ? 'en' : 'sl') || tx('Napaka pri nalaganju slike.', 'Image upload failed.'))
-    } finally {
-      setUploadingHeroImage(false)
-    }
+    setGarageOpening(true)
+    window.setTimeout(() => router.push('/garaza'), 3000)
   }
 
   useEffect(() => {
@@ -481,7 +446,7 @@ export default function DomovPage() {
         </section>
 
         <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
-          <div className="relative h-[clamp(260px,42dvh,360px)] overflow-hidden">
+          <div className="relative h-[35dvh] min-h-[245px] max-h-[360px] overflow-hidden">
             <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
             <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
@@ -495,35 +460,11 @@ export default function DomovPage() {
                 </button>
               </div>
             </div>
-            <div className="absolute inset-x-0 bottom-8 flex justify-center px-6">
-              {favoriteCar ? (
-                <label className={`group relative flex min-h-[132px] w-[58%] max-w-[250px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border-2 border-dashed p-3 text-center shadow-2xl backdrop-blur-md transition-transform active:scale-[0.98] ${isLightTheme ? 'border-white/80 bg-white/35 text-white shadow-black/10' : 'border-white/55 bg-black/25 text-white shadow-black/30'}`}>
-                  <input type="file" accept="image/*" onChange={naloziSlikoPrvegaVozila} className="hidden" />
-                  {favoriteCarImage ? (
-                    <>
-                      <img src={favoriteCarImage} alt={favoriteCarName} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="eager" decoding="async" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
-                    </>
-                  ) : null}
-                  <div className="relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/25 text-white shadow-lg backdrop-blur">
-                    <Icon type="car" className="h-7 w-7" />
-                  </div>
-                  <p className="relative z-10 mt-3 text-sm font-black drop-shadow">{uploadingHeroImage ? tx('Nalaganje...', 'Uploading...') : favoriteCarImage ? tx('Zamenjaj sliko vozila', 'Change vehicle photo') : tx('Dodaj vozilo v garažo', 'Add vehicle to garage')}</p>
-                  <p className="relative z-10 mt-1 text-xs font-semibold opacity-90">{tx('Tapni, da dodaš sliko', 'Tap to add a photo')}</p>
-                </label>
-              ) : (
-                <button onClick={() => router.push('/dodaj-avto')} className={`flex min-h-[132px] w-[58%] max-w-[250px] flex-col items-center justify-center rounded-[28px] border-2 border-dashed p-3 text-center shadow-2xl backdrop-blur-md ${isLightTheme ? 'border-white/80 bg-white/35 text-white shadow-black/10' : 'border-white/55 bg-black/25 text-white shadow-black/30'}`}>
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/25 text-white shadow-lg backdrop-blur">
-                    <Icon type="car" className="h-7 w-7" />
-                  </div>
-                  <p className="mt-3 text-sm font-black drop-shadow">{tx('Dodaj vozilo v garažo', 'Add vehicle to garage')}</p>
-                  <p className="mt-1 text-xs font-semibold opacity-90">{tx('Najprej dodaj prvo vozilo', 'Add your first vehicle first')}</p>
-                </button>
-              )}
-            </div>
+            <div className={`absolute inset-y-0 left-0 w-1/2 border-r ${garageOpening ? '-translate-x-full' : 'translate-x-0'} ${isLightTheme ? 'border-white/40 bg-white/45' : 'border-white/10 bg-[#050713]/75'} backdrop-blur-[1px] transition-transform duration-[3000ms] ease-in-out`} />
+            <div className={`absolute inset-y-0 right-0 w-1/2 border-l ${garageOpening ? 'translate-x-full' : 'translate-x-0'} ${isLightTheme ? 'border-white/40 bg-white/45' : 'border-white/10 bg-[#050713]/75'} backdrop-blur-[1px] transition-transform duration-[3000ms] ease-in-out`} />
+            <div className={`absolute inset-x-8 bottom-6 h-1 rounded-full ${isLightTheme ? 'bg-white/70' : 'bg-white/20'} shadow-[0_0_24px_rgba(108,99,255,0.45)]`} />
           </div>
           <div className="px-5 pb-5 pt-4">
-            {homeMessage && <p className={`mb-3 rounded-2xl px-3 py-2 text-sm font-bold ${isLightTheme ? 'bg-[#eef2ff] text-[#4f46e5]' : 'bg-[#6c63ff22] text-[#c8c5ff]'}`}>{homeMessage}</p>}
             <p className="hidden">
               {tx('Dobrodošel nazaj.', 'Welcome back.')}
             </p>
@@ -553,10 +494,11 @@ export default function DomovPage() {
               </div>
             </div>
             <button
-              onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
+              onClick={vstopiVGarazo}
+              disabled={garageOpening}
               className="mt-3 flex w-full items-center justify-center gap-3 rounded-3xl bg-[#6c63ff] px-5 py-4 text-lg font-black text-white shadow-xl shadow-[#6c63ff44] transition-transform active:scale-[0.98]"
             >
-              {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
+              {garageOpening ? tx('Odpiram garažo...', 'Opening garage...') : cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
               <span aria-hidden="true">→</span>
             </button>
           </div>
