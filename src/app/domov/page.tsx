@@ -157,7 +157,6 @@ export default function DomovPage() {
       viewBox: '0 0 914 609',
       opening: '181,149 736,45 730,470 181,428',
       panel: '181,149 736,45 730,470 181,428',
-      topCover: '165,124 748,14 748,86 181,190',
       linePairs: [
         ['181,149', '736,45'],
         ['181,184', '735,98'],
@@ -173,13 +172,11 @@ export default function DomovPage() {
       fill: '#e7edf5',
       stroke: '#aeb8c6',
       line: '#c5ceda',
-      coverFill: '#dce4ee',
     }
     : {
       viewBox: '0 0 1536 1024',
       opening: '490,365 1040,255 1040,686 490,644',
       panel: '490,365 1040,255 1040,686 490,644',
-      topCover: '468,333 1060,214 1060,310 490,408',
       linePairs: [
         ['490,365', '1040,255'],
         ['490,400', '1040,309'],
@@ -195,7 +192,6 @@ export default function DomovPage() {
       fill: '#151b27',
       stroke: '#364155',
       line: '#47536a',
-      coverFill: '#141923',
     }
 
   const carNameById = useMemo(() => {
@@ -462,7 +458,7 @@ export default function DomovPage() {
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={preklopiTemo} className="flex h-10 items-center gap-2 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white sm:h-11 sm:px-4">
+            <button onClick={preklopiTemo} className="flex h-10 items-center gap-2 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white sm:h-11 sm:px-4 md:hidden">
               {theme === 'svetla' ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
             </button>
             <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
@@ -556,19 +552,10 @@ export default function DomovPage() {
                   )
                 })}
               </g>
-              <polygon points={doorConfig.topCover} fill={doorConfig.coverFill} opacity="0.86" />
             </svg>
             <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
               <span className={`max-w-[62%] text-2xl font-black leading-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Dobrodošel nazaj.', 'Welcome back.')}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={preklopiTemo} className={`rounded-full border px-3 py-1.5 text-xs font-black backdrop-blur ${isLightTheme ? 'border-white/70 bg-white/80 text-[#101225]' : 'border-white/25 bg-black/25 text-white'}`}>
-                  {isLightTheme ? tx('Temno', 'Dark') : tx('Svetlo', 'Light')}
-                </button>
-                <button onClick={() => router.push('/opomniki')} aria-label={tx('Opomniki', 'Reminders')} className={`rounded-full border p-2 backdrop-blur ${isLightTheme ? 'border-white/70 bg-white/80 text-[#101225]' : 'border-white/25 bg-black/25 text-white'}`}>
-                  <Icon type="bell" className="h-4 w-4" />
-                </button>
-              </div>
             </div>
             <div className={`absolute inset-x-8 bottom-6 h-1 rounded-full ${isLightTheme ? 'bg-white/70' : 'bg-white/20'} shadow-[0_0_24px_rgba(108,99,255,0.45)]`} />
           </div>
