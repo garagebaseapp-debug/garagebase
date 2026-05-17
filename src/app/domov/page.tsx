@@ -159,6 +159,10 @@ export default function DomovPage() {
         '/home-garage-opening-3-light.jpg',
         '/home-garage-opening-4-light.jpg',
         '/home-garage-opening-5-light.jpg',
+        '/home-garage-opening-6-light.jpg',
+        '/home-garage-opening-7-light.jpg',
+        '/home-garage-opening-8-light.jpg',
+        '/home-garage-opening-9-light.jpg',
         '/home-garage-open-light.jpg',
       ]
       : [
@@ -168,6 +172,10 @@ export default function DomovPage() {
         '/home-garage-opening-3-dark.jpg',
         '/home-garage-opening-4-dark.jpg',
         '/home-garage-opening-5-dark.jpg',
+        '/home-garage-opening-6-dark.jpg',
+        '/home-garage-opening-7-dark.jpg',
+        '/home-garage-opening-8-dark.jpg',
+        '/home-garage-opening-9-dark.jpg',
         '/home-garage-open-dark.jpg',
       ]
   ), [isLightTheme])
@@ -211,7 +219,7 @@ export default function DomovPage() {
     }
     setGarageOpeningStep(0)
     setGarageOpening(true)
-    const frameDuration = 280
+    const frameDuration = 190
     garageHeroFrames.forEach((_, index) => {
       window.setTimeout(() => setGarageOpeningStep(index), index * frameDuration)
     })
