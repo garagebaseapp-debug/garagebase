@@ -605,7 +605,13 @@ export default function Dashboard() {
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
     if (avto.id === aktivniAvto?.id) return
+    setAktivniAvto(avto)
+    setOpomniki([])
+    setPoraba({ garageBase: null, imported: null, total: null })
+    setStroski({ garageBase: 0, imported: 0, total: 0, naKm: null })
     router.push(`/dashboard?car=${encodeURIComponent(avto.id)}`)
+    if (nacin === 'lite') await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
+    await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
   const dniDo = (datum: string) => {

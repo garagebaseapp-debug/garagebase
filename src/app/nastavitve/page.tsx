@@ -80,7 +80,7 @@ export default function Nastavitve() {
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
-  const [pisava, setPisava] = useState(100)
+  const [pisava, setPisava] = useState(140)
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -128,17 +128,19 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
-    { value: 85, title: tx('Zelo majhno', 'Very small'), desc: tx('Največ prostora', 'Most space') },
-    { value: 100, title: tx('Majhno', 'Small'), desc: tx('Privzeto', 'Default') },
-    { value: 140, title: tx('Srednje', 'Medium'), desc: tx('Lažje branje', 'Easier reading') },
-    { value: 200, title: tx('Veliko', 'Large'), desc: tx('Za slabši vid', 'For lower vision') },
-    { value: 300, title: tx('Zelo veliko', 'Very large'), desc: tx('Največja pisava', 'Largest text') },
+    { value: 140, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
+    { value: 200, title: tx('Srednja', 'Medium'), desc: tx('Lažje branje', 'Easier reading') },
+    { value: 300, title: tx('Velika', 'Large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
   const normalizeFontPercent = (value: any) => {
-    if (typeof value === 'number' && Number.isFinite(value)) return Math.min(300, Math.max(85, value))
-    const legacy: Record<string, number> = { mala: 90, normalna: 100, velika: 120 }
-    return legacy[value] || 100
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value <= 140) return 140
+      if (value <= 200) return 200
+      return 300
+    }
+    const legacy: Record<string, number> = { mala: 140, normalna: 140, srednja: 200, velika: 300 }
+    return legacy[value] || 140
   }
 
   const settingsSections = [
@@ -172,7 +174,7 @@ export default function Nastavitve() {
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
     const rootPx = 16 * (percent / 100)
-    document.documentElement.style.fontSize = `${Math.min(48, Math.max(14, rootPx))}px`
+    document.documentElement.style.fontSize = `${Math.min(48, Math.max(22.4, rootPx))}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
   }
 
@@ -1029,22 +1031,22 @@ export default function Nastavitve() {
 
       {/* App lock */}
       <div id="varnost" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
-        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">Varnost</p>
-        <p className="text-white font-semibold text-sm">Odklep z biometrijo</p>
-        <p className="text-[#5a5a80] text-xs mt-1 mb-3">Zakleni app z odtisom, obrazom ali PIN-om naprave.</p>
+        <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Varnost', 'Security')}</p>
+        <p className="text-white font-semibold text-sm">{tx('Odklep z obrazom, odtisom ali PIN-om', 'Unlock with face, fingerprint or PIN')}</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">{tx('Uporabi varno biometrijo naprave, kjer jo telefon ali računalnik podpira.', 'Use the device secure biometric unlock where the phone or computer supports it.')}</p>
         {!biometricSupported ? (
           <div className="bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
-            Ta brskalnik trenutno ne podpira varnega odklepa. Poskusi v nameščeni aplikaciji na telefonu.
+            {tx('Ta brskalnik trenutno ne podpira varnega odklepa z obrazom/odtisom. Poskusi v nameščeni aplikaciji na telefonu.', 'This browser does not currently support secure face/fingerprint unlock. Try the installed app on your phone.')}
           </div>
         ) : appLockEnabled ? (
           <button onClick={izklopiAppLock}
             className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
-            Izklopi odklep
+            {tx('Izklopi odklep', 'Disable unlock')}
           </button>
         ) : (
           <button onClick={vklopiAppLock} disabled={appLockLoading}
             className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
-            {appLockLoading ? 'Pripravljam...' : 'Vklopi odklep'}
+            {appLockLoading ? tx('Pripravljam...', 'Preparing...') : tx('Vklopi odklep', 'Enable unlock')}
           </button>
         )}
         {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}
@@ -1159,7 +1161,7 @@ export default function Nastavitve() {
             {Math.round(pisava)}%
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-5">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {fontOptions.map((option) => (
             <button
               key={option.value}

@@ -514,7 +514,7 @@ export default function DomovPage() {
 
         <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
           <div className="relative h-[48dvh] min-h-[350px] max-h-[560px] overflow-hidden">
-            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
+            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className={`absolute inset-0 h-full w-full object-cover ${isLightTheme ? '' : 'scale-[1.12]'}`} loading="eager" decoding="async" />
             <svg
               className="pointer-events-none absolute inset-0 h-full w-full"
               viewBox={doorConfig.viewBox}
