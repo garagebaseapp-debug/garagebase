@@ -139,6 +139,7 @@ export default function DomovPage() {
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
   const [garageOpening, setGarageOpening] = useState(false)
+  const [garageOpeningStep, setGarageOpeningStep] = useState(0)
 
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
@@ -149,7 +150,10 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
+  const garageHeroFrames = isLightTheme
+    ? ['/home-garage-closed-light.jpg', '/home-garage-opening-1-light.jpg', '/home-garage-opening-2-light.jpg']
+    : ['/home-garage-closed-dark.jpg', '/home-garage-opening-1-dark.jpg', '/home-garage-opening-2-dark.jpg']
+  const heroImage = garageHeroFrames[Math.min(garageOpeningStep, garageHeroFrames.length - 1)]
 
   const carNameById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -187,8 +191,11 @@ export default function DomovPage() {
       router.push('/dodaj-avto')
       return
     }
+    setGarageOpeningStep(0)
     setGarageOpening(true)
-    window.setTimeout(() => router.push('/garaza'), 3000)
+    window.setTimeout(() => setGarageOpeningStep(1), 700)
+    window.setTimeout(() => setGarageOpeningStep(2), 1550)
+    window.setTimeout(() => router.push('/garaza'), 2850)
   }
 
   useEffect(() => {
@@ -455,29 +462,6 @@ export default function DomovPage() {
                   <Icon type="bell" className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-            <div className="absolute left-[27%] right-[16%] top-[22%] bottom-[31%] [perspective:900px]">
-              <div className={`absolute -left-1 top-0 h-full w-1.5 rounded-full ${isLightTheme ? 'bg-white/70 shadow-[0_0_18px_rgba(255,255,255,0.45)]' : 'bg-white/20 shadow-[0_0_16px_rgba(108,99,255,0.35)]'}`} />
-              <div className={`absolute -right-1 top-0 h-full w-1.5 rounded-full ${isLightTheme ? 'bg-white/70 shadow-[0_0_18px_rgba(255,255,255,0.45)]' : 'bg-white/20 shadow-[0_0_16px_rgba(108,99,255,0.35)]'}`} />
-              <div className={`absolute -top-2 left-0 right-0 h-2 rounded-t-xl ${isLightTheme ? 'bg-white/75' : 'bg-[#0b1020]/90'}`} />
-              <div
-                className={`absolute inset-0 origin-top overflow-hidden rounded-b-2xl rounded-t-md border shadow-2xl transition-all duration-[3000ms] ease-in-out ${garageOpening ? '-translate-y-[82%] scale-y-[0.18] opacity-95' : 'translate-y-0 scale-y-100 opacity-100'} ${isLightTheme ? 'border-white/70 bg-[#e9edf5]/92 shadow-white/20' : 'border-white/15 bg-[#0b1324]/95 shadow-black/50'}`}
-              >
-                <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-br from-white/78 via-[#e3e8f2]/88 to-[#c7d0df]/88' : 'bg-gradient-to-br from-[#1b2540]/95 via-[#0b1324]/95 to-[#050814]/95'}`} />
-                <div className={`absolute inset-x-0 top-0 h-4 ${isLightTheme ? 'bg-white/55' : 'bg-white/10'}`} />
-                <div className="absolute inset-0 grid grid-rows-6">
-                  {[0, 1, 2, 3, 4, 5].map((panel) => (
-                    <div
-                      key={panel}
-                      className={`relative border-b ${isLightTheme ? 'border-[#aab6ca]/45' : 'border-white/10'}`}
-                    >
-                      <div className={`absolute inset-x-5 top-1/2 h-px ${isLightTheme ? 'bg-white/75' : 'bg-white/12'}`} />
-                    </div>
-                  ))}
-                </div>
-                <div className={`absolute inset-x-4 bottom-2 h-2 rounded-full ${isLightTheme ? 'bg-[#b7c2d2]/80' : 'bg-[#030712]/90'}`} />
-              </div>
-              <div className={`absolute inset-x-6 bottom-0 h-2 origin-center rounded-full blur-[2px] transition-opacity duration-[1600ms] ${garageOpening ? 'opacity-0' : 'opacity-80'} ${isLightTheme ? 'bg-slate-400/35' : 'bg-black/70'}`} />
             </div>
             <div className={`absolute inset-x-8 bottom-6 h-1 rounded-full ${isLightTheme ? 'bg-white/70' : 'bg-white/20'} shadow-[0_0_24px_rgba(108,99,255,0.45)]`} />
           </div>
