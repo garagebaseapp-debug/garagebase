@@ -157,6 +157,7 @@ export default function DomovPage() {
       viewBox: '0 0 914 609',
       opening: '181,149 736,45 730,470 181,428',
       panel: '181,149 736,45 730,470 181,428',
+      topCover: '165,124 748,14 748,86 181,190',
       linePairs: [
         ['181,149', '736,45'],
         ['181,184', '735,98'],
@@ -172,11 +173,13 @@ export default function DomovPage() {
       fill: '#e7edf5',
       stroke: '#aeb8c6',
       line: '#c5ceda',
+      coverFill: '#dce4ee',
     }
     : {
       viewBox: '0 0 1536 1024',
       opening: '490,365 1040,255 1040,686 490,644',
       panel: '490,365 1040,255 1040,686 490,644',
+      topCover: '468,333 1060,214 1060,310 490,408',
       linePairs: [
         ['490,365', '1040,255'],
         ['490,400', '1040,309'],
@@ -192,6 +195,7 @@ export default function DomovPage() {
       fill: '#151b27',
       stroke: '#364155',
       line: '#47536a',
+      coverFill: '#141923',
     }
 
   const carNameById = useMemo(() => {
@@ -236,7 +240,7 @@ export default function DomovPage() {
       if (garageNavigationStarted.current) return
       garageNavigationStarted.current = true
       router.push('/garaza')
-    }, 1850)
+    }, 1550)
   }
 
   const odpriGarazoPoAnimaciji = () => {
@@ -531,7 +535,7 @@ export default function DomovPage() {
                 onTransitionEnd={odpriGarazoPoAnimaciji}
                 style={{
                   transform: garageOpening ? `translateY(-${doorConfig.lift}px)` : 'translateY(0)',
-                  transition: 'transform 2200ms cubic-bezier(0.22, 0.86, 0.28, 1)',
+                  transition: 'transform 1500ms cubic-bezier(0.22, 0.86, 0.28, 1)',
                 }}
               >
                 <polygon points={doorConfig.panel} fill={doorConfig.fill} stroke={doorConfig.stroke} strokeWidth="2.7" />
@@ -552,6 +556,7 @@ export default function DomovPage() {
                   )
                 })}
               </g>
+              <polygon points={doorConfig.topCover} fill={doorConfig.coverFill} opacity="0.86" />
             </svg>
             <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
