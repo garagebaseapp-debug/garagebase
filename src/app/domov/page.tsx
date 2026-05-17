@@ -139,7 +139,6 @@ export default function DomovPage() {
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
   const [garageOpening, setGarageOpening] = useState(false)
-  const [garageOpeningStep, setGarageOpeningStep] = useState(0)
 
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
@@ -150,36 +149,44 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const garageHeroFrames = useMemo(() => (
-    isLightTheme
-      ? [
-        '/home-garage-closed-light.webp',
-        '/home-garage-opening-1-light.webp',
-        '/home-garage-opening-2-light.webp',
-        '/home-garage-opening-3-light.webp',
-        '/home-garage-opening-4-light.webp',
-        '/home-garage-opening-5-light.webp',
-        '/home-garage-opening-6-light.webp',
-        '/home-garage-opening-7-light.webp',
-        '/home-garage-opening-8-light.webp',
-        '/home-garage-opening-9-light.webp',
-        '/home-garage-open-light.webp',
-      ]
-      : [
-        '/home-garage-closed-dark.webp',
-        '/home-garage-opening-1-dark.webp',
-        '/home-garage-opening-2-dark.webp',
-        '/home-garage-opening-3-dark.webp',
-        '/home-garage-opening-4-dark.webp',
-        '/home-garage-opening-5-dark.webp',
-        '/home-garage-opening-6-dark.webp',
-        '/home-garage-opening-7-dark.webp',
-        '/home-garage-opening-8-dark.webp',
-        '/home-garage-opening-9-dark.webp',
-        '/home-garage-open-dark.webp',
-      ]
-  ), [isLightTheme])
-  const heroImage = garageHeroFrames[Math.min(garageOpeningStep, garageHeroFrames.length - 1)]
+  const heroImage = isLightTheme ? '/home-garage-open-light.webp' : '/home-garage-open-dark.webp'
+  const doorConfig = isLightTheme
+    ? {
+      viewBox: '0 0 914 609',
+      opening: '181,149 736,45 730,470 181,428',
+      panel: '181,149 736,45 730,470 181,428',
+      linePairs: [
+        ['181.0,184.0', '735.5,83.3'],
+        ['181.0,219.0', '735.0,121.6'],
+        ['181.0,254.0', '734.5,159.9'],
+        ['181.0,289.0', '734.0,198.2'],
+        ['181.0,324.0', '733.5,236.5'],
+        ['181.0,359.0', '733.0,274.8'],
+        ['181.0,394.0', '732.5,313.1'],
+      ],
+      lift: 430,
+      fill: '#e7edf5',
+      stroke: '#aeb8c6',
+      line: '#c5ceda',
+    }
+    : {
+      viewBox: '0 0 1536 1024',
+      opening: '490,365 1040,255 1040,686 490,644',
+      panel: '490,365 1040,255 1040,686 490,644',
+      linePairs: [
+        ['490.0,400.0', '1040.0,290.0'],
+        ['490.0,435.0', '1040.0,325.0'],
+        ['490.0,470.0', '1040.0,360.0'],
+        ['490.0,505.0', '1040.0,395.0'],
+        ['490.0,540.0', '1040.0,430.0'],
+        ['490.0,575.0', '1040.0,465.0'],
+        ['490.0,610.0', '1040.0,500.0'],
+      ],
+      lift: 445,
+      fill: '#151b27',
+      stroke: '#364155',
+      line: '#47536a',
+    }
 
   const carNameById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -217,21 +224,14 @@ export default function DomovPage() {
       router.push('/dodaj-avto')
       return
     }
-    setGarageOpeningStep(0)
     setGarageOpening(true)
-    const frameDuration = 190
-    garageHeroFrames.forEach((_, index) => {
-      window.setTimeout(() => setGarageOpeningStep(index), index * frameDuration)
-    })
-    window.setTimeout(() => router.push('/garaza'), garageHeroFrames.length * frameDuration + 450)
+    window.setTimeout(() => router.push('/garaza'), 2400)
   }
 
   useEffect(() => {
-    garageHeroFrames.forEach((src) => {
-      const image = new Image()
-      image.src = src
-    })
-  }, [garageHeroFrames])
+    const image = new Image()
+    image.src = heroImage
+  }, [heroImage])
 
   useEffect(() => {
     const load = async () => {
@@ -486,6 +486,43 @@ export default function DomovPage() {
         <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
           <div className="relative h-[48dvh] min-h-[350px] max-h-[560px] overflow-hidden">
             <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
+            <svg
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox={doorConfig.viewBox}
+              preserveAspectRatio="xMidYMid slice"
+              aria-hidden="true"
+            >
+              <defs>
+                <clipPath id={`garageDoorClip-${isLightTheme ? 'light' : 'dark'}`}>
+                  <polygon points={doorConfig.opening} />
+                </clipPath>
+              </defs>
+              <g
+                clipPath={`url(#garageDoorClip-${isLightTheme ? 'light' : 'dark'})`}
+                style={{
+                  transform: garageOpening ? `translateY(-${doorConfig.lift}px)` : 'translateY(0)',
+                  transition: 'transform 2200ms cubic-bezier(0.22, 0.86, 0.28, 1)',
+                }}
+              >
+                <polygon points={doorConfig.panel} fill={doorConfig.fill} stroke={doorConfig.stroke} strokeWidth="2.7" />
+                {doorConfig.linePairs.map(([start, end], index) => {
+                  const [x1, y1] = start.split(',')
+                  const [x2, y2] = end.split(',')
+                  return (
+                    <line
+                      key={index}
+                      x1={x1}
+                      y1={y1}
+                      x2={x2}
+                      y2={y2}
+                      stroke={doorConfig.line}
+                      strokeWidth="2.2"
+                      opacity="0.72"
+                    />
+                  )
+                })}
+              </g>
+            </svg>
             <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
               <span className={`max-w-[62%] text-2xl font-black leading-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Dobrodošel nazaj.', 'Welcome back.')}</span>
