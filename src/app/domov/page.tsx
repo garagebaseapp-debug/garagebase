@@ -148,12 +148,8 @@ export default function DomovPage() {
     if (!raw) return ''
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
-  const favoriteCarImage = favoriteCar ? carImage(favoriteCar) : ''
   const isLightTheme = theme === 'svetla'
   const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
-  const favoriteMeta = favoriteCar
-    ? [favoriteCar.barva, favoriteCar.gorivo].filter(Boolean).join(' · ')
-    : tx('Dodaj prvo vozilo', 'Add your first vehicle')
 
   const carNameById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -446,7 +442,7 @@ export default function DomovPage() {
         </section>
 
         <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
-          <div className="relative h-[35dvh] min-h-[245px] max-h-[360px] overflow-hidden">
+          <div className="relative h-[48dvh] min-h-[350px] max-h-[560px] overflow-hidden">
             <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
             <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
@@ -460,25 +456,26 @@ export default function DomovPage() {
                 </button>
               </div>
             </div>
-            <div className={`absolute inset-y-0 left-0 w-1/2 border-r ${garageOpening ? '-translate-x-full' : 'translate-x-0'} ${isLightTheme ? 'border-white/40 bg-white/45' : 'border-white/10 bg-[#050713]/75'} backdrop-blur-[1px] transition-transform duration-[3000ms] ease-in-out`} />
-            <div className={`absolute inset-y-0 right-0 w-1/2 border-l ${garageOpening ? 'translate-x-full' : 'translate-x-0'} ${isLightTheme ? 'border-white/40 bg-white/45' : 'border-white/10 bg-[#050713]/75'} backdrop-blur-[1px] transition-transform duration-[3000ms] ease-in-out`} />
+            <div
+              className={`absolute left-[7%] right-[7%] top-[18%] bottom-[13%] overflow-hidden rounded-t-[24px] border shadow-2xl transition-transform duration-[3000ms] ease-in-out ${garageOpening ? '-translate-y-[118%]' : 'translate-y-0'} ${isLightTheme ? 'border-white/60 bg-[#e7edf7]/88 shadow-white/20' : 'border-white/15 bg-[#071021]/90 shadow-black/40'} backdrop-blur-[1px]`}
+            >
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: isLightTheme
+                    ? 'repeating-linear-gradient(0deg, rgba(100,116,139,0.24) 0px, rgba(100,116,139,0.24) 1px, transparent 1px, transparent 32px)'
+                    : 'repeating-linear-gradient(0deg, rgba(255,255,255,0.14) 0px, rgba(255,255,255,0.14) 1px, transparent 1px, transparent 32px)',
+                }}
+              />
+              <div className={`absolute inset-x-6 top-5 h-1 rounded-full ${isLightTheme ? 'bg-white/85' : 'bg-white/25'}`} />
+              <div className={`absolute inset-x-4 bottom-3 h-1.5 rounded-full ${isLightTheme ? 'bg-[#cbd5e1]' : 'bg-[#111827]'}`} />
+            </div>
             <div className={`absolute inset-x-8 bottom-6 h-1 rounded-full ${isLightTheme ? 'bg-white/70' : 'bg-white/20'} shadow-[0_0_24px_rgba(108,99,255,0.45)]`} />
           </div>
           <div className="px-5 pb-5 pt-4">
             <p className="hidden">
               {tx('Dobrodošel nazaj.', 'Welcome back.')}
             </p>
-            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/dodaj-avto')} className={`mt-4 flex w-full items-center gap-4 rounded-3xl border p-3 text-left shadow-xl shadow-black/10 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827]/90 text-white'}`}>
-              <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#eef2ff]">
-                {favoriteCarImage ? <img src={favoriteCarImage} alt={favoriteCarName} className="h-full w-full object-cover" loading="eager" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xl font-black">{favoriteCarName || tx('Tvoja garaža', 'Your garage')}</p>
-                <p className={`mt-1 text-sm font-semibold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{favoriteMeta}</p>
-                <p className="mt-2 text-sm font-black text-[#6c63ff]">{favoriteCar?.km_trenutni ? formatDistance(favoriteCar.km_trenutni, distanceUnit) : tx('Pripravljeno za prvo vozilo', 'Ready for the first vehicle')}</p>
-              </div>
-              <span className="text-2xl text-[#6c63ff]">→</span>
-            </button>
             <div className="mt-3 grid grid-cols-3 gap-2">
               <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
                 <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Vozil', 'Vehicles')}</p>
