@@ -148,7 +148,8 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const favoriteCarImage = favoriteCar ? carImage(favoriteCar) : ''
-  const heroImage = favoriteCarImage || (theme === 'svetla' ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg')
+  const isLightTheme = theme === 'svetla'
+  const heroImage = isLightTheme ? '/landing-hero-light.jpg' : '/landing-hero-dark.jpg'
   const favoriteMeta = favoriteCar
     ? [favoriteCar.barva, favoriteCar.gorivo].filter(Boolean).join(' · ')
     : tx('Dodaj prvo vozilo', 'Add your first vehicle')
@@ -433,43 +434,48 @@ export default function DomovPage() {
           </button>
         </section>
 
-        <section className="mb-3 overflow-hidden rounded-[28px] border border-[#1e1e32] bg-[#0f0f1a] shadow-2xl shadow-black/10">
+        <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
           <div className="relative h-[clamp(150px,25dvh,230px)] overflow-hidden">
             <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover" loading="eager" decoding="async" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#080810] via-[#08081033] to-transparent" />
+            <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
             <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
               <span className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-black text-[#101225]">GarageBase</span>
-              <button onClick={preklopiTemo} className="rounded-full border border-white/25 bg-black/25 px-3 py-1.5 text-xs font-black text-white backdrop-blur">
-                {theme === 'svetla' ? tx('Temno', 'Dark') : tx('Svetlo', 'Light')}
-              </button>
+              <div className="flex items-center gap-2">
+                <button onClick={preklopiTemo} className={`rounded-full border px-3 py-1.5 text-xs font-black backdrop-blur ${isLightTheme ? 'border-white/70 bg-white/80 text-[#101225]' : 'border-white/25 bg-black/25 text-white'}`}>
+                  {isLightTheme ? tx('Temno', 'Dark') : tx('Svetlo', 'Light')}
+                </button>
+                <button onClick={() => router.push('/opomniki')} aria-label={tx('Opomniki', 'Reminders')} className={`rounded-full border p-2 backdrop-blur ${isLightTheme ? 'border-white/70 bg-white/80 text-[#101225]' : 'border-white/25 bg-black/25 text-white'}`}>
+                  <Icon type="bell" className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="px-5 pb-5 pt-4">
-            <p className="text-[clamp(1.45rem,7vw,2.15rem)] font-black leading-tight text-white">
+            <p className={`text-[clamp(1.45rem,7vw,2.15rem)] font-black leading-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
               {tx('Dobrodošel nazaj.', 'Welcome back.')}
             </p>
-            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/dodaj-avto')} className="mt-4 flex w-full items-center gap-4 rounded-3xl border border-[#1e1e32] bg-white p-3 text-left text-[#101225] shadow-xl shadow-black/10">
+            <button onClick={() => router.push(favoriteCar ? `/dashboard?car=${favoriteCar.id}` : '/dodaj-avto')} className={`mt-4 flex w-full items-center gap-4 rounded-3xl border p-3 text-left shadow-xl shadow-black/10 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827]/90 text-white'}`}>
               <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#eef2ff]">
                 {favoriteCarImage ? <img src={favoriteCarImage} alt={favoriteCarName} className="h-full w-full object-cover" loading="eager" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xl font-black">{favoriteCarName || tx('Tvoja garaža', 'Your garage')}</p>
-                <p className="mt-1 text-sm font-semibold text-[#596174]">{favoriteMeta}</p>
+                <p className={`mt-1 text-sm font-semibold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{favoriteMeta}</p>
                 <p className="mt-2 text-sm font-black text-[#6c63ff]">{favoriteCar?.km_trenutni ? formatDistance(favoriteCar.km_trenutni, distanceUnit) : tx('Pripravljeno za prvo vozilo', 'Ready for the first vehicle')}</p>
               </div>
               <span className="text-2xl text-[#6c63ff]">→</span>
             </button>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-2xl bg-white p-3 text-[#101225]">
-                <p className="text-xs font-bold text-[#596174]">{tx('Vozil', 'Vehicles')}</p>
+              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
+                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Vozil', 'Vehicles')}</p>
                 <p className="text-2xl font-black">{cars.length || '-'}</p>
               </div>
-              <div className="rounded-2xl bg-white p-3 text-[#101225]">
-                <p className="text-xs font-bold text-[#596174]">{tx('Opomniki', 'Reminders')}</p>
+              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
+                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Opomniki', 'Reminders')}</p>
                 <p className="text-2xl font-black">{reminders.length || '-'}</p>
               </div>
-              <div className="rounded-2xl bg-white p-3 text-[#101225]">
-                <p className="text-xs font-bold text-[#596174]">{tx('Zadnje', 'Latest')}</p>
+              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
+                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Zadnje', 'Latest')}</p>
                 <p className="truncate text-sm font-black">{recentEvents[0]?.dateText || '-'}</p>
               </div>
             </div>
