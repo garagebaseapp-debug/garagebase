@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
@@ -139,6 +139,8 @@ export default function DomovPage() {
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
   const [garageOpening, setGarageOpening] = useState(false)
+  const garageNavigationStarted = useRef(false)
+  const garageFallbackTimeout = useRef<number | null>(null)
 
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
@@ -156,13 +158,12 @@ export default function DomovPage() {
       opening: '181,149 736,45 730,470 181,428',
       panel: '181,149 736,45 730,470 181,428',
       linePairs: [
-        ['181,190', '736,190'],
-        ['181,225', '736,225'],
-        ['181,260', '736,260'],
-        ['181,295', '736,295'],
-        ['181,330', '736,330'],
-        ['181,365', '736,365'],
-        ['181,400', '736,400'],
+        ['181,188', '730,230'],
+        ['181,228', '730,270'],
+        ['181,268', '730,310'],
+        ['181,308', '730,350'],
+        ['181,348', '730,390'],
+        ['181,388', '730,430'],
       ],
       lift: 430,
       fill: '#e7edf5',
@@ -174,13 +175,12 @@ export default function DomovPage() {
       opening: '490,365 1040,255 1040,686 490,644',
       panel: '490,365 1040,255 1040,686 490,644',
       linePairs: [
-        ['490,405', '1040,405'],
-        ['490,440', '1040,440'],
-        ['490,475', '1040,475'],
-        ['490,510', '1040,510'],
-        ['490,545', '1040,545'],
-        ['490,580', '1040,580'],
-        ['490,615', '1040,615'],
+        ['490,404', '1040,446'],
+        ['490,444', '1040,486'],
+        ['490,484', '1040,526'],
+        ['490,524', '1040,566'],
+        ['490,564', '1040,606'],
+        ['490,604', '1040,646'],
       ],
       lift: 445,
       fill: '#151b27',
@@ -224,14 +224,33 @@ export default function DomovPage() {
       router.push('/dodaj-avto')
       return
     }
+    garageNavigationStarted.current = false
     setGarageOpening(true)
-    window.setTimeout(() => router.push('/garaza'), 2200)
+    garageFallbackTimeout.current = window.setTimeout(() => {
+      if (garageNavigationStarted.current) return
+      garageNavigationStarted.current = true
+      router.push('/garaza')
+    }, 2220)
+  }
+
+  const odpriGarazoPoAnimaciji = () => {
+    if (!garageOpening || garageNavigationStarted.current) return
+    garageNavigationStarted.current = true
+    if (garageFallbackTimeout.current !== null) {
+      window.clearTimeout(garageFallbackTimeout.current)
+      garageFallbackTimeout.current = null
+    }
+    router.push('/garaza')
   }
 
   useEffect(() => {
     const image = new Image()
     image.src = heroImage
   }, [heroImage])
+
+  useEffect(() => () => {
+    if (garageFallbackTimeout.current !== null) window.clearTimeout(garageFallbackTimeout.current)
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -499,6 +518,7 @@ export default function DomovPage() {
               </defs>
               <g
                 clipPath={`url(#garageDoorClip-${isLightTheme ? 'light' : 'dark'})`}
+                onTransitionEnd={odpriGarazoPoAnimaciji}
                 style={{
                   transform: garageOpening ? `translateY(-${doorConfig.lift}px)` : 'translateY(0)',
                   transition: 'transform 2200ms cubic-bezier(0.22, 0.86, 0.28, 1)',
@@ -516,7 +536,7 @@ export default function DomovPage() {
                       x2={x2}
                       y2={y2}
                       stroke={doorConfig.line}
-                      strokeWidth="2.2"
+                      strokeWidth="3.2"
                       opacity="0.72"
                     />
                   )
