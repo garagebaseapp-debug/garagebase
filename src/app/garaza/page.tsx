@@ -25,7 +25,15 @@ export default function Garaza() {
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
-  const [nacin, setNacin] = useState<'lite' | 'full'>('full')
+  const [nacin, setNacin] = useState<'lite' | 'full'>(() => {
+    if (typeof window === 'undefined') return 'full'
+    try {
+      const savedSettings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+      return savedSettings?.nacin === 'lite' ? 'lite' : 'full'
+    } catch {
+      return 'full'
+    }
+  })
   const [tema, setTema] = useState<'temna' | 'svetla'>('temna')
   const [prikaz, setPrikaz] = useState('srednje')
   const [nastavitveVozilMode, setNastavitveVozilMode] = useState(false)
@@ -33,9 +41,11 @@ export default function Garaza() {
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
   const [liteCarId, setLiteCarId] = useState('')
   const [liteDetailOpen, setLiteDetailOpen] = useState(false)
+  const [liteUrejanje, setLiteUrejanje] = useState(false)
   const [liteHistoryOpen, setLiteHistoryOpen] = useState(false)
   const [liteHistory, setLiteHistory] = useState<any[]>([])
   const [liteHistoryLoading, setLiteHistoryLoading] = useState(false)
+  const [liteHistoryFilters, setLiteHistoryFilters] = useState({ fuel: true, service: true, expense: true })
   const [garazaPisava, setGarazaPisava] = useState(100)
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
   const [gridNastavitve, setGridNastavitve] = useState({
@@ -323,6 +333,13 @@ export default function Garaza() {
 
   const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
   const showLiteHome = nacin === 'lite' && !urejanje && !arhiv
+  const liteHistoryVisible = liteHistory.filter((item: any) => {
+    const key = item?.kind as keyof typeof liteHistoryFilters
+    return key ? liteHistoryFilters[key] === true : false
+  })
+  const preklopiLiteHistoryFilter = (key: keyof typeof liteHistoryFilters) => {
+    setLiteHistoryFilters(prev => ({ ...prev, [key]: !prev[key] }))
+  }
 
   useEffect(() => {
     const refreshArchive = async () => {
@@ -396,6 +413,7 @@ export default function Garaza() {
         const rows = [
           ...(fuelRes.data || []).map((row: any) => ({
             id: `fuel-${row.id}`,
+            kind: 'fuel',
             type: tx('Gorivo', 'Fuel'),
             icon: 'F',
             date: row.datum || row.created_at,
@@ -405,6 +423,7 @@ export default function Garaza() {
           })),
           ...(serviceRes.data || []).map((row: any) => ({
             id: `service-${row.id}`,
+            kind: 'service',
             type: tx('Servis', 'Service'),
             icon: 'S',
             date: row.datum || row.created_at,
@@ -414,21 +433,13 @@ export default function Garaza() {
           })),
           ...(expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba').map((row: any) => ({
             id: `expense-${row.id}`,
+            kind: 'expense',
             type: tx('Strosek', 'Cost'),
             icon: '€',
             date: row.datum || row.created_at,
             title: row.opis || row.kategorija || tx('Strosek', 'Cost'),
             meta: row.kategorija || '',
             amount: row.znesek ? `${Number(row.znesek).toFixed(2)} €` : '',
-          })),
-          ...(opomniki[liteCarId] || []).map((row: any) => ({
-            id: `reminder-${row.id}`,
-            type: tx('Opomnik', 'Reminder'),
-            icon: '!',
-            date: row.datum || row.created_at,
-            title: row.tip || tx('Opomnik', 'Reminder'),
-            meta: row.km_opomnik ? formatDistance(row.km_opomnik, enotaRazdalje) : '',
-            amount: '',
           })),
         ]
           .filter((row: any) => row.date)
@@ -543,11 +554,26 @@ export default function Garaza() {
   const onDragEnd = async () => {
     setDragIndex(null)
     dragOver.current = null
-    for (let i = 0; i < avti.length; i++) {
-      let query = supabase.from('cars').update({ vrstni_red: i }).eq('id', avti[i].id)
-      if (avti[i].user_id) query = query.eq('user_id', avti[i].user_id)
+    await shraniVrstniRed(avti)
+  }
+
+  const shraniVrstniRed = async (cars: any[]) => {
+    for (let i = 0; i < cars.length; i++) {
+      let query = supabase.from('cars').update({ vrstni_red: i }).eq('id', cars[i].id)
+      if (cars[i].user_id) query = query.eq('user_id', cars[i].user_id)
       await query
     }
+  }
+
+  const premakniLiteAvto = async (index: number, smer: -1 | 1) => {
+    const targetIndex = index + smer
+    if (targetIndex < 0 || targetIndex >= avti.length) return
+    const noviAvti = [...avti]
+    const [premaknjeni] = noviAvti.splice(index, 1)
+    noviAvti.splice(targetIndex, 0, premaknjeni)
+    setAvti(noviAvti)
+    setLiteCarId(prev => prev || noviAvti[0]?.id || '')
+    await shraniVrstniRed(noviAvti)
   }
 
   const barvaOpomnika = (carId: string, avtoKm: number) => {
@@ -1317,7 +1343,7 @@ export default function Garaza() {
                 <p className={`mt-2 text-[calc(14px*var(--gb-card-font-scale,1))] font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Moja vozila', 'My vehicles')}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false) }}
+                <button onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false); setLiteUrejanje(false) }}
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#6c63ff]' : 'border-[#253142] bg-[#101720] text-[#c8c4ff]'}`}>
                   {tx('Domov', 'Home')}
                 </button>
@@ -1351,7 +1377,45 @@ export default function Garaza() {
                 + {tx('Avto', 'Vehicle')}
               </button>
             </div>
-            {prikaz === 'grid' ? (
+            <button
+              type="button"
+              onClick={() => setLiteUrejanje(prev => !prev)}
+              className={`w-full rounded-2xl border px-4 py-3 text-sm font-black ${liteUrejanje ? 'border-[#6c63ff] bg-[#6c63ff] text-white' : (desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white')}`}
+            >
+              {liteUrejanje ? tx('Končaj urejanje vrstnega reda', 'Finish reordering') : tx('Uredi vrstni red vozil', 'Reorder vehicles')}
+            </button>
+            {liteUrejanje ? (
+            <div className="space-y-2">
+              {avti.map((avto: any, index: number) => (
+                <div key={avto.id} className={`grid grid-cols-[minmax(0,1fr)_88px] items-center gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-black">{index + 1}. {imeVozila(avto)}</p>
+                    <p className={`mt-1 truncate text-xs font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{metaVozila(avto) || '-'}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => premakniLiteAvto(index, -1)}
+                      disabled={index === 0}
+                      className={`h-11 rounded-xl border text-lg font-black disabled:opacity-35 ${desktopLight ? 'border-[#d8def0] bg-[#f8f9fd] text-[#6c63ff]' : 'border-[#253142] bg-[#0c121a] text-[#c8c4ff]'}`}
+                      aria-label={tx('Premakni gor', 'Move up')}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => premakniLiteAvto(index, 1)}
+                      disabled={index === avti.length - 1}
+                      className={`h-11 rounded-xl border text-lg font-black disabled:opacity-35 ${desktopLight ? 'border-[#d8def0] bg-[#f8f9fd] text-[#6c63ff]' : 'border-[#253142] bg-[#0c121a] text-[#c8c4ff]'}`}
+                      aria-label={tx('Premakni dol', 'Move down')}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            ) : prikaz === 'grid' ? (
             <div className="grid grid-cols-2 gap-3">
               {avti.map((avto: any, index: number) => {
                 const imageSrc = slikaVozila(avto)
@@ -1434,7 +1498,7 @@ export default function Garaza() {
               <div className={`overflow-hidden rounded-[28px] border shadow-xl ${desktopLight ? 'border-[#e2e7f2] bg-white shadow-[#101225]/6' : 'border-[#253142] bg-[#101720] shadow-black/20'}`}>
                 <div className={`flex items-center gap-3 border-b px-4 py-3 ${desktopLight ? 'border-[#e2e7f2]' : 'border-[#253142]'}`}>
                   <button
-                    onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false) }}
+                    onClick={() => { setLiteDetailOpen(false); setLiteHistoryOpen(false); setLiteUrejanje(false) }}
                     className={`h-11 w-11 rounded-2xl border text-xl font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}
                     aria-label={tx('Nazaj na vozila', 'Back to vehicles')}
                   >
@@ -1505,13 +1569,29 @@ export default function Garaza() {
               {liteHistoryOpen && (
                 <div className={`rounded-[24px] border p-3 ${desktopLight ? 'border-[#e2e7f2] bg-white' : 'border-[#253142] bg-[#101720]'}`}>
                   <p className={`mb-3 px-1 text-sm font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Zadnje aktivnosti', 'Latest activity')}</p>
+                  <div className="mb-3 grid grid-cols-3 gap-2">
+                    {[
+                      { key: 'fuel', label: tx('Gorivo', 'Fuel') },
+                      { key: 'service', label: tx('Servis', 'Service') },
+                      { key: 'expense', label: tx('Strosek', 'Cost') },
+                    ].map((filter: any) => (
+                      <button
+                        key={filter.key}
+                        type="button"
+                        onClick={() => preklopiLiteHistoryFilter(filter.key)}
+                        className={`rounded-xl border px-2 py-2 text-xs font-black ${liteHistoryFilters[filter.key as keyof typeof liteHistoryFilters] ? 'border-[#6c63ff] bg-[#6c63ff] text-white' : (desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#596174]' : 'border-[#253142] bg-[#0c121a] text-[#a8b0c0]')}`}
+                      >
+                        {liteHistoryFilters[filter.key as keyof typeof liteHistoryFilters] ? '✓ ' : ''}{filter.label}
+                      </button>
+                    ))}
+                  </div>
                   {liteHistoryLoading ? (
                     <p className={`px-1 py-4 text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Nalagam...', 'Loading...')}</p>
-                  ) : liteHistory.length === 0 ? (
+                  ) : liteHistoryVisible.length === 0 ? (
                     <p className={`px-1 py-4 text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Ni zgodovine za to vozilo.', 'No history for this vehicle yet.')}</p>
                   ) : (
                     <div className="space-y-2">
-                      {liteHistory.map((item: any) => (
+                      {liteHistoryVisible.map((item: any) => (
                         <div key={item.id} className={`grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#edf0f7] bg-[#f8f9fd]' : 'border-[#253142] bg-[#0c121a]'}`}>
                           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6c63ff18] text-sm font-black text-[#6c63ff]">{item.icon}</span>
                           <span className="min-w-0">

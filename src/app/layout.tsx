@@ -86,8 +86,7 @@ export default function RootLayout({
               const raw = n.pisava;
               const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
               const percent = parsedPercent <= 140 ? 140 : parsedPercent <= 200 ? 200 : 300;
-              const rootPx = Math.min(48, Math.max(22.4, 16 * (percent / 100)));
-              document.documentElement.style.fontSize = rootPx + 'px';
+              document.documentElement.style.fontSize = '16px';
               document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
             } else if (!shouldUseAppFont) {
               document.documentElement.style.fontSize = '16px';
