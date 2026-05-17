@@ -150,9 +150,27 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const garageHeroFrames = isLightTheme
-    ? ['/home-garage-closed-light.jpg', '/home-garage-opening-1-light.jpg', '/home-garage-opening-2-light.jpg']
-    : ['/home-garage-closed-dark.jpg', '/home-garage-opening-1-dark.jpg', '/home-garage-opening-2-dark.jpg']
+  const garageHeroFrames = useMemo(() => (
+    isLightTheme
+      ? [
+        '/home-garage-closed-light.jpg',
+        '/home-garage-opening-1-light.jpg',
+        '/home-garage-opening-2-light.jpg',
+        '/home-garage-opening-3-light.jpg',
+        '/home-garage-opening-4-light.jpg',
+        '/home-garage-opening-5-light.jpg',
+        '/home-garage-open-light.jpg',
+      ]
+      : [
+        '/home-garage-closed-dark.jpg',
+        '/home-garage-opening-1-dark.jpg',
+        '/home-garage-opening-2-dark.jpg',
+        '/home-garage-opening-3-dark.jpg',
+        '/home-garage-opening-4-dark.jpg',
+        '/home-garage-opening-5-dark.jpg',
+        '/home-garage-open-dark.jpg',
+      ]
+  ), [isLightTheme])
   const heroImage = garageHeroFrames[Math.min(garageOpeningStep, garageHeroFrames.length - 1)]
 
   const carNameById = useMemo(() => {
@@ -193,10 +211,19 @@ export default function DomovPage() {
     }
     setGarageOpeningStep(0)
     setGarageOpening(true)
-    window.setTimeout(() => setGarageOpeningStep(1), 700)
-    window.setTimeout(() => setGarageOpeningStep(2), 1550)
-    window.setTimeout(() => router.push('/garaza'), 2850)
+    const frameDuration = 280
+    garageHeroFrames.forEach((_, index) => {
+      window.setTimeout(() => setGarageOpeningStep(index), index * frameDuration)
+    })
+    window.setTimeout(() => router.push('/garaza'), garageHeroFrames.length * frameDuration + 450)
   }
+
+  useEffect(() => {
+    garageHeroFrames.forEach((src) => {
+      const image = new Image()
+      image.src = src
+    })
+  }, [garageHeroFrames])
 
   useEffect(() => {
     const load = async () => {
