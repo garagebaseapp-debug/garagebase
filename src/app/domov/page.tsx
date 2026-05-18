@@ -482,37 +482,43 @@ export default function DomovPage() {
     { label: tx('Dodaj stroĹˇek', 'Add expense'), href: favoriteCar?.id ? `/vnos-stroska?car=${favoriteCar.id}` : '/vnos-stroska', icon: 'box' as const },
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
+  const phoneNav = [
+    { label: tx('Domov', 'Home'), href: '/domov', icon: 'home' as const, active: true },
+    { label: tx('Garaža', 'Garage'), href: '/garaza', icon: 'car' as const },
+    { label: tx('Stroški', 'Costs'), href: '/stroski-garaza', icon: 'cost' as const },
+    { label: tx('Servis', 'Service'), href: favoriteCar?.id ? `/vnos-servisa?car=${favoriteCar.id}` : '/vnos-servisa', icon: 'wrench' as const },
+    { label: tx('Več', 'More'), href: '/vec', icon: 'menu' as const },
+  ]
 
   return (
-    <div className={`gb-app-home min-h-screen px-4 pt-3 pb-[calc(5.9rem+env(safe-area-inset-bottom))] md:pt-6 xl:pb-12 ${isLightTheme ? 'bg-[#f2f0e9] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
-      <div className="mx-auto max-w-md xl:max-w-none">
-        <div className="xl:hidden">
-        <section className="relative -mx-4 -mt-3 min-h-[438px] overflow-hidden rounded-b-[34px]">
-          <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[56%_32%]" loading="eager" decoding="async" />
-          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#f2f0e9]/0 via-[#f2f0e9]/34 to-[#f2f0e9]' : 'bg-gradient-to-b from-black/8 via-[#080a12]/34 to-[#080a12]'}`} />
+    <div className="gb-app-home flex min-h-screen justify-center bg-[#eceae3] px-4 py-5 text-[#101225] md:items-center md:py-8">
+      <main className="relative flex h-[820px] w-full max-w-[390px] flex-col overflow-hidden rounded-[34px] border border-white/75 bg-[#f4f1ea] shadow-[0_18px_48px_rgba(16,18,37,0.16)]">
+        <section className="relative h-[386px] shrink-0 overflow-hidden">
+          <img src="/home-garage-closed-light.webp" alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[58%_32%]" loading="eager" decoding="async" />
+          <div className="absolute inset-0 bg-gradient-to-b from-white/6 via-[#f4f1ea]/20 to-[#f4f1ea]/88" />
           <div className="relative z-10 px-5 pt-7">
-            <header className="mb-[92px] flex items-center justify-between">
-              <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
-                Garage<span className="text-[#6c63ff]">Base</span>
+            <header className="mb-[108px] flex items-center justify-between">
+              <button onClick={() => router.push('/domov')} className="text-[1.48rem] font-black leading-none tracking-tight text-[#080912]">
+                Garage<span className="text-[#5f4fff]">Base</span>
               </button>
               <div className="flex items-center gap-2">
                 <button onClick={() => router.push('/vec')} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6c63ff] text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
                   {displayName ? displayName.slice(0, 2).toUpperCase() : 'JN'}
                 </button>
-                <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg shadow-black/10 ${isLightTheme ? 'bg-white/88 text-[#101225]' : 'bg-white/14 text-white'}`}>
+                <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/88 text-[#11131f] shadow-lg shadow-black/10">
                   <Icon type="bell" className="h-5 w-5" />
                 </button>
               </div>
             </header>
-            <h1 className={`max-w-[84%] text-[2.32rem] font-black leading-[0.98] tracking-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
-              {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />{greetingName}.
+            <h1 className="max-w-[82%] text-[2.05rem] font-black leading-[1.02] tracking-tight text-[#080912]">
+              {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {greetingName}.
             </h1>
-            <p className={`mt-3 text-[0.98rem] font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
+            <p className="mt-2.5 text-[0.92rem] font-black text-[#151722]">
               {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
             </p>
             <button
               onClick={vstopiVGarazo}
-              className="mt-5 flex w-[62%] min-w-[205px] items-center justify-center gap-3 rounded-xl bg-[#6c63ff] px-5 py-3.5 text-base font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98]"
+              className="mt-4 flex w-[58%] min-w-[205px] items-center justify-center gap-3 rounded-xl bg-[#6c63ff] px-5 py-3.5 text-[0.98rem] font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98]"
             >
               {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
               <span aria-hidden="true">→</span>
@@ -520,183 +526,57 @@ export default function DomovPage() {
           </div>
         </section>
 
-        <section className="mb-6 grid grid-cols-3 gap-3">
+        <div className="flex-1 overflow-hidden px-5 pb-[86px]">
+          <section className="-mt-1 mb-6 grid grid-cols-3 gap-3">
             {mobileStatCards.map((item) => (
-              <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[112px] rounded-2xl border p-3.5 text-left shadow-lg shadow-black/5 ${isLightTheme ? 'border-white/80 bg-white/78 text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
-                <p className={`text-[0.86rem] font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c8cbe0]'}`}>{item.label}</p>
+              <button key={item.label} onClick={() => router.push(item.href)} className="min-h-[112px] rounded-2xl bg-white/78 p-3.5 text-left text-[#101225] shadow-[0_10px_24px_rgba(16,18,37,0.08)]">
+                <p className="text-[0.86rem] font-medium leading-tight text-[#34384a]">{item.label}</p>
                 <p className="mt-1 truncate text-[1.72rem] font-black leading-none">{item.value}</p>
-                <p className={`mt-1.5 text-[0.84rem] font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c8cbe0]'}`}>{item.sub}</p>
+                <p className="mt-1.5 text-[0.84rem] font-medium leading-tight text-[#3f4658]">{item.sub}</p>
               </button>
             ))}
-        </section>
-
-        <section className="hidden mb-3 overflow-hidden rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] shadow-xl shadow-black/10 xl:hidden">
-          <button
-            onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
-            className="relative block h-[clamp(118px,18dvh,155px)] w-full overflow-hidden text-left sm:h-[260px] lg:h-[340px]"
-          >
-            <img src={heroImage} alt="" className="absolute inset-0 h-full w-full object-cover object-[58%_58%]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
-            <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7">
-              <span className="hidden w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] sm:py-3">
-                {cars.length > 0 ? tx('Odpri garaĹľo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
-                <span aria-hidden="true">â†’</span>
-              </span>
-            </div>
-          </button>
-        </section>
-
-        {false && favoriteCar && (
-          <section className="mb-8 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-4 sm:p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-black text-white">{tx('Glavno vozilo', 'Main vehicle')}</h2>
-              <button onClick={() => router.push(`/dashboard?car=${favoriteCar.id}`)} className="text-sm font-bold text-[#a09aff]">{tx('Odpri', 'Open')} â†’</button>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#13131f]">
-                {carImage(favoriteCar) ? (
-                  <img src={carImage(favoriteCar)} alt={favoriteCarName} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-black text-white">{favoriteCarName}</p>
-                <p className="mt-1 text-sm text-[#8a8aa8]">
-                  {formatDistance(favoriteCar.km_trenutni || 0, distanceUnit)}
-                  {favoriteCar.gorivo ? ` - ${favoriteCar.gorivo}` : ''}
-                </p>
-              </div>
-            </div>
           </section>
-        )}
 
-        <section className="mb-3">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className={`text-[1.15rem] font-black sm:text-[1.18rem] ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
-            <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza')} className={`text-sm font-bold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#d8d8e8]'}`}>
+          <section>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-[1.17rem] font-black text-[#080912]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
+              <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza')} className="text-sm font-medium text-[#34384a]">
               {tx('PrikaĹľi vse', 'Show all')} â†’
-            </button>
-          </div>
-          <div className={`overflow-hidden rounded-[22px] border ${isLightTheme ? 'border-white/70 bg-white/78 shadow-lg shadow-[#101225]/5' : 'border-[#1e1e32] bg-[#0f0f1a]'}`}>
-            {topReminders.length === 0 ? (
-              <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
-            ) : topReminders.map((item, index) => {
-              const tone = cardTone[item.tone]
-              return (
-                <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-2 text-left transition-colors hover:bg-white/5 sm:p-2.5 ${index > 0 ? (isLightTheme ? 'border-t border-[#e6e0d7]' : 'border-t border-[#1e1e32]') : ''} ${item.tone === 'red' ? 'ring-1 ring-inset ring-[#ef444422]' : item.tone === 'orange' ? 'ring-1 ring-inset ring-[#f59e0b22]' : ''}`}>
-                  <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f] sm:h-12 sm:w-14">
-                    {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`truncate text-sm font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{item.carName}</p>
-                    <p className={`mt-0.5 truncate text-xs ${isLightTheme ? 'text-[#4f5668]' : 'text-[#d8d8e8]'}`}>{translateLabel(item.title)} - {item.subtitle}</p>
-                  </div>
-                  <span className={`rounded-xl px-2.5 py-1.5 text-xs font-black sm:px-3 sm:py-2 ${tone.pill}`}>{item.value}</span>
-                </button>
-              )
-            })}
-          </div>
-        </section>
-
-        <section className="hidden">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
-            <button onClick={() => setShowAllRecentEvents((value) => !value)} className="text-sm font-bold text-[#d8d8e8]">
-              {showAllRecentEvents ? tx('PrikaĹľi manj', 'Show less') : tx('PrikaĹľi vse', 'Show all')} â†’
-            </button>
-          </div>
-          <div className="overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
-            {recentEvents.length === 0 ? (
-              <div className="p-5 text-sm font-semibold text-[#8a8aa8]">{tx('Ni zadnjih dogodkov.', 'No recent events.')}</div>
-            ) : displayedRecentEvents.map((event, index) => (
-              <button key={event.id} onClick={() => router.push(event.href)} className={`flex w-full items-center gap-3 p-2 text-left sm:p-3 ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
-                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${event.tone === 'fuel' ? 'bg-[#2563eb18] text-[#3b82f6]' : event.tone === 'service' ? 'bg-[#16a34a18] text-[#22c55e]' : 'bg-[#6c63ff18] text-[#8b5cf6]'}`}>
-                  <Icon type={event.tone === 'fuel' ? 'fuel' : event.tone === 'service' ? 'wrench' : 'box'} className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black text-white">{translateLabel(event.title)}</p>
-                  <p className="mt-0.5 truncate text-xs text-[#8a8aa8]">{event.subtitle}</p>
-                </div>
-                <span className="text-xs text-[#8a8aa8]">{event.dateText}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-        </div>
-
-        <div className="hidden xl:block">
-          <section className={`relative mb-10 min-h-[430px] overflow-hidden rounded-[34px] border shadow-2xl ${isLightTheme ? 'border-white/70 bg-white/70 shadow-[#101225]/8' : 'border-white/10 bg-[#10131d] shadow-black/24'}`}>
-            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" decoding="async" />
-            <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-r from-[#f2f0e9]/94 via-[#f2f0e9]/72 to-transparent' : 'bg-gradient-to-r from-[#080a12]/94 via-[#080a12]/62 to-transparent'}`} />
-            <div className="relative z-10 flex min-h-[430px] flex-col justify-center px-12 py-10">
-              <h1 className={`max-w-xl text-6xl font-black leading-[0.96] tracking-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
-                {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />{greetingName}.
-              </h1>
-              <p className={`mt-6 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
-                {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
-              </p>
-              <button onClick={vstopiVGarazo} className="mt-10 flex w-[330px] items-center justify-center gap-3 rounded-2xl bg-[#6c63ff] px-7 py-4 text-xl font-black text-white shadow-2xl shadow-[#6c63ff55] transition-transform active:scale-[0.98]">
-                {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
-                <span aria-hidden="true">→</span>
               </button>
             </div>
-            <div className="absolute right-8 top-8 z-20 flex items-center gap-3">
-              <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/12 text-white'}`}>
-                <Icon type="bell" className="h-6 w-6" />
-              </button>
-              <button onClick={() => router.push('/vec')} className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/12 text-white'}`}>
-                <Icon type="settings" className="h-6 w-6" />
-              </button>
-            </div>
-          </section>
-
-          <section className="mb-10 grid grid-cols-4 gap-5">
-            {statCards.map((item) => (
-              <button key={item.label} onClick={() => router.push(item.href)} className={`rounded-[24px] border p-7 text-left shadow-xl transition-transform active:scale-[0.99] ${isLightTheme ? 'border-white/70 bg-white/74 text-[#101225] shadow-[#101225]/8' : 'border-[#3f2a8f] bg-white/7 text-white shadow-black/20'}`}>
-                <p className={`text-lg font-semibold ${isLightTheme ? 'text-[#333849]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
-                <p className="mt-4 truncate text-4xl font-black">{item.value}</p>
-                <p className={`mt-2 truncate text-lg font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
-              </button>
-            ))}
-          </section>
-
-          <section className="grid grid-cols-2 gap-8">
-            <div>
-              <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
-              <div className={`overflow-hidden rounded-[24px] border ${isLightTheme ? 'border-white/70 bg-white/76' : 'border-white/10 bg-white/7'}`}>
-                {topReminders.length === 0 ? (
-                  <div className={`p-6 text-base font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
-                ) : topReminders.map((item, index) => (
-                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-4 p-4 text-left ${index > 0 ? (isLightTheme ? 'border-t border-[#e7e1d6]' : 'border-t border-white/10') : ''}`}>
-                    <div className="h-14 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
+            <div className="overflow-hidden rounded-[18px] bg-white/72 shadow-[0_8px_22px_rgba(16,18,37,0.06)]">
+              {topReminders.length === 0 ? (
+                <div className="p-5 text-sm font-semibold text-[#6b7280]">{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
+              ) : topReminders.map((item, index) => {
+                const tone = cardTone[item.tone]
+                return (
+                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-2 text-left ${index > 0 ? 'border-t border-[#e6e0d7]' : ''}`}>
+                    <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-[#e9e5dc]">
                       {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate text-lg font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{item.carName}</p>
-                      <p className={`truncate text-sm font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#d8d8e8]'}`}>{translateLabel(item.title)} - {item.subtitle}</p>
+                      <p className="truncate text-sm font-black text-[#080912]">{item.carName}</p>
+                      <p className="mt-0.5 truncate text-xs text-[#4f5668]">{translateLabel(item.title)} - {item.subtitle}</p>
                     </div>
-                    <span className="rounded-xl bg-[#ef444414] px-4 py-2 text-sm font-black text-[#ef4444]">{item.value}</span>
+                    <span className={`rounded-lg px-2.5 py-1.5 text-xs font-black ${tone.pill}`}>{item.value}</span>
                   </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Hitre akcije', 'Quick actions')}</h2>
-              <div className="grid grid-cols-2 gap-3">
-                {quickActions.map((item) => (
-                  <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-white/70 bg-white/74 text-[#101225] shadow-xl shadow-[#101225]/8' : 'border-white/10 bg-white/7 text-white'}`}>
-                    <Icon type={item.icon} className="h-7 w-7 text-[#8b5cf6]" />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+                )
+              })}
             </div>
           </section>
         </div>
-      </div>
 
-      <BottomNav aktivna="domov" />
+        <nav className="absolute bottom-0 left-0 right-0 z-20 flex h-[78px] items-start justify-between border-t border-[#ded8cc] bg-[#f4f1ea]/96 px-4 pt-2.5 shadow-[0_-10px_24px_rgba(16,18,37,0.06)] backdrop-blur-md">
+          {phoneNav.map((item) => (
+              <button key={item.label} onClick={() => router.push(item.href)} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${item.active ? 'bg-[#6c63ff18] text-[#6c63ff]' : 'text-[#11131f]'}`}>
+                  <Icon type={item.icon} className="h-5 w-5" />
+                </span>
+                <span className={`text-[11px] font-medium leading-none ${item.active ? 'text-[#6c63ff]' : 'text-[#11131f]'}`}>{item.label}</span>
+              </button>
+            ))}
+        </nav>
+      </main>
     </div>
   )
 }
