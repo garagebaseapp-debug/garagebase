@@ -80,7 +80,7 @@ export default function Nastavitve() {
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
-  const [pisava, setPisava] = useState(140)
+  const [pisava, setPisava] = useState(100)
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -128,19 +128,30 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
-    { value: 140, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
-    { value: 200, title: tx('Srednja', 'Medium'), desc: tx('Lažje branje', 'Easier reading') },
-    { value: 300, title: tx('Velika', 'Large'), desc: tx('Največja pisava', 'Largest text') },
+    { value: 95, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
+    { value: 100, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
+    { value: 110, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
   ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
-      if (value <= 140) return 140
-      if (value <= 200) return 200
-      return 300
+      if (value >= 250) return 110
+      if (value >= 160) return 100
+      if (value >= 120) return 95
+      if (value <= 95) return 95
+      if (value <= 105) return 100
+      return 110
     }
-    const legacy: Record<string, number> = { mala: 140, normalna: 140, srednja: 200, velika: 300 }
-    return legacy[value] || 140
+    const legacy: Record<string, number> = { mala: 95, normalna: 100, srednja: 100, velika: 110 }
+    return legacy[value] || 100
+  }
+
+  const normalizeGarageFont = (value: any) => {
+    const next = Number(value)
+    if (!Number.isFinite(next)) return 100
+    if (next >= 160) return 110
+    if (next >= 120) return 100
+    return Math.min(115, Math.max(85, next))
   }
 
   const settingsSections = [
@@ -173,8 +184,7 @@ export default function Nastavitve() {
 
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
-    const rootPx = 16 * (percent / 100)
-    document.documentElement.style.fontSize = `${Math.min(48, Math.max(22.4, rootPx))}px`
+    document.documentElement.style.fontSize = ''
     document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
   }
 
@@ -249,7 +259,7 @@ export default function Nastavitve() {
         setPrikazGaraze(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
-        setGarazaPisava(n.garazaPisava || 100)
+        setGarazaPisava(normalizeGarageFont(n.garazaPisava))
         setAvtocomplete(n.avtocomplete !== false)
         setEnotaRazdalje(n.enotaRazdalje === 'mi' ? 'mi' : 'km')
         setValuta(n.valuta === 'USD' ? 'USD' : 'EUR')
@@ -1154,7 +1164,7 @@ export default function Nastavitve() {
           <div>
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider">{tx('Velikost pisave', 'Font size')}</p>
             <p className="mt-1 text-xs text-[#3a3a5a]">
-              {tx('Velja za celotno aplikacijo in se spremeni takoj.', 'Applies to the whole app and updates immediately.')}
+              {tx('Prilagodi berljivost besedila brez spreminjanja velikosti celotnega vmesnika.', 'Adjust text readability without resizing the whole interface.')}
             </p>
           </div>
           <div className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 font-bold text-[#a09aff]">
@@ -1264,11 +1274,11 @@ export default function Nastavitve() {
           </div>
           <input
             type="range"
-            min="70"
-            max="200"
+            min="85"
+            max="115"
             step="5"
             value={garazaPisava}
-            onChange={(e) => setGarazaPisava(Number(e.target.value))}
+            onChange={(e) => setGarazaPisava(normalizeGarageFont(e.target.value))}
             className="w-full accent-[#6c63ff]"
           />
           <div className="flex justify-between text-[#3a3a5a] text-xs mt-1">

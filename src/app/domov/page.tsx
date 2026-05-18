@@ -483,12 +483,12 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home min-h-screen px-4 pb-[calc(5.9rem+env(safe-area-inset-bottom))] pt-4 md:pl-[260px] xl:pb-12 ${isLightTheme ? 'bg-[#f3f1ea] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
-      <div className="mx-auto max-w-md xl:max-w-6xl">
-        <section className={`relative mb-5 overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mb-8 xl:min-h-[500px] xl:rounded-[34px]`}>
+    <div className={`gb-app-home min-h-screen px-0 pb-[calc(5.9rem+env(safe-area-inset-bottom))] pt-0 sm:px-4 sm:pt-4 xl:pb-12 ${isLightTheme ? 'bg-[#f3f1ea] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+      <div className="mx-auto w-full xl:max-w-6xl">
+        <section className={`relative mb-5 overflow-hidden rounded-b-[30px] shadow-2xl sm:rounded-[30px] ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mb-8 xl:min-h-[470px] xl:rounded-[34px]`}>
           <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[58%_34%] xl:object-[63%_42%]" loading="eager" decoding="async" />
           <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#f3f1ea]/0 via-[#f3f1ea]/18 to-[#f3f1ea] xl:bg-gradient-to-r xl:from-[#f3f1ea]/96 xl:via-[#f3f1ea]/58 xl:to-transparent' : 'bg-gradient-to-b from-black/6 via-[#080a12]/28 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
-          <div className="relative z-10 min-h-[455px] px-5 pb-6 pt-7 xl:flex xl:min-h-[500px] xl:flex-col xl:justify-center xl:px-12 xl:py-12">
+          <div className="relative z-10 min-h-[455px] px-5 pb-6 pt-7 xl:flex xl:min-h-[470px] xl:flex-col xl:justify-center xl:px-12 xl:py-12">
             <header className="mb-[150px] flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
                 Garage<span className="text-[#6c63ff]">Base</span>
@@ -507,15 +507,15 @@ export default function DomovPage() {
               </div>
             </header>
             <div className="xl:max-w-[520px]">
-              <h1 className={`max-w-[82%] text-[2.18rem] font-black leading-[1.02] tracking-tight xl:max-w-none xl:text-6xl xl:leading-[0.98] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
+              <h1 className={`max-w-[82%] text-[2.18rem] font-black leading-[1.02] tracking-tight xl:max-w-none xl:text-[3.15rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
                 {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {greetingName}.
               </h1>
-              <p className={`mt-3 text-[0.98rem] font-black xl:text-2xl ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
+              <p className={`mt-3 text-[0.98rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
                 {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-5 flex w-[68%] min-w-[220px] items-center justify-center gap-3 rounded-xl bg-[#6c63ff] px-5 py-3.5 text-base font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[330px] xl:rounded-2xl xl:px-7 xl:py-4 xl:text-xl"
+                className="mt-5 flex w-[68%] min-w-[220px] items-center justify-center gap-3 rounded-xl bg-[#6c63ff] px-5 py-3.5 text-base font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98] xl:mt-8 xl:w-[300px] xl:rounded-2xl xl:px-7 xl:py-4 xl:text-base"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
@@ -524,7 +524,7 @@ export default function DomovPage() {
           </div>
         </section>
 
-        <section className="mb-5 grid grid-cols-3 gap-3 xl:hidden">
+        <section className="mb-5 grid grid-cols-3 gap-3 px-4 sm:px-0 xl:hidden">
           {mobileStatCards.map((item) => (
             <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[112px] rounded-2xl p-3.5 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
               <p className={`text-[0.86rem] font-medium leading-tight xl:text-lg ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
@@ -535,18 +535,18 @@ export default function DomovPage() {
         </section>
         <section className="mb-8 hidden grid-cols-4 gap-5 xl:grid">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[24px] p-6 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
-              <p className={`text-lg font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
-              <p className="mt-3 truncate text-4xl font-black leading-none">{item.value}</p>
-              <p className={`mt-2 text-base font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
+              <p className={`text-sm font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
+              <p className="mt-2 truncate text-3xl font-black leading-none">{item.value}</p>
+              <p className={`mt-2 text-sm font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
             </button>
           ))}
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-2 xl:gap-8">
+        <section className="grid gap-5 px-4 sm:px-0 xl:grid-cols-2 xl:gap-8">
           <div>
             <div className="mb-2 flex items-center justify-between xl:mb-5">
-              <h2 className={`text-[1.17rem] font-black xl:text-2xl ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
+              <h2 className={`text-[1.17rem] font-black xl:text-xl ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
               <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza')} className={`text-sm font-medium xl:font-bold ${isLightTheme ? 'text-[#34384a]' : 'text-[#d8d8e8]'}`}>
                 {tx('Prikaži vse', 'Show all')} →
               </button>
@@ -558,11 +558,11 @@ export default function DomovPage() {
                 const tone = cardTone[item.tone]
                 return (
                   <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3 p-2 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#e6e0d7]' : 'border-t border-white/10') : ''}`}>
-                    <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-[#e9e5dc] xl:h-14 xl:w-16 xl:rounded-xl">
+                    <div className="h-9 w-11 flex-shrink-0 overflow-hidden rounded-lg bg-[#e9e5dc] xl:h-12 xl:w-14 xl:rounded-xl">
                       {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate text-sm font-black xl:text-lg ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{item.carName}</p>
+                      <p className={`truncate text-sm font-black xl:text-base ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{item.carName}</p>
                       <p className={`mt-0.5 truncate text-xs xl:text-sm ${isLightTheme ? 'text-[#4f5668]' : 'text-[#d8d8e8]'}`}>{translateLabel(item.title)} - {item.subtitle}</p>
                     </div>
                     <span className={`rounded-lg px-2.5 py-1.5 text-xs font-black xl:rounded-xl xl:px-4 xl:py-2 xl:text-sm ${tone.pill}`}>{item.value}</span>

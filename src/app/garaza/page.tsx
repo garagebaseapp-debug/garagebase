@@ -60,6 +60,13 @@ export default function Garaza() {
   })
   const dragOver = useRef<number | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const normalizeGarageFont = (value: any) => {
+    const next = Number(value)
+    if (!Number.isFinite(next)) return 100
+    if (next >= 160) return 110
+    if (next >= 120) return 100
+    return Math.min(115, Math.max(85, next))
+  }
   const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
   const slikaVozila = (avto: any) => {
     const rawUrl = avto?.slika_url || avto?.slika || ''
@@ -252,7 +259,7 @@ export default function Garaza() {
         setPrikaz(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
-        setGarazaPisava(n.garazaPisava || 100)
+        setGarazaPisava(normalizeGarageFont(n.garazaPisava))
         setEnotaRazdalje(n.enotaRazdalje === 'mi' ? 'mi' : 'km')
         const skupneKarticneNastavitve = n.gridNastavitve || n.listaNastavitve
         if (skupneKarticneNastavitve) {
@@ -716,7 +723,7 @@ export default function Garaza() {
           }`}
         >
           <span className="block text-sm font-black">{item.label}</span>
-          <span className="mt-0.5 block text-[10px] font-semibold opacity-75">{item.desc}</span>
+          <span className="mt-1 block text-[11px] font-bold leading-tight opacity-80">{item.desc}</span>
         </button>
       ))}
     </div>

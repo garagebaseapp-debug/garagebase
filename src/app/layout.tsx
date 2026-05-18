@@ -82,15 +82,14 @@ export default function RootLayout({
               document.documentElement.classList.add('light-mode');
             }
             if (n.pisava && shouldUseAppFont) {
-              const legacy = { mala: 140, normalna: 140, srednja: 200, velika: 300 };
+              const legacy = { mala: 95, normalna: 100, srednja: 100, velika: 110 };
               const raw = n.pisava;
               const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
-              const percent = parsedPercent <= 140 ? 140 : parsedPercent <= 200 ? 200 : 300;
-              const rootPx = Math.min(48, Math.max(22.4, 16 * (percent / 100)));
-              document.documentElement.style.fontSize = rootPx + 'px';
+              const percent = parsedPercent >= 250 ? 110 : parsedPercent >= 160 ? 100 : parsedPercent >= 120 ? 95 : parsedPercent <= 95 ? 95 : parsedPercent <= 105 ? 100 : 110;
+              document.documentElement.style.fontSize = '';
               document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
             } else if (!shouldUseAppFont) {
-              document.documentElement.style.fontSize = '16px';
+              document.documentElement.style.fontSize = '';
               document.documentElement.style.setProperty('--gb-app-font-scale', '1');
             }
           } catch {
