@@ -80,7 +80,7 @@ export default function Nastavitve() {
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
-  const [pisava, setPisava] = useState(100)
+  const [pisava, setPisava] = useState(115)
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -128,21 +128,19 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
-    { value: 95, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
-    { value: 100, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
-    { value: 110, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
+    { value: 100, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
+    { value: 115, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
+    { value: 130, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
   ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
-      if (value >= 250) return 110
-      if (value >= 120) return 100
-      if (value <= 95) return 95
       if (value <= 105) return 100
-      return 110
+      if (value <= 122) return 115
+      return 130
     }
-    const legacy: Record<string, number> = { mala: 95, normalna: 100, srednja: 100, velika: 110 }
-    return legacy[value] || 100
+    const legacy: Record<string, number> = { mala: 100, normalna: 115, srednja: 115, velika: 130 }
+    return legacy[value] || 115
   }
 
   const normalizeGarageFont = (value: any) => {
@@ -271,6 +269,8 @@ export default function Nastavitve() {
         } else {
           document.documentElement.classList.remove('light-mode')
         }
+      } else {
+        applyFontSize(115)
       }
       setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')

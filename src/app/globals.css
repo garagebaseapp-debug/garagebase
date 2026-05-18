@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --gb-app-font-scale: 1.15;
 }
 
 @theme inline {
@@ -40,7 +41,7 @@ body:not(.landing) {
     max-width: none;
     margin: 0;
     min-height: 100vh;
-    font-size: 15px;
+    font-size: calc(15px * var(--gb-app-font-scale, 1));
     text-rendering: geometricPrecision;
   }
 
@@ -96,12 +97,12 @@ body:not(.landing) {
   html,
   body {
     min-width: 0;
-    font-size: 16px;
+    font-size: calc(16px * var(--gb-app-font-scale, 1.15));
   }
 
   body:not(.landing) {
     min-height: 100dvh;
-    font-size: 16px;
+    font-size: calc(16px * var(--gb-app-font-scale, 1.15));
   }
 
   body:not(.landing) > div:first-child {
@@ -134,7 +135,7 @@ body:not(.landing) {
 
 @media (max-width: 767px) {
   html {
-    font-size: 17px;
+    font-size: calc(17px * var(--gb-app-font-scale, 1.15));
   }
 
   body:not(.landing) {
@@ -154,7 +155,13 @@ body:not(.landing) {
 
   body:not(.landing) > div:first-child .max-w-sm,
   body:not(.landing) > div:first-child .max-w-md,
-  body:not(.landing) > div:first-child .max-w-lg {
+  body:not(.landing) > div:first-child .max-w-lg,
+  body:not(.landing) > div:first-child .max-w-xl,
+  body:not(.landing) > div:first-child .max-w-2xl,
+  body:not(.landing) > div:first-child .max-w-3xl,
+  body:not(.landing) > div:first-child .max-w-4xl,
+  body:not(.landing) > div:first-child .max-w-5xl,
+  body:not(.landing) > div:first-child .max-w-6xl {
     max-width: none !important;
   }
 
@@ -177,7 +184,7 @@ body:not(.landing) {
 
 @media (max-width: 380px) {
   html {
-    font-size: 16.5px;
+    font-size: calc(16.5px * var(--gb-app-font-scale, 1.15));
   }
 }
 

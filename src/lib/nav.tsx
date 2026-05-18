@@ -207,7 +207,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 z-50 flex justify-between border-t border-[#1a1a28] bg-[#0a0a12]/96 px-2 pb-[calc(0.72rem+env(safe-area-inset-bottom))] pt-2.5 backdrop-blur-xl">
+      <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 z-50 flex justify-between border-t border-[#1a1a28] bg-[#0a0a12]/96 px-2 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
         {mobileLinks.map((item: any) => {
           const isActive = aktivna === item.key
           return (
@@ -216,14 +216,14 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
               onClick={() => pojdiNa(router, item.href)}
               className="flex min-w-0 flex-1 flex-col items-center gap-1 transition-transform active:scale-95"
             >
-              <span className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-colors ${
+              <span className={`flex h-14 w-14 items-center justify-center rounded-[22px] transition-colors ${
                 isActive
                   ? 'bg-[#6c63ff24] text-[#6c63ff] shadow-[0_10px_28px_rgba(108,99,255,0.22)]'
                   : 'text-[#343a46] hover:bg-[#ffffff08] hover:text-[#d8d8e8]'
               }`}>
-                <NavIcon type={item.icon} className="h-7 w-7" />
+                <NavIcon type={item.icon} className="h-10 w-10" />
               </span>
-              <span className={`text-[12.5px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#343a46]'}`}>
+              <span className={`text-[13.5px] font-black leading-none ${isActive ? 'text-[#6c63ff]' : 'text-[#343a46]'}`}>
                 {item.label || t(item.labelKey)}
               </span>
             </button>

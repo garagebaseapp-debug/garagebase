@@ -88,11 +88,11 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            if (n.pisava && shouldUseAppFont) {
-              const legacy = { mala: 95, normalna: 100, srednja: 100, velika: 110 };
-              const raw = n.pisava;
-              const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 100);
-              const percent = parsedPercent >= 250 ? 110 : parsedPercent >= 120 ? 100 : parsedPercent <= 95 ? 95 : parsedPercent <= 105 ? 100 : 110;
+            if (shouldUseAppFont) {
+              const legacy = { mala: 100, normalna: 115, srednja: 115, velika: 130 };
+              const raw = n.pisava ?? 'srednja';
+              const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 115);
+              const percent = parsedPercent <= 105 ? 100 : parsedPercent <= 122 ? 115 : 130;
               document.documentElement.style.fontSize = '';
               document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100));
             } else if (!shouldUseAppFont) {
