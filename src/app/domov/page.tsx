@@ -559,7 +559,7 @@ export default function DomovPage() {
                 const tone = cardTone[item.tone]
                 return (
                   <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3.5 p-3.5 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#e6e0d7]' : 'border-t border-white/10') : ''}`}>
-                    <div className="h-14 w-[68px] flex-shrink-0 overflow-hidden rounded-[14px] bg-[#e9e5dc] xl:h-12 xl:w-14 xl:rounded-xl">
+                    <div className="h-[72px] w-[88px] flex-shrink-0 overflow-hidden rounded-[16px] bg-[#e9e5dc] xl:h-12 xl:w-14 xl:rounded-xl">
                       {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                     </div>
                     <div className="min-w-0 flex-1">

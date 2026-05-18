@@ -80,7 +80,7 @@ export default function Nastavitve() {
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
-  const [pisava, setPisava] = useState(115)
+  const [pisava, setPisava] = useState(150)
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -129,18 +129,18 @@ export default function Nastavitve() {
 
   const fontOptions = [
     { value: 100, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
-    { value: 115, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
-    { value: 130, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
+    { value: 150, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
+    { value: 230, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
   ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value <= 105) return 100
-      if (value <= 122) return 115
-      return 130
+      if (value <= 190) return 150
+      return 230
     }
-    const legacy: Record<string, number> = { mala: 100, normalna: 115, srednja: 115, velika: 130 }
-    return legacy[value] || 115
+    const legacy: Record<string, number> = { mala: 100, normalna: 150, srednja: 150, velika: 230 }
+    return legacy[value] || 150
   }
 
   const normalizeGarageFont = (value: any) => {
@@ -182,7 +182,8 @@ export default function Nastavitve() {
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
     document.documentElement.style.fontSize = ''
-    document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
+    document.documentElement.style.setProperty('--gb-app-font-scale', '1')
+    document.documentElement.style.setProperty('--gb-text-font-scale', String(percent / 100))
   }
 
   const spremeniPisavo = (value: number) => {
@@ -270,7 +271,7 @@ export default function Nastavitve() {
           document.documentElement.classList.remove('light-mode')
         }
       } else {
-        applyFontSize(115)
+        applyFontSize(150)
       }
       setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
@@ -788,7 +789,7 @@ export default function Nastavitve() {
 
   return (
     <div className="gb-settings-page min-h-screen bg-[#080810] px-4 py-5 pb-24 lg:px-8">
-      <div className="gb-settings-shell mx-auto w-full max-w-[520px] lg:max-w-7xl">
+      <div className="gb-settings-shell w-full lg:mx-auto lg:max-w-7xl">
         <div className="mb-4 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] p-4 lg:mb-6 lg:rounded-3xl lg:p-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>

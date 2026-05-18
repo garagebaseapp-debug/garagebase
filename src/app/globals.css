@@ -3,7 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --gb-app-font-scale: 1.15;
+  --gb-app-font-scale: 1;
+  --gb-text-font-scale: 1.5;
 }
 
 @theme inline {
@@ -41,7 +42,7 @@ body:not(.landing) {
     max-width: none;
     margin: 0;
     min-height: 100vh;
-    font-size: calc(15px * var(--gb-app-font-scale, 1));
+    font-size: 15px;
     text-rendering: geometricPrecision;
   }
 
@@ -97,12 +98,12 @@ body:not(.landing) {
   html,
   body {
     min-width: 0;
-    font-size: calc(16px * var(--gb-app-font-scale, 1.15));
+    font-size: 16px;
   }
 
   body:not(.landing) {
     min-height: 100dvh;
-    font-size: calc(16px * var(--gb-app-font-scale, 1.15));
+    font-size: 16px;
   }
 
   body:not(.landing) > div:first-child {
@@ -135,7 +136,7 @@ body:not(.landing) {
 
 @media (max-width: 767px) {
   html {
-    font-size: calc(17px * var(--gb-app-font-scale, 1.15));
+    font-size: 17px;
   }
 
   body:not(.landing) {
@@ -169,6 +170,10 @@ body:not(.landing) {
     max-width: none !important;
   }
 
+  body:not(.landing) > div:first-child .mx-auto.w-full {
+    max-width: none !important;
+  }
+
   body:not(.landing) input,
   body:not(.landing) select,
   body:not(.landing) textarea,
@@ -184,7 +189,21 @@ body:not(.landing) {
 
 @media (max-width: 380px) {
   html {
-    font-size: calc(16.5px * var(--gb-app-font-scale, 1.15));
+    font-size: 16.5px;
+  }
+}
+
+@media (max-width: 1279px) {
+  body:not(.landing) :where(h1, h2, h3, h4, h5, h6, p, label, a, button, li, input, select, textarea, small, strong, em, th, td, figcaption, span) {
+    font-size: calc(1em * var(--gb-text-font-scale, 1)) !important;
+  }
+
+  body:not(.landing) :where(button span, p span, label span, a span, h1 span, h2 span, h3 span, h4 span, h5 span, h6 span) {
+    font-size: inherit !important;
+  }
+
+  body:not(.landing) :where(svg, svg *) {
+    font-size: inherit !important;
   }
 }
 
