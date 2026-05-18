@@ -1059,7 +1059,15 @@ export default function Garaza() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={preklopiTemo} className={`rounded-xl border px-4 py-2 text-sm font-black ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#d8d8e8]'}`}>
+            {desktopCars.length > 1 && !arhiv && (
+              <button
+                onClick={() => setUrejanje(prev => !prev)}
+                className={`rounded-xl border px-4 py-2 text-sm font-black transition-colors ${urejanje ? 'border-[#6c63ff] bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]' : (desktopLight ? 'border-[#d8def0] bg-white text-[#4f5870] shadow-lg shadow-[#101225]/5 hover:border-[#6c63ff] hover:text-[#6c21c9]' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#d8d8e8] hover:border-[#6c63ff] hover:text-white')}`}
+              >
+                {urejanje ? tx('Končaj urejanje', 'Finish editing') : tx('Uredi vrstni red', 'Reorder')}
+              </button>
+            )}
+            <button onClick={preklopiTemo} className={`hidden rounded-xl border px-4 py-2 text-sm font-black ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#d8d8e8]'}`}>
               {desktopLight ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
             </button>
             <button onClick={osveziGarazo} disabled={refreshing} className={`rounded-xl border px-4 py-2 text-sm font-black disabled:opacity-60 ${desktopLight ? 'border-[#6c21c9] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#3ecfcf55] bg-[#3ecfcf12] text-[#3ecfcf]'}`}>
@@ -1107,6 +1115,53 @@ export default function Garaza() {
         {archiveMessage && (
           <div className="mb-4 rounded-2xl border border-[#f59e0b44] bg-[#f59e0b18] p-3 text-sm text-[#fbbf24]">
             {archiveMessage}
+          </div>
+        )}
+
+        {urejanje && !arhiv && (
+          <div className={`mb-5 rounded-[24px] border p-4 ${desktopLight ? 'border-[#d8def0] bg-white text-[#101225] shadow-xl shadow-[#101225]/5' : 'border-[#2a2a40] bg-[#0f0f1a] text-white'}`}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black">{tx('Uredi vrstni red vozil', 'Reorder vehicles')}</p>
+                <p className={`text-xs font-semibold ${desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]'}`}>
+                  {tx('Premakni vozila gor ali dol. Vrstni red se shrani samodejno.', 'Move vehicles up or down. The order is saved automatically.')}
+                </p>
+              </div>
+              <button
+                onClick={() => setUrejanje(false)}
+                className={`rounded-xl border px-4 py-2 text-sm font-black ${desktopLight ? 'border-[#d8def0] bg-[#f7f8fc] text-[#4f5870]' : 'border-[#2a2a40] bg-[#13131f] text-[#d8d8e8]'}`}
+              >
+                {tx('Zapri', 'Close')}
+              </button>
+            </div>
+            <div className="grid gap-2">
+              {desktopCars.map((avto: any, index: number) => (
+                <div key={avto.id} className={`flex items-center justify-between gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#e3e7f3] bg-[#f7f8fc]' : 'border-[#25253a] bg-[#11111c]'}`}>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black">{index + 1}. {imeVozila(avto)}</p>
+                    <p className={`text-xs font-semibold ${desktopLight ? 'text-[#6b7280]' : 'text-[#8a8aa8]'}`}>
+                      {avto.km_trenutni ? `${Number(avto.km_trenutni).toLocaleString()} km` : tx('Brez kilometrov', 'No mileage')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => premakniLiteAvto(index, -1)}
+                      disabled={index === 0}
+                      className={`h-9 w-9 rounded-xl border text-lg font-black disabled:opacity-35 ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9]' : 'border-[#2a2a40] bg-[#0f0f1a] text-white'}`}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => premakniLiteAvto(index, 1)}
+                      disabled={index === desktopCars.length - 1}
+                      className={`h-9 w-9 rounded-xl border text-lg font-black disabled:opacity-35 ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9]' : 'border-[#2a2a40] bg-[#0f0f1a] text-white'}`}
+                    >
+                      ↓
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

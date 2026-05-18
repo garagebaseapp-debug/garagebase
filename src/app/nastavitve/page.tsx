@@ -173,7 +173,8 @@ export default function Nastavitve() {
 
   const applyFontSize = (value: any) => {
     const percent = normalizeFontPercent(value)
-    document.documentElement.style.fontSize = '16px'
+    const rootPx = 16 * (percent / 100)
+    document.documentElement.style.fontSize = `${Math.min(48, Math.max(22.4, rootPx))}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', String(percent / 100))
   }
 
