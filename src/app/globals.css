@@ -4,7 +4,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --gb-app-font-scale: 1;
-  --gb-text-font-scale: 1.5;
+  --gb-text-font-scale: 1.4;
 }
 
 @theme inline {
@@ -110,9 +110,10 @@ body:not(.landing) {
 
   body:not(.landing) > div:first-child {
     width: 100%;
-    max-width: none;
+    max-width: 28rem;
     min-width: 0;
-    margin: 0;
+    min-height: 100dvh;
+    margin: 0 auto;
     overflow-x: hidden;
   }
 
@@ -151,29 +152,10 @@ body:not(.landing) {
   }
 
   .gb-app-home,
-  .gb-app-home > div {
-    width: 100vw !important;
-    max-width: none !important;
-  }
-
-  body:not(.landing) > div:first-child .max-w-sm,
-  body:not(.landing) > div:first-child .max-w-md,
-  body:not(.landing) > div:first-child .max-w-lg,
-  body:not(.landing) > div:first-child .max-w-xl,
-  body:not(.landing) > div:first-child .max-w-2xl,
-  body:not(.landing) > div:first-child .max-w-3xl,
-  body:not(.landing) > div:first-child .max-w-4xl,
-  body:not(.landing) > div:first-child .max-w-5xl,
-  body:not(.landing) > div:first-child .max-w-6xl {
-    max-width: none !important;
-  }
-
+  .gb-app-home > div,
   .gb-settings-shell {
-    max-width: none !important;
-  }
-
-  body:not(.landing) > div:first-child .mx-auto.w-full {
-    max-width: none !important;
+    width: 100% !important;
+    max-width: 28rem !important;
   }
 
   body:not(.landing) input,

@@ -89,10 +89,10 @@ export default function RootLayout({
               document.documentElement.classList.add('light-mode');
             }
             if (shouldUseAppFont) {
-              const legacy = { mala: 100, normalna: 150, srednja: 150, velika: 230 };
+              const legacy = { mala: 100, normalna: 140, srednja: 140, velika: 230 };
               const raw = n.pisava ?? 'srednja';
-              const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 150);
-              const percent = parsedPercent <= 105 ? 100 : parsedPercent <= 190 ? 150 : 230;
+              const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 140);
+              const percent = parsedPercent <= 105 ? 100 : parsedPercent <= 190 ? 140 : 230;
               document.documentElement.style.fontSize = '';
               document.documentElement.style.setProperty('--gb-app-font-scale', '1');
               document.documentElement.style.setProperty('--gb-text-font-scale', String(percent / 100));

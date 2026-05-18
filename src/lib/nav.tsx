@@ -207,7 +207,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
   return (
     <>
       <DesktopNav aktivna={aktivna} />
-      <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 z-50 flex justify-between border-t border-[#1a1a28] bg-[#0a0a12]/96 px-2 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
+      <div className="gb-mobile-nav fixed bottom-0 left-1/2 right-auto z-50 flex w-full max-w-md -translate-x-1/2 justify-between border-t border-[#1a1a28] bg-[#0a0a12]/96 px-2 pb-[calc(0.9rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl">
         {mobileLinks.map((item: any) => {
           const isActive = aktivna === item.key
           return (
