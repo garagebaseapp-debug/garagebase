@@ -181,10 +181,10 @@ export default function Nastavitve() {
   }
 
   const applyFontSize = (value: any) => {
-    const percent = normalizeFontPercent(value)
+    normalizeFontPercent(value)
     document.documentElement.style.fontSize = ''
     document.documentElement.style.setProperty('--gb-app-font-scale', '1')
-    document.documentElement.style.setProperty('--gb-text-font-scale', String(percent / 100))
+    document.documentElement.style.setProperty('--gb-text-font-scale', '1')
   }
 
   const spremeniPisavo = (value: number) => {

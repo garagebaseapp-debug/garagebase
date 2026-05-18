@@ -78,29 +78,18 @@ export default function RootLayout({
           window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
           
           try {
-            // Theme, language and app font size
+            // Theme and language
             const n = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}');
             if (n.jezik === 'en' || n.language === 'en') {
               document.getElementById('gb-html-root')?.setAttribute('lang', 'en');
             }
-            const publicFontPaths = new Set(['/', '/login', '/registracija']);
-            const shouldUseAppFont = !publicFontPaths.has(window.location.pathname);
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            if (shouldUseAppFont) {
-              const legacy = { mala: 100, normalna: 140, srednja: 140, velika: 230 };
-              const raw = n.pisava ?? 'srednja';
-              const parsedPercent = typeof raw === 'number' ? raw : (legacy[raw] || 140);
-              const percent = parsedPercent <= 105 ? 100 : parsedPercent <= 190 ? 140 : 230;
-              document.documentElement.style.fontSize = '';
-              document.documentElement.style.setProperty('--gb-app-font-scale', '1');
-              document.documentElement.style.setProperty('--gb-text-font-scale', String(percent / 100));
-            } else if (!shouldUseAppFont) {
-              document.documentElement.style.fontSize = '';
-              document.documentElement.style.setProperty('--gb-app-font-scale', '1');
-              document.documentElement.style.setProperty('--gb-text-font-scale', '1');
-            }
+            // Keep the layout independent from Android/iOS system font scaling.
+            document.documentElement.style.fontSize = '';
+            document.documentElement.style.setProperty('--gb-app-font-scale', '1');
+            document.documentElement.style.setProperty('--gb-text-font-scale', '1');
           } catch {
             // Ignore broken localStorage settings and load the app with defaults.
           }

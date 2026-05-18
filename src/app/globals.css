@@ -4,7 +4,7 @@
   --background: #ffffff;
   --foreground: #171717;
   --gb-app-font-scale: 1;
-  --gb-text-font-scale: 1.4;
+  --gb-text-font-scale: 1;
 }
 
 @theme inline {
@@ -139,7 +139,7 @@ body:not(.landing) {
 
 @media (max-width: 767px) {
   html {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   body:not(.landing) {
@@ -168,32 +168,21 @@ body:not(.landing) {
   .gb-mobile-nav {
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }
 }
 
 @media (max-width: 380px) {
   html {
-    font-size: 16.5px;
+    font-size: 16px;
   }
 }
 
 @media (max-width: 1279px) {
   body:not(.landing),
   body:not(.landing) * {
-    -webkit-text-size-adjust: none;
-    text-size-adjust: none;
-  }
-
-  body:not(.landing) :where(h1, h2, h3, h4, h5, h6, p, label, a, button, li, input, select, textarea, small, strong, em, th, td, figcaption, span) {
-    font-size: calc(1em * var(--gb-text-font-scale, 1)) !important;
-  }
-
-  body:not(.landing) :where(button span, p span, label span, a span, h1 span, h2 span, h3 span, h4 span, h5 span, h6 span) {
-    font-size: inherit !important;
-  }
-
-  body:not(.landing) :where(svg, svg *) {
-    font-size: inherit !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 }
 
