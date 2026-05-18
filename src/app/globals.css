@@ -146,6 +146,12 @@ body:not(.landing) {
     min-height: 100svh;
   }
 
+  .gb-app-home,
+  .gb-app-home > div {
+    width: 100vw !important;
+    max-width: none !important;
+  }
+
   body:not(.landing) > div:first-child .max-w-sm,
   body:not(.landing) > div:first-child .max-w-md,
   body:not(.landing) > div:first-child .max-w-lg {

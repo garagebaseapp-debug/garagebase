@@ -484,12 +484,12 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home min-h-screen px-0 pb-[calc(5.9rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#f3f1ea] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
-      <div className="mx-auto w-full max-w-[430px] xl:max-w-6xl">
-        <section className={`relative mx-3 mb-5 mt-3 overflow-hidden rounded-[30px] shadow-2xl sm:mx-3 sm:mt-3 ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
+    <div className={`gb-app-home min-h-screen w-screen max-w-none px-0 pb-[calc(5.9rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:w-auto xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#f3f1ea] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+      <div className="mx-0 w-screen max-w-none xl:mx-auto xl:w-full xl:max-w-6xl">
+        <section className={`relative mx-4 mb-5 mt-4 overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
           <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-[63%_42%]" loading="eager" decoding="async" />
           <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#f3f1ea]/0 via-[#f3f1ea]/16 to-[#f3f1ea] xl:bg-gradient-to-r xl:from-[#f3f1ea]/96 xl:via-[#f3f1ea]/58 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
-          <div className="relative z-10 min-h-[392px] px-5 pb-5 pt-5 xl:flex xl:min-h-[470px] xl:flex-col xl:justify-center xl:px-12 xl:py-12">
+          <div className="relative z-10 min-h-[405px] px-5 pb-5 pt-5 xl:flex xl:min-h-[470px] xl:flex-col xl:justify-center xl:px-12 xl:py-12">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
                 Garage<span className="text-[#6c63ff]">Base</span>
@@ -507,8 +507,8 @@ export default function DomovPage() {
                 </button>
               </div>
             </header>
-            <div className="mt-[108px] xl:mt-0 xl:max-w-[520px]">
-              <h1 className={`max-w-[78%] text-[2.05rem] font-black leading-[1.02] tracking-tight sm:text-[2.16rem] xl:max-w-none xl:text-[3.15rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
+            <div className="mt-[118px] xl:mt-0 xl:max-w-[520px]">
+              <h1 className={`max-w-[82%] text-[2.15rem] font-black leading-[1.02] tracking-tight xl:max-w-none xl:text-[3.15rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
                 {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {displayGreetingName}
               </h1>
               <p className={`mt-3 text-[1rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
@@ -525,7 +525,7 @@ export default function DomovPage() {
           </div>
         </section>
 
-        <section className="mb-5 grid grid-cols-3 gap-3 px-4 xl:hidden">
+        <section className="mb-5 grid w-screen grid-cols-3 gap-3 px-4 xl:hidden">
           {mobileStatCards.map((item) => (
             <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[115px] rounded-[18px] p-3.5 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
               <p className={`text-[0.88rem] font-medium leading-tight xl:text-lg ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
@@ -544,7 +544,7 @@ export default function DomovPage() {
           ))}
         </section>
 
-        <section className="grid gap-5 px-4 xl:grid-cols-2 xl:gap-8">
+        <section className="grid w-screen gap-5 px-4 xl:w-auto xl:grid-cols-2 xl:gap-8">
           <div>
             <div className="mb-2 flex items-center justify-between xl:mb-5">
               <h2 className={`text-[1.25rem] font-black xl:text-xl ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
