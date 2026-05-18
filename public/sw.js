@@ -1,6 +1,6 @@
 // GarageBase service worker for push notifications and basic offline support.
 
-const STATIC_CACHE = 'garagebase-static-v2'
+const STATIC_CACHE = 'garagebase-static-v3'
 const OFFLINE_FALLBACK_URL = '/domov'
 const STATIC_ASSETS = [
   '/',
@@ -44,6 +44,10 @@ function isStaticRequest(requestUrl, request) {
   return /\.(?:css|js|mjs|png|jpg|jpeg|webp|svg|ico|woff2?)$/i.test(requestUrl.pathname)
 }
 
+function shouldPreferNetwork(request) {
+  return request.destination && ['style', 'script', 'worker', 'manifest'].includes(request.destination)
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET') return
@@ -61,6 +65,21 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (!isStaticRequest(requestUrl, request)) return
+
+  if (shouldPreferNetwork(request)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone()
+            caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    )
+    return
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {
