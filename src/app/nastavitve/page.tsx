@@ -81,7 +81,7 @@ export default function Nastavitve() {
   const [prikaznoIme, setPrikaznoIme] = useState('')
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
-  const [pisava, setPisava] = useState(150)
+  const [pisava, setPisava] = useState(140)
   const [prikazGaraze, setPrikazGaraze] = useState('srednje')
   const [desktopStolpci, setDesktopStolpci] = useState(5)
   const [mobileGridStolpci, setMobileGridStolpci] = useState(3)
@@ -130,18 +130,18 @@ export default function Nastavitve() {
 
   const fontOptions = [
     { value: 100, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
-    { value: 150, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
+    { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
     { value: 230, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
   ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value <= 105) return 100
-      if (value <= 190) return 150
+      if (value <= 190) return 140
       return 230
     }
-    const legacy: Record<string, number> = { mala: 100, normalna: 150, srednja: 150, velika: 230 }
-    return legacy[value] || 150
+    const legacy: Record<string, number> = { mala: 100, normalna: 140, srednja: 140, velika: 230 }
+    return legacy[value] || 140
   }
 
   const normalizeGarageFont = (value: any) => {
@@ -273,7 +273,7 @@ export default function Nastavitve() {
           document.documentElement.classList.remove('light-mode')
         }
       } else {
-        applyFontSize(150)
+        applyFontSize(140)
       }
       setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')

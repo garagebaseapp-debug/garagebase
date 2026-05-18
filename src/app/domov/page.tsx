@@ -169,7 +169,7 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/home-garage-nature-light.png' : '/home-garage-closed-dark.webp'
+  const heroImage = isLightTheme ? '/home-garage-premium-light.png' : '/home-garage-premium-dark.png'
   const doorConfig = isLightTheme
     ? {
       viewBox: '0 0 914 609',
@@ -514,6 +514,22 @@ export default function DomovPage() {
                 <button onClick={() => router.push('/vec')} className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6c63ff] text-sm font-black text-white shadow-lg shadow-[#6c63ff33]">
                   {displayName ? displayName.slice(0, 2).toUpperCase() : 'JN'}
                 </button>
+                <button
+                  type="button"
+                  onClick={preklopiTemo}
+                  aria-label={isLightTheme ? tx('Preklopi na temni način', 'Switch to dark mode') : tx('Preklopi na svetli način', 'Switch to light mode')}
+                  className={`flex h-10 w-[72px] items-center rounded-full border p-1 shadow-lg transition-colors xl:h-12 xl:w-[82px] ${
+                    isLightTheme ? 'border-white/80 bg-white/88 shadow-[#101225]/10' : 'border-white/15 bg-white/14 shadow-black/20'
+                  }`}
+                >
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-black shadow-md transition-transform xl:h-10 xl:w-10 ${
+                    isLightTheme
+                      ? 'translate-x-8 bg-[#6c63ff] text-white xl:translate-x-8'
+                      : 'translate-x-0 bg-white text-[#101225]'
+                  }`}>
+                    {isLightTheme ? '☀' : '☾'}
+                  </span>
+                </button>
                 <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg shadow-black/10 xl:h-12 xl:w-12 ${isLightTheme ? 'bg-white/88 text-[#101225]' : 'bg-white/14 text-white'}`}>
                   <Icon type="bell" className="h-5 w-5 xl:h-6 xl:w-6" />
                 </button>
@@ -531,7 +547,7 @@ export default function DomovPage() {
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-7 flex w-full max-w-[340px] items-center justify-center gap-3 rounded-[20px] border border-white/35 bg-[#6c63ff] px-7 py-[1.12rem] text-[1.18rem] font-black text-white shadow-2xl shadow-[#6c63ff66] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[320px] xl:rounded-[22px] xl:px-8 xl:py-5 xl:text-lg"
+                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-white/35 bg-[#6c63ff] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-2xl shadow-[#6c63ff66] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[416px] xl:max-w-[416px] xl:rounded-[26px] xl:px-10 xl:py-6 xl:text-[1.35rem]"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
