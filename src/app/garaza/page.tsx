@@ -722,8 +722,8 @@ export default function Garaza() {
               : 'border-[#1e1e32] bg-[#0f0f1a] text-[#8a8ab0]'
           }`}
         >
-          <span className="block text-sm font-black">{item.label}</span>
-          <span className="mt-1 block text-[11px] font-bold leading-tight opacity-80">{item.desc}</span>
+          <span className="block text-[1rem] font-black leading-none">{item.label}</span>
+          <span className="mt-1.5 block text-[0.78rem] font-bold leading-tight opacity-85">{item.desc}</span>
         </button>
       ))}
     </div>

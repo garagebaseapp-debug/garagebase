@@ -136,8 +136,7 @@ export default function Nastavitve() {
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value >= 250) return 110
-      if (value >= 160) return 100
-      if (value >= 120) return 95
+      if (value >= 120) return 100
       if (value <= 95) return 95
       if (value <= 105) return 100
       return 110
@@ -788,20 +787,20 @@ export default function Nastavitve() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 overflow-hidden rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 lg:p-7">
+    <div className="gb-settings-page min-h-screen bg-[#080810] px-4 py-5 pb-24 lg:px-8">
+      <div className="gb-settings-shell mx-auto w-full max-w-[520px] lg:max-w-7xl">
+        <div className="mb-4 overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] p-4 lg:mb-6 lg:rounded-3xl lg:p-7">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#6c63ff]">{tx('Nastavitve', 'Settings')}</p>
-              <h1 className="mt-2 text-3xl font-black text-white">
+              <h1 className="mt-2 text-[1.75rem] font-black leading-none text-white lg:text-3xl">
                 Garage<span className="text-[#6c63ff]">Base</span>
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-[#5a5a80]">
+              <p className="mt-2 max-w-2xl text-[0.93rem] leading-snug text-[#5a5a80] lg:text-sm">
                 {tx('Uredi prikaz, varnost, jezik, prenos podatkov in delovanje aplikacije na enem mestu.', 'Manage display, security, language, data transfer and app behavior in one place.')}
               </p>
             </div>
-            <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-[#5a5a80]">
+            <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] px-3 py-2.5 text-[0.86rem] text-[#5a5a80] lg:px-4 lg:py-3 lg:text-sm">
               <span className="font-semibold text-white">{user?.email}</span>
               <span className="mx-2 text-[#3a3a5a]">/</span>
               {tx('Free paket', 'Free plan')}
@@ -810,7 +809,7 @@ export default function Nastavitve() {
         </div>
 
         <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-5">
-          <div className="mb-4 overflow-x-auto rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-3 lg:hidden">
+          <div className="mb-4 overflow-x-auto rounded-[22px] border border-[#1e1e32] bg-[#0f0f1a] p-2.5 lg:hidden">
             <div className="flex min-w-max gap-2">
               {settingsSections.map((section) => {
                 const active = section.id === settingsView
@@ -819,7 +818,7 @@ export default function Nastavitve() {
                     key={section.id}
                     type="button"
                     onClick={() => selectSettingsSection(section.id)}
-                    className={`rounded-2xl border px-4 py-2 text-sm font-black transition-colors ${
+                    className={`rounded-2xl border px-3.5 py-2.5 text-[0.82rem] font-black transition-colors ${
                       active
                         ? 'border-[#6c63ff] bg-[#6c63ff] text-white'
                         : 'border-[#1e1e32] bg-[#13131f] text-[#8a8aa8]'
@@ -862,11 +861,11 @@ export default function Nastavitve() {
             </div>
           </aside>
 
-          <main className="grid gap-4 lg:grid-cols-2">
+          <main className="grid gap-3.5 lg:grid-cols-2 lg:gap-4">
       {settingsView !== 'vse' && (
-        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5 lg:col-span-2">
+        <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4 lg:col-span-2 lg:p-5">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6c63ff]">{tx('Izbrano', 'Selected')}</p>
-          <h2 className="mt-2 text-2xl font-black text-white">{selectedSection.title}</h2>
+          <h2 className="mt-2 text-[1.45rem] font-black leading-tight text-white lg:text-2xl">{selectedSection.title}</h2>
           <p className="mt-1 text-sm text-[#5a5a80]">{selectedSection.desc}</p>
         </div>
       )}
