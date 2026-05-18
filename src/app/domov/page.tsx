@@ -499,11 +499,11 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home min-h-screen w-screen max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:w-auto xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#f3f1ea] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+    <div className={`gb-app-home min-h-screen w-screen max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:w-auto xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
       <div className="mx-0 w-screen max-w-none xl:mx-auto xl:w-full xl:max-w-6xl">
-        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
+        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
           <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-[63%_42%]" loading="eager" decoding="async" />
-          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#f3f1ea]/0 via-[#f3f1ea]/16 to-[#f3f1ea] xl:bg-gradient-to-r xl:from-[#f3f1ea]/96 xl:via-[#f3f1ea]/58 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
+          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#e9e3d7]/0 via-[#e9e3d7]/18 to-[#e9e3d7] xl:bg-gradient-to-r xl:from-[#e9e3d7]/96 xl:via-[#e9e3d7]/54 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
           <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:min-h-[470px] xl:justify-center xl:px-12 xl:py-12">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
@@ -547,7 +547,7 @@ export default function DomovPage() {
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-white/35 bg-[#6c63ff] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-2xl shadow-[#6c63ff66] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[416px] xl:max-w-[416px] xl:rounded-[26px] xl:px-10 xl:py-6 xl:text-[1.35rem]"
+                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-[#c9b5ff]/65 bg-[linear-gradient(135deg,#7b4dff_0%,#6c38f5_48%,#3d168e_100%)] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-[0_18px_36px_rgba(90,42,210,0.44),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-10px_24px_rgba(26,5,81,0.36)] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[416px] xl:max-w-[416px] xl:rounded-[26px] xl:px-10 xl:py-6 xl:text-[1.35rem]"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
@@ -558,7 +558,7 @@ export default function DomovPage() {
 
         <section className="mb-5 grid w-screen grid-cols-3 gap-3 px-4 xl:hidden">
           {mobileStatCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] border p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'border-white/90 bg-white/86 text-[#101225] shadow-[0_14px_34px_rgba(16,18,37,0.14)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] border p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'border-[#fff8ed]/90 bg-[#f6efe4]/88 text-[#101225] shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
               <p className={`text-[0.96rem] font-medium leading-tight xl:text-lg ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-1.5 truncate text-[2.05rem] font-black leading-none xl:mt-3 xl:text-4xl">{item.value}</p>
               <p className={`mt-2 text-[0.9rem] font-medium leading-tight xl:text-base ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -567,7 +567,7 @@ export default function DomovPage() {
         </section>
         <section className="mb-8 hidden grid-cols-4 gap-5 xl:grid">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-white/90 bg-white/86 text-[#101225] shadow-[0_14px_34px_rgba(16,18,37,0.14)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-[#fff8ed]/90 bg-[#f6efe4]/88 text-[#101225] shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
               <p className={`text-sm font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-2 truncate text-3xl font-black leading-none">{item.value}</p>
               <p className={`mt-2 text-sm font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -583,14 +583,14 @@ export default function DomovPage() {
                 {tx('Prikaži vse', 'Show all')} →
               </button>
             </div>
-            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'border border-white/90 bg-white/86 shadow-[0_16px_36px_rgba(16,18,37,0.13)]' : 'border border-white/15 bg-white/9 shadow-[0_18px_42px_rgba(0,0,0,0.34)]'}`}>
+            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'border border-[#fff8ed]/90 bg-[#f6efe4]/88 shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border border-white/15 bg-white/9 shadow-[0_18px_42px_rgba(0,0,0,0.34)]'}`}>
               {topReminders.length === 0 ? (
                 <div className={`p-5 text-sm font-semibold xl:p-6 xl:text-base ${isLightTheme ? 'text-[#6b7280]' : 'text-[#c9c7d8]'}`}>{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
               ) : topReminders.map((item, index) => {
                 const tone = cardTone[item.tone]
                 return (
-                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3.5 p-3.5 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#e6e0d7]' : 'border-t border-white/10') : ''}`}>
-                    <div className="h-[72px] w-[88px] flex-shrink-0 overflow-hidden rounded-[16px] bg-[#e9e5dc] xl:h-12 xl:w-14 xl:rounded-xl">
+                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3.5 p-3.5 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#ded2c2]' : 'border-t border-white/10') : ''}`}>
+                    <div className="h-[72px] w-[88px] flex-shrink-0 overflow-hidden rounded-[16px] bg-[#dfd4c4] xl:h-12 xl:w-14 xl:rounded-xl">
                       {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -608,7 +608,7 @@ export default function DomovPage() {
             <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Hitre akcije', 'Quick actions')}</h2>
             <div className="grid grid-cols-2 gap-3">
               {quickActions.map((item) => (
-                <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-white/70 bg-white/74 text-[#101225] shadow-xl shadow-[#101225]/8' : 'border-white/10 bg-white/7 text-white'}`}>
+                <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-[#fff8ed]/80 bg-[#f6efe4]/82 text-[#101225] shadow-xl shadow-[#5e4b36]/12' : 'border-white/10 bg-white/7 text-white'}`}>
                   <Icon type={item.icon} className="h-7 w-7 text-[#8b5cf6]" />
                   {item.label}
                 </button>
