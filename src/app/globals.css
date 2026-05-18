@@ -132,6 +132,49 @@ body:not(.landing) {
   }
 }
 
+@media (max-width: 767px) {
+  html {
+    font-size: 17px;
+  }
+
+  body:not(.landing) {
+    min-height: 100svh;
+    background: #080810;
+  }
+
+  body:not(.landing) > div:first-child {
+    min-height: 100svh;
+  }
+
+  body:not(.landing) > div:first-child .max-w-sm,
+  body:not(.landing) > div:first-child .max-w-md,
+  body:not(.landing) > div:first-child .max-w-lg {
+    max-width: none !important;
+  }
+
+  .gb-settings-shell {
+    max-width: none !important;
+  }
+
+  body:not(.landing) input,
+  body:not(.landing) select,
+  body:not(.landing) textarea,
+  body:not(.landing) button {
+    font-size: max(16px, 1rem);
+  }
+
+  .gb-mobile-nav {
+    padding-left: max(0.5rem, env(safe-area-inset-left));
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+  }
+}
+
+@media (max-width: 380px) {
+  html {
+    font-size: 16.5px;
+  }
+}
+
 .gb-lite-selected {
   outline: 3px solid #3ecfcf;
   outline-offset: 2px;
