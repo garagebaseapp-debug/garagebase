@@ -110,7 +110,7 @@ body:not(.landing) {
 
   body:not(.landing) > div:first-child {
     width: 100%;
-    max-width: 28rem;
+    max-width: 36rem;
     min-width: 0;
     min-height: 100dvh;
     margin: 0 auto;
@@ -155,7 +155,7 @@ body:not(.landing) {
   .gb-app-home > div,
   .gb-settings-shell {
     width: 100% !important;
-    max-width: 28rem !important;
+    max-width: 36rem !important;
   }
 
   body:not(.landing) input,

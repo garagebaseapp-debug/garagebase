@@ -499,8 +499,8 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-md px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:max-w-6xl xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
-      <div className="mx-auto w-full max-w-md xl:max-w-6xl">
+    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-[36rem] px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:max-w-6xl xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+      <div className="mx-auto w-full max-w-[36rem] xl:max-w-6xl">
         <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
           <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-[63%_42%]" loading="eager" decoding="async" />
           <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#e9e3d7]/0 via-[#e9e3d7]/18 to-[#e9e3d7] xl:bg-gradient-to-r xl:from-[#e9e3d7]/96 xl:via-[#e9e3d7]/54 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
