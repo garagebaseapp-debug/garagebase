@@ -138,7 +138,13 @@ export default function LoginPage() {
       }
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) setMessage(error.message)
-      else setMessage('Preveri email za potrditev registracije!')
+      else {
+        try {
+          const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
+          localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, pisava: current.pisava || 140 }))
+        } catch {}
+        setMessage('Preveri email za potrditev registracije!')
+      }
     } else {
       const rateLimit = checkLoginRateLimit(email)
       if (!rateLimit.allowed) {

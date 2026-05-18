@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -63,7 +63,7 @@ const cardTone = {
   },
 }
 
-function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield' | 'wrench' | 'calendar' | 'fuel' | 'cost' | 'bell' | 'box'; className?: string }) {
+function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield' | 'wrench' | 'calendar' | 'fuel' | 'cost' | 'bell' | 'box' | 'settings' | 'plus' | 'menu'; className?: string }) {
   if (type === 'car') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M5 13l1.5-4.2A3 3 0 0 1 9.3 7h5.4a3 3 0 0 1 2.8 1.8L19 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -107,6 +107,22 @@ function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield'
       <path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
     </svg>
   )
+  if (type === 'settings') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 15.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Z" stroke="currentColor" strokeWidth="2.1"/>
+      <path d="M19.2 13.8a7.8 7.8 0 0 0 0-3.6l2-1.5-2-3.5-2.4 1a7.8 7.8 0 0 0-3.1-1.8L13.4 2H9.6l-.4 2.4a7.8 7.8 0 0 0-3.1 1.8l-2.3-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 3.6l-2 1.5 2 3.5 2.3-1a7.8 7.8 0 0 0 3.1 1.8l.4 2.4h3.8l.3-2.4a7.8 7.8 0 0 0 3.1-1.8l2.4 1 2-3.5-2-1.5Z" stroke="currentColor" strokeWidth="2.1" strokeLinejoin="round"/>
+    </svg>
+  )
+  if (type === 'plus') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round"/>
+    </svg>
+  )
+  if (type === 'menu') return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M5 7h14M5 12h14M5 17h14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/>
+    </svg>
+  )
   if (type === 'box') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M12 3l8 4-8 4-8-4 8-4ZM4 11l8 4 8-4M4 15l8 4 8-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -137,6 +153,8 @@ export default function DomovPage() {
   const [theme, setTheme] = useState<'temna' | 'svetla'>('temna')
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
+  const [displayName, setDisplayName] = useState('')
+  const [monthlyCost, setMonthlyCost] = useState(0)
   const [showAllRecentEvents, setShowAllRecentEvents] = useState(false)
   const [garageOpening, setGarageOpening] = useState(false)
   const garageNavigationStarted = useRef(false)
@@ -151,7 +169,7 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/home-garage-open-light.webp' : '/home-garage-open-dark.webp'
+  const heroImage = isLightTheme ? '/home-garage-closed-light.webp' : '/home-garage-closed-dark.webp'
   const doorConfig = isLightTheme
     ? {
       viewBox: '0 0 914 609',
@@ -225,18 +243,11 @@ export default function DomovPage() {
   }
 
   const vstopiVGarazo = () => {
-    if (garageOpening) return
     if (cars.length === 0) {
       router.push('/dodaj-avto')
       return
     }
-    garageNavigationStarted.current = false
-    setGarageOpening(true)
-    garageFallbackTimeout.current = window.setTimeout(() => {
-      if (garageNavigationStarted.current) return
-      garageNavigationStarted.current = true
-      router.push('/garaza')
-    }, 1550)
+    router.push('/garaza')
   }
 
   const odpriGarazoPoAnimaciji = () => {
@@ -304,6 +315,8 @@ export default function DomovPage() {
         router.replace('/')
         return
       }
+      const rawName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || ''
+      setDisplayName(String(rawName).split(/[ ._-]/).filter(Boolean)[0] || '')
 
       let { data: carsData, error: carsError } = await supabase
         .from('cars')
@@ -337,6 +350,7 @@ export default function DomovPage() {
       if (ids.length === 0) {
         setReminders([])
         setRecentEvents([])
+        setMonthlyCost(0)
         setLoading(false)
         return
       }
@@ -347,6 +361,16 @@ export default function DomovPage() {
         supabase.from('service_logs').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(8),
         supabase.from('expenses').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(8),
       ])
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+      const inCurrentMonth = (row: any) => new Date(row.datum || row.created_at || 0).getTime() >= startOfMonth.getTime()
+      const currentMonthCost = [
+        ...(fuelRes.data || []).filter(inCurrentMonth).map((row: any) => fuelCostValue(row)),
+        ...(serviceRes.data || []).filter(inCurrentMonth).map((row: any) => Number(row.cena || 0)),
+        ...(expenseRes.data || []).filter((row: any) => row.kategorija !== 'km_sprememba' && inCurrentMonth(row)).map((row: any) => Number(row.znesek || 0)),
+      ].reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)
+      setMonthlyCost(currentMonthCost)
 
       const nextReminders = (remindersRes.data || []).map((reminder: any): ReminderItem => {
         const car = carMap[reminder.car_id]
@@ -411,7 +435,7 @@ export default function DomovPage() {
           id: `expense-${row.id}`,
           carId: row.car_id,
           carName: vehicleDisplayName(car, tx('Vozilo', 'Vehicle')),
-          title: row.opis || row.kategorija || tx('Strošek', 'Expense'),
+          title: row.opis || row.kategorija || tx('StroĹˇek', 'Expense'),
           subtitle: `${vehicleDisplayName(car, tx('Vozilo', 'Vehicle'))} - ${formatMoney(row.znesek || fuelCostValue(row), selectedCurrency)}`,
           dateText: asDateText(row.datum, locale),
           href: `/stroski?car=${row.car_id}`,
@@ -439,152 +463,73 @@ export default function DomovPage() {
     if (normalized === 'olje') return tx('Olje', 'Oil')
     if (normalized === 'tankanje') return tx('Tankanje', 'Fill-up')
     if (normalized === 'servis') return tx('Servis', 'Service')
-    if (normalized === 'strošek' || normalized === 'strosek') return tx('Strošek', 'Expense')
+    if (normalized === 'stroĹˇek' || normalized === 'strosek') return tx('StroĹˇek', 'Expense')
     return value
   }
 
+  const greetingName = displayName || tx('uporabnik', 'driver')
+  const nextServiceReminder = reminders.find((item) => item.title.toLowerCase().includes('servis') || item.title.toLowerCase().includes('service'))
   const statCards = [
-    { label: tx('Vozil', 'Vehicles'), value: cars.length, icon: 'car' as const, tone: 'text-[#6c63ff]', href: '/garaza' },
-    { label: tx('Aktivna opomnika', 'Active reminders'), value: activeReminders.length, icon: 'shield' as const, tone: 'text-[#6c63ff]', href: reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/garaza' },
-    { label: tx('Servis kmalu', 'Service soon'), value: serviceSoon.length, icon: 'wrench' as const, tone: 'text-[#16a34a]', href: serviceSoon[0]?.carId ? `/opomniki?car=${serviceSoon[0].carId}` : '/garaza' },
-    { label: tx('Zapadli dogodki', 'Overdue events'), value: expiredReminders.length, icon: 'calendar' as const, tone: 'text-[#ef4444]', href: expiredReminders[0]?.carId ? `/opomniki?car=${expiredReminders[0].carId}` : '/garaza' },
+    { label: tx('Vozila', 'Vehicles'), value: cars.length || '-', sub: tx('Vsa vozila.', 'All vehicles.'), href: '/garaza' },
+    { label: tx('Opomniki', 'Reminders'), value: reminders.length || '-', sub: tx('Aktivnih.', 'Active.'), href: reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki' },
+    { label: tx('StroĹˇki (mesec)', 'Costs (month)'), value: formatMoney(monthlyCost, currency), sub: new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' }), href: '/stroski-garaza' },
+    { label: tx('Naslednji servis', 'Next service'), value: nextServiceReminder?.value || '-', sub: nextServiceReminder?.carName || tx('Ni podatka', 'No data'), href: nextServiceReminder?.carId ? `/opomniki?car=${nextServiceReminder.carId}` : '/opomniki' },
+  ]
+  const mobileStatCards = statCards.slice(0, 3)
+  const quickActions = [
+    { label: tx('Dodaj vozilo', 'Add vehicle'), href: '/dodaj-avto', icon: 'plus' as const },
+    { label: tx('ZabeleĹľi servis', 'Log service'), href: favoriteCar?.id ? `/vnos-servisa?car=${favoriteCar.id}` : '/vnos-servisa', icon: 'wrench' as const },
+    { label: tx('Dodaj stroĹˇek', 'Add expense'), href: favoriteCar?.id ? `/vnos-stroska?car=${favoriteCar.id}` : '/vnos-stroska', icon: 'box' as const },
+    { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
 
   return (
-    <div className="gb-app-home h-[100dvh] overflow-hidden bg-[#080810] px-4 pt-3 pb-[calc(5.9rem+env(safe-area-inset-bottom))] text-white md:h-auto md:min-h-screen md:overflow-visible md:pt-6">
-      <div className="mx-auto max-w-md lg:max-w-5xl">
+    <div className={`gb-app-home min-h-screen px-4 pt-3 pb-[calc(5.9rem+env(safe-area-inset-bottom))] md:pt-6 xl:pb-12 ${isLightTheme ? 'bg-[#f2f0e9] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+      <div className="mx-auto max-w-md xl:max-w-none">
+        <div className="xl:hidden">
         <header className="mb-3 flex items-center justify-between">
-          <button onClick={() => router.push('/domov')} className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+          <button onClick={() => router.push('/domov')} className={`text-2xl font-black tracking-tight sm:text-3xl ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
             Garage<span className="text-[#6c63ff]">Base</span>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={preklopiTemo} className="flex h-10 items-center gap-2 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] px-3 text-sm font-black text-[#d8d8e8] shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] hover:text-white sm:h-11 sm:px-4 xl:hidden">
-              {theme === 'svetla' ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
+            <button onClick={preklopiTemo} className={`flex h-11 w-11 items-center justify-center rounded-2xl border text-xl font-black shadow-xl shadow-black/10 ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/10 text-white'}`} title={theme === 'svetla' ? tx('Temni naÄŤin', 'Dark mode') : tx('Svetli naÄŤin', 'Light mode')}>
+              {theme === 'svetla' ? '☀' : '☾'}
             </button>
-            <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-[#8a8aa8] sm:h-11 sm:w-11">
+            <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-11 w-11 items-center justify-center rounded-2xl border shadow-xl shadow-black/10 ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/10 text-white'}`}>
               <Icon type="bell" className="h-5 w-5" />
             </button>
           </div>
         </header>
 
-        <section className="hidden mb-2.5">
-          <h1 className="max-w-2xl text-[clamp(1.36rem,6.2vw,1.72rem)] font-black leading-[1.04] text-white sm:text-5xl">
-            {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />
-            {tx('Pripravljen ', 'Ready for the ')}<span className="text-[#6c63ff]">{tx('na pot?', 'road?')}</span>
-          </h1>
-        </section>
 
-        <section className="hidden mb-2.5 grid-cols-4 gap-2">
-          {statCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className="min-h-[clamp(68px,10dvh,82px)] rounded-[16px] border border-[#1e1e32] bg-[#0f0f1a] p-1.5 text-center shadow-xl shadow-black/10 transition-transform active:scale-[0.98] sm:min-h-[90px] sm:p-2">
-              <div className={`mx-auto mb-1 flex h-8 w-8 items-center justify-center rounded-xl bg-[#6c63ff14] ${item.tone} sm:h-9 sm:w-9`}>
-                <Icon type={item.icon} className="h-5 w-5" />
-              </div>
-              <p className="text-lg font-black leading-none text-white sm:text-xl">{loading && cars.length === 0 ? '-' : item.value}</p>
-              <p className="mt-1 text-[10.5px] font-bold leading-tight text-[#8a8aa8] sm:text-xs">{item.label}</p>
-            </button>
-          ))}
-        </section>
-
-        <section className="mb-5 hidden grid-cols-3 gap-4">
-          <button onClick={() => router.push('/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
-            <p className="text-sm font-black text-[#8a8aa8]">{tx('Glavno vozilo', 'Main vehicle')}</p>
-            <p className="mt-3 truncate text-2xl font-black text-white">{favoriteCarName || tx('Ni izbrano', 'Not selected')}</p>
-            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{favoriteCar?.km_trenutni ? `${favoriteCar.km_trenutni.toLocaleString(locale)} ${distanceUnit}` : tx('Odpri garažo za pregled', 'Open garage to review')}</p>
-            <p className="mt-3 text-xs font-bold text-[#6c63ff]">{tx('To je prvo aktivno vozilo v garaži. Spremeni ga z vrstnim redom vozil.', 'This is the first active vehicle in the garage. Change it by changing vehicle order.')}</p>
-          </button>
-          <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki')} className={`rounded-3xl border bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66] ${topReminders[0] ? `${cardTone[topReminders[0].tone].border} ring-1 ring-inset ring-current/10` : 'border-[#1e1e32]'}`}>
-            <p className="text-sm font-black text-[#8a8aa8]">{tx('Najbližji opomnik', 'Next reminder')}</p>
-            <p className="mt-3 truncate text-2xl font-black text-white">{topReminders[0]?.title ? translateLabel(topReminders[0].title) : tx('Brez opomnikov', 'No reminders')}</p>
-            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{topReminders[0]?.value || tx('Vse je mirno', 'Everything is quiet')}</p>
-          </button>
-          <button onClick={() => router.push(recentEvents[0]?.href || '/garaza')} className="rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-5 text-left shadow-xl shadow-black/10 transition-colors hover:border-[#6c63ff66]">
-            <p className="text-sm font-black text-[#8a8aa8]">{tx('Zadnji dogodek', 'Latest event')}</p>
-            <p className="mt-3 truncate text-2xl font-black text-white">{recentEvents[0]?.title ? translateLabel(recentEvents[0].title) : tx('Ni dogodkov', 'No events')}</p>
-            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">{recentEvents[0]?.subtitle || tx('Dodaj prvi vnos', 'Add the first entry')}</p>
-          </button>
-          <button
-            onClick={() => router.push(cars.length > 0 ? '/garaza' : '/dodaj-avto')}
-            className="m-2 mt-3 flex w-[calc(100%-1rem)] items-center justify-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-3 text-base font-black text-white shadow-lg shadow-[#6c63ff44] transition-transform active:scale-[0.98]"
-          >
-            {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
-            <span aria-hidden="true">→</span>
-          </button>
-        </section>
-
-        <section className={`mb-3 overflow-hidden rounded-[28px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-[#dfe6f4] bg-[#f7f9ff] text-[#101225]' : 'border-[#1e1e32] bg-[#0f0f1a] text-white'}`}>
-          <div className="relative h-[48dvh] min-h-[350px] max-h-[560px] overflow-hidden">
-            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className={`absolute inset-0 h-full w-full object-cover ${isLightTheme ? '' : 'scale-[1.24]'}`} loading="eager" decoding="async" />
-            <svg
-              className="pointer-events-none absolute inset-0 h-full w-full"
-              viewBox={doorConfig.viewBox}
-              preserveAspectRatio="xMidYMid slice"
-              aria-hidden="true"
-            >
-              <defs>
-                <clipPath id={`garageDoorClip-${isLightTheme ? 'light' : 'dark'}`}>
-                  <polygon points={doorConfig.opening} />
-                </clipPath>
-              </defs>
-              <g
-                clipPath={`url(#garageDoorClip-${isLightTheme ? 'light' : 'dark'})`}
-                onTransitionEnd={odpriGarazoPoAnimaciji}
-                style={{
-                  transform: garageOpening ? `translateY(-${doorConfig.lift}px)` : 'translateY(0)',
-                  transition: 'transform 1500ms cubic-bezier(0.22, 0.86, 0.28, 1)',
-                }}
+        <section className={`mb-4 overflow-hidden rounded-[30px] border shadow-2xl shadow-black/10 ${isLightTheme ? 'border-white/70 bg-white/72 text-[#101225]' : 'border-white/10 bg-[#10131d] text-white'}`}>
+          <div className="relative h-[38dvh] min-h-[255px] max-h-[380px] overflow-hidden">
+            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" decoding="async" />
+            <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-white/18 via-white/18 to-white/74' : 'bg-gradient-to-b from-black/10 via-black/20 to-[#080a12]/82'}`} />
+            <div className="absolute left-5 right-5 top-5">
+              <h1 className={`max-w-[78%] text-[2.05rem] font-black leading-[0.98] tracking-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
+                {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />{greetingName}.
+              </h1>
+              <p className={`mt-3 text-sm font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
+                {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
+              </p>
+              <button
+                onClick={vstopiVGarazo}
+                className="mt-5 flex w-[72%] items-center justify-center gap-3 rounded-2xl bg-[#6c63ff] px-5 py-3.5 text-base font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98]"
               >
-                <polygon points={doorConfig.panel} fill={doorConfig.fill} stroke={doorConfig.stroke} strokeWidth="2.7" />
-                {doorConfig.linePairs.map(([start, end], index) => {
-                  const [x1, y1] = start.split(',')
-                  const [x2, y2] = end.split(',')
-                  return (
-                    <line
-                      key={index}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke={doorConfig.line}
-                      strokeWidth="3.2"
-                      opacity="0.72"
-                    />
-                  )
-                })}
-              </g>
-            </svg>
-            <div className={`absolute inset-0 bg-gradient-to-t ${isLightTheme ? 'from-white via-white/15 to-transparent' : 'from-[#080810] via-[#08081033] to-transparent'}`} />
-            <div className="absolute left-5 right-5 top-4 flex items-center justify-between">
-              <span className={`max-w-[62%] text-2xl font-black leading-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Dobrodošel nazaj.', 'Welcome back.')}</span>
+                {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
+                <span aria-hidden="true">→</span>
+              </button>
             </div>
-            <div className={`absolute inset-x-8 bottom-6 h-1 rounded-full ${isLightTheme ? 'bg-white/70' : 'bg-white/20'} shadow-[0_0_24px_rgba(108,99,255,0.45)]`} />
           </div>
-          <div className="px-5 pb-5 pt-4">
-            <p className="hidden">
-              {tx('Dobrodošel nazaj.', 'Welcome back.')}
-            </p>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
-                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Vozil', 'Vehicles')}</p>
-                <p className="text-2xl font-black">{cars.length || '-'}</p>
-              </div>
-              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
-                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Opomniki', 'Reminders')}</p>
-                <p className="text-2xl font-black">{reminders.length || '-'}</p>
-              </div>
-              <div className={`rounded-2xl border p-3 ${isLightTheme ? 'border-[#e4e8f4] bg-white text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
-                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#596174]' : 'text-[#c8cbe0]'}`}>{tx('Zadnje', 'Latest')}</p>
-                <p className="truncate text-sm font-black">{recentEvents[0]?.dateText || '-'}</p>
-              </div>
-            </div>
-            <button
-              onClick={vstopiVGarazo}
-              disabled={garageOpening}
-              className="mt-3 flex w-full items-center justify-center gap-3 rounded-3xl bg-[#6c63ff] px-5 py-4 text-lg font-black text-white shadow-xl shadow-[#6c63ff44] transition-transform active:scale-[0.98]"
-            >
-              {garageOpening ? tx('Odpiram garažo...', 'Opening garage...') : cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
-              <span aria-hidden="true">→</span>
-            </button>
+          <div className="grid grid-cols-3 gap-2 px-4 py-4">
+            {mobileStatCards.map((item) => (
+              <button key={item.label} onClick={() => router.push(item.href)} className={`rounded-2xl border p-3 text-left shadow-lg shadow-black/5 ${isLightTheme ? 'border-white/80 bg-white/82 text-[#101225]' : 'border-[#2b2f4d] bg-[#151827] text-white'}`}>
+                <p className={`text-xs font-bold ${isLightTheme ? 'text-[#34384a]' : 'text-[#c8cbe0]'}`}>{item.label}</p>
+                <p className="mt-1 truncate text-2xl font-black">{item.value}</p>
+                <p className={`mt-0.5 truncate text-xs font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c8cbe0]'}`}>{item.sub}</p>
+              </button>
+            ))}
           </div>
         </section>
 
@@ -597,8 +542,8 @@ export default function DomovPage() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#07070d]/66 via-[#07070d]/10 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 sm:bottom-7 sm:left-7">
               <span className="hidden w-fit items-center gap-3 rounded-2xl bg-[#6c63ff] px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] sm:py-3">
-                {cars.length > 0 ? tx('Odpri garažo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
-                <span aria-hidden="true">→</span>
+                {cars.length > 0 ? tx('Odpri garaĹľo', 'Open garage') : tx('Dodaj vozilo', 'Add vehicle')}
+                <span aria-hidden="true">â†’</span>
               </span>
             </div>
           </button>
@@ -608,7 +553,7 @@ export default function DomovPage() {
           <section className="mb-8 rounded-3xl border border-[#1e1e32] bg-[#0f0f1a] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-black text-white">{tx('Glavno vozilo', 'Main vehicle')}</h2>
-              <button onClick={() => router.push(`/dashboard?car=${favoriteCar.id}`)} className="text-sm font-bold text-[#a09aff]">{tx('Odpri', 'Open')} →</button>
+              <button onClick={() => router.push(`/dashboard?car=${favoriteCar.id}`)} className="text-sm font-bold text-[#a09aff]">{tx('Odpri', 'Open')} â†’</button>
             </div>
             <div className="flex items-center gap-4">
               <div className="h-20 w-28 flex-shrink-0 overflow-hidden rounded-2xl bg-[#13131f]">
@@ -633,7 +578,7 @@ export default function DomovPage() {
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Aktivni opomniki', 'Active reminders')}</h2>
             <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/garaza')} className="text-sm font-bold text-[#d8d8e8]">
-              {tx('Prikaži vse', 'Show all')} →
+              {tx('PrikaĹľi vse', 'Show all')} â†’
             </button>
           </div>
           <div className="overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
@@ -661,7 +606,7 @@ export default function DomovPage() {
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-[1rem] font-black text-white sm:text-[1.18rem]">{tx('Nedavni dogodki', 'Recent events')}</h2>
             <button onClick={() => setShowAllRecentEvents((value) => !value)} className="text-sm font-bold text-[#d8d8e8]">
-              {showAllRecentEvents ? tx('Prikaži manj', 'Show less') : tx('Prikaži vse', 'Show all')} →
+              {showAllRecentEvents ? tx('PrikaĹľi manj', 'Show less') : tx('PrikaĹľi vse', 'Show all')} â†’
             </button>
           </div>
           <div className="overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a]">
@@ -681,6 +626,77 @@ export default function DomovPage() {
             ))}
           </div>
         </section>
+        </div>
+
+        <div className="hidden xl:block">
+          <section className={`relative mb-10 min-h-[430px] overflow-hidden rounded-[34px] border shadow-2xl ${isLightTheme ? 'border-white/70 bg-white/70 shadow-[#101225]/8' : 'border-white/10 bg-[#10131d] shadow-black/24'}`}>
+            <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" decoding="async" />
+            <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-r from-[#f2f0e9]/94 via-[#f2f0e9]/72 to-transparent' : 'bg-gradient-to-r from-[#080a12]/94 via-[#080a12]/62 to-transparent'}`} />
+            <div className="relative z-10 flex min-h-[430px] flex-col justify-center px-12 py-10">
+              <h1 className={`max-w-xl text-6xl font-black leading-[0.96] tracking-tight ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
+                {tx('Dobrodošel nazaj,', 'Welcome back,')}<br />{greetingName}.
+              </h1>
+              <p className={`mt-6 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
+                {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
+              </p>
+              <button onClick={vstopiVGarazo} className="mt-10 flex w-[330px] items-center justify-center gap-3 rounded-2xl bg-[#6c63ff] px-7 py-4 text-xl font-black text-white shadow-2xl shadow-[#6c63ff55] transition-transform active:scale-[0.98]">
+                {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
+                <span aria-hidden="true">→</span>
+              </button>
+            </div>
+            <div className="absolute right-8 top-8 z-20 flex items-center gap-3">
+              <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/12 text-white'}`}>
+                <Icon type="bell" className="h-6 w-6" />
+              </button>
+              <button onClick={() => router.push('/vec')} className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${isLightTheme ? 'border-white/70 bg-white/86 text-[#101225]' : 'border-white/10 bg-white/12 text-white'}`}>
+                <Icon type="settings" className="h-6 w-6" />
+              </button>
+            </div>
+          </section>
+
+          <section className="mb-10 grid grid-cols-4 gap-5">
+            {statCards.map((item) => (
+              <button key={item.label} onClick={() => router.push(item.href)} className={`rounded-[24px] border p-7 text-left shadow-xl transition-transform active:scale-[0.99] ${isLightTheme ? 'border-white/70 bg-white/74 text-[#101225] shadow-[#101225]/8' : 'border-[#3f2a8f] bg-white/7 text-white shadow-black/20'}`}>
+                <p className={`text-lg font-semibold ${isLightTheme ? 'text-[#333849]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
+                <p className="mt-4 truncate text-4xl font-black">{item.value}</p>
+                <p className={`mt-2 truncate text-lg font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
+              </button>
+            ))}
+          </section>
+
+          <section className="grid grid-cols-2 gap-8">
+            <div>
+              <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>
+              <div className={`overflow-hidden rounded-[24px] border ${isLightTheme ? 'border-white/70 bg-white/76' : 'border-white/10 bg-white/7'}`}>
+                {topReminders.length === 0 ? (
+                  <div className={`p-6 text-base font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
+                ) : topReminders.map((item, index) => (
+                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-4 p-4 text-left ${index > 0 ? (isLightTheme ? 'border-t border-[#e7e1d6]' : 'border-t border-white/10') : ''}`}>
+                    <div className="h-14 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
+                      {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-lg font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{item.carName}</p>
+                      <p className={`truncate text-sm font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#d8d8e8]'}`}>{translateLabel(item.title)} - {item.subtitle}</p>
+                    </div>
+                    <span className="rounded-xl bg-[#ef444414] px-4 py-2 text-sm font-black text-[#ef4444]">{item.value}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>{tx('Hitre akcije', 'Quick actions')}</h2>
+              <div className="grid grid-cols-2 gap-3">
+                {quickActions.map((item) => (
+                  <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-white/70 bg-white/74 text-[#101225] shadow-xl shadow-[#101225]/8' : 'border-white/10 bg-white/7 text-white'}`}>
+                    <Icon type={item.icon} className="h-7 w-7 text-[#8b5cf6]" />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
       <BottomNav aktivna="domov" />
