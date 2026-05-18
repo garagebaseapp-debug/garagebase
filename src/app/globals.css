@@ -110,10 +110,10 @@ body:not(.landing) {
 
   body:not(.landing) > div:first-child {
     width: 100%;
-    max-width: 36rem;
+    max-width: none;
     min-width: 0;
     min-height: 100dvh;
-    margin: 0 auto;
+    margin: 0;
     overflow-x: hidden;
   }
 
@@ -155,7 +155,7 @@ body:not(.landing) {
   .gb-app-home > div,
   .gb-settings-shell {
     width: 100% !important;
-    max-width: 36rem !important;
+    max-width: none !important;
   }
 
   body:not(.landing) input,
@@ -166,6 +166,11 @@ body:not(.landing) {
   }
 
   .gb-mobile-nav {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    transform: none !important;
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
