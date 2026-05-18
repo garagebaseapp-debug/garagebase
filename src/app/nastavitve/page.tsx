@@ -78,6 +78,7 @@ function settingsViewFromUrl() {
 export default function Nastavitve() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [prikaznoIme, setPrikaznoIme] = useState('')
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [jezik, setJezik] = useState('sl')
   const [pisava, setPisava] = useState(150)
@@ -250,6 +251,7 @@ export default function Nastavitve() {
         const n = JSON.parse(shranjeneNastavitve)
         loadedSettings = n
         setNacin(n.nacin || 'full')
+        setPrikaznoIme(String(n.prikaznoIme || n.displayName || ''))
         setJezik(n.jezik || 'sl')
         const nextPisava = normalizeFontPercent(n.pisava)
         setPisava(nextPisava)
@@ -524,7 +526,7 @@ export default function Nastavitve() {
   const shrani = (showMessage = true) => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
+    const nastavitve = { ...current, prikaznoIme: prikaznoIme.trim(), nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
     applyFontSize(pisava)
@@ -545,6 +547,7 @@ export default function Nastavitve() {
     return () => window.clearTimeout(timer)
   }, [
     settingsReady,
+    prikaznoIme,
     nacin,
     jezik,
     pisava,
@@ -884,6 +887,18 @@ export default function Nastavitve() {
             <p className="text-[#5a5a80] text-xs mt-0.5">Free paket</p>
           </div>
         </div>
+        <label className="mt-5 block rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+          <span className="text-sm font-semibold text-white">{tx('Ime za pozdrav', 'Greeting name')}</span>
+          <input
+            value={prikaznoIme}
+            onChange={(event) => setPrikaznoIme(event.target.value.slice(0, 24))}
+            placeholder={tx('npr. Janez', 'e.g. John')}
+            className="mt-3 w-full rounded-xl border border-[#24243a] bg-[#0f0f1a] px-4 py-3 text-sm font-semibold text-white outline-none placeholder:text-[#5a5a80] focus:border-[#6c63ff]"
+          />
+          <span className="mt-2 block text-xs text-[#5a5a80]">
+            {tx('To ime se uporabi na prvi strani namesto e-pošte.', 'This name is used on the home page instead of your email.')}
+          </span>
+        </label>
         <div className="mt-5 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
           <p className="text-white text-sm font-semibold">{jezik === 'en' ? 'Password' : 'Geslo'}</p>
           <p className="text-[#5a5a80] text-xs mt-1">

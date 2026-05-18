@@ -315,7 +315,16 @@ export default function DomovPage() {
         router.replace('/')
         return
       }
-      const rawName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || ''
+      const savedDisplayName = (() => {
+        try {
+          const raw = localStorage.getItem('garagebase_nastavitve')
+          const settings = raw ? JSON.parse(raw) : {}
+          return String(settings.prikaznoIme || settings.displayName || '').trim()
+        } catch {
+          return ''
+        }
+      })()
+      const rawName = savedDisplayName || user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || ''
       setDisplayName(String(rawName).split(/[ ._-]/).filter(Boolean)[0] || '')
 
       let { data: carsData, error: carsError } = await supabase
@@ -455,7 +464,13 @@ export default function DomovPage() {
   const activeReminders = reminders.filter((item) => item.tone !== 'red')
   const expiredReminders = reminders.filter((item) => item.tone === 'red')
   const serviceSoon = reminders.filter((item) => item.title.toLowerCase().includes('servis') || item.title.toLowerCase().includes('service'))
-  const topReminders = reminders.slice(0, 3)
+  const topReminders = [...reminders]
+    .sort((a, b) => {
+      if (a.tone === 'red' && b.tone !== 'red') return -1
+      if (a.tone !== 'red' && b.tone === 'red') return 1
+      return a.sortValue - b.sortValue
+    })
+    .slice(0, 5)
   const displayedRecentEvents = showAllRecentEvents ? recentEvents : recentEvents.slice(0, 1)
   const translateLabel = (value: string) => {
     const normalized = String(value || '').toLowerCase()
@@ -489,7 +504,7 @@ export default function DomovPage() {
         <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#f3f1ea] shadow-[#101225]/10' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
           <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-[63%_42%]" loading="eager" decoding="async" />
           <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#f3f1ea]/0 via-[#f3f1ea]/16 to-[#f3f1ea] xl:bg-gradient-to-r xl:from-[#f3f1ea]/96 xl:via-[#f3f1ea]/58 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
-          <div className="relative z-10 min-h-[44svh] px-5 pb-5 pt-5 xl:flex xl:min-h-[470px] xl:flex-col xl:justify-center xl:px-12 xl:py-12">
+          <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:min-h-[470px] xl:justify-center xl:px-12 xl:py-12">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
                 Garage<span className="text-[#6c63ff]">Base</span>
@@ -507,8 +522,8 @@ export default function DomovPage() {
                 </button>
               </div>
             </header>
-            <div className="mt-[142px] xl:mt-0 xl:max-w-[520px]">
-              <h1 className={`max-w-[86%] text-[2.28rem] font-black leading-[1.02] tracking-tight xl:max-w-none xl:text-[3.15rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
+            <div className="mt-auto pb-2 xl:mt-0 xl:max-w-[540px] xl:pb-0">
+              <h1 className={`max-w-[88%] text-[2.48rem] font-black leading-[1.02] tracking-tight drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)] xl:max-w-none xl:text-[3.35rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
                 {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {displayGreetingName}
               </h1>
               <p className={`mt-3 text-[1.05rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
@@ -516,7 +531,7 @@ export default function DomovPage() {
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-5 flex w-full max-w-[310px] items-center justify-center gap-3 rounded-[16px] bg-[#6c63ff] px-6 py-4 text-[1.08rem] font-black text-white shadow-xl shadow-[#6c63ff55] transition-transform active:scale-[0.98] xl:mt-8 xl:w-[300px] xl:rounded-2xl xl:px-7 xl:py-4 xl:text-base"
+                className="mt-7 flex w-full max-w-[340px] items-center justify-center gap-3 rounded-[20px] border border-white/35 bg-[#6c63ff] px-7 py-[1.12rem] text-[1.18rem] font-black text-white shadow-2xl shadow-[#6c63ff66] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[320px] xl:rounded-[22px] xl:px-8 xl:py-5 xl:text-lg"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
@@ -527,7 +542,7 @@ export default function DomovPage() {
 
         <section className="mb-5 grid w-screen grid-cols-3 gap-3 px-4 xl:hidden">
           {mobileStatCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] border p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'border-white/90 bg-white/86 text-[#101225] shadow-[0_14px_34px_rgba(16,18,37,0.14)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
               <p className={`text-[0.96rem] font-medium leading-tight xl:text-lg ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-1.5 truncate text-[2.05rem] font-black leading-none xl:mt-3 xl:text-4xl">{item.value}</p>
               <p className={`mt-2 text-[0.9rem] font-medium leading-tight xl:text-base ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -536,7 +551,7 @@ export default function DomovPage() {
         </section>
         <section className="mb-8 hidden grid-cols-4 gap-5 xl:grid">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'bg-white/78 text-[#101225] shadow-[#101225]/8' : 'border border-white/10 bg-white/7 text-white shadow-black/20'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-white/90 bg-white/86 text-[#101225] shadow-[0_14px_34px_rgba(16,18,37,0.14)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
               <p className={`text-sm font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-2 truncate text-3xl font-black leading-none">{item.value}</p>
               <p className={`mt-2 text-sm font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -552,7 +567,7 @@ export default function DomovPage() {
                 {tx('Prikaži vse', 'Show all')} →
               </button>
             </div>
-            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'bg-white/72' : 'border border-white/10 bg-white/7'}`}>
+            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'border border-white/90 bg-white/86 shadow-[0_16px_36px_rgba(16,18,37,0.13)]' : 'border border-white/15 bg-white/9 shadow-[0_18px_42px_rgba(0,0,0,0.34)]'}`}>
               {topReminders.length === 0 ? (
                 <div className={`p-5 text-sm font-semibold xl:p-6 xl:text-base ${isLightTheme ? 'text-[#6b7280]' : 'text-[#c9c7d8]'}`}>{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
               ) : topReminders.map((item, index) => {

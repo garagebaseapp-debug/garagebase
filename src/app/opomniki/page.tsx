@@ -225,7 +225,7 @@ export default function Opomniki() {
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
-      <div className="mx-auto w-full max-w-md xl:max-w-5xl">
+      <div className="w-full xl:mx-auto xl:max-w-5xl">
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
