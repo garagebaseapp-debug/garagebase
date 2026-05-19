@@ -148,10 +148,11 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
       </nav>
       <button
         onClick={() => pojdiNa(router, '/domov')}
-        className="gb-sidebar-app-icon group relative mt-7 flex h-36 w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#2d344a] bg-[#171b2b] p-3 text-left shadow-xl shadow-[#050814]/20"
+        className="gb-sidebar-app-icon group relative mt-7 flex h-36 w-full items-center justify-center overflow-visible rounded-[28px] border border-[#343b55] bg-[#171b2b] p-3 text-left shadow-[0_22px_45px_rgba(3,7,20,0.36)]"
         aria-label={language === 'en' ? 'GarageBase home' : 'GarageBase domov'}
       >
-        <img src="/garagebase-app-icon.jpg" alt="" className="h-full w-full rounded-[20px] object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]" />
+        <span className="pointer-events-none absolute inset-1 rounded-[24px] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)]" />
+        <img src="/garagebase-app-icon.png" alt="" className="relative h-full w-full rounded-[22px] object-contain object-center drop-shadow-[0_16px_20px_rgba(0,0,0,0.38)] transition-transform duration-300 group-hover:scale-[1.025]" />
       </button>
       <button
         type="button"

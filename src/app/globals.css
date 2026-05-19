@@ -428,7 +428,10 @@ body:not(.landing) {
 }
 
 .light-mode .gb-desktop-link {
+  background-color: rgba(255, 250, 243, 0.72) !important;
+  border-color: rgba(214, 201, 184, 0.72) !important;
   color: #171827 !important;
+  box-shadow: 0 10px 22px rgba(94, 75, 54, 0.07) !important;
 }
 
 .light-mode .gb-desktop-link svg,
@@ -437,7 +440,7 @@ body:not(.landing) {
 }
 
 .light-mode .gb-desktop-link:not(.gb-desktop-link-active):hover {
-  background-color: #efe2d4 !important;
+  background-color: #f6ecdf !important;
   border-color: #d8c9b8 !important;
   color: #5b21b6 !important;
 }
@@ -468,9 +471,9 @@ body:not(.landing) {
 }
 
 .light-mode .gb-sidebar-app-icon {
-  background-color: #f0e5d7 !important;
-  border-color: #ded2c2 !important;
-  box-shadow: 0 16px 34px rgba(94, 75, 54, 0.12) !important;
+  background: linear-gradient(145deg, #fff8ef, #eadccb) !important;
+  border-color: #d7c6b2 !important;
+  box-shadow: 0 22px 44px rgba(94, 75, 54, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
 }
 
 .light-mode .gb-quick-overview {
