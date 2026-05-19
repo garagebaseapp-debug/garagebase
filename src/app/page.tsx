@@ -14,8 +14,6 @@ type RoadmapItem = {
   text: string
 }
 
-type LandingTheme = 'temna' | 'svetla'
-
 type LandingCopy = {
   navFeatures: string
   navContact: string
@@ -156,7 +154,7 @@ const appLabels = {
     fuel: 'Gorivo',
     service: 'Servis',
     reminders: 'Opomniki',
-    costs: 'Stroski',
+    costs: 'Stroški',
     settings: 'Nastavitve',
     report: 'Report',
     km: 'km',
@@ -306,7 +304,7 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
               <div>
                 <p className="text-xs font-black">Garage<span className="text-[#8b5cf6]">Base</span></p>
                 <p className="mt-0.5 text-[7px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">
-                  {language === 'en' ? 'GarageBase report' : 'GarageBase porocilo'}
+                  {language === 'en' ? 'GarageBase report' : 'GarageBase poročilo'}
                 </p>
               </div>
               <div className="h-7 w-10 rounded bg-[#eef2ff]" />
@@ -365,47 +363,13 @@ const FeatureVisual = ({ kind, language }: { kind: string, language: Language })
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false)
-  const [theme, setTheme] = useState<LandingTheme>('temna')
   const { language } = useLanguage()
   const t = copy[language]
-  const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/landing-hero-light-garage.png' : '/landing-hero-dark-garage.png'
-
-  const updateTheme = (nextTheme: LandingTheme) => {
-    setTheme(nextTheme)
-    try {
-      const raw = localStorage.getItem('garagebase_nastavitve')
-      const current = raw ? JSON.parse(raw) : {}
-      localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, tema: nextTheme }))
-    } catch {}
-    document.documentElement.classList.toggle('light-mode', nextTheme === 'svetla')
-    window.dispatchEvent(new CustomEvent('garagebase-theme-change', { detail: nextTheme }))
-  }
-
-  useEffect(() => {
-    const readTheme = () => {
-      try {
-        const raw = localStorage.getItem('garagebase_nastavitve')
-        const current = raw ? JSON.parse(raw) : {}
-        const storedTheme: LandingTheme = current.tema === 'svetla' ? 'svetla' : 'temna'
-        setTheme(storedTheme)
-        document.documentElement.classList.toggle('light-mode', storedTheme === 'svetla')
-      } catch {
-        setTheme(document.documentElement.classList.contains('light-mode') ? 'svetla' : 'temna')
-      }
-    }
-    readTheme()
-    const onThemeChange = () => readTheme()
-    window.addEventListener('storage', onThemeChange)
-    window.addEventListener('garagebase-theme-change', onThemeChange)
-    return () => {
-      window.removeEventListener('storage', onThemeChange)
-      window.removeEventListener('garagebase-theme-change', onThemeChange)
-    }
-  }, [])
 
   useEffect(() => {
     document.body.classList.add('landing')
+    const previousLightMode = document.documentElement.classList.contains('light-mode')
+    document.documentElement.classList.remove('light-mode')
     const previousFontSize = document.documentElement.style.fontSize
     const previousScale = document.documentElement.style.getPropertyValue('--gb-app-font-scale')
     document.documentElement.style.fontSize = '16px'
@@ -414,6 +378,7 @@ export default function LandingPage() {
     window.addEventListener('scroll', handleScroll)
     return () => {
       document.body.classList.remove('landing')
+      document.documentElement.classList.toggle('light-mode', previousLightMode)
       document.documentElement.style.fontSize = previousFontSize
       if (previousScale) document.documentElement.style.setProperty('--gb-app-font-scale', previousScale)
       window.removeEventListener('scroll', handleScroll)
@@ -421,21 +386,26 @@ export default function LandingPage() {
   }, [])
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#07070d] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#120f0d] text-white">
       <nav
         className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
-          scrolled ? 'border-b border-white/10 bg-[#07070d]/92 backdrop-blur-md' : 'bg-transparent'
+          scrolled ? 'border-b border-white/12 bg-[#0f0d0c]/88 shadow-[0_18px_45px_rgba(0,0,0,0.24)] backdrop-blur-md' : 'bg-[#0f0d0c]/46 backdrop-blur-sm'
         }`}
       >
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
-          <a href="/" className="gb-landing-brand text-2xl font-black tracking-tight">
-            Garage<span className="text-[#8b5cf6]">Base</span>
+        <div className="mx-auto grid max-w-[1760px] grid-cols-[minmax(118px,0.58fr)_auto] items-center gap-3 px-3 py-3 sm:grid-cols-[minmax(180px,360px)_1fr] sm:gap-4 sm:px-8 sm:py-4 lg:grid-cols-[minmax(280px,430px)_1fr]">
+          <a href="/" className="gb-landing-brand group relative flex h-14 items-center overflow-hidden rounded-2xl border border-white/12 bg-[#252525]/72 shadow-[0_18px_44px_rgba(0,0,0,0.28)] sm:h-20">
+            <img
+              src="/landing-garagebase-3d-logo.jpg"
+              alt="GarageBase"
+              className="h-full w-full object-cover object-[45%_58%] transition-transform duration-500 group-hover:scale-[1.025]"
+            />
+            <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/12" />
           </a>
-          <div className="hidden items-center gap-8 text-sm font-semibold text-white/74 md:flex">
-            <a href="#funkcije" className="transition-colors hover:text-white">{t.navFeatures}</a>
-            <a href="#kontakt" className="transition-colors hover:text-white">{t.navContact}</a>
-          </div>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center justify-end gap-3">
+            <div className="hidden items-center gap-7 rounded-2xl border border-white/10 bg-black/22 px-5 py-3 text-sm font-bold text-white/82 backdrop-blur-md md:flex">
+              <a href="#funkcije" className="transition-colors hover:text-white">{t.navFeatures}</a>
+              <a href="#kontakt" className="transition-colors hover:text-white">{t.navContact}</a>
+            </div>
             <div className="landing-lang hidden items-center rounded-xl border border-white/18 bg-black/18 p-1 backdrop-blur-sm sm:flex" data-gb-no-translate>
               {[
                 { code: 'sl' as Language, label: 'SI SL' },
@@ -454,81 +424,62 @@ export default function LandingPage() {
                 </button>
               ))}
             </div>
-            <div className="landing-theme hidden items-center rounded-xl border border-white/18 bg-black/18 p-1 backdrop-blur-sm sm:flex" data-gb-no-translate>
-              {[
-                { code: 'temna' as LandingTheme, label: '☾', aria: language === 'en' ? 'Dark mode' : 'Temni način' },
-                { code: 'svetla' as LandingTheme, label: '☀', aria: language === 'en' ? 'Light mode' : 'Svetli način' },
-              ].map((item) => (
-                <button
-                  key={item.code}
-                  type="button"
-                  onClick={() => updateTheme(item.code)}
-                  className={`rounded-lg px-3 py-2 text-xs font-black transition-all ${
-                    theme === item.code ? 'bg-white text-[#141426]' : 'text-white/72 hover:text-white'
-                  }`}
-                  aria-label={item.aria}
-                  title={item.aria}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <a href="/login" className="landing-login hidden rounded-xl border border-white/18 bg-black/20 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:inline-flex">
+            <a href="/login" className="landing-login hidden rounded-xl border border-white/18 bg-black/24 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:inline-flex">
               {t.signIn}
             </a>
-            <a href="/login" className="gb-landing-primary rounded-xl bg-[#8b5cf6] px-5 py-3 text-sm font-bold text-white shadow-[0_0_28px_rgba(139,92,246,0.45)] transition-all hover:bg-[#7c3aed]">
+            <a href="/login" className="gb-landing-primary rounded-xl bg-[#8b5cf6] px-4 py-3 text-sm font-bold text-white shadow-[0_0_28px_rgba(139,92,246,0.45)] transition-all hover:bg-[#7c3aed] sm:px-5">
               {t.start}
             </a>
           </div>
         </div>
       </nav>
 
-      <section className="landing-hero relative min-h-[92svh] overflow-hidden bg-[#07070d]">
+      <section className="landing-hero relative min-h-[92svh] overflow-hidden bg-[#120f0d]">
         <img
-          src={heroImage}
+          src="/landing-garage-premium-hero.png"
           alt={t.alt}
-          className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[66%_62%] lg:object-[center_66%]"
+          className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[58%_55%]"
         />
-        <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(7,7,13,0.86)_0%,rgba(7,7,13,0.70)_32%,rgba(7,7,13,0.28)_52%,rgba(7,7,13,0.04)_76%,rgba(7,7,13,0)_100%)]" />
-        <div className="landing-top-fade absolute inset-x-0 top-0 h-32" />
-        <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-44" />
+        <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(20,14,10,0.18)_0%,rgba(20,14,10,0.04)_38%,rgba(20,14,10,0.08)_100%)]" />
+        <div className="landing-top-fade absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#0f0d0c]/78 to-transparent" />
+        <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#1e1711]/86 to-transparent" />
 
-        <div className="relative z-10 mx-auto flex min-h-[92svh] max-w-7xl items-center px-5 pb-14 pt-24 sm:px-8 lg:pb-16 lg:pt-28">
-          <div className="landing-copy w-full max-w-[560px]">
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/16 bg-black/24 px-4 py-2 backdrop-blur-sm">
+        <div className="relative z-10 mx-auto flex min-h-[92svh] max-w-[1760px] items-end px-5 pb-12 pt-32 sm:px-8 lg:pb-16 lg:pt-36">
+          <div className="landing-copy w-full max-w-[560px] rounded-[30px] border border-[#c9a876]/24 bg-[#3a291c]/78 p-6 shadow-[0_34px_80px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-8">
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#f0c987]/24 bg-[#170f0a]/38 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
-              <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#ddd8ff]">{t.badge}</span>
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#f1dfc9]">{t.badge}</span>
             </div>
 
-            <h1 className="mb-7 max-w-[540px] text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="mb-5 max-w-[540px] text-4xl font-black leading-[1.02] tracking-tight text-[#fff6ea] sm:text-5xl lg:text-6xl">
               {t.title}
             </h1>
-            <p className="mb-9 max-w-[520px] text-lg leading-relaxed text-white/76 sm:text-xl">
+            <p className="mb-7 max-w-[520px] text-base leading-relaxed text-[#f2e4d1]/86 sm:text-lg">
               {t.subtitle}
             </p>
 
-            <div className="mb-9 flex flex-col gap-4 sm:flex-row">
-              <a href="/login" className="gb-landing-primary rounded-xl bg-[#8b5cf6] px-8 py-4 text-center text-lg font-bold text-white shadow-[0_0_36px_rgba(139,92,246,0.48)] transition-all hover:bg-[#7c3aed]">
+            <div className="mb-7 flex flex-col gap-3 sm:flex-row">
+              <a href="/login" className="gb-landing-primary rounded-2xl bg-[#8b5cf6] px-7 py-4 text-center text-base font-black text-white shadow-[0_18px_42px_rgba(139,92,246,0.42)] transition-all hover:bg-[#7c3aed]">
                 {t.start}
               </a>
-              <a href="#funkcije" className="rounded-xl border border-white/18 bg-black/24 px-8 py-4 text-center text-lg font-bold text-white backdrop-blur-sm transition-all hover:bg-white/10">
+              <a href="#funkcije" className="rounded-2xl border border-[#f0c987]/22 bg-[#170f0a]/36 px-7 py-4 text-center text-base font-black text-[#fff6ea] backdrop-blur-sm transition-all hover:bg-white/10">
                 {t.viewFeatures}
               </a>
             </div>
 
             <div className="grid max-w-lg grid-cols-3 gap-3">
               {t.stats.map((item, index) => (
-                <div key={item.value} className="rounded-xl border border-white/12 bg-black/26 p-4 backdrop-blur-sm">
-                  <p className={`text-2xl font-black ${index === 1 ? 'text-[#3ecfcf]' : index === 2 ? 'text-[#a78bfa]' : ''}`}>
+                <div key={item.value} className="rounded-2xl border border-[#f0c987]/18 bg-[#170f0a]/32 p-4 backdrop-blur-sm">
+                  <p className={`text-2xl font-black ${index === 1 ? 'text-[#3ecfcf]' : index === 2 ? 'text-[#d0b7ff]' : 'text-[#fff6ea]'}`}>
                     {item.value}
                   </p>
-                  <p className="mt-1 text-xs text-white/58">{item.label}</p>
+                  <p className="mt-1 text-xs text-[#f2e4d1]/64">{item.label}</p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 max-w-lg rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-4 backdrop-blur-sm">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#3ecfcf]">{t.promoTitle}</p>
-              <p className="mt-2 text-sm leading-relaxed text-white/86">{t.promoText}</p>
+            <div className="mt-4 max-w-lg rounded-2xl border border-[#3ecfcf55] bg-[#123434]/32 p-4 backdrop-blur-sm">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#6df1f1]">{t.promoTitle}</p>
+              <p className="mt-2 text-sm leading-relaxed text-[#f2e4d1]/88">{t.promoText}</p>
             </div>
           </div>
         </div>
