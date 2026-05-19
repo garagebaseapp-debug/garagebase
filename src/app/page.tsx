@@ -393,11 +393,11 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto grid max-w-[1760px] grid-cols-[minmax(118px,0.58fr)_auto] items-center gap-3 px-3 py-3 sm:grid-cols-[minmax(180px,360px)_1fr] sm:gap-4 sm:px-8 sm:py-4 lg:grid-cols-[minmax(280px,430px)_1fr]">
-          <a href="/" className="gb-landing-brand group relative flex h-14 items-center overflow-hidden rounded-2xl border border-white/12 bg-[#252525]/72 shadow-[0_18px_44px_rgba(0,0,0,0.28)] sm:h-20">
+          <a href="/" className="gb-landing-brand group relative flex h-14 items-center overflow-hidden rounded-2xl border border-white/12 bg-[#252525]/72 p-1 shadow-[0_18px_44px_rgba(0,0,0,0.28)] sm:h-20 sm:p-2">
             <img
               src="/landing-garagebase-3d-logo.jpg"
               alt="GarageBase"
-              className="h-full w-full object-cover object-[45%_58%] transition-transform duration-500 group-hover:scale-[1.025]"
+              className="h-full w-full object-contain object-left transition-transform duration-500 group-hover:scale-[1.015]"
             />
             <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/12" />
           </a>
@@ -434,24 +434,24 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <section className="landing-hero relative min-h-[92svh] overflow-hidden bg-[#120f0d]">
+      <section className="landing-hero relative min-h-[100svh] overflow-hidden bg-[#120f0d] lg:min-h-0">
         <img
           src="/landing-garage-premium-hero.png"
           alt={t.alt}
-          className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[58%_55%]"
+          className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[58%_50%] lg:relative lg:block lg:h-auto lg:w-full lg:object-contain"
         />
         <div className="landing-hero-shade absolute inset-0 bg-[linear-gradient(90deg,rgba(20,14,10,0.18)_0%,rgba(20,14,10,0.04)_38%,rgba(20,14,10,0.08)_100%)]" />
         <div className="landing-top-fade absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#0f0d0c]/78 to-transparent" />
         <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#1e1711]/86 to-transparent" />
 
-        <div className="relative z-10 mx-auto flex min-h-[92svh] max-w-[1760px] items-end px-5 pb-12 pt-32 sm:px-8 lg:pb-16 lg:pt-36">
-          <div className="landing-copy w-full max-w-[560px] rounded-[30px] border border-[#c9a876]/24 bg-[#3a291c]/78 p-6 shadow-[0_34px_80px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-8">
+        <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1760px] items-end px-5 pb-10 pt-32 sm:px-8 lg:absolute lg:inset-0 lg:left-1/2 lg:-translate-x-1/2 lg:pb-14 lg:pt-36">
+          <div className="landing-copy w-full max-w-[520px] rounded-[30px] border border-[#c9a876]/24 bg-[#3a291c]/78 p-6 shadow-[0_34px_80px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-7">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#f0c987]/24 bg-[#170f0a]/38 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
               <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#f1dfc9]">{t.badge}</span>
             </div>
 
-            <h1 className="mb-5 max-w-[540px] text-4xl font-black leading-[1.02] tracking-tight text-[#fff6ea] sm:text-5xl lg:text-6xl">
+            <h1 className="mb-5 max-w-[500px] text-4xl font-black leading-[1.03] tracking-tight text-[#fff6ea] sm:text-5xl lg:text-[3.35rem]">
               {t.title}
             </h1>
             <p className="mb-7 max-w-[520px] text-base leading-relaxed text-[#f2e4d1]/86 sm:text-lg">
