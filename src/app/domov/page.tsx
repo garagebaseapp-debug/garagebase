@@ -502,15 +502,15 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:px-0 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:pl-[280px] xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
       <div className="mx-auto w-full max-w-none">
-        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
+        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:h-[390px] xl:min-h-0 xl:rounded-[34px]`}>
           <picture>
             <source media="(min-width: 1280px)" srcSet={heroWebImage} />
             <img src={heroMobileImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-center" loading="eager" decoding="async" />
           </picture>
-          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#e9e3d7]/0 via-[#e9e3d7]/18 to-[#e9e3d7] xl:bg-gradient-to-r xl:from-[#e9e3d7]/92 xl:via-[#e9e3d7]/34 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/90 xl:via-[#080a12]/36 xl:to-transparent'}`} />
-          <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:min-h-[470px] xl:justify-center xl:px-12 xl:py-12">
+          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-r from-[#e9e3d7]/86 via-[#e9e3d7]/18 to-transparent' : 'bg-gradient-to-r from-[#080a12]/84 via-[#080a12]/22 to-transparent'}`} />
+          <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:h-full xl:min-h-0 xl:px-12 xl:py-10">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
                 Garage<span className="text-[#6c63ff]">Base</span>
@@ -544,8 +544,8 @@ export default function DomovPage() {
                 </button>
               </div>
             </header>
-            <div className="mt-auto pb-2 xl:mt-0 xl:max-w-[540px] xl:pb-0">
-              <h1 className={`max-w-[88%] text-[2.48rem] font-black leading-[1.02] tracking-tight drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)] xl:max-w-none xl:text-[3.35rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
+            <div className="mt-auto pb-2 xl:mt-24 xl:max-w-[440px] xl:pb-0">
+              <h1 className={`max-w-[88%] text-[2.48rem] font-black leading-[1.02] tracking-tight drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)] xl:max-w-none xl:text-[2.85rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
                 {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {displayGreetingName}
               </h1>
               <p className={`mt-3 text-[1.05rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
@@ -553,7 +553,7 @@ export default function DomovPage() {
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-[#c9b5ff]/65 bg-[linear-gradient(135deg,#7b4dff_0%,#6c38f5_48%,#3d168e_100%)] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-[0_18px_36px_rgba(90,42,210,0.44),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-10px_24px_rgba(26,5,81,0.36)] transition-transform active:scale-[0.98] xl:mt-9 xl:w-[416px] xl:max-w-[416px] xl:rounded-[26px] xl:px-10 xl:py-6 xl:text-[1.35rem]"
+                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-[#c9b5ff]/65 bg-[linear-gradient(135deg,#7b4dff_0%,#6c38f5_48%,#3d168e_100%)] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-[0_18px_36px_rgba(90,42,210,0.44),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-10px_24px_rgba(26,5,81,0.36)] transition-transform active:scale-[0.98] xl:absolute xl:left-[92px] xl:top-[248px] xl:mt-0 xl:h-[78px] xl:w-[260px] xl:max-w-[260px] xl:rounded-[22px] xl:px-7 xl:py-0 xl:text-[1.1rem]"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>

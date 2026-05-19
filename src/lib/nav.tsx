@@ -126,7 +126,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 
   const desktopLinks = namiznePovezave.filter((item) => !('adminOnly' in item) || !item.adminOnly || isAdmin)
   return (
-    <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[228px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-4 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
+    <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[280px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-5 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
       <button onClick={() => pojdiNa(router, '/domov')} className="gb-desktop-brand mb-8 px-3 text-left text-xl font-black tracking-tight text-white">
         Garage<span className="text-[#6c63ff]">Base</span>
       </button>

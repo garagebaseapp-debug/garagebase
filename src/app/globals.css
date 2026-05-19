@@ -59,7 +59,7 @@ body:not(.landing) {
 
   body:not(.landing) > div:first-child:has(.gb-desktop-nav) {
     padding-top: 40px;
-    padding-left: 260px;
+    padding-left: 280px;
   }
 
   body:not(.landing) > div:first-child:has(.gb-desktop-garage) {
