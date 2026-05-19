@@ -169,7 +169,8 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const heroImage = isLightTheme ? '/home-garage-premium-light.png' : '/home-garage-premium-dark.png'
+  const heroMobileImage = isLightTheme ? '/home-garage-premium-light.png' : '/home-garage-premium-dark.png'
+  const heroWebImage = isLightTheme ? '/home-garage-web-light.png' : '/home-garage-web-dark.png'
   const doorConfig = isLightTheme
     ? {
       viewBox: '0 0 914 609',
@@ -262,8 +263,10 @@ export default function DomovPage() {
 
   useEffect(() => {
     const image = new Image()
-    image.src = heroImage
-  }, [heroImage])
+    image.src = heroMobileImage
+    const webImage = new Image()
+    webImage.src = heroWebImage
+  }, [heroMobileImage, heroWebImage])
 
   useEffect(() => {
     router.prefetch('/garaza')
@@ -499,11 +502,14 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:max-w-6xl xl:px-4 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
-      <div className="mx-auto w-full max-w-none xl:max-w-6xl">
+    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:px-0 xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#080a12] text-white'}`}>
+      <div className="mx-auto w-full max-w-none">
         <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#10131d] shadow-black/25'} xl:mx-0 xl:mb-8 xl:mt-0 xl:min-h-[470px] xl:rounded-[34px]`}>
-          <img src={heroImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-[63%_42%]" loading="eager" decoding="async" />
-          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#e9e3d7]/0 via-[#e9e3d7]/18 to-[#e9e3d7] xl:bg-gradient-to-r xl:from-[#e9e3d7]/96 xl:via-[#e9e3d7]/54 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/94 xl:via-[#080a12]/54 xl:to-transparent'}`} />
+          <picture>
+            <source media="(min-width: 1280px)" srcSet={heroWebImage} />
+            <img src={heroMobileImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-center" loading="eager" decoding="async" />
+          </picture>
+          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-b from-[#e9e3d7]/0 via-[#e9e3d7]/18 to-[#e9e3d7] xl:bg-gradient-to-r xl:from-[#e9e3d7]/92 xl:via-[#e9e3d7]/34 xl:to-transparent' : 'bg-gradient-to-b from-black/4 via-[#080a12]/24 to-[#080a12] xl:bg-gradient-to-r xl:from-[#080a12]/90 xl:via-[#080a12]/36 xl:to-transparent'}`} />
           <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:min-h-[470px] xl:justify-center xl:px-12 xl:py-12">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
@@ -565,7 +571,7 @@ export default function DomovPage() {
             </button>
           ))}
         </section>
-        <section className="mb-8 hidden grid-cols-4 gap-5 xl:grid">
+        <section className="mx-auto mb-8 hidden max-w-6xl grid-cols-4 gap-5 xl:grid">
           {statCards.map((item) => (
             <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-[#fff8ed]/90 bg-[#f6efe4]/88 text-[#101225] shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border-white/15 bg-white/9 text-white shadow-[0_16px_34px_rgba(0,0,0,0.34)]'}`}>
               <p className={`text-sm font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
@@ -575,7 +581,7 @@ export default function DomovPage() {
           ))}
         </section>
 
-        <section className="grid w-full gap-5 px-4 xl:w-auto xl:grid-cols-2 xl:gap-8">
+        <section className="mx-auto grid w-full gap-5 px-4 xl:w-auto xl:max-w-6xl xl:grid-cols-2 xl:gap-8 xl:px-0">
           <div>
             <div className="mb-2 flex items-center justify-between xl:mb-5">
               <h2 className={`text-[1.35rem] font-black xl:text-xl ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Aktivni opomniki', 'Active reminders')}</h2>

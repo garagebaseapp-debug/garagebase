@@ -872,7 +872,7 @@ export default function Dashboard() {
                 <div className="relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
                   {slikaVozila(aktivniAvto) ? (
                     <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
-                      loading="eager" decoding="async" className="h-full max-h-[300px] w-full rounded-2xl object-cover" />
+                      loading="eager" decoding="async" className="h-full max-h-[300px] w-full rounded-2xl bg-[#111827] object-contain" />
                   ) : (
                     <div className="w-full h-full min-h-[300px] rounded-xl bg-gradient-to-br from-[#1a1630] to-[#080810] flex items-center justify-center text-6xl">
                       🚗
@@ -967,7 +967,7 @@ export default function Dashboard() {
                 {slikaVozila(aktivniAvto) && (
                   <div className="relative h-36 overflow-hidden">
                     <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
-                      loading="eager" decoding="async" className="w-full h-full object-cover object-center" />
+                      loading="eager" decoding="async" className="h-full w-full bg-[#111827] object-contain object-center" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
                   </div>
                 )}

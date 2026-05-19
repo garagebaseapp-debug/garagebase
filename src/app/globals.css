@@ -467,6 +467,41 @@ body:not(.landing) {
   box-shadow: 0 16px 34px rgba(94, 75, 54, 0.14) !important;
 }
 
+.light-mode .gb-sidebar-app-icon {
+  background-color: #f0e5d7 !important;
+  border-color: #ded2c2 !important;
+  box-shadow: 0 16px 34px rgba(94, 75, 54, 0.12) !important;
+}
+
+.light-mode .gb-quick-overview {
+  background: #ede4d8 !important;
+  border-color: #d5c6b5 !important;
+  color: #101225 !important;
+  box-shadow: 0 16px 34px rgba(94, 75, 54, 0.10) !important;
+}
+
+.light-mode .gb-quick-overview > p {
+  color: #6f5cff !important;
+}
+
+.light-mode .gb-quick-overview > div {
+  background: #e3d8ce !important;
+  border-color: #b9aa9a !important;
+}
+
+.light-mode .gb-quick-overview span {
+  color: #3f4658 !important;
+}
+
+.light-mode .gb-quick-overview span:last-child {
+  background: #dcd4ff !important;
+  color: #5a3fd3 !important;
+}
+
+.light-mode .gb-quick-overview p:last-child {
+  color: #6d6258 !important;
+}
+
 .light-mode .gb-sidebar-image-dark {
   display: none !important;
 }

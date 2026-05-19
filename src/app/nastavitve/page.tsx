@@ -98,8 +98,10 @@ export default function Nastavitve() {
   const [notificationSettings, setNotificationSettings] = useState(defaultNotificationSettings)
   const [biometricSupported, setBiometricSupported] = useState(false)
   const [appLockEnabled, setAppLockEnabled] = useState(false)
+  const [appLockMode, setAppLockMode] = useState<'biometric' | 'pattern'>('biometric')
   const [appLockLoading, setAppLockLoading] = useState(false)
   const [appLockMessage, setAppLockMessage] = useState('')
+  const [patternDraft, setPatternDraft] = useState<number[]>([])
   const [gridNastavitve, setGridNastavitve] = useState({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
@@ -306,6 +308,7 @@ export default function Nastavitve() {
       }
       setBiometricSupported('PublicKeyCredential' in window && 'credentials' in navigator && window.isSecureContext)
       setAppLockEnabled(localStorage.getItem('garagebase_app_lock_enabled') === 'true')
+      setAppLockMode(localStorage.getItem('garagebase_app_lock_mode') === 'pattern' ? 'pattern' : 'biometric')
       trackEvent('settings_open')
       trackSettingsSnapshot('settings_snapshot', loadedSettings)
       setLoading(false)
@@ -614,12 +617,31 @@ export default function Nastavitve() {
     return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
   }
 
-  const vklopiAppLock = async () => {
+  const vklopiAppLock = async (mode: 'biometric' | 'pattern' = appLockMode) => {
     setAppLockLoading(true)
     setAppLockMessage('')
     try {
+      if (mode === 'pattern') {
+        if (patternDraft.length < 4) {
+          setAppLockMessage(tx('Za vzorec izberi vsaj 4 pike.', 'Select at least 4 dots for the pattern.'))
+          setAppLockLoading(false)
+          return
+        }
+        localStorage.setItem('garagebase_app_lock_pattern', patternDraft.join('-'))
+        localStorage.setItem('garagebase_app_lock_mode', 'pattern')
+        localStorage.setItem('garagebase_app_lock_enabled', 'true')
+        localStorage.removeItem('garagebase_app_lock_credential')
+        setAppLockMode('pattern')
+        setAppLockEnabled(true)
+        setPatternDraft([])
+        trackEvent('app_lock_pattern_enabled')
+        setAppLockMessage(tx('Odklep z vzorcem je vklopljen.', 'Pattern unlock is enabled.'))
+        setAppLockLoading(false)
+        return
+      }
+
       if (!('PublicKeyCredential' in window) || !('credentials' in navigator) || !window.isSecureContext) {
-        setAppLockMessage('Ta naprava ali brskalnik ne podpira varnega biometričnega odklepa.')
+        setAppLockMessage(tx('Ta naprava ali brskalnik ne podpira varnega sistemskega odklepa.', 'This device or browser does not support secure system unlock.'))
         setAppLockLoading(false)
         return
       }
@@ -646,7 +668,10 @@ export default function Nastavitve() {
 
       if (!credential) throw new Error('Credential ni bil ustvarjen.')
       localStorage.setItem('garagebase_app_lock_credential', bufferToBase64Url(credential.rawId))
+      localStorage.setItem('garagebase_app_lock_mode', 'biometric')
       localStorage.setItem('garagebase_app_lock_enabled', 'true')
+      localStorage.removeItem('garagebase_app_lock_pattern')
+      setAppLockMode('biometric')
       setAppLockEnabled(true)
       trackEvent('app_lock_enabled')
       setAppLockMessage(tx('Odklep aplikacije je vklopljen.', 'App unlock is enabled.'))
@@ -659,10 +684,18 @@ export default function Nastavitve() {
 
   const izklopiAppLock = () => {
     localStorage.removeItem('garagebase_app_lock_enabled')
+    localStorage.removeItem('garagebase_app_lock_mode')
     localStorage.removeItem('garagebase_app_lock_credential')
+    localStorage.removeItem('garagebase_app_lock_pattern')
     setAppLockEnabled(false)
+    setPatternDraft([])
     trackEvent('app_lock_disabled')
     setAppLockMessage(tx('Odklep aplikacije je izklopljen.', 'App unlock is disabled.'))
+  }
+
+  const dodajPikoVzorca = (point: number) => {
+    setAppLockMessage('')
+    setPatternDraft((current) => current.includes(point) ? current : [...current, point].slice(0, 9))
   }
   const spremeniJezik = (novJezik: Language) => {
     setJezik(novJezik)
@@ -1086,21 +1119,66 @@ export default function Nastavitve() {
       {/* App lock */}
       <div id="varnost" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Varnost', 'Security')}</p>
-        <p className="text-white font-semibold text-sm">{tx('Odklep z obrazom, odtisom, PIN-om ali vzorcem', 'Unlock with face, fingerprint, PIN or pattern')}</p>
-        <p className="text-[#5a5a80] text-xs mt-1 mb-3">{tx('GarageBase uporabi sistemski zaklep naprave. Na Androidu to pomeni obraz, odtis, PIN ali vzorec, če ga telefon ponudi.', 'GarageBase uses the device screen lock. On Android this means face, fingerprint, PIN or pattern when the phone offers it.')}</p>
-        {!biometricSupported ? (
-          <div className="bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
-            {tx('Ta brskalnik trenutno ne podpira varnega sistemskega odklepa. Poskusi v nameščeni aplikaciji na telefonu.', 'This browser does not currently support secure system unlock. Try the installed app on your phone.')}
+        <p className="text-white font-semibold text-sm">{tx('Izberi način odklepa aplikacije', 'Choose app unlock method')}</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">{tx('Sistemski odklep uporabi obraz, odtis, PIN ali vzorec naprave. Lokalni vzorec je GarageBase vzorec samo za to napravo.', 'System unlock uses the device face, fingerprint, PIN or pattern. Local pattern is a GarageBase pattern only for this device.')}</p>
+        <div className="mb-3 grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setAppLockMode('biometric')}
+            className={`rounded-xl border p-3 text-left transition-colors ${appLockMode === 'biometric' ? 'border-[#6c63ff] bg-[#6c63ff22] text-[#c8c4ff]' : 'border-[#1e1e32] bg-[#13131f] text-[#8a8aa8]'}`}
+          >
+            <span className="block text-sm font-black">{tx('Biometrija / zaklep naprave', 'Biometrics / device lock')}</span>
+            <span className="mt-1 block text-xs">{tx('Najbolj varno, če naprava podpira WebAuthn.', 'Most secure when the device supports WebAuthn.')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setAppLockMode('pattern')}
+            className={`rounded-xl border p-3 text-left transition-colors ${appLockMode === 'pattern' ? 'border-[#6c63ff] bg-[#6c63ff22] text-[#c8c4ff]' : 'border-[#1e1e32] bg-[#13131f] text-[#8a8aa8]'}`}
+          >
+            <span className="block text-sm font-black">{tx('Vzorec v aplikaciji', 'In-app pattern')}</span>
+            <span className="mt-1 block text-xs">{tx('9 pik, shranjeno lokalno na napravi.', '9 dots, stored locally on the device.')}</span>
+          </button>
+        </div>
+        {appLockMode === 'biometric' && !biometricSupported && (
+          <div className="mb-3 bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
+            {tx('Ta brskalnik trenutno ne podpira varnega sistemskega odklepa. Izberi vzorec ali poskusi v nameščeni aplikaciji na telefonu.', 'This browser does not currently support secure system unlock. Choose pattern or try the installed app on your phone.')}
           </div>
-        ) : appLockEnabled ? (
+        )}
+        {appLockMode === 'pattern' && !appLockEnabled && (
+          <div className="mb-3 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+            <div className="mx-auto grid w-fit grid-cols-3 gap-3">
+              {Array.from({ length: 9 }, (_, index) => index + 1).map((point) => {
+                const selected = patternDraft.includes(point)
+                return (
+                  <button
+                    key={point}
+                    type="button"
+                    onClick={() => dodajPikoVzorca(point)}
+                    aria-label={`${tx('Pika', 'Dot')} ${point}`}
+                    className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors ${selected ? 'border-[#6c63ff] bg-[#6c63ff] text-white' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#8a8aa8]'}`}
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full bg-current" />
+                  </button>
+                )
+              })}
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold text-[#8a8aa8]">{tx('Izbranih pik:', 'Selected dots:')} {patternDraft.length}</p>
+              <button type="button" onClick={() => setPatternDraft([])} className="text-xs font-black text-[#a09aff]">
+                {tx('Počisti', 'Clear')}
+              </button>
+            </div>
+          </div>
+        )}
+        {appLockEnabled ? (
           <button onClick={izklopiAppLock}
             className="w-full bg-[#ef444422] border border-[#ef444455] text-[#fca5a5] font-semibold py-3 rounded-xl hover:bg-[#ef444433] transition-colors">
             {tx('Izklopi odklep', 'Disable unlock')}
           </button>
         ) : (
-          <button onClick={vklopiAppLock} disabled={appLockLoading}
+          <button onClick={() => vklopiAppLock(appLockMode)} disabled={appLockLoading || (appLockMode === 'biometric' && !biometricSupported)}
             className="w-full bg-[#6c63ff22] border border-[#6c63ff66] text-[#a09aff] font-semibold py-3 rounded-xl hover:bg-[#6c63ff33] transition-colors disabled:opacity-50">
-            {appLockLoading ? tx('Pripravljam...', 'Preparing...') : tx('Vklopi odklep', 'Enable unlock')}
+            {appLockLoading ? tx('Pripravljam...', 'Preparing...') : appLockMode === 'pattern' ? tx('Vklopi vzorec', 'Enable pattern') : tx('Vklopi sistemski odklep', 'Enable system unlock')}
           </button>
         )}
         {appLockMessage && <p className="text-[#5a5a80] text-xs mt-3">{appLockMessage}</p>}

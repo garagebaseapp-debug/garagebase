@@ -191,14 +191,14 @@ export default function VecPage() {
           </div>
 
           <aside className="space-y-3">
-            <div className="rounded-[26px] border border-[#1e1e32] bg-[#0f0f1a] p-4">
-              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6c63ff]">{tx('Hitri pregled', 'Quick overview')}</p>
-              <div className="mt-4 rounded-2xl border border-dashed border-[#2a2a40] bg-[#13131f]/70 p-4">
+            <div className="gb-quick-overview rounded-[26px] border border-[#242744] bg-[#15182a] p-4 shadow-xl shadow-black/10">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#9b8cff]">{tx('Hitri pregled', 'Quick overview')}</p>
+              <div className="mt-4 rounded-2xl border border-dashed border-[#4f5473] bg-[#20243a]/72 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-[#8a8aa8]">{tx('Shramba', 'Storage')}</span>
-                  <span className="rounded-full bg-[#6c63ff18] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#a09aff]">Beta</span>
+                  <span className="text-sm font-semibold text-[#c9c7d8]">{tx('Shramba', 'Storage')}</span>
+                  <span className="rounded-full bg-[#6c63ff24] px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-[#b9adff]">Beta</span>
                 </div>
-                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#6f6f91]">
+                <p className="mt-3 text-sm font-semibold leading-relaxed text-[#a9acc4]">
                   {tx(
                     'Prostor je pripravljen za prihodnji pregled paketa, slik in porabe.',
                     'This space is reserved for a future overview of plan, images and usage.'
