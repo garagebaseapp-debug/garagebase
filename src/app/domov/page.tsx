@@ -447,7 +447,7 @@ export default function DomovPage() {
           id: `expense-${row.id}`,
           carId: row.car_id,
           carName: vehicleDisplayName(car, tx('Vozilo', 'Vehicle')),
-          title: row.opis || row.kategorija || tx('StroĹˇek', 'Expense'),
+          title: row.opis || row.kategorija || tx('Strošek', 'Expense'),
           subtitle: `${vehicleDisplayName(car, tx('Vozilo', 'Vehicle'))} - ${formatMoney(row.znesek || fuelCostValue(row), selectedCurrency)}`,
           dateText: asDateText(row.datum, locale),
           href: `/stroski?car=${row.car_id}`,
@@ -481,7 +481,7 @@ export default function DomovPage() {
     if (normalized === 'olje') return tx('Olje', 'Oil')
     if (normalized === 'tankanje') return tx('Tankanje', 'Fill-up')
     if (normalized === 'servis') return tx('Servis', 'Service')
-    if (normalized === 'stroĹˇek' || normalized === 'strosek') return tx('StroĹˇek', 'Expense')
+    if (normalized === 'strošek' || normalized === 'strosek') return tx('Strošek', 'Expense')
     return value
   }
 
@@ -491,14 +491,14 @@ export default function DomovPage() {
   const statCards = [
     { label: tx('Vozila', 'Vehicles'), value: cars.length || '-', sub: tx('Vsa vozila.', 'All vehicles.'), href: '/garaza' },
     { label: tx('Opomniki', 'Reminders'), value: reminders.length || '-', sub: tx('Aktivnih.', 'Active.'), href: reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : '/opomniki' },
-    { label: tx('StroĹˇki (mesec)', 'Costs (month)'), value: formatMoney(monthlyCost, currency), sub: new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' }), href: '/stroski-garaza' },
+    { label: tx('Stroški (mesec)', 'Costs (month)'), value: formatMoney(monthlyCost, currency), sub: new Date().toLocaleDateString(locale, { month: 'long', year: 'numeric' }), href: '/stroski-garaza' },
     { label: tx('Naslednji servis', 'Next service'), value: nextServiceReminder?.value || '-', sub: nextServiceReminder?.carName || tx('Ni podatka', 'No data'), href: nextServiceReminder?.carId ? `/opomniki?car=${nextServiceReminder.carId}` : '/opomniki' },
   ]
   const mobileStatCards = [statCards[0], statCards[1], statCards[3]].filter(Boolean)
   const quickActions = [
     { label: tx('Dodaj vozilo', 'Add vehicle'), href: '/dodaj-avto', icon: 'plus' as const },
-    { label: tx('ZabeleĹľi servis', 'Log service'), href: favoriteCar?.id ? `/vnos-servisa?car=${favoriteCar.id}` : '/vnos-servisa', icon: 'wrench' as const },
-    { label: tx('Dodaj stroĹˇek', 'Add expense'), href: favoriteCar?.id ? `/vnos-stroska?car=${favoriteCar.id}` : '/vnos-stroska', icon: 'box' as const },
+    { label: tx('Zabeleži servis', 'Log service'), href: favoriteCar?.id ? `/vnos-servisa?car=${favoriteCar.id}` : '/vnos-servisa', icon: 'wrench' as const },
+    { label: tx('Dodaj strošek', 'Add expense'), href: favoriteCar?.id ? `/vnos-stroska?car=${favoriteCar.id}` : '/vnos-stroska', icon: 'box' as const },
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (

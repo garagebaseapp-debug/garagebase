@@ -1412,7 +1412,7 @@ export default function Garaza() {
                 <button
                   onClick={preklopiTemo}
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}
-                  aria-label={desktopLight ? tx('Preklopi na temni naÄŤin', 'Switch to dark mode') : tx('Preklopi na svetli naÄŤin', 'Switch to light mode')}
+                  aria-label={desktopLight ? tx('Preklopi na temni način', 'Switch to dark mode') : tx('Preklopi na svetli način', 'Switch to light mode')}
                 >
                   {desktopLight ? '☾' : '☀'}
                 </button>

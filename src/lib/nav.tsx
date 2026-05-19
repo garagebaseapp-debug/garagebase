@@ -138,7 +138,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
             className={`gb-desktop-link flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-black transition-all ${
               aktivna === item.key
                 ? 'gb-desktop-link-active border-[#6c63ff66] bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
-                : 'border-transparent bg-transparent text-[#c8c8dc] hover:border-[#2d344a] hover:bg-[#171b2b] hover:text-white'
+                : 'border-[#2a3044] bg-[#151928]/70 text-[#c8c8dc] shadow-[0_8px_20px_rgba(4,8,22,0.14)] hover:border-[#4d5574] hover:bg-[#1a2033] hover:text-white'
           }`}
           >
             <NavIcon type={item.icon} className="h-5 w-5 shrink-0" />
