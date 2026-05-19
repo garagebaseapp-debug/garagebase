@@ -133,19 +133,21 @@ export default function Nastavitve() {
     { value: 120, title: tx('Mala', 'Small'), desc: tx('Manjša pisava', 'Smaller text') },
     { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
     { value: 160, title: tx('Velika', 'Large'), desc: tx('Večja pisava', 'Larger text') },
-    { value: 220, title: tx('Zelo velika', 'Extra large'), desc: tx('Največja pisava', 'Largest text') },
+    { value: 220, title: tx('Zelo velika', 'Extra large'), desc: tx('Zelo velika pisava', 'Very large text') },
+    { value: 300, title: tx('Extra velika', 'Extra extra large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
   const normalizeFontPercent = (value: any, version: any = 1) => {
     const explicitNewScale = Number(version) >= 2
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value === 100) return explicitNewScale ? 100 : 140
-      if (value === 120 || value === 140 || value === 160 || value === 220) return value
+      if (value === 120 || value === 140 || value === 160 || value === 220 || value === 300) return value
       if (value === 180) return 220
       if (value <= 105) return 140
       if (value < 130) return 120
       if (value < 155) return 140
       if (value < 175) return 160
+      if (value >= 260) return 300
       return 220
     }
     const legacy: Record<string, number> = {
@@ -155,6 +157,8 @@ export default function Nastavitve() {
       srednja: 140,
       velika: 160,
       'zelo-velika': 220,
+      'extra-velika': 300,
+      najvecja: 300,
     }
     return legacy[value] || 140
   }
@@ -164,6 +168,7 @@ export default function Nastavitve() {
     if (value === 120) return 15.25
     if (value === 160) return 16.75
     if (value === 220) return 19
+    if (value === 300) return 22
     return 16
   }
 
@@ -644,10 +649,10 @@ export default function Nastavitve() {
       localStorage.setItem('garagebase_app_lock_enabled', 'true')
       setAppLockEnabled(true)
       trackEvent('app_lock_enabled')
-      setAppLockMessage('Odklep aplikacije je vklopljen.')
+      setAppLockMessage(tx('Odklep aplikacije je vklopljen.', 'App unlock is enabled.'))
     } catch (error) {
       console.error('App lock:', error)
-      setAppLockMessage('Odklepa ni bilo mogoče vklopiti. Poskusi na telefonu v nameščeni aplikaciji.')
+      setAppLockMessage(tx('Odklepa ni bilo mogoče vklopiti. Poskusi na telefonu v nameščeni aplikaciji.', 'App unlock could not be enabled. Try on your phone in the installed app.'))
     }
     setAppLockLoading(false)
   }
@@ -657,7 +662,7 @@ export default function Nastavitve() {
     localStorage.removeItem('garagebase_app_lock_credential')
     setAppLockEnabled(false)
     trackEvent('app_lock_disabled')
-    setAppLockMessage('Odklep aplikacije je izklopljen.')
+    setAppLockMessage(tx('Odklep aplikacije je izklopljen.', 'App unlock is disabled.'))
   }
   const spremeniJezik = (novJezik: Language) => {
     setJezik(novJezik)
@@ -1081,11 +1086,11 @@ export default function Nastavitve() {
       {/* App lock */}
       <div id="varnost" style={{ display: showSection('varnost') ? undefined : 'none' }} className="scroll-mt-28 bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Varnost', 'Security')}</p>
-        <p className="text-white font-semibold text-sm">{tx('Odklep z obrazom, odtisom ali PIN-om', 'Unlock with face, fingerprint or PIN')}</p>
-        <p className="text-[#5a5a80] text-xs mt-1 mb-3">{tx('Uporabi varno biometrijo naprave, kjer jo telefon ali računalnik podpira.', 'Use the device secure biometric unlock where the phone or computer supports it.')}</p>
+        <p className="text-white font-semibold text-sm">{tx('Odklep z obrazom, odtisom, PIN-om ali vzorcem', 'Unlock with face, fingerprint, PIN or pattern')}</p>
+        <p className="text-[#5a5a80] text-xs mt-1 mb-3">{tx('GarageBase uporabi sistemski zaklep naprave. Na Androidu to pomeni obraz, odtis, PIN ali vzorec, če ga telefon ponudi.', 'GarageBase uses the device screen lock. On Android this means face, fingerprint, PIN or pattern when the phone offers it.')}</p>
         {!biometricSupported ? (
           <div className="bg-[#f59e0b22] border border-[#f59e0b44] text-[#fbbf24] text-sm rounded-xl p-3">
-            {tx('Ta brskalnik trenutno ne podpira varnega odklepa z obrazom/odtisom. Poskusi v nameščeni aplikaciji na telefonu.', 'This browser does not currently support secure face/fingerprint unlock. Try the installed app on your phone.')}
+            {tx('Ta brskalnik trenutno ne podpira varnega sistemskega odklepa. Poskusi v nameščeni aplikaciji na telefonu.', 'This browser does not currently support secure system unlock. Try the installed app on your phone.')}
           </div>
         ) : appLockEnabled ? (
           <button onClick={izklopiAppLock}

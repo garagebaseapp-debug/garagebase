@@ -95,7 +95,7 @@ export function AppLock() {
       setCanDisableLock(!isAppLockSupported() || nextFailedAttempts >= 2)
       setMessage(isAppLockSupported()
         ? tx('Odklep ni uspel. Poskusi se enkrat.', 'Unlock failed. Try again.')
-        : tx('Ta naprava ne podpira biometričnega odklepa. Odstrani lokalni zaklep in se prijavi normalno.', 'This device does not support biometric unlock. Remove the local lock and sign in normally.'))
+        : tx('Ta naprava ne podpira varnega sistemskega odklepa. Odstrani lokalni zaklep in se prijavi normalno.', 'This device does not support secure system unlock. Remove the local lock and sign in normally.'))
     }
   }
 
@@ -112,7 +112,7 @@ export function AppLock() {
       <div className="w-full max-w-[30rem] bg-[#0f0f1a] border border-[#1e1e32] rounded-[28px] p-9 text-center shadow-2xl sm:p-10">
         <div className="w-24 h-24 mx-auto rounded-[28px] bg-[#6c63ff22] border border-[#6c63ff55] flex items-center justify-center text-5xl mb-6">&#128274;</div>
         <h2 className="text-3xl font-bold mb-3">{tx('GarageBase je zaklenjen', 'GarageBase is locked')}</h2>
-        <p className="text-[#8a8aa8] text-base sm:text-lg leading-relaxed mb-7">{tx('Odkleni z biometrijo ali zaklepom naprave.', 'Unlock with biometrics or device lock.')}</p>
+        <p className="text-[#8a8aa8] text-base sm:text-lg leading-relaxed mb-7">{tx('Odkleni z obrazom, odtisom, PIN-om ali vzorcem naprave.', 'Unlock with face, fingerprint, PIN or device pattern.')}</p>
         <button onClick={unlock} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-5 rounded-2xl text-lg transition-colors">
           {tx('Odkleni', 'Unlock')}
         </button>

@@ -814,7 +814,7 @@ export default function Dashboard() {
   }
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
-      <div className="mx-auto w-full max-w-md lg:max-w-6xl">
+      <div className="w-full max-w-none lg:mx-auto lg:max-w-6xl">
 
       <div className="flex items-center gap-3 mb-5">
         <BackButton href="/garaza" />
