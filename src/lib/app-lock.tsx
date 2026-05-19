@@ -108,20 +108,20 @@ export function AppLock() {
   if (!locked) return null
 
   return (
-    <div className="fixed inset-0 z-[200] bg-[#080810] text-white flex items-center justify-center px-5">
-      <div className="w-full max-w-sm bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center shadow-2xl">
-        <div className="w-16 h-16 mx-auto rounded-2xl bg-[#6c63ff22] border border-[#6c63ff55] flex items-center justify-center text-3xl mb-4">🔒</div>
-        <h2 className="text-xl font-bold mb-2">{tx('GarageBase je zaklenjen', 'GarageBase is locked')}</h2>
-        <p className="text-[#8a8aa8] text-sm leading-relaxed mb-5">{tx('Odkleni z biometrijo ali zaklepom naprave.', 'Unlock with biometrics or device lock.')}</p>
-        <button onClick={unlock} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors">
+    <div className="fixed inset-0 z-[200] bg-[#080810] text-white flex items-center justify-center px-6">
+      <div className="w-full max-w-[30rem] bg-[#0f0f1a] border border-[#1e1e32] rounded-[28px] p-9 text-center shadow-2xl sm:p-10">
+        <div className="w-24 h-24 mx-auto rounded-[28px] bg-[#6c63ff22] border border-[#6c63ff55] flex items-center justify-center text-5xl mb-6">&#128274;</div>
+        <h2 className="text-3xl font-bold mb-3">{tx('GarageBase je zaklenjen', 'GarageBase is locked')}</h2>
+        <p className="text-[#8a8aa8] text-base sm:text-lg leading-relaxed mb-7">{tx('Odkleni z biometrijo ali zaklepom naprave.', 'Unlock with biometrics or device lock.')}</p>
+        <button onClick={unlock} className="w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-5 rounded-2xl text-lg transition-colors">
           {tx('Odkleni', 'Unlock')}
         </button>
         {canDisableLock && (
-          <button onClick={disableLock} className="mt-3 w-full rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] py-3 font-semibold text-[#fbbf24]">
+          <button onClick={disableLock} className="mt-4 w-full rounded-2xl border border-[#f59e0b55] bg-[#f59e0b18] py-5 text-lg font-semibold text-[#fbbf24]">
             {tx('Odstrani lokalni zaklep', 'Remove local lock')}
           </button>
         )}
-        {message && <p className="text-[#fca5a5] text-sm mt-3">{message}</p>}
+        {message && <p className="text-[#fca5a5] text-base mt-4">{message}</p>}
       </div>
     </div>
   )

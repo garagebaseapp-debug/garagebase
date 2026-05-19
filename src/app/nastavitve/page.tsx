@@ -133,19 +133,20 @@ export default function Nastavitve() {
     { value: 120, title: tx('Mala', 'Small'), desc: tx('Manjša pisava', 'Smaller text') },
     { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
     { value: 160, title: tx('Velika', 'Large'), desc: tx('Večja pisava', 'Larger text') },
-    { value: 180, title: tx('Zelo velika', 'Extra large'), desc: tx('Največja pisava', 'Largest text') },
+    { value: 220, title: tx('Zelo velika', 'Extra large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
   const normalizeFontPercent = (value: any, version: any = 1) => {
     const explicitNewScale = Number(version) >= 2
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value === 100) return explicitNewScale ? 100 : 140
-      if (value === 120 || value === 140 || value === 160 || value === 180) return value
+      if (value === 120 || value === 140 || value === 160 || value === 220) return value
+      if (value === 180) return 220
       if (value <= 105) return 140
       if (value < 130) return 120
       if (value < 155) return 140
       if (value < 175) return 160
-      return 180
+      return 220
     }
     const legacy: Record<string, number> = {
       'zelo-mala': explicitNewScale ? 100 : 140,
@@ -153,7 +154,7 @@ export default function Nastavitve() {
       normalna: 140,
       srednja: 140,
       velika: 160,
-      'zelo-velika': 180,
+      'zelo-velika': 220,
     }
     return legacy[value] || 140
   }
@@ -162,7 +163,7 @@ export default function Nastavitve() {
     if (value === 100) return 14.5
     if (value === 120) return 15.25
     if (value === 160) return 16.75
-    if (value === 180) return 17.5
+    if (value === 220) return 19
     return 16
   }
 
