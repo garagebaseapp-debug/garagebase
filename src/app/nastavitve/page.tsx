@@ -129,20 +129,41 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
+    { value: 100, title: tx('Zelo mala', 'Extra small'), desc: tx('Najmanjša pisava', 'Smallest text') },
     { value: 120, title: tx('Mala', 'Small'), desc: tx('Manjša pisava', 'Smaller text') },
     { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
     { value: 160, title: tx('Velika', 'Large'), desc: tx('Večja pisava', 'Larger text') },
+    { value: 180, title: tx('Zelo velika', 'Extra large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
-  const normalizeFontPercent = (value: any) => {
+  const normalizeFontPercent = (value: any, version: any = 1) => {
+    const explicitNewScale = Number(version) >= 2
     if (typeof value === 'number' && Number.isFinite(value)) {
-      if (value === 120 || value === 140 || value === 160) return value
+      if (value === 100) return explicitNewScale ? 100 : 140
+      if (value === 120 || value === 140 || value === 160 || value === 180) return value
       if (value <= 105) return 140
+      if (value < 130) return 120
       if (value < 155) return 140
-      return 160
+      if (value < 175) return 160
+      return 180
     }
-    const legacy: Record<string, number> = { mala: 120, normalna: 140, srednja: 140, velika: 160 }
+    const legacy: Record<string, number> = {
+      'zelo-mala': explicitNewScale ? 100 : 140,
+      mala: 120,
+      normalna: 140,
+      srednja: 140,
+      velika: 160,
+      'zelo-velika': 180,
+    }
     return legacy[value] || 140
+  }
+
+  const fontRootPx = (value: number) => {
+    if (value === 100) return 14.5
+    if (value === 120) return 15.25
+    if (value === 160) return 16.75
+    if (value === 180) return 17.5
+    return 16
   }
 
   const normalizeGarageFont = (value: any) => {
@@ -181,18 +202,18 @@ export default function Nastavitve() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
   }
 
-  const applyFontSize = (value: any) => {
-    const next = normalizeFontPercent(value)
-    const rootPx = next === 120 ? 15.25 : next === 160 ? 16.75 : 16
+  const applyFontSize = (value: any, version: any = 2) => {
+    const next = normalizeFontPercent(value, version)
+    const rootPx = fontRootPx(next)
     document.documentElement.style.fontSize = `${rootPx}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', '1')
     document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16))
   }
 
   const spremeniPisavo = (value: number) => {
-    const next = normalizeFontPercent(value)
+    const next = normalizeFontPercent(value, 2)
     setPisava(next)
-    applyFontSize(next)
+    applyFontSize(next, 2)
   }
 
   const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
@@ -255,9 +276,9 @@ export default function Nastavitve() {
         setNacin(n.nacin || 'full')
         setPrikaznoIme(String(n.prikaznoIme || n.displayName || ''))
         setJezik(n.jezik || 'sl')
-        const nextPisava = normalizeFontPercent(n.pisava)
+        const nextPisava = normalizeFontPercent(n.pisava, n.fontPresetVersion)
         setPisava(nextPisava)
-        applyFontSize(nextPisava)
+        applyFontSize(nextPisava, n.fontPresetVersion)
         setPrikazGaraze(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
@@ -528,10 +549,10 @@ export default function Nastavitve() {
   const shrani = (showMessage = true) => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, prikaznoIme: prikaznoIme.trim(), nacin, jezik, pisava, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
+    const nastavitve = { ...current, prikaznoIme: prikaznoIme.trim(), nacin, jezik, pisava, fontPresetVersion: 2, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
-    applyFontSize(pisava)
+    applyFontSize(pisava, 2)
     setSettingsSaveState('saved')
     if (showMessage) {
       setMessage('✅ Nastavitve shranjene!')

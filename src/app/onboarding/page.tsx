@@ -41,6 +41,7 @@ export default function OnboardingPage() {
       nacin,
       onboardingDone: true,
       pisava: current.pisava || 140,
+      fontPresetVersion: current.fontPresetVersion || 2,
       prikazGaraze: current.prikazGaraze || (nacin === 'lite' ? 'malo' : 'srednje'),
       listaNastavitve: current.listaNastavitve || {
         letnik: true,

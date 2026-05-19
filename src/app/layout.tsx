@@ -87,17 +87,23 @@ export default function RootLayout({
               document.documentElement.classList.add('light-mode');
             }
             // Keep the default app size stable, then allow one small and one large text step.
-            const normalizeFont = (value) => {
-              if (value === 120 || value === 140 || value === 160) return value;
+            const normalizeFont = (value, version) => {
+              const explicitNewScale = Number(version) >= 2;
+              if (value === 100) return explicitNewScale ? 100 : 140;
+              if (value === 120 || value === 140 || value === 160 || value === 180) return value;
               if (typeof value === 'number' && value <= 105) return 140;
+              if (typeof value === 'number' && value < 130) return 120;
               if (typeof value === 'number' && value < 155) return 140;
-              if (typeof value === 'number') return 160;
+              if (typeof value === 'number' && value < 175) return 160;
+              if (typeof value === 'number') return 180;
+              if (value === 'zelo-mala') return explicitNewScale ? 100 : 140;
               if (value === 'mala') return 120;
               if (value === 'velika') return 160;
+              if (value === 'zelo-velika') return 180;
               return 140;
             };
-            const nextFont = normalizeFont(n.pisava);
-            const rootPx = nextFont === 120 ? 15.25 : nextFont === 160 ? 16.75 : 16;
+            const nextFont = normalizeFont(n.pisava, n.fontPresetVersion);
+            const rootPx = nextFont === 100 ? 14.5 : nextFont === 120 ? 15.25 : nextFont === 160 ? 16.75 : nextFont === 180 ? 17.5 : 16;
             document.documentElement.style.fontSize = rootPx + 'px';
             document.documentElement.style.setProperty('--gb-app-font-scale', '1');
             document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16));

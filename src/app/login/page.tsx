@@ -141,7 +141,7 @@ export default function LoginPage() {
       else {
         try {
           const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
-          localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, pisava: current.pisava || 140 }))
+          localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, pisava: current.pisava || 140, fontPresetVersion: current.fontPresetVersion || 2 }))
         } catch {}
         setMessage('Preveri email za potrditev registracije!')
       }
