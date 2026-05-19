@@ -86,10 +86,21 @@ export default function RootLayout({
             if (n.tema === 'svetla') {
               document.documentElement.classList.add('light-mode');
             }
-            // Keep the layout independent from Android/iOS system font scaling.
-            document.documentElement.style.fontSize = '';
+            // Keep the default app size stable, then allow one small and one large text step.
+            const normalizeFont = (value) => {
+              if (value === 120 || value === 140 || value === 160) return value;
+              if (typeof value === 'number' && value <= 105) return 140;
+              if (typeof value === 'number' && value < 155) return 140;
+              if (typeof value === 'number') return 160;
+              if (value === 'mala') return 120;
+              if (value === 'velika') return 160;
+              return 140;
+            };
+            const nextFont = normalizeFont(n.pisava);
+            const rootPx = nextFont === 120 ? 15.25 : nextFont === 160 ? 16.75 : 16;
+            document.documentElement.style.fontSize = rootPx + 'px';
             document.documentElement.style.setProperty('--gb-app-font-scale', '1');
-            document.documentElement.style.setProperty('--gb-text-font-scale', '1');
+            document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16));
           } catch {
             // Ignore broken localStorage settings and load the app with defaults.
           }

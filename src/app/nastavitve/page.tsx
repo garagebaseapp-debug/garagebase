@@ -129,18 +129,19 @@ export default function Nastavitve() {
   const tx = (sl: string, en: string) => jezik === 'en' ? en : sl
 
   const fontOptions = [
-    { value: 100, title: tx('Mala', 'Small'), desc: tx('Kompaktno', 'Compact') },
+    { value: 120, title: tx('Mala', 'Small'), desc: tx('Manjša pisava', 'Smaller text') },
     { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
-    { value: 230, title: tx('Velika', 'Large'), desc: tx('Lažje branje', 'Easier reading') },
+    { value: 160, title: tx('Velika', 'Large'), desc: tx('Večja pisava', 'Larger text') },
   ]
 
   const normalizeFontPercent = (value: any) => {
     if (typeof value === 'number' && Number.isFinite(value)) {
-      if (value <= 105) return 100
-      if (value <= 190) return 140
-      return 230
+      if (value === 120 || value === 140 || value === 160) return value
+      if (value <= 105) return 140
+      if (value < 155) return 140
+      return 160
     }
-    const legacy: Record<string, number> = { mala: 100, normalna: 140, srednja: 140, velika: 230 }
+    const legacy: Record<string, number> = { mala: 120, normalna: 140, srednja: 140, velika: 160 }
     return legacy[value] || 140
   }
 
@@ -181,10 +182,11 @@ export default function Nastavitve() {
   }
 
   const applyFontSize = (value: any) => {
-    normalizeFontPercent(value)
-    document.documentElement.style.fontSize = ''
+    const next = normalizeFontPercent(value)
+    const rootPx = next === 120 ? 15.25 : next === 160 ? 16.75 : 16
+    document.documentElement.style.fontSize = `${rootPx}px`
     document.documentElement.style.setProperty('--gb-app-font-scale', '1')
-    document.documentElement.style.setProperty('--gb-text-font-scale', '1')
+    document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16))
   }
 
   const spremeniPisavo = (value: number) => {
