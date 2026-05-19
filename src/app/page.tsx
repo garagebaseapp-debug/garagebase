@@ -393,13 +393,13 @@ export default function LandingPage() {
         }`}
       >
         <div className="mx-auto grid max-w-[1760px] grid-cols-[minmax(118px,0.58fr)_auto] items-center gap-3 px-3 py-3 sm:grid-cols-[minmax(180px,360px)_1fr] sm:gap-4 sm:px-8 sm:py-4 lg:grid-cols-[minmax(280px,430px)_1fr]">
-          <a href="/" className="gb-landing-brand group relative flex h-14 items-center overflow-hidden rounded-2xl border border-white/12 bg-[#252525]/72 p-1 shadow-[0_18px_44px_rgba(0,0,0,0.28)] sm:h-20 sm:p-2">
-            <img
-              src="/landing-garagebase-3d-logo.jpg"
-              alt="GarageBase"
-              className="h-full w-full object-contain object-left transition-transform duration-500 group-hover:scale-[1.015]"
-            />
-            <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/12" />
+          <a href="/" className="gb-landing-brand group relative flex h-14 items-center overflow-hidden rounded-2xl border border-white/12 bg-[#252525]/72 px-4 shadow-[0_18px_44px_rgba(0,0,0,0.28)] sm:h-20 sm:px-6">
+            <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_24%_24%,rgba(255,255,255,0.16),transparent_34%),linear-gradient(145deg,rgba(255,255,255,0.06),rgba(0,0,0,0.22))]" />
+            <span className="relative whitespace-nowrap text-3xl font-black leading-none tracking-tight sm:text-5xl">
+              <span className="inline-block bg-[linear-gradient(180deg,#ffffff_0%,#d9dce3_42%,#7e8390_100%)] bg-clip-text text-transparent drop-shadow-[0_8px_10px_rgba(0,0,0,0.58)] [text-shadow:0_1px_0_rgba(255,255,255,0.42),0_4px_0_rgba(43,31,68,0.68)]">Garage</span>
+              <span className="inline-block bg-[linear-gradient(180deg,#f2eaff_0%,#c8aeff_48%,#7d57c7_100%)] bg-clip-text text-transparent drop-shadow-[0_8px_10px_rgba(0,0,0,0.58)] [text-shadow:0_1px_0_rgba(255,255,255,0.32),0_4px_0_rgba(62,38,112,0.78)]">Base</span>
+            </span>
+            <span className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/14" />
           </a>
           <div className="flex min-w-0 items-center justify-end gap-3">
             <div className="hidden items-center gap-7 rounded-2xl border border-white/10 bg-black/22 px-5 py-3 text-sm font-bold text-white/82 backdrop-blur-md md:flex">
@@ -444,7 +444,7 @@ export default function LandingPage() {
         <div className="landing-top-fade absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#0f0d0c]/78 to-transparent" />
         <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#1e1711]/86 to-transparent" />
 
-        <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-[1760px] items-end px-5 pb-10 pt-32 sm:px-8 lg:absolute lg:inset-0 lg:left-1/2 lg:-translate-x-1/2 lg:pb-14 lg:pt-36">
+        <div className="relative z-10 flex min-h-[100svh] max-w-[1760px] items-end px-3 pb-20 pt-32 sm:px-5 lg:absolute lg:inset-0 lg:left-0 lg:pb-24 lg:pt-36">
           <div className="landing-copy w-full max-w-[520px] rounded-[30px] border border-[#c9a876]/24 bg-[#3a291c]/78 p-6 shadow-[0_34px_80px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-7">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#f0c987]/24 bg-[#170f0a]/38 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
