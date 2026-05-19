@@ -126,7 +126,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
 
   const desktopLinks = namiznePovezave.filter((item) => !('adminOnly' in item) || !item.adminOnly || isAdmin)
   return (
-    <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[280px] flex-col border-r border-[#1e1e32] bg-[#080810]/96 px-5 py-6 text-white shadow-2xl shadow-black/20 backdrop-blur-md">
+    <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[280px] flex-col border-r border-[#252a3d] bg-[#0f1320]/96 px-5 py-6 text-white shadow-2xl shadow-[#050814]/24 backdrop-blur-md">
       <button onClick={() => pojdiNa(router, '/domov')} className="gb-desktop-brand mb-8 px-3 text-left text-xl font-black tracking-tight text-white">
         Garage<span className="text-[#6c63ff]">Base</span>
       </button>
@@ -138,7 +138,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
             className={`gb-desktop-link flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-black transition-all ${
               aktivna === item.key
                 ? 'gb-desktop-link-active border-[#6c63ff66] bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
-                : 'border-transparent bg-transparent text-[#c8c8dc] hover:border-[#1e1e32] hover:bg-[#13131f] hover:text-white'
+                : 'border-transparent bg-transparent text-[#c8c8dc] hover:border-[#2d344a] hover:bg-[#171b2b] hover:text-white'
           }`}
           >
             <NavIcon type={item.icon} className="h-5 w-5 shrink-0" />
@@ -148,7 +148,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
       </nav>
       <button
         onClick={() => pojdiNa(router, '/domov')}
-        className="gb-sidebar-app-icon group relative mt-7 flex h-36 w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#1e1e32] bg-[#0f0f1a] p-3 text-left shadow-xl shadow-black/15"
+        className="gb-sidebar-app-icon group relative mt-7 flex h-36 w-full items-center justify-center overflow-hidden rounded-[24px] border border-[#2d344a] bg-[#171b2b] p-3 text-left shadow-xl shadow-[#050814]/20"
         aria-label={language === 'en' ? 'GarageBase home' : 'GarageBase domov'}
       >
         <img src="/garagebase-app-icon.jpg" alt="" className="h-full w-full rounded-[20px] object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]" />
@@ -156,7 +156,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
       <button
         type="button"
         onClick={() => pojdiNa(router, '/')}
-        className="mt-auto rounded-2xl border border-[#1e1e32] bg-transparent px-4 py-3 text-left text-sm font-black text-[#c8c8dc] transition-all hover:border-[#6c63ff66] hover:bg-[#13131f] hover:text-white"
+        className="mt-auto rounded-2xl border border-[#2d344a] bg-[#141827]/70 px-4 py-3 text-left text-sm font-black text-[#c8c8dc] transition-all hover:border-[#6c63ff66] hover:bg-[#171b2b] hover:text-white"
       >
         {language === 'en' ? 'Intro page' : 'Uvodna stran'}
       </button>
