@@ -471,9 +471,9 @@ body:not(.landing) {
 }
 
 .light-mode .gb-sidebar-app-icon {
-  background: linear-gradient(145deg, #fff8ef, #eadccb) !important;
-  border-color: #d7c6b2 !important;
-  box-shadow: 0 22px 44px rgba(94, 75, 54, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.74) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .light-mode .gb-quick-overview {
