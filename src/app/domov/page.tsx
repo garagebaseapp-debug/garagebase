@@ -544,16 +544,16 @@ export default function DomovPage() {
                 </button>
               </div>
             </header>
-            <div className="mt-auto pb-2 xl:mt-24 xl:max-w-[440px] xl:pb-0">
+            <div className="mt-auto pb-2 xl:mt-20 xl:max-w-[450px] xl:pb-0">
               <h1 className={`max-w-[88%] text-[2.48rem] font-black leading-[1.02] tracking-tight drop-shadow-[0_2px_14px_rgba(255,255,255,0.35)] xl:max-w-none xl:text-[2.85rem] xl:leading-[1] ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>
                 {tx('Dobrodošel', 'Welcome')}<br />{tx('nazaj,', 'back,')} {displayGreetingName}
               </h1>
-              <p className={`mt-3 text-[1.05rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
+              <p className={`mt-2 text-[1.05rem] font-black xl:text-lg ${isLightTheme ? 'text-[#151722]' : 'text-white'}`}>
                 {tx('Tvoja garaža. Tvoja vozila. Tvoj nadzor.', 'Your garage. Your vehicles. Your control.')}
               </p>
               <button
                 onClick={vstopiVGarazo}
-                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-[#c9b5ff]/65 bg-[linear-gradient(135deg,#7b4dff_0%,#6c38f5_48%,#3d168e_100%)] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-[0_18px_36px_rgba(90,42,210,0.44),inset_0_1px_0_rgba(255,255,255,0.38),inset_0_-10px_24px_rgba(26,5,81,0.36)] transition-transform active:scale-[0.98] xl:absolute xl:left-[92px] xl:top-[248px] xl:mt-0 xl:h-[78px] xl:w-[260px] xl:max-w-[260px] xl:rounded-[22px] xl:px-7 xl:py-0 xl:text-[1.1rem]"
+                className="mt-7 flex w-full max-w-[360px] items-center justify-center gap-3 rounded-[24px] border border-[#d9ccff]/75 bg-[linear-gradient(135deg,#8d6bff_0%,#6f43f1_48%,#431a9f_100%)] px-8 py-[1.45rem] text-[1.35rem] font-black text-white shadow-[0_20px_42px_rgba(92,48,196,0.46),0_8px_18px_rgba(36,18,84,0.24),inset_0_1px_0_rgba(255,255,255,0.48),inset_0_-12px_26px_rgba(32,8,91,0.34)] ring-1 ring-white/25 transition-all hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 active:scale-[0.98] xl:absolute xl:left-[92px] xl:top-[268px] xl:mt-0 xl:h-[72px] xl:w-[270px] xl:max-w-[270px] xl:rounded-[24px] xl:px-7 xl:py-0 xl:text-[1.08rem]"
               >
                 {cars.length > 0 ? tx('Vstopi v garažo', 'Enter garage') : tx('Dodaj vozilo', 'Add vehicle')}
                 <span aria-hidden="true">→</span>
