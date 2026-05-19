@@ -64,10 +64,10 @@ const copy: Record<Language, LandingCopy> = {
       { title: 'Gorivo', text: 'Poraba, tankanja in stroški po vozilih.' },
       { title: 'Servisi', text: 'Servisna knjiga z računi in kilometri.' },
       { title: 'Opomniki', text: 'Registracija, vinjeta, servis in zavarovanje.' },
+      { title: 'Stroški', text: 'Pregled stroškov, porabe in servisov po vsakem vozilu.' },
       { title: 'Poročila', text: 'Pregleden PDF za prodajo vozila.', report: true },
       { title: 'Mobilna app', text: 'Namesti na telefon in uporabljaj kot aplikacijo.' },
       { title: 'Več vozil', text: 'Celotna domača garaža na enem mestu.' },
-      { title: 'AI scan računov', text: 'Avtomatsko branje računov je v testiranju in planirano za 2027.' },
     ],
     roadmapKicker: 'V načrtu za 2027',
     roadmapTitle: 'Naslednji korak: manj ročnega dela, več zaupanja',
@@ -109,10 +109,10 @@ const copy: Record<Language, LandingCopy> = {
       { title: 'Fuel', text: 'Consumption, fill-ups and costs by vehicle.' },
       { title: 'Services', text: 'Service book with receipts and mileage.' },
       { title: 'Reminders', text: 'Registration, vignette, service and insurance.' },
+      { title: 'Costs', text: 'Track costs, consumption and services for every vehicle.' },
       { title: 'Reports', text: 'Clear PDF for selling a vehicle.', report: true },
       { title: 'Mobile app', text: 'Install it on your phone and use it like an app.' },
       { title: 'Multiple vehicles', text: 'Your whole home garage in one place.' },
-      { title: 'AI receipt scan', text: 'Automatic receipt reading is being tested and is planned for 2027.' },
     ],
     roadmapKicker: 'Planned for 2027',
     roadmapTitle: 'Next step: less manual work, more trust',
@@ -171,6 +171,16 @@ const appLabels = {
     active: 'Active',
   },
 }
+
+const landingFeatureMedia = [
+  { src: '/landing-feature-fuel.jpg', position: 'object-center' },
+  { src: '/landing-feature-service.jpg', position: 'object-center' },
+  { src: '/landing-feature-reminders.png', position: 'object-center' },
+  { src: '/landing-feature-costs.jpg', position: 'object-center' },
+  { src: '/landing-feature-report.png', position: 'object-center' },
+  { src: '/landing-feature-devices.png', position: 'object-center' },
+  { src: '/landing-feature-vehicles.png', position: 'object-top' },
+]
 
 const MiniIcon = ({ kind }: { kind: string }) => {
   const common = 'h-7 w-7'
@@ -444,7 +454,7 @@ export default function LandingPage() {
         <div className="landing-top-fade absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-[#0f0d0c]/78 to-transparent" />
         <div className="landing-bottom-fade absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#1e1711]/86 to-transparent" />
 
-        <div className="relative z-10 flex min-h-[100svh] max-w-[1760px] items-end px-3 pb-20 pt-32 sm:px-5 lg:absolute lg:inset-0 lg:left-0 lg:pb-24 lg:pt-36">
+        <div className="relative z-10 flex min-h-[100svh] max-w-[1760px] items-end px-3 pb-28 pt-32 sm:px-5 sm:pb-32 lg:absolute lg:inset-0 lg:left-0 lg:pb-40 lg:pt-36 xl:pb-48">
           <div className="landing-copy w-full max-w-[520px] rounded-[30px] border border-[#c9a876]/24 bg-[#3a291c]/78 p-6 shadow-[0_34px_80px_rgba(0,0,0,0.42)] backdrop-blur-md sm:p-7">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#f0c987]/24 bg-[#170f0a]/38 px-4 py-2 backdrop-blur-sm">
               <span className="h-2 w-2 rounded-full bg-[#3ecfcf] shadow-[0_0_16px_rgba(62,207,207,0.85)]" />
@@ -485,71 +495,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="funkcije" className="bg-[#f4f6ff] px-5 py-24 text-[#09091b]">
-        <div className="mx-auto max-w-6xl">
+      <section id="funkcije" className="relative overflow-hidden bg-[#1f1711] px-5 py-24 text-[#fff6ea]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(201,168,118,0.18),transparent_34%),linear-gradient(180deg,#2a1d14_0%,#1d1510_44%,#120f0d_100%)]" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:linear-gradient(135deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div className="relative mx-auto max-w-7xl">
           <div className="mb-12">
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#8b5cf6]">{t.featuresKicker}</p>
-            <h2 className="text-3xl font-black md:text-5xl">{t.featuresTitle}</h2>
+            <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#6df1f1]">{t.featuresKicker}</p>
+            <h2 className="max-w-3xl text-3xl font-black text-[#fff6ea] md:text-5xl">{t.featuresTitle}</h2>
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
             {t.features.map((feature, index) => {
-              const kind = feature.report ? 'report' : index === 0 ? 'fuel' : index === 1 ? 'service' : index === 2 ? 'reminders' : index === 4 ? 'mobile' : index === 5 ? 'vehicles' : 'scan'
-              const isIconCard = kind === 'fuel' || kind === 'service' || kind === 'reminders'
-              const isScanCard = kind === 'scan'
+              const media = landingFeatureMedia[index]
 
               return (
                 <div
                   key={feature.title}
-                  className={`rounded-[22px] border p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] transition-colors hover:border-[#8b5cf666] ${
-                    isScanCard
-                      ? 'border-[#e3e7f8] bg-[linear-gradient(105deg,rgba(255,255,255,0.94),rgba(248,247,255,0.86))] lg:col-span-3'
-                      : 'border-[#d8ddf5] bg-white/82'
-                  }`}
+                  className="group overflow-hidden rounded-[26px] border border-[#c9a876]/18 bg-[#2f2117]/74 p-4 shadow-[0_22px_52px_rgba(0,0,0,0.32)] backdrop-blur-md transition-all hover:-translate-y-1 hover:border-[#8b5cf6]/46 hover:bg-[#35251a]/86"
                 >
-                  {isIconCard ? (
-                    <div className="flex min-h-28 items-center gap-5">
-                      <FeatureVisual kind={kind} language={language} />
-                      <div className="min-w-0 flex-1">
-                        <p className="mb-2 text-xl font-black text-[#09091b]">{feature.title}</p>
-                        <p className="text-base leading-relaxed text-[#38385f]">{feature.text}</p>
-                      </div>
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#d8d4ff] bg-[#f6f3ff] text-xl font-black text-[#6c63ff]">›</span>
+                  <div className="relative aspect-[1.08/1] overflow-hidden rounded-[22px] border border-white/10 bg-[#120f0d] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]">
+                    {media && (
+                      <img
+                        src={media.src}
+                        alt=""
+                        className={`h-full w-full object-cover ${media.position} transition-transform duration-500 group-hover:scale-[1.035]`}
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#120f0d]/34 via-transparent to-white/4" />
+                  </div>
+                  <div className="px-2 pb-2 pt-5">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <p className="text-xl font-black text-[#fff6ea]">{feature.title}</p>
+                      <span className="h-2.5 w-2.5 rounded-full bg-[#6df1f1] shadow-[0_0_18px_rgba(109,241,241,0.72)]" />
                     </div>
-                  ) : (
-                    <>
-                      <div className={isScanCard ? 'grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.65fr)] lg:items-center' : ''}>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xl font-black text-[#09091b]">{feature.title}</p>
-                            {isScanCard && (
-                              <span className="rounded-full bg-[#8b5cf622] px-3 py-1 text-xs font-black uppercase text-[#6c63ff]">Novo</span>
-                            )}
-                          </div>
-                          <p className="mt-3 text-base leading-relaxed text-[#38385f]">{feature.text}</p>
-                        </div>
-                        <FeatureVisual kind={kind} language={language} />
-                      </div>
-                    </>
-                  )}
+                    <p className="text-sm leading-relaxed text-[#f2e4d1]/76">{feature.text}</p>
+                  </div>
                 </div>
               )
             })}
           </div>
 
-          <div className="mt-16 rounded-[24px] border border-[#d8ddf5] bg-white/82 p-6 shadow-[0_18px_46px_rgba(22,22,55,0.08)] sm:p-8">
+          <div className="mt-16 rounded-[28px] border border-[#c9a876]/18 bg-[#2b1e16]/72 p-6 shadow-[0_24px_58px_rgba(0,0,0,0.28)] backdrop-blur-md sm:p-8">
             <div className="max-w-3xl">
               <p className="mb-3 text-sm font-bold uppercase tracking-[0.18em] text-[#3ecfcf]">{t.roadmapKicker}</p>
-              <h2 className="text-3xl font-black text-[#09091b] md:text-4xl">{t.roadmapTitle}</h2>
-              <p className="mt-4 text-base leading-relaxed text-[#38385f]">{t.roadmapText}</p>
+              <h2 className="text-3xl font-black text-[#fff6ea] md:text-4xl">{t.roadmapTitle}</h2>
+              <p className="mt-4 text-base leading-relaxed text-[#f2e4d1]/74">{t.roadmapText}</p>
             </div>
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {t.roadmap.map((item) => (
-                <div key={item.title} className="rounded-2xl border border-[#e1e5f6] bg-white/72 p-5 shadow-[0_12px_28px_rgba(22,22,55,0.06)]">
-                  <p className="flex items-center gap-2 text-base font-black text-[#09091b]">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#8b5cf666] text-sm text-[#6c63ff]">✓</span>
+                <div key={item.title} className="rounded-2xl border border-[#c9a876]/14 bg-[#1a120e]/46 p-5 shadow-[0_12px_28px_rgba(0,0,0,0.14)]">
+                  <p className="flex items-center gap-2 text-base font-black text-[#fff6ea]">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#6df1f1]/38 text-sm text-[#6df1f1]">✓</span>
                     {item.title}
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-[#555579]">{item.text}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#f2e4d1]/66">{item.text}</p>
                 </div>
               ))}
             </div>
@@ -557,7 +555,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <div className="border-t border-[#1e1e32] bg-[#080810] px-5 py-6">
+      <div className="border-t border-[#c9a876]/12 bg-[#120f0d] px-5 py-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#8a8aa8]">
           <a href="/privacy" className="transition-colors hover:text-white">{t.privacy}</a>
           <a href="/terms" className="transition-colors hover:text-white">{t.terms}</a>
@@ -565,7 +563,7 @@ export default function LandingPage() {
         </div>
       </div>
 
-      <footer id="kontakt" className="border-t border-[#1e1e32] px-5 py-12">
+      <footer id="kontakt" className="border-t border-[#c9a876]/12 bg-[#120f0d] px-5 py-12">
         <div className="mx-auto flex max-w-6xl flex-col justify-between gap-4 text-sm text-[#8a8aa8] md:flex-row">
           <p><span className="font-bold text-white">Garage</span><span className="font-bold text-[#8b5cf6]">Base</span> © 2026</p>
           <p>{t.contact}</p>
