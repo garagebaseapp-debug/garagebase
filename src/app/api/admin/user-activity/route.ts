@@ -18,6 +18,8 @@ const activityEventNames = new Set([
 ])
 
 const sinceIso = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+const SESSION_GAP_MS = 30 * 60 * 1000
+const SINGLE_EVENT_SESSION_MS = 60 * 1000
 
 const countQuery = async (query: any) => {
   const { count, error } = await query
@@ -67,6 +69,52 @@ const pageLabel = (path?: string | null) => {
     '/vec': 'Vec',
   }
   return labels[clean] || clean
+}
+
+const sessionStats = (events: any[]) => {
+  const sorted = [...events]
+    .map((event) => ({ ...event, time: new Date(event.created_at).getTime() }))
+    .filter((event) => Number.isFinite(event.time))
+    .sort((a, b) => a.time - b.time)
+
+  if (sorted.length === 0) {
+    return {
+      sessions: 0,
+      totalActiveMinutes: 0,
+      averageSessionMinutes: 0,
+      longestSessionMinutes: 0,
+      lastSessionMinutes: 0,
+    }
+  }
+
+  const sessions: Array<{ start: number; end: number; events: number }> = []
+  let current = { start: sorted[0].time, end: sorted[0].time, events: 1 }
+
+  for (const event of sorted.slice(1)) {
+    if (event.time - current.end > SESSION_GAP_MS) {
+      sessions.push(current)
+      current = { start: event.time, end: event.time, events: 1 }
+    } else {
+      current.end = event.time
+      current.events += 1
+    }
+  }
+  sessions.push(current)
+
+  const durations = sessions.map((session) => {
+    const duration = session.end - session.start
+    return Math.max(duration, session.events === 1 ? SINGLE_EVENT_SESSION_MS : 0)
+  })
+  const totalMs = durations.reduce((sum, duration) => sum + duration, 0)
+  const minutes = (ms: number) => Math.round(ms / 60000)
+
+  return {
+    sessions: sessions.length,
+    totalActiveMinutes: minutes(totalMs),
+    averageSessionMinutes: minutes(totalMs / Math.max(1, sessions.length)),
+    longestSessionMinutes: minutes(Math.max(...durations)),
+    lastSessionMinutes: minutes(durations[durations.length - 1] || 0),
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -122,6 +170,7 @@ export async function GET(request: NextRequest) {
     eventCount24,
     errorCount,
     pushCount,
+    allEventsData,
     eventsData,
     errorsData,
   ] = await Promise.all([
@@ -136,6 +185,11 @@ export async function GET(request: NextRequest) {
     countQuery(admin.from('app_errors').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId)),
     countQuery(admin.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId)),
     admin.from('app_events')
+      .select('id,event_name,page_path,created_at')
+      .eq('user_id', targetUserId)
+      .order('created_at', { ascending: false })
+      .limit(2000),
+    admin.from('app_events')
       .select('id,event_name,page_path,created_at,metadata')
       .eq('user_id', targetUserId)
       .gte('created_at', since30)
@@ -148,10 +202,13 @@ export async function GET(request: NextRequest) {
       .limit(20),
   ])
 
+  if (allEventsData.error) return NextResponse.json({ error: 'all_events_failed', details: allEventsData.error.message }, { status: 500 })
   if (eventsData.error) return NextResponse.json({ error: 'events_failed', details: eventsData.error.message }, { status: 500 })
   if (errorsData.error) return NextResponse.json({ error: 'errors_failed', details: errorsData.error.message }, { status: 500 })
 
   const events = eventsData.data || []
+  const allEvents = allEventsData.data || []
+  const sessions = sessionStats(allEvents)
   const meaningfulEvents = events.filter((event: any) => activityEventNames.has(event.event_name)).length
   const firstEvent = events.length > 0 ? events[events.length - 1] : null
   const lastEvent = events[0] || null
@@ -199,6 +256,12 @@ export async function GET(request: NextRequest) {
       errors: errorCount,
       firstEventAt: firstEvent?.created_at || null,
       lastEventAt: lastEvent?.created_at || null,
+      sessions: sessions.sessions,
+      totalActiveMinutes: sessions.totalActiveMinutes,
+      averageSessionMinutes: sessions.averageSessionMinutes,
+      longestSessionMinutes: sessions.longestSessionMinutes,
+      lastSessionMinutes: sessions.lastSessionMinutes,
+      sessionEstimateNote: 'Seje so ocenjene iz dogodkov. Nova seja se zacne po 30 minutah brez aktivnosti.',
       testerSignal: meaningfulEvents >= 3 || fuelCount + serviceCount + expenseCount > 0
         ? 'active'
         : eventCount30 > 0

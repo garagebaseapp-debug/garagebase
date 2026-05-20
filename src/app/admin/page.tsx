@@ -270,6 +270,9 @@ export default function AdminPage() {
   const [testerActivity, setTesterActivity] = useState<TesterActivity | null>(null)
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const adminUserById = useMemo(() => new Map(adminUsers.map((user) => [user.id, user])), [adminUsers])
+  const userDisplayName = (user: any) => adminUserById.get(user.userId)?.email || `U-${user.label}`
+  const minuteText = (value: any) => `${Number(value || 0)} ${tx('min', 'min')}`
 
   const openAdminTab = (tab: AdminTab) => {
     setActiveAdminTab(tab)
@@ -976,11 +979,11 @@ export default function AdminPage() {
         {activeAdminTab === 'users' && (
           <>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Uporabniki', 'Users')}</p>
-            <h2 className="mt-1 text-2xl font-black text-white">{tx('Najbolj aktivni uporabniki', 'Most active users')}</h2>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Najbolj aktivni testerji', 'Most active testers')}</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {userActivity.slice(0, 6).map((user) => (
                 <div key={user.userId} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
-                  <p className="font-mono text-sm font-black text-white">U-{user.label}</p>
+                  <p className="truncate text-sm font-black text-white">{userDisplayName(user)}</p>
                   <p className="mt-2 text-xs text-[#8a8aa8]">{user.cars} {tx('vozil', 'vehicles')} · {user.entries} {tx('vnosov', 'entries')}</p>
                 </div>
               ))}
@@ -1114,6 +1117,10 @@ export default function AdminPage() {
                   {[
                     { label: tx('Dogodki 30 dni', 'Events 30 days'), value: testerActivity.summary.events30 },
                     { label: tx('Akcije 30 dni', 'Actions 30 days'), value: testerActivity.summary.meaningfulEvents30 },
+                    { label: tx('Seje skupaj', 'Total sessions'), value: testerActivity.summary.sessions },
+                    { label: tx('Aktivni čas', 'Active time'), value: minuteText(testerActivity.summary.totalActiveMinutes) },
+                    { label: tx('Povprečna seja', 'Average session'), value: minuteText(testerActivity.summary.averageSessionMinutes) },
+                    { label: tx('Najdaljša seja', 'Longest session'), value: minuteText(testerActivity.summary.longestSessionMinutes) },
                     { label: tx('Vozila', 'Vehicles'), value: testerActivity.summary.cars },
                     { label: tx('Vnosi', 'Entries'), value: testerActivity.summary.fuel + testerActivity.summary.services + testerActivity.summary.expenses },
                     { label: tx('Opomniki', 'Reminders'), value: testerActivity.summary.reminders },
@@ -1127,6 +1134,9 @@ export default function AdminPage() {
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-[#8a8aa8]">
+                  {tx('Čas je ocena iz zabeleženih akcij. Nova seja se šteje po 30 minutah brez aktivnosti.', 'Time is estimated from tracked actions. A new session starts after 30 minutes without activity.')}
+                </p>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
@@ -1359,14 +1369,14 @@ export default function AdminPage() {
       <div className="mb-4 grid gap-4 xl:grid-cols-[1fr_1fr_0.9fr]">
         <div id="admin-users" className="scroll-mt-6 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Uporabniki za pregled', 'Users to inspect')}</h2>
-          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Najbolj aktivni anonimni uporabniki iz dogodkov in vozil.', 'Most active anonymous users from events and vehicles.')}</p>
+          <p className="mb-4 text-[#5a5a80] text-xs">{tx('Najbolj aktivni uporabniki iz dogodkov in vozil. Če je e-mail na voljo, je prikazan namesto anonimne oznake.', 'Most active users from events and vehicles. If email is available, it is shown instead of an anonymous label.')}</p>
           <div className="space-y-2">
             {userActivity.length === 0 ? (
               <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>
             ) : userActivity.map((user) => (
               <div key={user.userId} className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="font-mono text-sm font-black text-white">U-{user.label}</p>
+                  <p className="truncate text-sm font-black text-white">{userDisplayName(user)}</p>
                   <p className="text-xs font-bold text-[#3ecfcf]">{user.events} {tx('dog.', 'events')}</p>
                 </div>
                 <p className="mt-2 text-xs text-[#8a8aa8]">
