@@ -23,6 +23,16 @@ type AdminUser = {
 
 type AdminTab = 'overview' | 'analytics' | 'users' | 'errors' | 'plans' | 'settings'
 
+type TesterActivity = {
+  user: AdminUser
+  summary: Record<string, any>
+  topEvents: Array<{ name: string; label: string; count: number }>
+  topPages: Array<{ page: string; count: number }>
+  daily: Array<{ day: string; count: number }>
+  recentEvents: Array<{ id: string; label: string; page: string; created_at: string }>
+  recentErrors: Array<{ id: string; name: string; page: string; message?: string; status?: string; created_at: string }>
+}
+
 const statusLabel: Record<string, { sl: string; en: string }> = {
   new: { sl: 'Novo', en: 'New' },
   planned: { sl: 'Planirano', en: 'Planned' },
@@ -252,6 +262,12 @@ export default function AdminPage() {
   const [costMix, setCostMix] = useState<any[]>([])
   const [conversionStats, setConversionStats] = useState<any[]>([])
   const [errorStatusStats, setErrorStatusStats] = useState<any[]>([])
+  const [testerSearch, setTesterSearch] = useState('')
+  const [testerCandidates, setTesterCandidates] = useState<AdminUser[]>([])
+  const [testerSearchLoading, setTesterSearchLoading] = useState(false)
+  const [testerLoading, setTesterLoading] = useState(false)
+  const [selectedTester, setSelectedTester] = useState<AdminUser | null>(null)
+  const [testerActivity, setTesterActivity] = useState<TesterActivity | null>(null)
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -282,6 +298,21 @@ export default function AdminPage() {
     }
     init()
   }, [settingsRange])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    if (activeAdminTab !== 'users') return
+    const query = testerSearch.trim()
+    if (query.length < 2) {
+      setTesterCandidates([])
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      loadTesterCandidates(query)
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [testerSearch, isAdmin, activeAdminTab])
 
   const countTable = async (table: string) => {
     const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true })
@@ -654,6 +685,53 @@ export default function AdminPage() {
     setPaidConfirm('')
   }
 
+  const loadTesterCandidates = async (search = testerSearch) => {
+    const query = search.trim()
+    if (query.length < 2) return
+    setTesterSearchLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch(`/api/admin/users?search=${encodeURIComponent(query)}&perPage=12`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: 'no-store',
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'tester_search_failed')
+      setTesterCandidates(result.users || [])
+    } catch (error: any) {
+      setMessage(tx('Testerjev ni bilo mogoce poiskati.', 'Could not search testers.') + ` ${error.message || ''}`)
+    } finally {
+      setTesterSearchLoading(false)
+    }
+  }
+
+  const loadTesterActivity = async (user: AdminUser) => {
+    setSelectedTester(user)
+    setTesterActivity(null)
+    setTesterLoading(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const params = new URLSearchParams({ userId: user.id, email: user.email })
+      const response = await fetch(`/api/admin/user-activity?${params.toString()}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: 'no-store',
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'tester_activity_failed')
+      setTesterActivity(result)
+    } catch (error: any) {
+      setMessage(tx('Aktivnosti testerja ni bilo mogoce naloziti.', 'Could not load tester activity.') + ` ${error.message || ''}`)
+    } finally {
+      setTesterLoading(false)
+    }
+  }
+
   const statCards: StatCard[] = useMemo(() => [
     { label: tx('Aktivni danes', 'Active today'), value: stats.activeToday || 0, hint: tx('uporabniki danes', 'users today'), color: 'text-[#4ade80]' },
     { label: tx('Aktivni 7 dni', 'Active 7 days'), value: stats.active7 || 0, hint: tx('zadnji teden', 'last week'), color: 'text-[#3ecfcf]' },
@@ -962,6 +1040,159 @@ export default function AdminPage() {
           </>
         )}
       </div>
+
+      {activeAdminTab === 'users' && (
+        <div className="mb-5 grid gap-4 xl:grid-cols-[0.9fr_1.4fr]">
+          <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#6c63ff]">{tx('Testerji', 'Testers')}</p>
+            <h2 className="mt-1 text-xl font-black text-white">{tx('Poišči testerja po e-mailu', 'Find tester by email')}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#8a8aa8]">
+              {tx('Za testiranje spremljaj agregate, zadnje akcije in napake. Osebnih slik in dokumentov tukaj ne prikazujemo.', 'For testing, review aggregates, latest actions and errors. Personal photos and documents are not shown here.')}
+            </p>
+            <div className="mt-4 flex gap-2">
+              <input value={testerSearch} onChange={(e) => setTesterSearch(e.target.value)} placeholder={tx('Vpiši vsaj 2 črki e-maila', 'Type at least 2 email letters')}
+                className="min-w-0 flex-1 rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]" />
+              <button onClick={() => loadTesterCandidates(testerSearch)} disabled={testerSearchLoading || testerSearch.trim().length < 2}
+                className="rounded-xl bg-[#3ecfcf] px-4 py-3 text-xs font-black text-[#071112] disabled:opacity-50">
+                {testerSearchLoading ? tx('Iščem...', 'Searching...') : tx('Išči', 'Search')}
+              </button>
+            </div>
+            <div className="mt-3 max-h-72 space-y-2 overflow-auto">
+              {testerCandidates.length === 0 ? (
+                <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#8a8aa8]">
+                  {testerSearch.trim().length < 2
+                    ? tx('Začni tipkati e-mail testerja.', 'Start typing the tester email.')
+                    : tx('Ni najdenih uporabnikov.', 'No users found.')}
+                </p>
+              ) : testerCandidates.map((user) => (
+                <button key={user.id} onClick={() => loadTesterActivity(user)}
+                  className={`w-full rounded-xl border p-3 text-left transition-colors ${selectedTester?.id === user.id ? 'border-[#6c63ff] bg-[#6c63ff22]' : 'border-[#1e1e32] bg-[#13131f] hover:border-[#6c63ff66]'}`}>
+                  <p className="truncate text-sm font-black text-white">{user.email}</p>
+                  <p className="mt-1 text-[11px] text-[#8a8aa8]">
+                    {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : tx('Brez prijave', 'No sign-in')}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+            {!selectedTester ? (
+              <div className="flex min-h-72 items-center justify-center rounded-2xl border border-dashed border-[#2a2a44] bg-[#13131f] p-6 text-center">
+                <div>
+                  <p className="text-lg font-black text-white">{tx('Izberi testerja', 'Select a tester')}</p>
+                  <p className="mt-2 max-w-md text-sm text-[#8a8aa8]">{tx('Ko izbereš uporabnika, vidiš ali je samo odprl aplikacijo ali jo dejansko uporablja.', 'After selecting a user, you can see whether they only opened the app or actually use it.')}</p>
+                </div>
+              </div>
+            ) : testerLoading ? (
+              <div className="flex min-h-72 items-center justify-center text-sm font-bold text-[#8a8aa8]">{tx('Nalaganje aktivnosti...', 'Loading activity...')}</div>
+            ) : testerActivity ? (
+              <div>
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="truncate text-lg font-black text-white">{testerActivity.user.email}</p>
+                    <p className="mt-1 text-xs text-[#8a8aa8]">
+                      {tx('Zadnja prijava', 'Last sign-in')}: {testerActivity.user.last_sign_in_at ? new Date(testerActivity.user.last_sign_in_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-3 py-2 text-xs font-black ${
+                    testerActivity.summary.testerSignal === 'active'
+                      ? 'bg-[#22c55e22] text-[#4ade80]'
+                      : testerActivity.summary.testerSignal === 'opened'
+                        ? 'bg-[#f59e0b22] text-[#fbbf24]'
+                        : 'bg-[#ef444422] text-[#fca5a5]'
+                  }`}>
+                    {testerActivity.summary.testerSignal === 'active'
+                      ? tx('Dejansko testira', 'Actively testing')
+                      : testerActivity.summary.testerSignal === 'opened'
+                        ? tx('Samo odprl/a', 'Only opened')
+                        : tx('Brez signala', 'No signal')}
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { label: tx('Dogodki 30 dni', 'Events 30 days'), value: testerActivity.summary.events30 },
+                    { label: tx('Akcije 30 dni', 'Actions 30 days'), value: testerActivity.summary.meaningfulEvents30 },
+                    { label: tx('Vozila', 'Vehicles'), value: testerActivity.summary.cars },
+                    { label: tx('Vnosi', 'Entries'), value: testerActivity.summary.fuel + testerActivity.summary.services + testerActivity.summary.expenses },
+                    { label: tx('Opomniki', 'Reminders'), value: testerActivity.summary.reminders },
+                    { label: tx('Push naprave', 'Push devices'), value: testerActivity.summary.pushDevices },
+                    { label: tx('Napake', 'Errors'), value: testerActivity.summary.errors },
+                    { label: tx('Zadnjih 24h', 'Last 24h'), value: testerActivity.summary.events24 },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#8a8aa8]">{item.label}</p>
+                      <p className="mt-1 text-2xl font-black text-[#3ecfcf]">{item.value || 0}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                    <h3 className="text-sm font-black text-white">{tx('Najpogostejše akcije', 'Most common actions')}</h3>
+                    <div className="mt-3 space-y-2">
+                      {testerActivity.topEvents.length === 0 ? (
+                        <p className="text-xs text-[#8a8aa8]">{tx('Ni dogodkov.', 'No events.')}</p>
+                      ) : testerActivity.topEvents.slice(0, 6).map((event) => (
+                        <div key={event.name} className="flex items-center justify-between gap-3 rounded-xl bg-[#0f0f1a] p-2">
+                          <span className="text-xs font-bold text-white">{event.label}</span>
+                          <span className="text-xs font-black text-[#a09aff]">{event.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                    <h3 className="text-sm font-black text-white">{tx('Najbolj obiskane strani', 'Most visited pages')}</h3>
+                    <div className="mt-3 space-y-2">
+                      {testerActivity.topPages.length === 0 ? (
+                        <p className="text-xs text-[#8a8aa8]">{tx('Ni ogledov strani.', 'No page views.')}</p>
+                      ) : testerActivity.topPages.slice(0, 6).map((page) => (
+                        <div key={page.page} className="flex items-center justify-between gap-3 rounded-xl bg-[#0f0f1a] p-2">
+                          <span className="text-xs font-bold text-white">{page.page}</span>
+                          <span className="text-xs font-black text-[#a09aff]">{page.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                    <h3 className="text-sm font-black text-white">{tx('Zadnje akcije', 'Latest actions')}</h3>
+                    <div className="mt-3 max-h-72 space-y-2 overflow-auto">
+                      {testerActivity.recentEvents.length === 0 ? (
+                        <p className="text-xs text-[#8a8aa8]">{tx('Ni zadnjih akcij.', 'No recent actions.')}</p>
+                      ) : testerActivity.recentEvents.map((event) => (
+                        <div key={event.id} className="rounded-xl bg-[#0f0f1a] p-2">
+                          <p className="text-xs font-black text-white">{event.label}</p>
+                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{event.page} - {new Date(event.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                    <h3 className="text-sm font-black text-white">{tx('Napake testerja', 'Tester errors')}</h3>
+                    <div className="mt-3 max-h-72 space-y-2 overflow-auto">
+                      {testerActivity.recentErrors.length === 0 ? (
+                        <p className="text-xs text-[#8a8aa8]">{tx('Ni napak za tega uporabnika.', 'No errors for this user.')}</p>
+                      ) : testerActivity.recentErrors.map((error) => (
+                        <div key={error.id} className="rounded-xl border border-[#ef444433] bg-[#ef444411] p-2">
+                          <p className="text-xs font-black text-[#fca5a5]">{error.name}</p>
+                          <p className="mt-1 line-clamp-2 text-[11px] text-[#fca5a5]">{error.message || '-'}</p>
+                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{error.page} - {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="rounded-xl bg-[#13131f] p-4 text-sm text-[#8a8aa8]">{tx('Izberi testerja za pregled.', 'Select a tester to inspect.')}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div id="admin-overview" className="grid scroll-mt-6 grid-cols-2 gap-3 mb-5 lg:grid-cols-4">
         {statCards.map((card) => (
