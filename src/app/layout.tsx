@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppLock } from "@/lib/app-lock";
 import { GlobalTranslator } from "@/lib/i18n";
 import { AppAnalytics } from "@/lib/app-analytics";
+import { UserAdminControlsGate } from "@/lib/user-admin-controls";
 
 export const metadata: Metadata = {
   title: "GarageBase",
@@ -67,6 +68,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <AppAnalytics />
+        <UserAdminControlsGate />
         <AppLock />
         <GlobalTranslator />
         <div id="offline-banner" className="hidden fixed top-0 left-0 right-0 bg-[#ef4444] text-white text-center text-xs py-2 z-[100]">

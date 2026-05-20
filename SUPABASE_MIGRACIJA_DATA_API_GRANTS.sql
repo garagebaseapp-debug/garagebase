@@ -26,6 +26,8 @@ declare
     'user_plans',
     'app_errors',
     'admin_plan_changes',
+    'user_admin_controls',
+    'admin_user_control_changes',
     'api_rate_limits',
     'archived_cars'
   ];

@@ -33,6 +33,15 @@ type TesterActivity = {
   recentErrors: Array<{ id: string; name: string; page: string; message?: string; status?: string; created_at: string }>
 }
 
+type UserControlLimits = {
+  readOnly: boolean
+  blockReports: boolean
+  blockQrTransfer: boolean
+  blockUploads: boolean
+  blockPush: boolean
+  maxCars: number
+}
+
 const statusLabel: Record<string, { sl: string; en: string }> = {
   new: { sl: 'Novo', en: 'New' },
   planned: { sl: 'Planirano', en: 'Planned' },
@@ -268,11 +277,36 @@ export default function AdminPage() {
   const [testerLoading, setTesterLoading] = useState(false)
   const [selectedTester, setSelectedTester] = useState<AdminUser | null>(null)
   const [testerActivity, setTesterActivity] = useState<TesterActivity | null>(null)
+  const [controlStatus, setControlStatus] = useState('normal')
+  const [controlReason, setControlReason] = useState('')
+  const [controlInternalNote, setControlInternalNote] = useState('')
+  const [controlBlockedUntil, setControlBlockedUntil] = useState('')
+  const [controlPlan, setControlPlan] = useState('')
+  const [controlPlanNote, setControlPlanNote] = useState('')
+  const [controlLimits, setControlLimits] = useState<UserControlLimits>({
+    readOnly: false,
+    blockReports: false,
+    blockQrTransfer: false,
+    blockUploads: false,
+    blockPush: false,
+    maxCars: 0,
+  })
+  const [controlSaving, setControlSaving] = useState(false)
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const adminUserById = useMemo(() => new Map(adminUsers.map((user) => [user.id, user])), [adminUsers])
   const userDisplayName = (user: any) => adminUserById.get(user.userId)?.email || `U-${user.label}`
   const minuteText = (value: any) => `${Number(value || 0)} ${tx('min', 'min')}`
+  const toLocalDateInput = (value?: string | null) => {
+    if (!value) return ''
+    const date = new Date(value)
+    if (!Number.isFinite(date.getTime())) return ''
+    const offset = date.getTimezoneOffset() * 60000
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16)
+  }
+  const setLimitValue = (key: keyof UserControlLimits, value: boolean | number) => {
+    setControlLimits((current) => ({ ...current, [key]: value }))
+  }
 
   const openAdminTab = (tab: AdminTab) => {
     setActiveAdminTab(tab)
@@ -714,6 +748,8 @@ export default function AdminPage() {
   const loadTesterActivity = async (user: AdminUser) => {
     setSelectedTester(user)
     setTesterActivity(null)
+    setControlPlan('')
+    setControlPlanNote('')
     setTesterLoading(true)
     try {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -728,10 +764,68 @@ export default function AdminPage() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.details || result.error || 'tester_activity_failed')
       setTesterActivity(result)
+      const controlsResponse = await fetch(`/api/admin/user-controls?${params.toString()}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        cache: 'no-store',
+      })
+      const controlsResult = await controlsResponse.json().catch(() => ({}))
+      if (controlsResponse.ok) {
+        const controls = controlsResult.controls || {}
+        const limits = controls.feature_limits || {}
+        setControlStatus(controls.status || 'normal')
+        setControlReason(controls.reason || '')
+        setControlInternalNote(controls.internal_note || '')
+        setControlBlockedUntil(toLocalDateInput(controls.blocked_until))
+        setControlLimits({
+          readOnly: Boolean(limits.readOnly),
+          blockReports: Boolean(limits.blockReports),
+          blockQrTransfer: Boolean(limits.blockQrTransfer),
+          blockUploads: Boolean(limits.blockUploads),
+          blockPush: Boolean(limits.blockPush),
+          maxCars: Number(limits.maxCars || 0) || 0,
+        })
+      }
     } catch (error: any) {
       setMessage(tx('Aktivnosti testerja ni bilo mogoce naloziti.', 'Could not load tester activity.') + ` ${error.message || ''}`)
     } finally {
       setTesterLoading(false)
+    }
+  }
+
+  const saveTesterControls = async () => {
+    if (!selectedTester) return
+    setControlSaving(true)
+    try {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const token = sessionData.session?.access_token
+      const response = await fetch('/api/admin/user-controls', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          userId: selectedTester.id,
+          email: selectedTester.email,
+          status: controlStatus,
+          reason: controlReason,
+          internalNote: controlInternalNote,
+          blockedUntil: controlBlockedUntil || null,
+          featureLimits: controlLimits,
+          plan: controlPlan || undefined,
+          planNote: controlPlanNote,
+        }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result.details || result.error || 'controls_save_failed')
+      setMessage(tx('Omejitve in paket so shranjeni.', 'Limits and package are saved.'))
+      await loadAdminData()
+    } catch (error: any) {
+      setMessage(tx('Omejitev ni bilo mogoce shraniti.', 'Could not save limits.') + ` ${error.message || ''}`)
+    } finally {
+      setControlSaving(false)
     }
   }
 
@@ -1137,6 +1231,98 @@ export default function AdminPage() {
                 <p className="mt-2 text-[11px] leading-relaxed text-[#8a8aa8]">
                   {tx('Čas je ocena iz zabeleženih akcij. Nova seja se šteje po 30 minutah brez aktivnosti.', 'Time is estimated from tracked actions. A new session starts after 30 minutes without activity.')}
                 </p>
+
+                <div className="mt-4 rounded-2xl border border-[#6c63ff44] bg-[#13131f] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-black text-white">{tx('Ročne omejitve in paket', 'Manual limits and package')}</h3>
+                      <p className="mt-1 text-xs leading-relaxed text-[#8a8aa8]">
+                        {tx('Za testerje lahko hitro nastaviš opazovanje, omejitve ali ročni paket. Spremembe se zapisujejo v admin dnevnik.', 'For testers you can quickly set monitoring, limits or a manual plan. Changes are written to the admin log.')}
+                      </p>
+                    </div>
+                    <button onClick={saveTesterControls} disabled={controlSaving}
+                      className="rounded-xl bg-[#6c63ff] px-4 py-3 text-xs font-black text-white shadow-lg shadow-[#6c63ff33] disabled:opacity-50">
+                      {controlSaving ? tx('Shranjujem...', 'Saving...') : tx('Shrani nadzor', 'Save controls')}
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    <label className="text-xs font-bold text-[#c7c7d8]">
+                      {tx('Status računa', 'Account status')}
+                      <select value={controlStatus} onChange={(e) => setControlStatus(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]">
+                        <option value="normal">{tx('Normalno', 'Normal')}</option>
+                        <option value="tester">{tx('Tester', 'Tester')}</option>
+                        <option value="watch">{tx('Spremljaj', 'Watch')}</option>
+                        <option value="limited">{tx('Omejeno', 'Limited')}</option>
+                        <option value="blocked">{tx('Blokirano', 'Blocked')}</option>
+                      </select>
+                    </label>
+                    <label className="text-xs font-bold text-[#c7c7d8]">
+                      {tx('Blokirano do', 'Blocked until')}
+                      <input type="datetime-local" value={controlBlockedUntil} onChange={(e) => setControlBlockedUntil(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]" />
+                    </label>
+                    <label className="text-xs font-bold text-[#c7c7d8]">
+                      {tx('Ročni paket', 'Manual plan')}
+                      <select value={controlPlan} onChange={(e) => setControlPlan(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]">
+                        <option value="">{tx('Ne spreminjaj paketa', 'Do not change plan')}</option>
+                        <option value="free">Free</option>
+                        <option value="pro">Pro</option>
+                        <option value="max">Max</option>
+                        <option value="business">Business</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    <label className="text-xs font-bold text-[#c7c7d8]">
+                      {tx('Razlog za uporabnika', 'User-facing reason')}
+                      <input value={controlReason} onChange={(e) => setControlReason(e.target.value)}
+                        placeholder={tx('npr. Testni premium dostop do 31. 12. 2026', 'e.g. Test premium access until Dec 31, 2026')}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]" />
+                    </label>
+                    <label className="text-xs font-bold text-[#c7c7d8]">
+                      {tx('Interna opomba', 'Internal note')}
+                      <input value={controlInternalNote} onChange={(e) => setControlInternalNote(e.target.value)}
+                        placeholder={tx('npr. Kolega tester, ročen paket', 'e.g. Friend tester, manual plan')}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]" />
+                    </label>
+                  </div>
+
+                  {controlPlan && (
+                    <label className="mt-3 block text-xs font-bold text-[#c7c7d8]">
+                      {tx('Opomba paketa', 'Plan note')}
+                      <input value={controlPlanNote} onChange={(e) => setControlPlanNote(e.target.value)}
+                        placeholder={tx('npr. Brezplačen tester/promo dostop', 'e.g. Free tester/promo access')}
+                        className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]" />
+                    </label>
+                  )}
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {[
+                      ['readOnly', tx('Samo branje', 'Read only')],
+                      ['blockReports', tx('Blokiraj PDF/report', 'Block PDF/report')],
+                      ['blockQrTransfer', tx('Blokiraj QR/prenos', 'Block QR/transfer')],
+                      ['blockUploads', tx('Pripravi blokado uploadov', 'Prepare upload block')],
+                      ['blockPush', tx('Blokiraj push/opomnike', 'Block push/reminders')],
+                    ].map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 rounded-xl border border-[#2a2a44] bg-[#0f0f1a] p-3 text-xs font-bold text-white">
+                        <input type="checkbox" checked={Boolean(controlLimits[key as keyof UserControlLimits])}
+                          onChange={(e) => setLimitValue(key as keyof UserControlLimits, e.target.checked)}
+                          className="h-4 w-4 accent-[#6c63ff]" />
+                        {label}
+                      </label>
+                    ))}
+                    <label className="rounded-xl border border-[#2a2a44] bg-[#0f0f1a] p-3 text-xs font-bold text-white">
+                      {tx('Limit vozil (0 = brez)', 'Vehicle limit (0 = none)')}
+                      <input type="number" min="0" max="100" value={controlLimits.maxCars}
+                        onChange={(e) => setLimitValue('maxCars', Math.max(0, Math.min(100, Number(e.target.value || 0))))}
+                        className="mt-1 w-full rounded-lg border border-[#2a2a44] bg-[#13131f] px-2 py-1 text-sm text-white outline-none focus:border-[#6c63ff]" />
+                    </label>
+                  </div>
+                </div>
 
                 <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">

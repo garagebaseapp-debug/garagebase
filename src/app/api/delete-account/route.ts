@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
       'app_events',
       'app_errors',
       'user_plans',
+      'user_admin_controls',
       'cars',
     ]
 
