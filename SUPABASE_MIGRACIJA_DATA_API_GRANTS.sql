@@ -28,6 +28,9 @@ declare
     'admin_plan_changes',
     'user_admin_controls',
     'admin_user_control_changes',
+    'vehicle_public_registry',
+    'vehicle_public_registry_events',
+    'vehicle_public_registry_lookups',
     'api_rate_limits',
     'archived_cars'
   ];

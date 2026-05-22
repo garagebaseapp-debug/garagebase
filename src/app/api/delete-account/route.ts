@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       'app_errors',
       'user_plans',
       'user_admin_controls',
+      'vehicle_public_registry',
       'cars',
     ]
 

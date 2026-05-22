@@ -123,6 +123,7 @@ export default function VecPage() {
     { title: tx('Uporaba', 'Usage'), text: tx('Lite/Full način, enote in valuta.', 'Lite/Full mode, units and currency.'), href: '/nastavitve?section=uporaba', icon: 'grid', tone: 'text-[#f97316] bg-[#f9731614]' },
     { title: tx('Pomoč in podpora', 'Help and support'), text: tx('Pomočnik, prijava napake in predlogi.', 'Assistant, bug reports and ideas.'), href: '/nastavitve?section=pomoc', icon: 'help', tone: 'text-[#16a34a] bg-[#16a34a14]' },
     { title: tx('Moja vozila', 'My vehicles'), text: tx('Uredi vozila, arhiv in prikaz kartic.', 'Manage vehicles, archive and cards.'), href: '/garaza?mode=nastavitve', icon: 'garage', tone: 'text-[#6c63ff] bg-[#6c63ff14]' },
+    { title: tx('Preveri vozilo', 'Check vehicle'), text: tx('Preverjanje po VIN/šasiji s privolitvijo lastnika.', 'VIN/chassis lookup with owner consent.'), href: '/preveri-vozilo', icon: 'shield', tone: 'text-[#3ecfcf] bg-[#3ecfcf14]' },
     { title: tx('Uvoz podatkov', 'Data import'), text: tx('CSV, Drivvo in prenos zgodovine.', 'CSV, Drivvo and history transfer.'), href: '/uvoz-podatkov', icon: 'import', tone: 'text-[#0ea5e9] bg-[#0ea5e914]' },
     { title: 'Admin Panel', text: tx('Uporabniki, statistika in napake.', 'Users, statistics and errors.'), href: '/admin', icon: 'admin', tone: 'text-[#ef4444] bg-[#ef444414]', adminOnly: true },
   ]

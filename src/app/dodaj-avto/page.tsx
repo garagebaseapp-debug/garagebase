@@ -16,6 +16,7 @@ export default function DodajAvto() {
   const [rezervarLitri, setRezervarLitri] = useState('')
   const [barva, setBarva] = useState('')
   const [tablica, setTabla] = useState('')
+  const [vin, setVin] = useState('')
   const [km, setKm] = useState('')
   const [kubikaza, setKubikaza] = useState('')
   const [kw, setKw] = useState('')
@@ -25,6 +26,16 @@ export default function DodajAvto() {
   const [message, setMessage] = useState('')
   const [korak, setKorak] = useState(1)
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [registryEnabled, setRegistryEnabled] = useState(false)
+  const [registryUnderstand, setRegistryUnderstand] = useState(false)
+  const [registrySkipConfirmed, setRegistrySkipConfirmed] = useState(false)
+  const [registryVisibility, setRegistryVisibility] = useState({
+    showPlate: false,
+    showMileage: true,
+    showServiceSummary: true,
+    showCostSummary: false,
+    showDocuments: false,
+  })
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
@@ -57,6 +68,11 @@ export default function DodajAvto() {
   const isMissingReservoirColumn = (error: any) => {
     const message = String(error?.message || '')
     return message.includes('rezervar_litri') || message.includes('tank_capacity')
+  }
+  const normalizedVin = () => String(vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const hasLookupVin = () => normalizedVin().length >= 6
+  const setRegistryOption = (key: keyof typeof registryVisibility, value: boolean) => {
+    setRegistryVisibility((current) => ({ ...current, [key]: value }))
   }
 
   const shrani = async () => {
@@ -115,6 +131,7 @@ export default function DodajAvto() {
       rezervar_litri: decimalValue(rezervarLitri),
       barva: barva || null,
       tablica: tablica || null,
+      vin: vin || null,
       km_trenutni: km ? parseInt(km) : null,
       km_ob_vnosu: km ? parseInt(km) : null,
       kubikaza: kubikaza ? parseInt(kubikaza) : null,
@@ -122,16 +139,65 @@ export default function DodajAvto() {
       menjalnik: menjalnik || null,
       pogon: pogon || null,
     }
-    let { error } = await supabase.from('cars').insert(payload)
+    if (registryEnabled && !hasLookupVin()) {
+      setMessage(tx('Za preverjanje vozila najprej vnesi VIN/številko šasije.', 'Enter the VIN/chassis number before enabling vehicle lookup.'))
+      setLoading(false)
+      return
+    }
+    if (registryEnabled && !registryUnderstand) {
+      setMessage(tx('Najprej potrdi, da razumeš, kaj bo vidno pri preverjanju vozila.', 'Confirm that you understand what will be visible in vehicle lookup.'))
+      setLoading(false)
+      return
+    }
+    if (!registryEnabled && hasLookupVin() && !registrySkipConfirmed) {
+      const ok = window.confirm(tx(
+        'Ali ste prepričani, da ne želite deliti preverjanja tega vozila? Brez privolitve drugi lastnik ali kupec vozila ne bo mogel preveriti zgodovine v GarageBase bazi.',
+        'Are you sure you do not want to share lookup for this vehicle? Without consent, another owner or buyer will not be able to verify its GarageBase history.',
+      ))
+      if (!ok) {
+        setRegistryEnabled(true)
+        setLoading(false)
+        return
+      }
+      setRegistrySkipConfirmed(true)
+    }
+    let insertResult = await supabase.from('cars').insert(payload).select('id').single()
+    let error = insertResult.error
     let reservoirFallback = false
     if (error && isMissingReservoirColumn(error)) {
       delete payload.rezervar_litri
-      const retry = await supabase.from('cars').insert(payload)
+      const retry = await supabase.from('cars').insert(payload).select('id').single()
+      insertResult = retry
       error = retry.error
       reservoirFallback = !retry.error
     }
     if (error) setMessage(tx('Napaka: ', 'Error: ') + error.message)
     else {
+      if (registryEnabled && insertResult.data?.id) {
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData.session?.access_token
+        if (token) {
+          const consentResponse = await fetch('/api/vehicle-registry/consent', {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              carId: insertResult.data.id,
+              vin,
+              enabled: true,
+              understood: registryUnderstand,
+              visibility: registryVisibility,
+            }),
+          })
+          if (!consentResponse.ok) {
+            setMessage(tx('Vozilo je shranjeno, preverjanje v bazi pa ni bilo vklopljeno. Odpri nastavitve vozila in poskusi znova.', 'Vehicle is saved, but database lookup was not enabled. Open vehicle settings and try again.'))
+            setLoading(false)
+            return
+          }
+        }
+      }
       setMessage(reservoirFallback
         ? tx('Vozilo shranjeno. Za izračun dosega kasneje zaženi SQL za rezervoar.', 'Vehicle saved. Run the tank-capacity SQL later to enable range calculation.')
         : tx('Vozilo uspesno shranjeno!', 'Vehicle saved successfully!'))
@@ -291,6 +357,67 @@ export default function DodajAvto() {
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Barva</label>
             <input value={barva} onChange={e => setBarva(e.target.value)} placeholder="npr. Siva metalik"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('VIN / številka šasije', 'VIN / chassis number')}</label>
+            <input value={vin} onChange={e => setVin(e.target.value)} placeholder="17-mestna VIN koda" maxLength={32}
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors font-mono tracking-widest" />
+          </div>
+
+          <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-black text-white">{tx('Dovoli preverjanje vozila', 'Allow vehicle lookup')}</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#8a8aa8]">
+                  {tx('Privzeto je izklopljeno. Če vklopiš, lahko druga oseba z VIN/šasijo preveri izbrane podatke o tem vozilu.', 'Off by default. If enabled, another person can use the VIN/chassis number to see selected details about this vehicle.')}
+                </p>
+              </div>
+              <button onClick={() => {
+                  if (registryEnabled) {
+                    const ok = window.confirm(tx(
+                      'Ali ste prepričani, da želite izklopiti preverjanje vozila?',
+                      'Are you sure you want to disable vehicle lookup?',
+                    ))
+                    if (!ok) return
+                    setRegistrySkipConfirmed(true)
+                  }
+                  setRegistryEnabled(!registryEnabled)
+                  if (!registryEnabled) setRegistrySkipConfirmed(false)
+                }} type="button"
+                className={`h-8 w-16 shrink-0 rounded-full transition-all relative ${registryEnabled ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'}`}>
+                <div className={`w-7 h-7 bg-white rounded-full absolute top-0.5 transition-all ${registryEnabled ? 'left-8' : 'left-0.5'}`} />
+              </button>
+            </div>
+
+            {registryEnabled && (
+              <div className="mt-4 rounded-2xl border border-[#6c63ff44] bg-[#6c63ff10] p-4">
+                <p className="text-xs font-bold leading-relaxed text-[#c7c7d8]">
+                  {tx('Ime, e-mail, naslov, zasebne opombe in originalni dokumenti se ne pokažejo. Izberi samo podatke, ki jih želiš deliti.', 'Name, email, address, private notes and original documents are not shown. Select only the data you want to share.')}
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {[
+                    ['showMileage', tx('Zadnji znani kilometri', 'Latest known mileage')],
+                    ['showServiceSummary', tx('Servisni povzetek', 'Service summary')],
+                    ['showCostSummary', tx('Stroškovni povzetek', 'Cost summary')],
+                    ['showPlate', tx('Registrska tablica', 'License plate')],
+                    ['showDocuments', tx('Dokazila na zahtevo', 'Documents on request')],
+                  ].map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 rounded-xl border border-[#2a2a40] bg-[#0f0f1a] p-3 text-xs font-bold text-white">
+                      <input type="checkbox" checked={Boolean(registryVisibility[key as keyof typeof registryVisibility])}
+                        onChange={(e) => setRegistryOption(key as keyof typeof registryVisibility, e.target.checked)}
+                        className="h-4 w-4 accent-[#6c63ff]" />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3 text-xs font-bold leading-relaxed text-[#d8ffff]">
+                  <input type="checkbox" checked={registryUnderstand} onChange={(e) => setRegistryUnderstand(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-[#3ecfcf]" />
+                  <span>{tx('Razumem, da bo vozilo mogoče preveriti po VIN/šasiji in da lahko to kadarkoli izklopim.', 'I understand that this vehicle can be checked by VIN/chassis number and that I can disable this at any time.')}</span>
+                </label>
+              </div>
+            )}
           </div>
         </div>
 

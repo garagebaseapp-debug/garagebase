@@ -37,6 +37,18 @@ export default function NastavitveAvta() {
   const [homologacijaOpis, setHomologacijaOpis] = useState('')
   const [homologacijaUrl, setHomologacijaUrl] = useState('')
   const [uploadingHomologacija, setUploadingHomologacija] = useState(false)
+  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [registryEnabled, setRegistryEnabled] = useState(false)
+  const [registryUnderstand, setRegistryUnderstand] = useState(false)
+  const [registrySkipConfirmed, setRegistrySkipConfirmed] = useState(false)
+  const [registryVisibility, setRegistryVisibility] = useState({
+    showPlate: false,
+    showMileage: true,
+    showServiceSummary: true,
+    showCostSummary: false,
+    showDocuments: false,
+  })
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },
@@ -70,8 +82,62 @@ export default function NastavitveAvta() {
     const message = String(error?.message || '')
     return message.includes('rezervar_litri') || message.includes('tank_capacity')
   }
+  const normalizedVin = () => String(vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+  const hasLookupVin = () => normalizedVin().length >= 6
+  const setRegistryOption = (key: keyof typeof registryVisibility, value: boolean) => {
+    setRegistryVisibility((current) => ({ ...current, [key]: value }))
+  }
+
+  const saveRegistryConsent = async () => {
+    if (!avto?.id) return true
+    if (registryEnabled && !hasLookupVin()) {
+      setMessage(tx('Za preverjanje vozila najprej vnesi VIN/številko šasije.', 'Enter the VIN/chassis number before enabling vehicle lookup.'))
+      return false
+    }
+    if (registryEnabled && !registryUnderstand) {
+      setMessage(tx('Najprej potrdi, da razumeš, kaj bo vidno pri preverjanju vozila.', 'Confirm that you understand what will be visible in vehicle lookup.'))
+      return false
+    }
+    if (!registryEnabled && hasLookupVin() && !registrySkipConfirmed) {
+      const ok = window.confirm(tx(
+        'Ali ste prepričani, da ne želite deliti preverjanja tega vozila? Brez privolitve drugi lastnik ali kupec vozila ne bo mogel preveriti zgodovine v GarageBase bazi.',
+        'Are you sure you do not want to share lookup for this vehicle? Without consent, another owner or buyer will not be able to verify its GarageBase history.',
+      ))
+      if (!ok) {
+        setRegistryEnabled(true)
+        return false
+      }
+      setRegistrySkipConfirmed(true)
+    }
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) return false
+    const response = await fetch('/api/vehicle-registry/consent', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        carId: avto.id,
+        vin,
+        enabled: registryEnabled,
+        understood: registryUnderstand,
+        visibility: registryVisibility,
+      }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(result.error === 'invalid_vin'
+        ? tx('VIN/številka šasije ni dovolj dolga za preverjanje.', 'VIN/chassis number is not long enough for lookup.')
+        : tx('Napaka pri shranjevanju preverjanja vozila: ', 'Vehicle lookup consent save error: ') + (result.details || result.error || ''))
+      return false
+    }
+    return true
+  }
 
   useEffect(() => {
+    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -110,6 +176,28 @@ export default function NastavitveAvta() {
         setHomologacijaStevilka(data.homologacija_stevilka || '')
         setHomologacijaOpis(data.homologacija_opis || '')
         setHomologacijaUrl(data.homologacija_url || '')
+        const { data: sessionData } = await supabase.auth.getSession()
+        const token = sessionData.session?.access_token
+        if (token) {
+          const registryResponse = await fetch(`/api/vehicle-registry/consent?car=${encodeURIComponent(data.id)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+          })
+          const registryResult = await registryResponse.json().catch(() => ({}))
+          if (registryResponse.ok) {
+            const consent = registryResult.consent || {}
+            const visibility = consent.visibility || {}
+            setRegistryEnabled(consent.enabled === true)
+            setRegistryUnderstand(consent.enabled === true)
+            setRegistryVisibility({
+              showPlate: Boolean(visibility.showPlate),
+              showMileage: visibility.showMileage !== false,
+              showServiceSummary: visibility.showServiceSummary !== false,
+              showCostSummary: Boolean(visibility.showCostSummary),
+              showDocuments: Boolean(visibility.showDocuments),
+            })
+          }
+        }
       }
       setLoading(false)
     }
@@ -214,6 +302,11 @@ export default function NastavitveAvta() {
     }
     if (error) setMessage(error.message.includes('homologacija') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql' : error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
     else {
+      const consentSaved = await saveRegistryConsent()
+      if (!consentSaved) {
+        setSaving(false)
+        return
+      }
       clearVehicleDataCaches(avto.id)
       setMessage(reservoirFallback ? '✅ Nastavitve shranjene. Za doseg zaženi SQL za polje rezervoarja.' : '✅ Nastavitve shranjene!')
       setAvto({ ...avto })
@@ -407,6 +500,68 @@ export default function NastavitveAvta() {
           <input value={vin} onChange={e => setVin(e.target.value)} placeholder="17-mestna VIN koda" maxLength={17}
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors font-mono tracking-widest" />
         </div>
+      </div>
+
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-white font-semibold">{tx('Preverjanje vozila v bazi', 'Vehicle lookup in database')}</h2>
+            <p className="text-[#8a8aa8] text-xs mt-1 leading-relaxed">
+              {tx('Privzeto je izklopljeno. Če vklopiš, lahko druga oseba z VIN/šasijo preveri samo podatke, ki jih izbereš spodaj.', 'Off by default. If enabled, another person can use the VIN/chassis number to see only the data you select below.')}
+            </p>
+          </div>
+          <button onClick={() => {
+              if (registryEnabled) {
+                const ok = window.confirm(tx(
+                  'Ali ste prepričani, da želite izklopiti preverjanje vozila? Drugi lastnik ali kupec ga po VIN/šasiji ne bo več mogel preveriti v GarageBase bazi.',
+                  'Are you sure you want to disable vehicle lookup? Another owner or buyer will no longer be able to verify it in the GarageBase database by VIN/chassis number.',
+                ))
+                if (!ok) return
+                setRegistrySkipConfirmed(true)
+              }
+              setRegistryEnabled(!registryEnabled)
+              if (!registryEnabled) setRegistrySkipConfirmed(false)
+            }} type="button"
+            className={`h-8 w-16 shrink-0 rounded-full transition-all relative ${registryEnabled ? 'bg-[#6c63ff]' : 'bg-[#2a2a40]'}`}>
+            <div className={`w-7 h-7 bg-white rounded-full absolute top-0.5 transition-all ${registryEnabled ? 'left-8' : 'left-0.5'}`} />
+          </button>
+        </div>
+
+        {!hasLookupVin() && (
+          <p className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b12] px-3 py-2 text-xs font-bold leading-relaxed text-[#fbbf24]">
+            {tx('Za vklop preverjanja mora biti vpisana VIN/številka šasije.', 'A VIN/chassis number is required before enabling lookup.')}
+          </p>
+        )}
+
+        {registryEnabled && (
+          <div className="rounded-2xl border border-[#6c63ff44] bg-[#6c63ff10] p-4">
+            <p className="text-sm font-black text-white">{tx('Kaj dovoljuješ za prikaz?', 'What do you allow to be shown?')}</p>
+            <p className="mt-2 text-xs leading-relaxed text-[#c7c7d8]">
+              {tx('Ime, e-mail, naslov, zasebne opombe in originalni dokumenti se ne pokažejo. Dokumenti se pokažejo samo, če to posebej dovoliš.', 'Name, email, address, private notes and original documents are not shown. Documents are shown only if you explicitly allow it.')}
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {[
+                ['showMileage', tx('Zadnji znani kilometri', 'Latest known mileage')],
+                ['showServiceSummary', tx('Servisni povzetek', 'Service summary')],
+                ['showCostSummary', tx('Stroškovni povzetek', 'Cost summary')],
+                ['showPlate', tx('Registrska tablica', 'License plate')],
+                ['showDocuments', tx('Dokazila na zahtevo', 'Documents on request')],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 rounded-xl border border-[#2a2a40] bg-[#13131f] p-3 text-xs font-bold text-white">
+                  <input type="checkbox" checked={Boolean(registryVisibility[key as keyof typeof registryVisibility])}
+                    onChange={(e) => setRegistryOption(key as keyof typeof registryVisibility, e.target.checked)}
+                    className="h-4 w-4 accent-[#6c63ff]" />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <label className="mt-4 flex items-start gap-3 rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3 text-xs font-bold leading-relaxed text-[#d8ffff]">
+              <input type="checkbox" checked={registryUnderstand} onChange={(e) => setRegistryUnderstand(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-[#3ecfcf]" />
+              <span>{tx('Razumem, da bo vozilo mogoče preveriti po VIN/šasiji in da lahko to kadarkoli izklopim.', 'I understand that this vehicle can be checked by VIN/chassis number and that I can disable this at any time.')}</span>
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Napredne nastavitve */}
