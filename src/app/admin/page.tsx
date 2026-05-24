@@ -21,7 +21,7 @@ type AdminUser = {
   plan?: any
 }
 
-type AdminTab = 'overview' | 'analytics' | 'users' | 'errors' | 'plans' | 'settings'
+type AdminTab = 'overview' | 'analytics' | 'users' | 'inbox' | 'errors' | 'plans' | 'settings'
 
 type TesterActivity = {
   user: AdminUser
@@ -292,6 +292,7 @@ export default function AdminPage() {
     maxCars: 0,
   })
   const [controlSaving, setControlSaving] = useState(false)
+  const [adminInboxNotice, setAdminInboxNotice] = useState('')
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const adminUserById = useMemo(() => new Map(adminUsers.map((user) => [user.id, user])), [adminUsers])
@@ -310,6 +311,12 @@ export default function AdminPage() {
 
   const openAdminTab = (tab: AdminTab) => {
     setActiveAdminTab(tab)
+    if (tab === 'inbox') {
+      try {
+        localStorage.setItem('garagebase_admin_inbox_seen_at', String(Date.now()))
+        setAdminInboxNotice('')
+      } catch {}
+    }
     try { window.scrollTo({ top: 0, behavior: 'smooth' }) } catch {}
   }
 
@@ -440,7 +447,8 @@ export default function AdminPage() {
       const activeToday = new Set(events.filter((event: any) => new Date(event.created_at) >= todayStart).map((event: any) => event.user_id).filter(Boolean)).size
       const active7 = new Set(events.filter((event: any) => event.created_at >= since7).map((event: any) => event.user_id).filter(Boolean)).size
       const active30 = new Set(events.map((event: any) => event.user_id).filter(Boolean)).size
-      const newFeedback = feedbackItems.filter((item: any) => item.status === 'new').length
+      const newFeedbackItems = feedbackItems.filter((item: any) => item.status === 'new')
+      const newFeedback = newFeedbackItems.length
       const totalRevenue =
         fuelMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0) +
         serviceMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0) +
@@ -532,7 +540,28 @@ export default function AdminPage() {
         else planBuckets[3].count += 1
       }
       const maxPlanCount = Math.max(1, ...planBuckets.map((item) => item.count))
-      const newErrorsCount = errorsData.error ? 0 : (errorsData.data || []).filter((error: any) => error.status === 'new').length
+      const newErrorItems = errorsData.error ? [] : (errorsData.data || []).filter((error: any) => error.status === 'new')
+      const newErrorsCount = newErrorItems.length
+      const latestInboxTime = Math.max(
+        0,
+        ...newFeedbackItems.map((item: any) => new Date(item.created_at).getTime()).filter(Number.isFinite),
+        ...newErrorItems.map((item: any) => new Date(item.created_at).getTime()).filter(Number.isFinite)
+      )
+      try {
+        const seenAt = Number(localStorage.getItem('garagebase_admin_inbox_seen_at') || 0)
+        const remindedAt = Number(localStorage.getItem('garagebase_admin_inbox_reminded_at') || 0)
+        const twelveHours = 12 * 60 * 60 * 1000
+        if (latestInboxTime > seenAt && latestInboxTime > 0 && Date.now() - remindedAt > twelveHours) {
+          const totalInbox = newFeedback + newErrorsCount
+          setAdminInboxNotice(tx(
+            `Imaš ${totalInbox} novih predlogov ali napak. Odpri zavihek Predlogi / napake.`,
+            `You have ${totalInbox} new suggestions or errors. Open the Suggestions / errors tab.`
+          ))
+          localStorage.setItem('garagebase_admin_inbox_reminded_at', String(Date.now()))
+        } else {
+          setAdminInboxNotice('')
+        }
+      } catch {}
       const recordTotal = Math.max(1, fuelMoney.length + serviceMoney.length + expenseMoney.length)
       const recordItems = [
         { label: tx('Gorivo', 'Fuel'), value: fuelMoney.length, color: 'bg-[#6c63ff]' },
@@ -572,6 +601,7 @@ export default function AdminPage() {
         .map(([label, count]) => ({ label, count, percent: Math.round((count / errorStatusTotal) * 100) }))
         .sort((a, b) => b.count - a.count)
       const alerts = [
+        ...(newFeedback > 0 ? [{ tone: 'purple', title: tx('Novi predlogi', 'New suggestions'), text: tx(`${newFeedback} novih predlogov čaka pregled.`, `${newFeedback} new suggestions need review.`) }] : []),
         ...(newErrorsCount > 0 ? [{ tone: 'red', title: tx('Nove napake', 'New errors'), text: tx(`${newErrorsCount} novih napak čaka pregled.`, `${newErrorsCount} new errors need review.`) }] : []),
         ...(receiptRows / totalManualRows < 0.25 ? [{ tone: 'yellow', title: tx('Malo dokazil', 'Low proof rate'), text: tx('Manj kot 25% vnosov ima priložen račun.', 'Less than 25% of entries have attached receipts.') }] : []),
         ...(Array.from(userCarCounts.values()).some((count) => count >= 10) ? [{ tone: 'purple', title: tx('Limit vozil', 'Vehicle limit'), text: tx('Nekateri uporabniki so blizu limita 10 vozil.', 'Some users are close to the 10 vehicle limit.') }] : []),
@@ -908,6 +938,20 @@ export default function AdminPage() {
     setStats((prev: any) => ({ ...prev, errors: Math.max(0, (prev.errors || 0) - 1) }))
   }
 
+  const updateFeedbackStatus = async (id: string, status: string) => {
+    const previous = recentFeedback
+    setRecentFeedback((prev) => prev.map((item) => item.id === id ? { ...item, status } : item))
+    const { error } = await supabase.from('feedback').update({ status }).eq('id', id)
+    if (error) {
+      setRecentFeedback(previous)
+      setMessage(tx('Statusa predloga ni bilo mogoče shraniti.', 'Could not save the suggestion status.') + ` ${error.message}`)
+      return
+    }
+    if (status !== 'new') {
+      setStats((prev: any) => ({ ...prev, newFeedback: Math.max(0, (prev.newFeedback || 0) - 1) }))
+    }
+  }
+
   const clearAnalyticsHistory = async (range: '24h' | '7d' | '30d' | 'all') => {
     const confirmedRange = window.confirm(range === 'all'
       ? tx(
@@ -996,11 +1040,12 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-6">
+      <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-7">
         {[
           { label: tx('Pregled', 'Overview'), tab: 'overview' as AdminTab },
           { label: tx('Analitika', 'Analytics'), tab: 'analytics' as AdminTab },
           { label: tx('Uporabniki', 'Users'), tab: 'users' as AdminTab },
+          { label: tx('Predlogi / napake', 'Suggestions / errors'), tab: 'inbox' as AdminTab, badge: (stats.newFeedback || 0) + (stats.errors || 0) },
           { label: tx('Napake', 'Errors'), tab: 'errors' as AdminTab },
           { label: tx('Monetizacija', 'Monetization'), tab: 'plans' as AdminTab },
           { label: tx('Nastavitve', 'Settings'), tab: 'settings' as AdminTab },
@@ -1014,7 +1059,12 @@ export default function AdminPage() {
                 : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8] hover:border-[#6c63ff66] hover:text-white'
             }`}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {Boolean((item as any).badge) && (
+              <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#ef4444] px-2 py-0.5 text-[11px] font-black text-white">
+                {(item as any).badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1024,6 +1074,15 @@ export default function AdminPage() {
         <div className="mb-4 rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] p-4 text-sm text-[#f59e0b]">
           {message}
         </div>
+      )}
+
+      {adminInboxNotice && (
+        <button
+          onClick={() => openAdminTab('inbox')}
+          className="mb-4 w-full rounded-2xl border-2 border-[#6c63ff] bg-[#6c63ff22] p-4 text-left text-sm font-black text-[#ded9ff] shadow-lg shadow-[#6c63ff22]"
+        >
+          {adminInboxNotice}
+        </button>
       )}
 
       {stats.errors > 0 && (
@@ -1082,6 +1141,85 @@ export default function AdminPage() {
                 </div>
               ))}
               {userActivity.length === 0 && <p className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-sm text-[#8a8aa8]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>}
+            </div>
+          </>
+        )}
+        {activeAdminTab === 'inbox' && (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-[#3ecfcf]">{tx('Predlogi / napake', 'Suggestions / errors')}</p>
+                <h2 className="mt-1 text-2xl font-black text-white">{tx('Novo, kar čaka pregled', 'New items waiting for review')}</h2>
+                <p className="mt-2 text-sm font-semibold text-[#a9a9c4]">
+                  {tx('Ta zavihek jasno loči predloge uporabnikov in tehnične napake.', 'This tab clearly separates user suggestions and technical errors.')}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => window.location.href = '/admin-feedback'} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-xs font-black text-white">
+                  {tx('Odpri predloge', 'Open suggestions')}
+                </button>
+                <button onClick={() => window.location.href = '/admin-napake'} className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-xs font-black text-[#fca5a5]">
+                  {tx('Odpri napake', 'Open errors')}
+                </button>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf10] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-white">{tx('Predlogi', 'Suggestions')}</h3>
+                  <span className="rounded-full bg-[#3ecfcf22] px-3 py-1 text-xs font-black text-[#8ff5f5]">{stats.newFeedback || 0}</span>
+                </div>
+                <div className="space-y-3">
+                  {recentFeedback.filter((item) => item.status === 'new').length === 0 ? (
+                    <p className="rounded-xl bg-[#101020] p-4 text-sm font-semibold text-[#a9a9c4]">{tx('Ni novih predlogov.', 'No new suggestions.')}</p>
+                  ) : recentFeedback.filter((item) => item.status === 'new').map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-[#2a2a44] bg-[#101020] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-black text-white">{item.feature_description}</p>
+                          <p className="mt-1 text-[11px] font-semibold text-[#b8b8d0]">
+                            {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
+                          </p>
+                        </div>
+                        <span className="rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#8ff5f5]">{tx('Novo', 'New')}</span>
+                      </div>
+                      <p className="mt-3 line-clamp-3 rounded-xl bg-[#151528] p-3 text-xs font-semibold leading-relaxed text-[#f1f5f9]">{item.usefulness_reason}</p>
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <button onClick={() => updateFeedbackStatus(item.id, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#c9c3ff]">{tx('Planirano', 'Planned')}</button>
+                        <button onClick={() => updateFeedbackStatus(item.id, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#86efac]">{tx('Rešeno', 'Done')}</button>
+                        <button onClick={() => updateFeedbackStatus(item.id, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#fca5a5]">{tx('Zavrnjeno', 'Rejected')}</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-[#ef444455] bg-[#ef444410] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-lg font-black text-white">{tx('Napake', 'Errors')}</h3>
+                  <span className="rounded-full bg-[#ef444422] px-3 py-1 text-xs font-black text-[#fca5a5]">{stats.errors || 0}</span>
+                </div>
+                <div className="space-y-3">
+                  {recentErrors.filter((item) => (item.status || 'new') === 'new').length === 0 ? (
+                    <p className="rounded-xl bg-[#101020] p-4 text-sm font-semibold text-[#a9a9c4]">{tx('Ni novih napak.', 'No new errors.')}</p>
+                  ) : recentErrors.filter((item) => (item.status || 'new') === 'new').map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-[#2a2a44] bg-[#101020] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-black text-white">{item.name || item.message || 'Error'}</p>
+                          <p className="mt-1 text-[11px] font-semibold text-[#b8b8d0]">
+                            {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
+                          </p>
+                        </div>
+                        <button onClick={() => resolveError(item.id)} className="rounded-xl bg-[#22c55e] px-3 py-2 text-[11px] font-black text-[#071112]">
+                          {tx('Rešeno', 'Resolved')}
+                        </button>
+                      </div>
+                      <p className="mt-3 break-words rounded-xl bg-[#151528] p-3 text-xs font-semibold leading-relaxed text-[#f1f5f9]">{item.page_path || item.page || '-'}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </>
         )}
