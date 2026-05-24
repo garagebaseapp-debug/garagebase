@@ -24,6 +24,37 @@ const priorityOptions = [
   { value: 'high', sl: 'Nujno', en: 'Urgent' },
 ]
 
+const statusLabels: Record<string, { sl: string; en: string }> = {
+  new: { sl: 'Prejeto', en: 'Received' },
+  reviewing: { sl: 'V razmisleku', en: 'Under review' },
+  planned: { sl: 'Planirano', en: 'Planned' },
+  done: { sl: 'Urejeno', en: 'Done' },
+  rejected: { sl: 'Trenutno ne gre naprej', en: 'Not moving forward now' },
+}
+
+const statusReply: Record<string, { sl: string; en: string }> = {
+  new: {
+    sl: 'Predlog smo prejeli in caka prvi pregled.',
+    en: 'We received the suggestion and it is waiting for first review.',
+  },
+  reviewing: {
+    sl: 'Predlog smo pogledali in ga imamo v razmisleku. Trenutno preverjamo, ali se ujema z razvojem aplikacije.',
+    en: 'We reviewed the suggestion and are considering it. We are checking whether it fits the app roadmap.',
+  },
+  planned: {
+    sl: 'Predlog je sprejet v nacrt. Uvrstili ga bomo med prihodnje izboljsave, ko pride na vrsto.',
+    en: 'The suggestion is accepted into the plan. We will add it to future improvements when it comes up.',
+  },
+  done: {
+    sl: 'Predlog je obravnavan in resen. Hvala, ker si pomagal izboljsati GarageBase.',
+    en: 'The suggestion has been reviewed and completed. Thank you for helping improve GarageBase.',
+  },
+  rejected: {
+    sl: 'Predlog smo pregledali, vendar ga trenutno ne bomo dodali. Razlog je lahko stabilnost, zasebnost ali fokus aplikacije.',
+    en: 'We reviewed the suggestion, but we will not add it right now. The reason may be stability, privacy or app focus.',
+  },
+}
+
 export default function FeedbackPage() {
   const { language } = useLanguage()
   const [user, setUser] = useState<any>(null)
@@ -35,6 +66,7 @@ export default function FeedbackPage() {
   const [userType, setUserType] = useState('personal')
   const [priority, setPriority] = useState('normal')
   const [message, setMessage] = useState('')
+  const [myFeedback, setMyFeedback] = useState<any[]>([])
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -46,10 +78,21 @@ export default function FeedbackPage() {
         return
       }
       setUser(user)
+      await loadMyFeedback(user.id)
       setLoading(false)
     }
     init()
   }, [])
+
+  const loadMyFeedback = async (userId: string) => {
+    const { data } = await supabase
+      .from('feedback')
+      .select('id, feature_description, status, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(10)
+    setMyFeedback(data || [])
+  }
 
   const submitFeedback = async () => {
     setMessage('')
@@ -87,6 +130,7 @@ export default function FeedbackPage() {
     setUserType('personal')
     setPriority('normal')
     setMessage(tx('Hvala, predlog je shranjen.', 'Thank you, the suggestion has been saved.'))
+    await loadMyFeedback(user.id)
     setSaving(false)
   }
 
@@ -205,6 +249,34 @@ export default function FeedbackPage() {
       >
         {saving ? tx('Posiljam...', 'Sending...') : tx('Poslji predlog', 'Send suggestion')}
       </button>
+
+      <div className="mt-5 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+        <h2 className="text-lg font-bold text-white">{tx('Moji predlogi', 'My suggestions')}</h2>
+        <p className="mt-1 text-sm text-[#5a5a80]">{tx('Tukaj vidiš, kaj se dogaja s predlogi, ki si jih poslal.', 'Here you can see what is happening with the suggestions you sent.')}</p>
+        <div className="mt-4 space-y-3">
+          {myFeedback.length === 0 ? (
+            <p className="rounded-xl bg-[#13131f] p-3 text-sm text-[#5a5a80]">{tx('Nimaš še poslanih predlogov.', 'You have not sent any suggestions yet.')}</p>
+          ) : myFeedback.map((item, index) => {
+            const status = item.status || 'new'
+            return (
+              <div key={item.id} className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#6c63ff]">{tx(`Predlog ${index + 1}`, `Suggestion ${index + 1}`)}</p>
+                    <p className="mt-1 text-sm font-black text-white">{item.feature_description}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-[#6c63ff22] px-2 py-1 text-[10px] font-black text-[#a09aff]">
+                    {statusLabels[status]?.[language] || status}
+                  </span>
+                </div>
+                <p className="mt-3 rounded-xl bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
+                  {statusReply[status]?.[language] || statusReply.new[language]}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       <BottomNav aktivna="nastavitve" />
     </div>

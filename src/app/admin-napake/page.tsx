@@ -12,12 +12,28 @@ const statuses = [
   { value: 'fixed', sl: 'Popravljeno', en: 'Fixed', color: 'text-[#4ade80]', bg: 'bg-[#16a34a18] border-[#16a34a55]' },
 ]
 
+const statusReply: Record<string, { sl: string; en: string }> = {
+  new: {
+    sl: 'Prijavo napake smo prejeli in caka prvi pregled.',
+    en: 'We received the bug report and it is waiting for first review.',
+  },
+  checking: {
+    sl: 'Napako preverjamo. Najprej poskusamo ponoviti tezavo in oceniti vpliv na stabilnost.',
+    en: 'We are checking the bug. First we try to reproduce it and assess the stability impact.',
+  },
+  fixed: {
+    sl: 'Napaka je oznacena kot popravljena. Popravek bo uporabljen v aplikaciji po naslednji objavi.',
+    en: 'The bug is marked as fixed. The fix will be available in the app after the next release.',
+  },
+}
+
 export default function AdminNapakePage() {
   const { language } = useLanguage()
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [filter, setFilter] = useState('all')
+  const [openId, setOpenId] = useState<string | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   const load = async () => {
@@ -96,19 +112,25 @@ export default function AdminNapakePage() {
           <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-6 text-center text-[#5a5a80]">
             {tx('Ni prijav napak.', 'No bug reports.')}
           </div>
-        ) : filtered.map((item) => {
+        ) : filtered.map((item, index) => {
           const status = statuses.find((s) => s.value === item.status) || statuses[0]
+          const isOpen = openId === item.id
           return (
             <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
               <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-lg font-bold text-white">{item.title}</p>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#ef4444]">{tx(`Napaka ${index + 1}`, `Error ${index + 1}`)}</p>
+                  <button onClick={() => setOpenId(isOpen ? null : item.id)} className="mt-1 text-left text-lg font-bold text-white underline-offset-4 hover:underline">
+                    {item.title}
+                  </button>
                   <p className="mt-1 text-xs text-[#5a5a80]">{item.email || '-'} · {new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-xs font-bold ${status.bg} ${status.color}`}>
                   {language === 'en' ? status.en : status.sl}
                 </span>
               </div>
+              {isOpen && (
+                <>
               <div className="grid gap-3 lg:grid-cols-2">
                 <Info label={tx('Opis', 'Description')} value={item.description} />
                 <Info label={tx('Koraki', 'Steps')} value={item.steps} />
@@ -120,6 +142,11 @@ export default function AdminNapakePage() {
                 <Info label={tx('Zadnji dogodki', 'Recent events')} value={(item.metadata?.recentEvents || []).map((event: any) => `${event.createdAt} ${event.eventName} ${event.pagePath || ''}`).join('\n')} />
               </div>
               {item.page_url && <p className="mt-3 break-all text-xs text-[#5a5a80]">{item.page_url}</p>}
+                </>
+              )}
+              <p className="mt-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
+                {statusReply[item.status]?.[language] || statusReply.new[language]}
+              </p>
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {statuses.map((option) => (
                   <button key={option.value} onClick={() => updateStatus(item.id, option.value)}

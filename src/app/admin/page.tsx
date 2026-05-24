@@ -44,9 +44,44 @@ type UserControlLimits = {
 
 const statusLabel: Record<string, { sl: string; en: string }> = {
   new: { sl: 'Novo', en: 'New' },
+  reviewing: { sl: 'V razmisleku', en: 'Under review' },
   planned: { sl: 'Planirano', en: 'Planned' },
   done: { sl: 'Reseno', en: 'Done' },
   rejected: { sl: 'Zavrnjeno', en: 'Rejected' },
+}
+
+const feedbackStatusReply: Record<string, { sl: string; en: string }> = {
+  new: {
+    sl: 'Predlog smo prejeli in čaka prvi pregled.',
+    en: 'We received the suggestion and it is waiting for first review.',
+  },
+  reviewing: {
+    sl: 'Predlog smo pogledali in ga imamo v razmisleku. Trenutno preverjamo, ali se ujema z razvojem aplikacije.',
+    en: 'We reviewed the suggestion and are considering it. We are checking whether it fits the app roadmap.',
+  },
+  planned: {
+    sl: 'Predlog je sprejet v načrt. Uvrstili ga bomo med prihodnje izboljšave, ko pride na vrsto.',
+    en: 'The suggestion is accepted into the plan. We will add it to future improvements when it comes up.',
+  },
+  done: {
+    sl: 'Predlog je obravnavan in rešen. Hvala, ker si pomagal izboljšati GarageBase.',
+    en: 'The suggestion has been reviewed and completed. Thank you for helping improve GarageBase.',
+  },
+  rejected: {
+    sl: 'Predlog smo pregledali, vendar ga trenutno ne bomo dodali. Razlog je lahko stabilnost, zasebnost ali fokus aplikacije.',
+    en: 'We reviewed the suggestion, but we will not add it right now. The reason may be stability, privacy or app focus.',
+  },
+}
+
+const errorStatusReply: Record<string, { sl: string; en: string }> = {
+  new: {
+    sl: 'Napaka je zabeležena in čaka pregled.',
+    en: 'The error has been recorded and is waiting for review.',
+  },
+  resolved: {
+    sl: 'Napaka je označena kot rešena.',
+    en: 'The error is marked as resolved.',
+  },
 }
 
 const pageName = (path?: string | null) => {
@@ -278,6 +313,9 @@ export default function AdminPage() {
   const [testerLoading, setTesterLoading] = useState(false)
   const [selectedTester, setSelectedTester] = useState<AdminUser | null>(null)
   const [testerActivity, setTesterActivity] = useState<TesterActivity | null>(null)
+  const [expandedFeedbackId, setExpandedFeedbackId] = useState<string | null>(null)
+  const [expandedErrorId, setExpandedErrorId] = useState<string | null>(null)
+  const [refreshingAdmin, setRefreshingAdmin] = useState(false)
   const [controlStatus, setControlStatus] = useState('normal')
   const [controlReason, setControlReason] = useState('')
   const [controlInternalNote, setControlInternalNote] = useState('')
@@ -348,7 +386,7 @@ export default function AdminPage() {
     if (!isAdmin) return
     if (activeAdminTab !== 'users') return
     const query = testerSearch.trim()
-    if (query.length < 2) {
+    if (query.length < 1) {
       setTesterCandidates([])
       return
     }
@@ -358,6 +396,21 @@ export default function AdminPage() {
     }, 300)
     return () => window.clearTimeout(timer)
   }, [testerSearch, isAdmin, activeAdminTab])
+
+  const refreshAdminData = async () => {
+    setRefreshingAdmin(true)
+    await loadAdminData()
+    setRefreshingAdmin(false)
+  }
+
+  const openUserActivity = (user: any) => {
+    const knownUser = adminUserById.get(user.userId)
+    loadTesterActivity(knownUser || {
+      id: user.userId,
+      email: userDisplayName(user),
+    })
+    setActiveAdminTab('users')
+  }
 
   const countTable = async (table: string) => {
     const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true })
@@ -1031,16 +1084,16 @@ export default function AdminPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={loadAdminData}
-            className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-sm font-semibold text-[#a09aff]">
-            {tx('Osveži podatke', 'Refresh data')}
+          <button onClick={refreshAdminData}
+            className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-sm font-semibold text-[#a09aff] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-95">
+            {refreshingAdmin ? tx('Osvežujem...', 'Refreshing...') : tx('Osveži podatke', 'Refresh data')}
           </button>
           <button onClick={() => window.location.href = '/admin-napake'}
-            className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-sm font-semibold text-[#fca5a5]">
+            className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-sm font-semibold text-[#fca5a5] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-95">
             {tx('Napake', 'Errors')}
           </button>
           <button onClick={() => window.location.href = '/admin-feedback'}
-            className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] px-4 py-2 text-sm font-semibold text-[#3ecfcf]">
+            className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf18] px-4 py-2 text-sm font-semibold text-[#3ecfcf] shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:scale-95">
             Feedback
           </button>
         </div>
@@ -1140,10 +1193,15 @@ export default function AdminPage() {
             <h2 className="mt-1 text-2xl font-black text-white">{tx('Najbolj aktivni testerji', 'Most active testers')}</h2>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {userActivity.slice(0, 6).map((user) => (
-                <div key={user.userId} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                <button
+                  key={user.userId}
+                  onClick={() => openUserActivity(user)}
+                  className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[#6c63ff66] hover:shadow-lg hover:shadow-[#6c63ff18] active:translate-y-0 active:scale-[0.99]"
+                >
                   <p className="truncate text-sm font-black text-white">{userDisplayName(user)}</p>
                   <p className="mt-2 text-xs text-[#8a8aa8]">{user.cars} {tx('vozil', 'vehicles')} · {user.entries} {tx('vnosov', 'entries')}</p>
-                </div>
+                  <p className="mt-3 text-[11px] font-black uppercase tracking-[0.14em] text-[#6c63ff]">{tx('Odpri pregled', 'Open review')}</p>
+                </button>
               ))}
               {userActivity.length === 0 && <p className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-sm text-[#8a8aa8]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>}
             </div>
@@ -1177,25 +1235,45 @@ export default function AdminPage() {
                 <div className="space-y-3">
                   {recentFeedback.filter((item) => item.status === 'new').length === 0 ? (
                     <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih predlogov.', 'No new suggestions.')}</p>
-                  ) : recentFeedback.filter((item) => item.status === 'new').map((item) => (
+                  ) : recentFeedback.filter((item) => item.status === 'new').map((item, index) => {
+                    const isOpen = expandedFeedbackId === item.id
+                    return (
                     <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-black text-white">{item.feature_description}</p>
+                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#3ecfcf]">{tx(`Predlog ${index + 1}`, `Suggestion ${index + 1}`)}</p>
+                          <button onClick={() => setExpandedFeedbackId(isOpen ? null : item.id)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
+                            {item.feature_description}
+                          </button>
                           <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
                             {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
                           </p>
                         </div>
                         <span className="rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">{tx('Novo', 'New')}</span>
                       </div>
-                      <p className="mt-3 line-clamp-3 rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.usefulness_reason}</p>
-                      <div className="mt-3 grid grid-cols-3 gap-2">
+                      {isOpen && (
+                        <div className="mt-3 space-y-2">
+                          <p className="rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.usefulness_reason || '-'}</p>
+                          <div className="grid gap-2 text-xs sm:grid-cols-3">
+                            <p className="rounded-xl bg-[#13131f] p-3 text-[#d8d8e8]">{tx('Uporaba', 'Usage')}: <b>{item.usage_frequency || '-'}</b></p>
+                            <p className="rounded-xl bg-[#13131f] p-3 text-[#d8d8e8]">{tx('Tip', 'Type')}: <b>{item.user_type || '-'}</b></p>
+                            <p className="rounded-xl bg-[#13131f] p-3 text-[#d8d8e8]">{tx('Prioriteta', 'Priority')}: <b>{item.priority || '-'}</b></p>
+                          </div>
+                          {item.page_context && <p className="break-all rounded-xl bg-[#13131f] p-3 text-[11px] font-semibold text-[#8a8aa8]">{item.page_context}</p>}
+                        </div>
+                      )}
+                      <p className="mt-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
+                        {feedbackStatusReply[item.status]?.[language] || feedbackStatusReply.new[language]}
+                      </p>
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        <button onClick={() => updateFeedbackStatus(item.id, 'reviewing')} className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] px-2 py-2 text-xs font-black text-[#f59e0b]">{tx('V razmisleku', 'Under review')}</button>
                         <button onClick={() => updateFeedbackStatus(item.id, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#6c63ff]">{tx('Planirano', 'Planned')}</button>
                         <button onClick={() => updateFeedbackStatus(item.id, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#16a34a]">{tx('Rešeno', 'Done')}</button>
                         <button onClick={() => updateFeedbackStatus(item.id, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#ef4444]">{tx('Zavrnjeno', 'Rejected')}</button>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
 
@@ -1207,11 +1285,16 @@ export default function AdminPage() {
                 <div className="space-y-3">
                   {recentErrors.filter((item) => (item.status || 'new') === 'new').length === 0 ? (
                     <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih napak.', 'No new errors.')}</p>
-                  ) : recentErrors.filter((item) => (item.status || 'new') === 'new').map((item) => (
+                  ) : recentErrors.filter((item) => (item.status || 'new') === 'new').map((item, index) => {
+                    const isOpen = expandedErrorId === item.id
+                    return (
                     <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-sm font-black text-white">{item.name || item.message || 'Error'}</p>
+                          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#ef4444]">{tx(`Napaka ${index + 1}`, `Error ${index + 1}`)}</p>
+                          <button onClick={() => setExpandedErrorId(isOpen ? null : item.id)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
+                            {item.name || item.message || 'Error'}
+                          </button>
                           <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
                             {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
                           </p>
@@ -1220,9 +1303,18 @@ export default function AdminPage() {
                           {tx('Rešeno', 'Resolved')}
                         </button>
                       </div>
-                      <p className="mt-3 break-words rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.page_path || item.page || '-'}</p>
+                      {isOpen && (
+                        <div className="mt-3 space-y-2">
+                          <p className="break-words rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.message || item.page_path || item.page || '-'}</p>
+                          <p className="break-all rounded-xl bg-[#13131f] p-3 text-[11px] font-semibold text-[#8a8aa8]">{item.page_path || item.page || '-'}</p>
+                        </div>
+                      )}
+                      <p className="mt-3 rounded-xl border border-[#ef444444] bg-[#ef444414] p-3 text-xs font-semibold leading-relaxed text-[#fca5a5]">
+                        {errorStatusReply[item.status || 'new']?.[language] || errorStatusReply.new[language]}
+                      </p>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -1290,9 +1382,9 @@ export default function AdminPage() {
               {tx('Za testiranje spremljaj agregate, zadnje akcije in napake. Osebnih slik in dokumentov tukaj ne prikazujemo.', 'For testing, review aggregates, latest actions and errors. Personal photos and documents are not shown here.')}
             </p>
             <div className="mt-4 flex gap-2">
-              <input value={testerSearch} onChange={(e) => setTesterSearch(e.target.value)} placeholder={tx('Vpiši vsaj 2 črki e-maila', 'Type at least 2 email letters')}
+              <input value={testerSearch} onChange={(e) => setTesterSearch(e.target.value)} placeholder={tx('Vpiši vsaj 1 črko e-maila', 'Type at least 1 email letter')}
                 className="min-w-0 flex-1 rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#6c63ff]" />
-              <button onClick={() => loadTesterCandidates(testerSearch)} disabled={testerSearchLoading || testerSearch.trim().length < 2}
+              <button onClick={() => loadTesterCandidates(testerSearch)} disabled={testerSearchLoading || testerSearch.trim().length < 1}
                 className="rounded-xl bg-[#3ecfcf] px-4 py-3 text-xs font-black text-[#071112] disabled:opacity-50">
                 {testerSearchLoading ? tx('Iščem...', 'Searching...') : tx('Išči', 'Search')}
               </button>
@@ -1300,7 +1392,7 @@ export default function AdminPage() {
             <div className="mt-3 max-h-72 space-y-2 overflow-auto">
               {testerCandidates.length === 0 ? (
                 <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#8a8aa8]">
-                  {testerSearch.trim().length < 2
+                  {testerSearch.trim().length < 1
                     ? tx('Začni tipkati e-mail testerja.', 'Start typing the tester email.')
                     : tx('Ni najdenih uporabnikov.', 'No users found.')}
                 </p>
@@ -1703,7 +1795,11 @@ export default function AdminPage() {
             {userActivity.length === 0 ? (
               <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#5a5a80]">{tx('Ni uporabniške aktivnosti.', 'No user activity.')}</p>
             ) : userActivity.map((user) => (
-              <div key={user.userId} className="rounded-xl border border-[#1e1e32] bg-[#13131f] p-3">
+              <button
+                key={user.userId}
+                onClick={() => openUserActivity(user)}
+                className="w-full rounded-xl border border-[#1e1e32] bg-[#13131f] p-3 text-left transition-all hover:border-[#6c63ff66] hover:bg-[#6c63ff14] active:scale-[0.99]"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <p className="truncate text-sm font-black text-white">{userDisplayName(user)}</p>
                   <p className="text-xs font-bold text-[#3ecfcf]">{user.events} {tx('dog.', 'events')}</p>
@@ -1711,7 +1807,7 @@ export default function AdminPage() {
                 <p className="mt-2 text-xs text-[#8a8aa8]">
                   {user.cars} {tx('vozil', 'vehicles')} · {user.entries} {tx('vnosov', 'entries')} · {user.errors} {tx('napak', 'errors')}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -1776,7 +1872,7 @@ export default function AdminPage() {
             ))}
           </div>
         </div>
-        <div className="mb-5 rounded-2xl border border-[#ef444433] bg-[#ef444410] p-3">
+        <div className="mb-5 rounded-2xl border-2 border-[#ef4444] bg-[#ef444422] p-3 shadow-lg shadow-[#ef444422]">
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#fca5a5]">
             {tx('Čiščenje zgodovine analitike', 'Clear analytics history')}
           </p>
@@ -1921,7 +2017,7 @@ export default function AdminPage() {
         <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
           <h2 className="text-white font-bold">{tx('Najbolj uporabljene funkcije', 'Most used features')}</h2>
           <p className="mb-4 text-[#5a5a80] text-xs">{tx('Zadnjih 30 dni, za odlocanje o paketih.', 'Last 30 days, useful for package decisions.')}</p>
-          <div className="mb-4 rounded-2xl border border-[#ef444433] bg-[#ef444410] p-3">
+          <div className="mb-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef444422] p-3 shadow-lg shadow-[#ef444422]">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-[#fca5a5]">
               {tx('Počisti zgodovino funkcij', 'Clear feature history')}
             </p>
