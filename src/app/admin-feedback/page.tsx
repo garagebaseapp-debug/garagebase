@@ -99,7 +99,7 @@ export default function AdminFeedbackPage() {
         <BackButton href="/admin" />
         <div>
           <h1 className="text-xl font-bold text-white">Admin feedback</h1>
-          <p className="text-[#b8b8d0] text-sm">{tx('Pregled predlogov uporabnikov.', 'User suggestion inbox.')}</p>
+          <p className="text-[#8a8aa8] text-sm">{tx('Pregled predlogov uporabnikov.', 'User suggestion inbox.')}</p>
         </div>
       </div>
 
@@ -129,42 +129,42 @@ export default function AdminFeedbackPage() {
         ) : filtered.map((item) => {
           const status = statusOptions.find((s) => s.value === item.status) || statusOptions[0]
           return (
-            <div key={item.id} className="rounded-2xl border border-[#2a2a44] bg-[#101020] p-5 shadow-xl shadow-black/20">
+            <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5 shadow-xl shadow-black/20">
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <div>
                   <p className="text-lg font-black text-white">{item.feature_description}</p>
-                  <p className="text-[#b8b8d0] text-xs mt-1">{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                  <p className="text-[#8a8aa8] text-xs mt-1">{new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
                 </div>
                 <span className={`rounded-full border px-3 py-1 text-xs font-bold ${status.bg} ${status.color}`}>
                   {language === 'en' ? status.en : status.sl}
                 </span>
               </div>
 
-              <p className="rounded-2xl border border-[#2a2a44] bg-[#151528] p-4 text-sm font-semibold leading-relaxed text-[#f1f5f9] mb-3">{item.usefulness_reason}</p>
+              <p className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4 text-sm font-semibold leading-relaxed text-white mb-3">{item.usefulness_reason}</p>
 
               <div className="grid grid-cols-3 gap-2 text-xs mb-3">
-                <div className="rounded-xl bg-[#151528] p-3">
-                  <p className="text-[#a9a9c4] uppercase mb-1">{tx('Uporaba', 'Usage')}</p>
+                <div className="rounded-xl bg-[#13131f] p-3">
+                  <p className="text-[#8a8aa8] uppercase mb-1">{tx('Uporaba', 'Usage')}</p>
                   <p className="text-white font-semibold">{pick(item.usage_frequency)}</p>
                 </div>
-                <div className="rounded-xl bg-[#151528] p-3">
-                  <p className="text-[#a9a9c4] uppercase mb-1">{tx('Tip', 'Type')}</p>
+                <div className="rounded-xl bg-[#13131f] p-3">
+                  <p className="text-[#8a8aa8] uppercase mb-1">{tx('Tip', 'Type')}</p>
                   <p className="text-white font-semibold">{pick(item.user_type)}</p>
                 </div>
-                <div className="rounded-xl bg-[#151528] p-3">
-                  <p className="text-[#a9a9c4] uppercase mb-1">{tx('Prioriteta', 'Priority')}</p>
+                <div className="rounded-xl bg-[#13131f] p-3">
+                  <p className="text-[#8a8aa8] uppercase mb-1">{tx('Prioriteta', 'Priority')}</p>
                   <p className="text-white font-semibold">{pick(item.priority)}</p>
                 </div>
               </div>
 
               {item.page_context && (
-                <p className="mb-3 break-all rounded-xl bg-[#151528] p-3 text-[11px] font-semibold text-[#cbd5e1]">{item.page_context}</p>
+                <p className="mb-3 break-all rounded-xl bg-[#13131f] p-3 text-[11px] font-semibold text-[#8a8aa8]">{item.page_context}</p>
               )}
 
               <div className="grid grid-cols-4 gap-2">
                 {statusOptions.map((option) => (
                   <button key={option.value} onClick={() => updateStatus(item.id, option.value)}
-                    className={`rounded-xl border px-2 py-2 text-xs font-semibold ${item.status === option.value ? option.bg + ' ' + option.color : 'border-[#2a2a44] bg-[#151528] text-[#d8d8e8]'}`}>
+                    className={`rounded-xl border px-2 py-2 text-xs font-semibold ${item.status === option.value ? option.bg + ' ' + option.color : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8]'}`}>
                     {language === 'en' ? option.en : option.sl}
                   </button>
                 ))}

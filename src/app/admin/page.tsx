@@ -1055,13 +1055,13 @@ export default function AdminPage() {
             onClick={() => openAdminTab(item.tab)}
             className={`rounded-2xl border px-4 py-3 text-center text-sm font-black transition-all ${
               activeAdminTab === item.tab
-                ? 'border-[#a855f7] bg-[#7c3aed] text-white shadow-lg shadow-[#7c3aed55]'
+                ? 'border-[#a855f7] bg-[#7c3aed] !text-white shadow-lg shadow-[#7c3aed55]'
                 : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8] hover:border-[#6c63ff66] hover:text-white'
             }`}
           >
             <span>{item.label}</span>
             {Boolean((item as any).badge) && (
-              <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#ef4444] px-2 py-0.5 text-[11px] font-black text-white">
+              <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#ef4444] px-2 py-0.5 text-[11px] font-black !text-white">
                 {(item as any).badge}
               </span>
             )}
@@ -1150,15 +1150,15 @@ export default function AdminPage() {
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-[#3ecfcf]">{tx('Predlogi / napake', 'Suggestions / errors')}</p>
                 <h2 className="mt-1 text-2xl font-black text-white">{tx('Novo, kar čaka pregled', 'New items waiting for review')}</h2>
-                <p className="mt-2 text-sm font-semibold text-[#a9a9c4]">
+                <p className="mt-2 text-sm font-semibold text-[#8a8aa8]">
                   {tx('Ta zavihek jasno loči predloge uporabnikov in tehnične napake.', 'This tab clearly separates user suggestions and technical errors.')}
                 </p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => window.location.href = '/admin-feedback'} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-xs font-black text-white">
+                <button onClick={() => window.location.href = '/admin-feedback'} className="rounded-xl bg-[#6c63ff] px-4 py-2 text-xs font-black !text-white">
                   {tx('Odpri predloge', 'Open suggestions')}
                 </button>
-                <button onClick={() => window.location.href = '/admin-napake'} className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-xs font-black text-[#fca5a5]">
+                <button onClick={() => window.location.href = '/admin-napake'} className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-4 py-2 text-xs font-black text-[#ef4444]">
                   {tx('Odpri napake', 'Open errors')}
                 </button>
               </div>
@@ -1167,27 +1167,27 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf10] p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-black text-white">{tx('Predlogi', 'Suggestions')}</h3>
-                  <span className="rounded-full bg-[#3ecfcf22] px-3 py-1 text-xs font-black text-[#8ff5f5]">{stats.newFeedback || 0}</span>
+                  <span className="rounded-full bg-[#3ecfcf22] px-3 py-1 text-xs font-black text-[#3ecfcf]">{stats.newFeedback || 0}</span>
                 </div>
                 <div className="space-y-3">
                   {recentFeedback.filter((item) => item.status === 'new').length === 0 ? (
-                    <p className="rounded-xl bg-[#101020] p-4 text-sm font-semibold text-[#a9a9c4]">{tx('Ni novih predlogov.', 'No new suggestions.')}</p>
+                    <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih predlogov.', 'No new suggestions.')}</p>
                   ) : recentFeedback.filter((item) => item.status === 'new').map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-[#2a2a44] bg-[#101020] p-4">
+                    <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-black text-white">{item.feature_description}</p>
-                          <p className="mt-1 text-[11px] font-semibold text-[#b8b8d0]">
+                          <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
                             {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
                           </p>
                         </div>
-                        <span className="rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#8ff5f5]">{tx('Novo', 'New')}</span>
+                        <span className="rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">{tx('Novo', 'New')}</span>
                       </div>
-                      <p className="mt-3 line-clamp-3 rounded-xl bg-[#151528] p-3 text-xs font-semibold leading-relaxed text-[#f1f5f9]">{item.usefulness_reason}</p>
+                      <p className="mt-3 line-clamp-3 rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.usefulness_reason}</p>
                       <div className="mt-3 grid grid-cols-3 gap-2">
-                        <button onClick={() => updateFeedbackStatus(item.id, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#c9c3ff]">{tx('Planirano', 'Planned')}</button>
-                        <button onClick={() => updateFeedbackStatus(item.id, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#86efac]">{tx('Rešeno', 'Done')}</button>
-                        <button onClick={() => updateFeedbackStatus(item.id, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#fca5a5]">{tx('Zavrnjeno', 'Rejected')}</button>
+                        <button onClick={() => updateFeedbackStatus(item.id, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#6c63ff]">{tx('Planirano', 'Planned')}</button>
+                        <button onClick={() => updateFeedbackStatus(item.id, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#16a34a]">{tx('Rešeno', 'Done')}</button>
+                        <button onClick={() => updateFeedbackStatus(item.id, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#ef4444]">{tx('Zavrnjeno', 'Rejected')}</button>
                       </div>
                     </div>
                   ))}
@@ -1197,25 +1197,25 @@ export default function AdminPage() {
               <div className="rounded-2xl border border-[#ef444455] bg-[#ef444410] p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-lg font-black text-white">{tx('Napake', 'Errors')}</h3>
-                  <span className="rounded-full bg-[#ef444422] px-3 py-1 text-xs font-black text-[#fca5a5]">{stats.errors || 0}</span>
+                  <span className="rounded-full bg-[#ef444422] px-3 py-1 text-xs font-black text-[#ef4444]">{stats.errors || 0}</span>
                 </div>
                 <div className="space-y-3">
                   {recentErrors.filter((item) => (item.status || 'new') === 'new').length === 0 ? (
-                    <p className="rounded-xl bg-[#101020] p-4 text-sm font-semibold text-[#a9a9c4]">{tx('Ni novih napak.', 'No new errors.')}</p>
+                    <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih napak.', 'No new errors.')}</p>
                   ) : recentErrors.filter((item) => (item.status || 'new') === 'new').map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-[#2a2a44] bg-[#101020] p-4">
+                    <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-sm font-black text-white">{item.name || item.message || 'Error'}</p>
-                          <p className="mt-1 text-[11px] font-semibold text-[#b8b8d0]">
+                          <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
                             {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
                           </p>
                         </div>
-                        <button onClick={() => resolveError(item.id)} className="rounded-xl bg-[#22c55e] px-3 py-2 text-[11px] font-black text-[#071112]">
+                        <button onClick={() => resolveError(item.id)} className="rounded-xl bg-[#22c55e] px-3 py-2 text-[11px] font-black !text-[#071112]">
                           {tx('Rešeno', 'Resolved')}
                         </button>
                       </div>
-                      <p className="mt-3 break-words rounded-xl bg-[#151528] p-3 text-xs font-semibold leading-relaxed text-[#f1f5f9]">{item.page_path || item.page || '-'}</p>
+                      <p className="mt-3 break-words rounded-xl bg-[#13131f] p-3 text-xs font-semibold leading-relaxed text-white">{item.page_path || item.page || '-'}</p>
                     </div>
                   ))}
                 </div>
