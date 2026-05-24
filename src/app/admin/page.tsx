@@ -233,6 +233,7 @@ export default function AdminPage() {
     activeToday: 0,
     active7: 0,
     active30: 0,
+    registeredUsers: 0,
     errors: 0,
     totalRevenue: 0,
     avgCarsPerUser: 0,
@@ -736,6 +737,9 @@ export default function AdminPage() {
       if (!response.ok) throw new Error(result.details || result.error || 'users_failed')
       setAdminUsers(result.users || [])
       if (Array.isArray(result.plans)) setPlans(result.plans.slice(0, 8))
+      if (typeof result.totalUsers === 'number') {
+        setStats((prev: any) => ({ ...prev, registeredUsers: result.totalUsers }))
+      }
     } catch (error: any) {
       setMessage(tx('Uporabnikov ni bilo mogoce naloziti.', 'Could not load users.') + ` ${error.message || ''}`)
     } finally {
@@ -863,6 +867,7 @@ export default function AdminPage() {
     { label: tx('Aktivni danes', 'Active today'), value: stats.activeToday || 0, hint: tx('uporabniki danes', 'users today'), color: 'text-[#4ade80]' },
     { label: tx('Aktivni 7 dni', 'Active 7 days'), value: stats.active7 || 0, hint: tx('zadnji teden', 'last week'), color: 'text-[#3ecfcf]' },
     { label: tx('Aktivni 30 dni', 'Active 30 days'), value: stats.active30 || 0, hint: tx('zadnji mesec', 'last month'), color: 'text-[#a09aff]' },
+    { label: tx('Registrirani uporabniki', 'Registered users'), value: stats.registeredUsers || 0, hint: tx('vsi ustvarjeni računi', 'all created accounts'), color: 'text-[#6c63ff]' },
     { label: tx('Evidentirani stroški', 'Recorded costs'), value: moneyText(stats.totalRevenue || 0), hint: tx('gorivo + servisi + stroški', 'fuel + services + expenses'), color: 'text-[#f59e0b]' },
     { label: tx('Vozila', 'Vehicles'), value: stats.cars, hint: tx('vsa vozila v sistemu', 'all vehicles in the system'), color: 'text-[#a09aff]' },
     { label: tx('Znani uporabniki', 'Known users'), value: stats.users, hint: tx('iz zadnjih vozil', 'from recent vehicles'), color: 'text-[#3ecfcf]' },

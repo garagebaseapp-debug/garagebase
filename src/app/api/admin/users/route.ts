@@ -15,6 +15,17 @@ export async function GET(request: NextRequest) {
   const { data: authData, error: authError } = await admin.auth.admin.listUsers({ page: authPage, perPage: authPerPage })
   if (authError) return NextResponse.json({ error: 'auth_users_failed', details: authError.message }, { status: 500 })
 
+  let totalUsers = 0
+  let countPage = 1
+  const countPerPage = 1000
+  while (countPage <= 50) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: countPage, perPage: countPerPage })
+    if (error) return NextResponse.json({ error: 'auth_users_failed', details: error.message }, { status: 500 })
+    totalUsers += data.users.length
+    if (data.users.length < countPerPage) break
+    countPage += 1
+  }
+
   const visibleUsers = authData.users
     .map((user: any) => {
       const email = user.email?.toLowerCase() || ''
@@ -56,6 +67,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     users,
     plans: recentPlans || [],
+    totalUsers,
     page,
     perPage,
     hasMore: !search && authData.users.length === perPage,
