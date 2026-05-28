@@ -141,9 +141,11 @@ export default function Nastavitve() {
 
   const normalizeFontPercent = (value: any, version: any = 1) => {
     const explicitNewScale = Number(version) >= 2
+    const explicitExtraScale = Number(version) >= 3
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value === 100) return explicitNewScale ? 100 : 140
-      if (value === 120 || value === 140 || value === 160 || value === 300 || value === 400) return value
+      if (value === 120 || value === 140 || value === 160 || value === 400) return value
+      if (value === 300) return explicitExtraScale ? 300 : 400
       if (value === 180 || value === 220) return 300
       if (value <= 105) return 140
       if (value < 130) return 120
@@ -211,7 +213,7 @@ export default function Nastavitve() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
   }
 
-  const applyFontSize = (value: any, version: any = 2) => {
+  const applyFontSize = (value: any, version: any = 3) => {
     const next = normalizeFontPercent(value, version)
     const rootPx = fontRootPx(next)
     document.documentElement.style.fontSize = `${rootPx}px`
@@ -220,9 +222,9 @@ export default function Nastavitve() {
   }
 
   const spremeniPisavo = (value: number) => {
-    const next = normalizeFontPercent(value, 2)
+    const next = normalizeFontPercent(value, 3)
     setPisava(next)
-    applyFontSize(next, 2)
+    applyFontSize(next, 3)
   }
 
   const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
@@ -559,10 +561,10 @@ export default function Nastavitve() {
   const shrani = (showMessage = true) => {
     const raw = localStorage.getItem('garagebase_nastavitve')
     const current = raw ? JSON.parse(raw) : {}
-    const nastavitve = { ...current, prikaznoIme: prikaznoIme.trim(), nacin, jezik, pisava, fontPresetVersion: 2, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
+    const nastavitve = { ...current, prikaznoIme: prikaznoIme.trim(), nacin, jezik, pisava, fontPresetVersion: 3, prikazGaraze, desktopStolpci, mobileGridStolpci, garazaPisava, avtocomplete, datumFormat: 'dd.mm.yyyy', enotaRazdalje, valuta, tema, gridNastavitve, listaNastavitve, notificationSettings, onboardingDone: true }
     localStorage.setItem('garagebase_nastavitve', JSON.stringify(nastavitve))
     trackSettingsSnapshot('settings_saved', nastavitve)
-    applyFontSize(pisava, 2)
+    applyFontSize(pisava, 3)
     setSettingsSaveState('saved')
     if (showMessage) {
       setMessage('✅ Nastavitve shranjene!')

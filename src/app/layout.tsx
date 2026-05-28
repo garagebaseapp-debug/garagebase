@@ -93,8 +93,10 @@ export default function RootLayout({
             // Keep the default app size stable, then allow one small and one large text step.
             const normalizeFont = (value, version) => {
               const explicitNewScale = Number(version) >= 2;
+              const explicitExtraScale = Number(version) >= 3;
               if (value === 100) return explicitNewScale ? 100 : 140;
-              if (value === 120 || value === 140 || value === 160 || value === 300 || value === 400) return value;
+              if (value === 120 || value === 140 || value === 160 || value === 400) return value;
+              if (value === 300) return explicitExtraScale ? 300 : 400;
               if (value === 180 || value === 220) return 300;
               if (typeof value === 'number' && value <= 105) return 140;
               if (typeof value === 'number' && value < 130) return 120;
