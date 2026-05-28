@@ -136,7 +136,7 @@ export default function Nastavitve() {
     { value: 140, title: tx('Srednja', 'Medium'), desc: tx('Privzeto', 'Default') },
     { value: 160, title: tx('Velika', 'Large'), desc: tx('Večja pisava', 'Larger text') },
     { value: 300, title: tx('Zelo velika', 'Extra large'), desc: tx('Zelo velika pisava', 'Very large text') },
-    { value: 400, title: tx('Extra velika', 'Extra extra large'), desc: tx('Največja pisava', 'Largest text') },
+    { value: 600, title: tx('Extra velika', 'Extra extra large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
   const normalizeFontPercent = (value: any, version: any = 1) => {
@@ -144,14 +144,15 @@ export default function Nastavitve() {
     const explicitExtraScale = Number(version) >= 3
     if (typeof value === 'number' && Number.isFinite(value)) {
       if (value === 100) return explicitNewScale ? 100 : 140
-      if (value === 120 || value === 140 || value === 160 || value === 400) return value
-      if (value === 300) return explicitExtraScale ? 300 : 400
+      if (value === 120 || value === 140 || value === 160 || value === 600) return value
+      if (value === 300) return explicitExtraScale ? 300 : 600
+      if (value === 400) return 600
       if (value === 180 || value === 220) return 300
       if (value <= 105) return 140
       if (value < 130) return 120
       if (value < 155) return 140
       if (value < 175) return 160
-      if (value >= 360) return 400
+      if (value >= 360) return 600
       if (value >= 260) return 300
       return 300
     }
@@ -162,8 +163,8 @@ export default function Nastavitve() {
       srednja: 140,
       velika: 160,
       'zelo-velika': 300,
-      'extra-velika': 400,
-      najvecja: 400,
+      'extra-velika': 600,
+      najvecja: 600,
     }
     return legacy[value] || 140
   }
@@ -173,7 +174,7 @@ export default function Nastavitve() {
     if (value === 120) return 15.25
     if (value === 160) return 16.75
     if (value === 300) return 22
-    if (value === 400) return 25
+    if (value === 600) return 29
     return 16
   }
 
