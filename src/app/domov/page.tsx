@@ -502,14 +502,14 @@ export default function DomovPage() {
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
   return (
-    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:pl-[280px] xl:pb-12 ${isLightTheme ? 'bg-[#e9e3d7] text-[#101225]' : 'bg-[#111522] text-white'}`}>
+    <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:pl-[280px] xl:pb-12 ${isLightTheme ? 'bg-[#f1f3fb] text-[#101225]' : 'bg-[#111522] text-white'}`}>
       <div className="mx-auto w-full max-w-none">
-        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e8dfd2] shadow-[0_24px_60px_rgba(94,75,54,0.22)]' : 'bg-[#171b2b] shadow-[0_24px_60px_rgba(4,8,22,0.32)]'} xl:mx-0 xl:mb-8 xl:mt-0 xl:h-[390px] xl:min-h-0 xl:rounded-[34px]`}>
+        <section className={`relative mx-4 mb-5 mt-4 min-h-[44svh] overflow-hidden rounded-[30px] shadow-2xl ${isLightTheme ? 'bg-[#e9edf8] shadow-[0_24px_60px_rgba(69,77,115,0.18)]' : 'bg-[#171b2b] shadow-[0_24px_60px_rgba(4,8,22,0.32)]'} xl:mx-0 xl:mb-8 xl:mt-0 xl:h-[390px] xl:min-h-0 xl:rounded-[34px]`}>
           <picture>
             <source media="(min-width: 1280px)" srcSet={heroWebImage} />
             <img src={heroMobileImage} alt={favoriteCarName || 'GarageBase'} className="absolute inset-0 h-full w-full object-cover object-[60%_35%] xl:object-center" loading="eager" decoding="async" />
           </picture>
-          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-r from-[#e9e3d7]/86 via-[#e9e3d7]/18 to-transparent' : 'bg-gradient-to-r from-[#121625]/76 via-[#121625]/18 to-transparent'}`} />
+          <div className={`absolute inset-0 ${isLightTheme ? 'bg-gradient-to-r from-[#f1f3fb]/86 via-[#f1f3fb]/18 to-transparent' : 'bg-gradient-to-r from-[#121625]/76 via-[#121625]/18 to-transparent'}`} />
           <div className="relative z-10 flex min-h-[44svh] flex-col px-5 pb-6 pt-5 xl:h-full xl:min-h-0 xl:px-12 xl:py-10">
             <header className="flex items-center justify-between xl:absolute xl:left-12 xl:right-12 xl:top-10 xl:mb-0">
               <button onClick={() => router.push('/domov')} className={`text-[1.55rem] font-black leading-none tracking-tight xl:hidden ${isLightTheme ? 'text-[#101225]' : 'text-white'}`}>
@@ -564,7 +564,7 @@ export default function DomovPage() {
 
         <section className="mb-5 grid w-full grid-cols-3 gap-3 px-4 xl:hidden">
           {mobileStatCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] border p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'border-[#fff8ed]/90 bg-[#f6efe4]/88 text-[#101225] shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border-[#32384d] bg-[#171b2b]/88 text-white shadow-[0_16px_34px_rgba(4,8,22,0.28)]'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[132px] rounded-[20px] border p-4 text-left shadow-lg transition-transform active:scale-[0.99] xl:min-h-[132px] xl:rounded-[24px] xl:p-6 ${isLightTheme ? 'border-[#ffffff]/90 bg-[#fbfbff]/88 text-[#101225] shadow-[0_16px_36px_rgba(69,77,115,0.14)]' : 'border-[#32384d] bg-[#171b2b]/88 text-white shadow-[0_16px_34px_rgba(4,8,22,0.28)]'}`}>
               <p className={`text-[0.96rem] font-medium leading-tight xl:text-lg ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-1.5 truncate text-[2.05rem] font-black leading-none xl:mt-3 xl:text-4xl">{item.value}</p>
               <p className={`mt-2 text-[0.9rem] font-medium leading-tight xl:text-base ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -573,7 +573,7 @@ export default function DomovPage() {
         </section>
         <section className="mx-auto mb-8 hidden max-w-6xl grid-cols-4 gap-5 xl:grid">
           {statCards.map((item) => (
-            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-[#fff8ed]/90 bg-[#f6efe4]/88 text-[#101225] shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border-[#32384d] bg-[#171b2b]/88 text-white shadow-[0_16px_34px_rgba(4,8,22,0.28)]'}`}>
+            <button key={item.label} onClick={() => router.push(item.href)} className={`min-h-[118px] rounded-[22px] border p-5 text-left shadow-lg transition-transform active:scale-[0.99] ${isLightTheme ? 'border-[#ffffff]/90 bg-[#fbfbff]/88 text-[#101225] shadow-[0_16px_36px_rgba(69,77,115,0.14)]' : 'border-[#32384d] bg-[#171b2b]/88 text-white shadow-[0_16px_34px_rgba(4,8,22,0.28)]'}`}>
               <p className={`text-sm font-medium leading-tight ${isLightTheme ? 'text-[#34384a]' : 'text-[#c9c7d8]'}`}>{item.label}</p>
               <p className="mt-2 truncate text-3xl font-black leading-none">{item.value}</p>
               <p className={`mt-2 text-sm font-medium leading-tight ${isLightTheme ? 'text-[#3f4658]' : 'text-[#c9c7d8]'}`}>{item.sub}</p>
@@ -589,14 +589,14 @@ export default function DomovPage() {
                 {tx('Prikaži vse', 'Show all')} →
               </button>
             </div>
-            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'border border-[#fff8ed]/90 bg-[#f6efe4]/88 shadow-[0_16px_36px_rgba(94,75,54,0.18)]' : 'border border-[#32384d] bg-[#171b2b]/88 shadow-[0_18px_42px_rgba(4,8,22,0.30)]'}`}>
+            <div className={`overflow-hidden rounded-[18px] shadow-[0_8px_22px_rgba(16,18,37,0.06)] xl:rounded-[24px] ${isLightTheme ? 'border border-[#ffffff]/90 bg-[#fbfbff]/88 shadow-[0_16px_36px_rgba(69,77,115,0.14)]' : 'border border-[#32384d] bg-[#171b2b]/88 shadow-[0_18px_42px_rgba(4,8,22,0.30)]'}`}>
               {topReminders.length === 0 ? (
                 <div className={`p-5 text-sm font-semibold xl:p-6 xl:text-base ${isLightTheme ? 'text-[#6b7280]' : 'text-[#c9c7d8]'}`}>{tx('Ni aktivnih opomnikov.', 'No active reminders.')}</div>
               ) : topReminders.map((item, index) => {
                 const tone = cardTone[item.tone]
                 return (
-                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3.5 p-3.5 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#ded2c2]' : 'border-t border-white/10') : ''}`}>
-                    <div className="h-[72px] w-[88px] flex-shrink-0 overflow-hidden rounded-[16px] bg-[#dfd4c4] xl:h-12 xl:w-14 xl:rounded-xl">
+                  <button key={item.id} onClick={() => router.push(`/opomniki?car=${item.carId}`)} className={`flex w-full items-center gap-3.5 p-3.5 text-left xl:gap-4 xl:p-4 ${index > 0 ? (isLightTheme ? 'border-t border-[#d9def0]' : 'border-t border-white/10') : ''}`}>
+                    <div className="h-[72px] w-[88px] flex-shrink-0 overflow-hidden rounded-[16px] bg-[#e3e7f4] xl:h-12 xl:w-14 xl:rounded-xl">
                       {item.image ? <img src={item.image} alt={item.carName} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -614,7 +614,7 @@ export default function DomovPage() {
             <h2 className={`mb-5 text-2xl font-black ${isLightTheme ? 'text-[#080912]' : 'text-white'}`}>{tx('Hitre akcije', 'Quick actions')}</h2>
             <div className="grid grid-cols-2 gap-3">
               {quickActions.map((item) => (
-                <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-[#fff8ed]/80 bg-[#f6efe4]/82 text-[#101225] shadow-xl shadow-[#5e4b36]/12' : 'border-[#2d344a] bg-[#171b2b]/76 text-white shadow-xl shadow-[#040816]/20'}`}>
+                <button key={item.label} onClick={() => router.push(item.href)} className={`flex min-h-[105px] items-center gap-4 rounded-[22px] border p-5 text-left text-lg font-black ${isLightTheme ? 'border-[#ffffff]/80 bg-[#fbfbff]/82 text-[#101225] shadow-xl shadow-[#454d73]/12' : 'border-[#2d344a] bg-[#171b2b]/76 text-white shadow-xl shadow-[#040816]/20'}`}>
                   <Icon type={item.icon} className="h-7 w-7 text-[#8b5cf6]" />
                   {item.label}
                 </button>
