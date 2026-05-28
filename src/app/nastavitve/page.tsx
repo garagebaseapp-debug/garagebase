@@ -289,7 +289,12 @@ export default function Nastavitve() {
         setJezik(n.jezik || 'sl')
         const nextPisava = normalizeFontPercent(n.pisava, n.fontPresetVersion)
         setPisava(nextPisava)
-        applyFontSize(nextPisava, n.fontPresetVersion)
+        applyFontSize(nextPisava, 3)
+        if (n.pisava !== nextPisava || Number(n.fontPresetVersion) < 3) {
+          const migratedSettings = { ...n, pisava: nextPisava, fontPresetVersion: 3 }
+          localStorage.setItem('garagebase_nastavitve', JSON.stringify(migratedSettings))
+          loadedSettings = migratedSettings
+        }
         setPrikazGaraze(n.prikazGaraze === 'premium' ? 'grid' : n.prikazGaraze || 'srednje')
         setDesktopStolpci(n.desktopStolpci || 5)
         setMobileGridStolpci(n.mobileGridStolpci || 3)
