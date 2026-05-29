@@ -36,7 +36,7 @@ body:not(.landing) {
   max-width: none;
   min-height: 100vh;
   margin: 0;
-  background: #080810;
+  background: #151b2d;
 }
 
 @media (min-width: 1280px) {
@@ -195,6 +195,59 @@ body:not(.landing) {
   outline: 3px solid #3ecfcf;
   outline-offset: 2px;
   transform: translateY(-1px);
+}
+
+@media (min-width: 1280px) {
+  html:not(.light-mode) body:not(.landing) {
+    background: #151b2d !important;
+    color: #f8f8ff !important;
+  }
+
+  html:not(.light-mode) body:not(.landing) > div:first-child {
+    background: linear-gradient(135deg, #151b2d 0%, #182033 44%, #121827 100%) !important;
+  }
+
+  html:not(.light-mode) body:not(.landing) .bg-\[\#07070d\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#080810\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#0a0a12\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#0a0a14\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#111522\] {
+    background-color: #151b2d !important;
+  }
+
+  html:not(.light-mode) body:not(.landing) .bg-\[\#0f0f1a\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#11111d\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#13131f\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#151527\],
+  html:not(.light-mode) body:not(.landing) .bg-\[\#171b2b\] {
+    background-color: #1b2236 !important;
+  }
+
+  html:not(.light-mode) body:not(.landing) .border-\[\#252a3d\],
+  html:not(.light-mode) body:not(.landing) .border-\[\#27273a\],
+  html:not(.light-mode) body:not(.landing) .border-\[\#2a3044\],
+  html:not(.light-mode) body:not(.landing) .border-\[\#2d344a\],
+  html:not(.light-mode) body:not(.landing) .border-\[\#32384d\] {
+    border-color: #3b4664 !important;
+  }
+
+  html:not(.light-mode) .gb-desktop-nav {
+    background-color: rgba(20, 26, 43, 0.97) !important;
+    border-color: #34405d !important;
+    box-shadow: 18px 0 46px rgba(6, 10, 24, 0.26) !important;
+  }
+
+  html:not(.light-mode) .gb-desktop-link:not(.gb-desktop-link-active) {
+    background-color: rgba(27, 34, 54, 0.78) !important;
+    border-color: #38435f !important;
+    color: #d7dcee !important;
+    box-shadow: 0 10px 24px rgba(5, 8, 20, 0.18) !important;
+  }
+
+  html:not(.light-mode) .gb-desktop-link:not(.gb-desktop-link-active):hover {
+    background-color: #222b43 !important;
+    border-color: #53617f !important;
+  }
 }
 
 /* Light mode */
