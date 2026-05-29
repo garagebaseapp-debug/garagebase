@@ -228,7 +228,7 @@ body:not(.landing) {
   html:not(.light-mode) body:not(.landing) .border-\[\#2a3044\],
   html:not(.light-mode) body:not(.landing) .border-\[\#2d344a\],
   html:not(.light-mode) body:not(.landing) .border-\[\#32384d\] {
-    border-color: #40365e !important;
+    border-color: #5b4a86 !important;
   }
 
   html:not(.light-mode) .gb-desktop-nav {
@@ -239,9 +239,9 @@ body:not(.landing) {
 
   html:not(.light-mode) .gb-desktop-link:not(.gb-desktop-link-active) {
     background-color: rgba(28, 23, 48, 0.84) !important;
-    border-color: #40365e !important;
+    border-color: #5b4a86 !important;
     color: #eeeafc !important;
-    box-shadow: 0 12px 26px rgba(4, 3, 12, 0.22) !important;
+    box-shadow: inset 0 1px 0 rgba(196, 181, 253, 0.08), 0 12px 26px rgba(4, 3, 12, 0.22) !important;
   }
 
   html:not(.light-mode) .gb-desktop-link:not(.gb-desktop-link-active):hover {
