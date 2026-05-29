@@ -151,7 +151,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         className="gb-sidebar-app-icon group relative mt-6 flex h-64 w-full items-center justify-center overflow-visible border-0 bg-transparent p-0 text-left shadow-none"
         aria-label={language === 'en' ? 'GarageBase home' : 'GarageBase domov'}
       >
-        <img src="/garagebase-app-icon.png" alt="" className="relative h-full w-[210%] max-w-none object-contain object-center drop-shadow-[0_22px_26px_rgba(0,0,0,0.34)] transition-transform duration-300 group-hover:scale-[1.02]" />
+        <img src="/garagebase-app-icon-opt.jpg" alt="" className="relative h-full w-[210%] max-w-none object-contain object-center drop-shadow-[0_22px_26px_rgba(0,0,0,0.34)] transition-transform duration-300 group-hover:scale-[1.02]" />
       </button>
       <button
         type="button"

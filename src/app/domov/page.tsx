@@ -169,8 +169,8 @@ export default function DomovPage() {
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
   }
   const isLightTheme = theme === 'svetla'
-  const heroMobileImage = isLightTheme ? '/home-garage-premium-light.png' : '/home-garage-premium-dark.png'
-  const heroWebImage = isLightTheme ? '/home-garage-web-light.png' : '/home-garage-web-dark.png'
+  const heroMobileImage = isLightTheme ? '/home-garage-premium-light-opt.jpg' : '/home-garage-premium-dark-opt.jpg'
+  const heroWebImage = isLightTheme ? '/home-garage-web-light-opt.jpg' : '/home-garage-web-dark-opt.jpg'
   const doorConfig = isLightTheme
     ? {
       viewBox: '0 0 914 609',

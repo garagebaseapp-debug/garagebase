@@ -920,7 +920,7 @@ export default function Garaza() {
     </div>
   )
 
-  const desktopSidebarImage = tema === 'svetla' ? '/garage-web-light-sidebar.png' : '/landing-hero-dark-garage.png'
+  const desktopSidebarImage = tema === 'svetla' ? '/garage-web-light-sidebar-opt.jpg' : '/landing-hero-dark-garage-opt.jpg'
   const desktopCars = avti
   const desktopListMode = prikaz !== 'grid'
   const desktopLight = tema === 'svetla'

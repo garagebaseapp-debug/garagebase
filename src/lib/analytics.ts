@@ -3,6 +3,20 @@ import { supabase } from '@/lib/supabase'
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0-beta'
 const RELEASE_CHANNEL = process.env.NEXT_PUBLIC_RELEASE_CHANNEL || 'local'
 const RECENT_EVENTS_KEY = 'garagebase_recent_events'
+let cachedAnalyticsUser: { id: string; email: string | null } | null | undefined
+
+async function getAnalyticsUser() {
+  if (cachedAnalyticsUser !== undefined) return cachedAnalyticsUser
+  try {
+    const { data } = await supabase.auth.getSession()
+    const user = data.session?.user
+    cachedAnalyticsUser = user ? { id: user.id, email: user.email?.toLowerCase() || null } : null
+    return cachedAnalyticsUser
+  } catch {
+    cachedAnalyticsUser = null
+    return null
+  }
+}
 
 function getClientContext() {
   if (typeof window === 'undefined') return {}
@@ -69,7 +83,7 @@ function getRecentEvents() {
 export async function trackEvent(eventName: string, metadata: Record<string, any> = {}) {
   try {
     rememberEvent(eventName, metadata)
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAnalyticsUser()
     if (!user) return
     const pagePath = typeof window !== 'undefined'
       ? `${window.location.pathname}${window.location.search}`
@@ -82,7 +96,7 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
       car_id: metadata.carId || metadata.car_id || null,
       metadata: {
         ...metadata,
-        userEmail: user.email?.toLowerCase() || null,
+        userEmail: user.email,
         appVersion: APP_VERSION,
         releaseChannel: RELEASE_CHANNEL,
       },
@@ -94,7 +108,7 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
 
 export async function trackError(errorName: string, metadata: Record<string, any> = {}) {
   try {
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getAnalyticsUser()
     const pagePath = typeof window !== 'undefined'
       ? `${window.location.pathname}${window.location.search}`
       : null

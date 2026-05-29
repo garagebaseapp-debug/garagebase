@@ -175,10 +175,10 @@ const appLabels = {
 const landingFeatureMedia = [
   { src: '/landing-feature-fuel.jpg', position: 'object-center' },
   { src: '/landing-feature-service.jpg', position: 'object-center' },
-  { src: '/landing-feature-reminders.png', position: 'object-center' },
+  { src: '/landing-feature-reminders-opt.jpg', position: 'object-center' },
   { src: '/landing-feature-costs.jpg', position: 'object-center' },
   { src: '/landing-feature-report.png', position: 'object-center' },
-  { src: '/landing-feature-devices.png', position: 'object-center' },
+  { src: '/landing-feature-devices-opt.jpg', position: 'object-center' },
   { src: '/landing-feature-vehicles.png', position: 'object-top' },
 ]
 
@@ -294,7 +294,7 @@ const DeviceShowcase = () => (
 const VehicleTabletShowcase = () => (
   <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-[#cfd7f3] bg-[#eef3ff] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.86)]">
     <img
-      src="/landing-multi-vehicles.png"
+      src="/landing-multi-vehicles-opt.jpg"
       alt=""
       className="h-full w-full rounded-xl object-contain object-top"
     />
@@ -446,7 +446,7 @@ export default function LandingPage() {
 
       <section className="landing-hero relative min-h-[100svh] overflow-hidden bg-[#120f0d] lg:min-h-0">
         <img
-          src="/landing-garage-premium-hero.png"
+          src="/landing-garage-premium-hero-opt.jpg"
           alt={t.alt}
           className="landing-hero-image absolute inset-0 h-full w-full object-cover object-[58%_50%] lg:relative lg:block lg:h-auto lg:w-full lg:object-contain"
         />
