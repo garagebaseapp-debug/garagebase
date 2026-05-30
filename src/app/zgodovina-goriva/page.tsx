@@ -354,7 +354,8 @@ export default function ZgodovinaGoriva() {
   const primarySummary = hasImportedSummary ? summary.garageBase : summary.total
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:pl-[280px] xl:pr-8">
+      <div className="mx-auto w-full max-w-5xl">
       <div className="flex items-center gap-3 mb-6">
         <BackButton />
         <div>
@@ -617,6 +618,7 @@ export default function ZgodovinaGoriva() {
         </div>
       )}
       <HomeButton />
+      </div>
     </div>
   )
 }

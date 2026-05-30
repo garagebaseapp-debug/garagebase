@@ -565,7 +565,7 @@ export default function VnosGoriva() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:pl-[280px] xl:pr-8">
       <div className="w-full xl:mx-auto xl:max-w-5xl">
       <div className="flex items-center gap-3 mb-8">
         <BackButton />

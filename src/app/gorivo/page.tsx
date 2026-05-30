@@ -419,8 +419,8 @@ export default function GorivoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#080810] px-5 py-6 pb-24 text-white">
-        <div className="mx-auto max-w-5xl">
+      <div className="min-h-screen bg-[#080810] px-5 py-6 pb-24 text-white xl:pl-[280px]">
+        <div className="mx-auto w-full max-w-5xl">
           <p className="text-[#8a8aa8]">{tx('Nalaganje...', 'Loading...')}</p>
         </div>
         <BottomNav aktivna="gorivo" />
@@ -429,8 +429,8 @@ export default function GorivoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 pt-5 pb-28 text-white md:px-8">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen bg-[#080810] px-4 pt-5 pb-28 text-white md:px-8 xl:pl-[280px]">
+      <div className="mx-auto w-full max-w-5xl">
         <header className="mb-6 flex items-center justify-between gap-4">
           <div>
             <p className="text-lg font-black text-white">Garage<span className="text-[#6c63ff]">Base</span></p>
