@@ -449,7 +449,8 @@ export default function NastavitveAvta() {
   )
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="gb-settings-page min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-6">
+      <div className="mx-auto w-full max-w-5xl">
       <div className="flex items-center gap-3 mb-6">
         <BackButton href={`/dashboard?car=${avto?.id}`} />
         <div>
@@ -462,7 +463,7 @@ export default function NastavitveAvta() {
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl overflow-hidden mb-4">
         {avto?.slika_url ? (
           <div className="relative">
-            <img src={avto.slika_url} alt="Avto" className="w-full h-44 object-cover" />
+            <img src={avto.slika_url} alt="Avto" className="h-48 w-full bg-[#080810] object-contain object-center sm:h-56 lg:h-64" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <label className="absolute bottom-3 right-3 bg-[#6c63ff] text-white text-xs font-semibold px-3 py-1.5 rounded-xl cursor-pointer hover:bg-[#5a52e0] transition-colors">
               {uploadingSlika ? 'Nalaganje...' : '📷 Zamenjaj'}
@@ -481,7 +482,7 @@ export default function NastavitveAvta() {
       {/* Tip vozila */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 mb-4">
         <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3 block">Tip vozila</label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {tipiVozil.map((tip) => (
             <button key={tip.vrednost} type="button"
               onClick={() => { setTipVozila(tip.vrednost); setOblika(''); setTipVozilaCustom('') }}
@@ -518,7 +519,7 @@ export default function NastavitveAvta() {
           <input value={model} onChange={e => setModel(e.target.value)}
             className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Letnik</label>
             <input value={letnik} onChange={e => setLetnik(e.target.value)} type="number"
@@ -644,7 +645,7 @@ export default function NastavitveAvta() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Kubikаža (ccm)</label>
             <input value={kubikaza} onChange={e => setKubikaza(e.target.value)} placeholder="npr. 1968" type="number"
@@ -659,7 +660,7 @@ export default function NastavitveAvta() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Menjalnik</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {['Ročni', 'Avtomatski', 'Polavtomatski'].map((m) => (
               <button key={m} type="button" onClick={() => setMenjalnik(menjalnik === m ? '' : m)}
                 className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
@@ -675,7 +676,7 @@ export default function NastavitveAvta() {
 
         <div>
           <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Pogon</label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {['Sprednji', 'Zadnji', '4x4'].map((p) => (
               <button key={p} type="button" onClick={() => setPogon(pogon === p ? '' : p)}
                 className={`py-2.5 rounded-xl text-xs font-semibold border transition-all ${
@@ -697,7 +698,7 @@ export default function NastavitveAvta() {
             {tx('Uporabi se za ločen izračun skupnega stroška lastništva. Osnovni stroški na km ostanejo prikazani tudi brez cene vozila.', 'Used for a separate total ownership cost calculation. Running cost per km remains available without vehicle price.')}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Nakupna cena', 'Purchase price')}</label>
             <input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} inputMode="decimal" placeholder="npr. 18500"
@@ -773,7 +774,7 @@ export default function NastavitveAvta() {
       {/* Lastništvo in prenos */}
       <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">
         <h2 className="text-white font-semibold">Lastništvo in prenos</h2>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">Št. lastnikov</label>
             <input value={stLastnikov} onChange={e => setStLastnikov(e.target.value)} type="number" min="0"
@@ -829,6 +830,7 @@ export default function NastavitveAvta() {
       </button>
 
       <HomeButton />
+      </div>
     </div>
   )
 }
