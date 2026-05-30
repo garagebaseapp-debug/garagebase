@@ -9,23 +9,28 @@ export async function GET(request: NextRequest) {
   const search = (request.nextUrl.searchParams.get('search') || '').trim().toLowerCase()
   const page = Math.max(1, Number(request.nextUrl.searchParams.get('page') || 1) || 1)
   const perPage = Math.min(100, Math.max(20, Number(request.nextUrl.searchParams.get('perPage') || 100) || 100))
+  const includeTotal = request.nextUrl.searchParams.get('includeTotal') === '1'
   const authPage = search ? 1 : page
   const authPerPage = search ? 1000 : perPage
 
   const { data: authData, error: authError } = await admin.auth.admin.listUsers({ page: authPage, perPage: authPerPage })
   if (authError) return NextResponse.json({ error: 'auth_users_failed', details: authError.message }, { status: 500 })
 
-  let totalUsers = 0
+  let totalUsers: number | null = null
   let countPage = 1
   const countPerPage = 1000
   const searchUsers: any[] = []
-  while (countPage <= 50) {
-    const { data, error } = await admin.auth.admin.listUsers({ page: countPage, perPage: countPerPage })
-    if (error) return NextResponse.json({ error: 'auth_users_failed', details: error.message }, { status: 500 })
-    totalUsers += data.users.length
-    if (search) searchUsers.push(...data.users)
-    if (data.users.length < countPerPage) break
-    countPage += 1
+  if (search || includeTotal) {
+    totalUsers = 0
+    const maxPages = search ? 5 : 10
+    while (countPage <= maxPages) {
+      const { data, error } = await admin.auth.admin.listUsers({ page: countPage, perPage: countPerPage })
+      if (error) return NextResponse.json({ error: 'auth_users_failed', details: error.message }, { status: 500 })
+      totalUsers += data.users.length
+      if (search) searchUsers.push(...data.users)
+      if (data.users.length < countPerPage) break
+      countPage += 1
+    }
   }
 
   const visibleUsers = (search ? searchUsers : authData.users)
@@ -69,7 +74,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     users,
     plans: recentPlans || [],
-    totalUsers,
+    totalUsers: totalUsers ?? undefined,
+    totalUsersCapped: Boolean(totalUsers !== null && countPage > (search ? 5 : 10)),
     page,
     perPage,
     hasMore: !search && authData.users.length === perPage,

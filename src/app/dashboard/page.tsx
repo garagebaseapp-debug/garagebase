@@ -47,33 +47,6 @@ const fuelCostValue = (row: any) => {
   return sharedFuelCostValue(row)
 }
 
-const statsHasRealValues = (stats: any) => {
-  if (!stats) return false
-  const costTotal =
-    numberValue(stats.costs?.fuel) +
-    numberValue(stats.costs?.service) +
-    numberValue(stats.costs?.expense) +
-    numberValue(stats.costs?.total)
-  return costTotal > 0 ||
-    numberValue(stats.consumption?.garageBase) > 0 ||
-    numberValue(stats.consumption?.imported) > 0 ||
-    numberValue(stats.consumption?.total) > 0
-}
-
-const statsHasData = (stats: any) => {
-  if (!stats) return false
-  const rowCount =
-    numberValue(stats.rows?.fuel) +
-    numberValue(stats.rows?.service) +
-    numberValue(stats.rows?.expense)
-  const costTotal =
-    numberValue(stats.costs?.fuel) +
-    numberValue(stats.costs?.service) +
-    numberValue(stats.costs?.expense) +
-    numberValue(stats.costs?.total)
-  return rowCount > 0 || costTotal > 0 || numberValue(stats.liters) > 0
-}
-
 const isImportedDashboardRow = (row: any) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
   return Boolean(
@@ -396,7 +369,7 @@ export default function Dashboard() {
           cache: 'no-store',
         })
         const payload = await response.json()
-        if (response.ok && payload?.ok && payload?.stats && statsHasRealValues(payload.stats)) {
+        if (response.ok && payload?.ok && payload?.stats) {
           if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
           const stats = payload.stats
           const nextPoraba = {
@@ -404,7 +377,6 @@ export default function Dashboard() {
             imported: stats.consumption?.imported ?? null,
             total: stats.consumption?.total ?? null,
           }
-          const hasApiConsumption = nextPoraba.total !== null || nextPoraba.garageBase !== null || nextPoraba.imported !== null
           const nextStroski = {
             garageBase: numberValue(stats.costs?.garageBase),
             imported: numberValue(stats.costs?.imported),
@@ -429,12 +401,8 @@ export default function Dashboard() {
             savedAt: Date.now(),
           }))
           setStroski(nextStroski)
-          if (hasApiConsumption) {
-            setPoraba(nextPoraba)
-            return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
-          }
-        } else if (response.ok && payload?.ok && payload?.stats && statsHasData(payload.stats)) {
-          if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
+          setPoraba(nextPoraba)
+          return { poraba: nextPoraba, stroski: nextStroski, fuelRows: [] }
         } else {
           console.warn('[GarageBase dashboard] server statistics failed', payload?.error)
         }
@@ -1027,9 +995,10 @@ export default function Dashboard() {
                     </button>
                   </div>
                   <ServisStatusCard />
-                  <div className="grid grid-cols-3 gap-3 mt-auto">
+                  <div className="grid grid-cols-4 gap-3 mt-auto">
                     <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>{tx('Gorivo', 'Fuel')}</button>
                     <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>{tx('Servis', 'Service')}</button>
+                    <button onClick={() => router.push('/gume?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#a09aff] hover:text-[#a09aff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-current text-[10px] font-black">T</span>{tx('Gume', 'Tires')}</button>
                     <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>{tx('Opomniki', 'Reminders')}</button>
                     <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>{tx('Stroski', 'Costs')}</button>
                     <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>{tx('Nastavitve', 'Settings')}</button>
@@ -1074,7 +1043,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="px-5 pb-4 grid grid-cols-3 gap-2.5">
+                <div className="px-5 pb-4 grid grid-cols-4 gap-2.5">
                   <button onClick={() => router.push(`/gorivo?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#3ecfcf] py-3.5 rounded-2xl hover:border-[#3ecfcf] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">⛽</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Gorivo', 'Fuel')}</span>
@@ -1082,6 +1051,10 @@ export default function Dashboard() {
                   <button onClick={() => router.push(`/servis?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#f59e0b] py-3.5 rounded-2xl hover:border-[#f59e0b] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">🔧</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Servis', 'Service')}</span>
+                  </button>
+                  <button onClick={() => router.push(`/gume?car=${aktivniAvto.id}`)}
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#a09aff] py-3.5 rounded-2xl hover:border-[#a09aff] transition-all flex flex-col items-center gap-1.5">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-current text-[11px] font-black leading-none">T</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Gume', 'Tires')}</span>
                   </button>
                   <button onClick={() => router.push(`/opomniki?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] transition-all flex flex-col items-center gap-1.5">

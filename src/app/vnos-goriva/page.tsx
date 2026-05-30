@@ -523,7 +523,38 @@ export default function VnosGoriva() {
       return
     }
 
-    await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId).eq('user_id', user.id)
+    const { data: confirmedFuel, error: confirmError } = await supabase
+      .from('fuel_logs')
+      .select('id,car_id,km,datum')
+      .eq('id', insertResult.data.id)
+      .eq('car_id', carId)
+      .maybeSingle()
+
+    if (confirmError || !confirmedFuel?.id) {
+      setMessage(tx(
+        'Tankanje je bilo poslano, vendar ga aplikacija ni mogla potrditi. Preveri zgodovino goriva pred ponovnim vnosom.',
+        'The fill-up was sent, but the app could not confirm it. Check fuel history before entering it again.'
+      ))
+      setLoading(false)
+      return
+    }
+
+    const { error: carUpdateError } = await supabase
+      .from('cars')
+      .update({ km_trenutni: Math.max(sveziKm, vneseniKm) })
+      .eq('id', carId)
+      .eq('user_id', user.id)
+
+    if (carUpdateError) {
+      setMessage(tx(
+        'Tankanje je shranjeno, kilometrov vozila pa ni bilo mogoče posodobiti. Preveri vozilo v garaži.',
+        'The fill-up was saved, but vehicle mileage could not be updated. Check the vehicle in the garage.'
+      ))
+      clearVehicleDataCaches(carId)
+      setLoading(false)
+      return
+    }
+
     clearVehicleDataCaches(carId)
     trackEvent('fuel_saved', { carId, hasReceipt: !!receiptUrl, verificationLevel: 'basic' })
     setMessage(tx('Tankanje uspesno shranjeno!', 'Fill-up saved successfully!'))

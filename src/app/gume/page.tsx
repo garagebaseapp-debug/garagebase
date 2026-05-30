@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
+import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
 type TireSet = {
   id: string
@@ -190,13 +191,23 @@ export default function GumePage() {
       return
     }
     if (form.nextChangeDate) {
-      await supabase.from('reminders').insert({
-        car_id: car.id,
-        tip: 'gume',
-        datum: form.nextChangeDate,
-        km_opomnik: null,
-        opozorilo_dni_prej: numberOrNull(form.remindDaysBefore) || 7,
-      })
+      const { data: existingReminder } = await supabase
+        .from('reminders')
+        .select('id')
+        .eq('car_id', car.id)
+        .eq('tip', 'gume')
+        .eq('datum', form.nextChangeDate)
+        .limit(1)
+
+      if (!existingReminder?.length) {
+        await supabase.from('reminders').insert({
+          car_id: car.id,
+          tip: 'gume',
+          datum: form.nextChangeDate,
+          km_opomnik: null,
+          opozorilo_dni_prej: numberOrNull(form.remindDaysBefore) || 7,
+        })
+      }
     }
     setShowForm(false)
     setForm({
@@ -213,6 +224,7 @@ export default function GumePage() {
       remindDaysBefore: '7',
       notes: '',
     })
+    clearVehicleDataCaches(car.id)
     setMessage(inserted?.id ? tx('Gume so shranjene.', 'Tires saved.') : '')
     await loadData(car.id)
     setSaving(false)
@@ -231,6 +243,7 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
+    clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
 

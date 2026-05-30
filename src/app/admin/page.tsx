@@ -432,7 +432,7 @@ export default function AdminPage() {
         .select('id,event_name,created_at,user_id,metadata')
         .in('event_name', ['settings_saved', 'settings_snapshot', 'assistant_page_open'])
         .order('created_at', { ascending: false })
-        .limit(5000)
+        .limit(2000)
       const filteredSettingsQuery = settingsSince ? settingsQuery.gte('created_at', settingsSince) : settingsQuery
 
       const [
@@ -462,15 +462,15 @@ export default function AdminPage() {
         countTable('vehicle_transfers'),
         countTable('feedback'),
         countTable('app_events'),
-        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,arhivirano,created_at').order('created_at', { ascending: false }).limit(5000),
+        supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,arhivirano,created_at').order('created_at', { ascending: false }).limit(2000),
         supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200),
-        supabase.from('app_events').select('event_name,created_at,user_id,page_path,metadata').gte('created_at', since30).order('created_at', { ascending: false }).limit(5000),
+        supabase.from('app_events').select('event_name,created_at,user_id,page_path,metadata').gte('created_at', since30).order('created_at', { ascending: false }).limit(2000),
         supabase.from('app_errors').select('*').order('created_at', { ascending: false }).limit(30),
         filteredSettingsQuery,
         supabase.from('user_plans').select('*').order('updated_at', { ascending: false }).limit(8),
-        supabase.from('fuel_logs').select('car_id,cena_skupaj,receipt_url,created_at').limit(5000),
-        supabase.from('service_logs').select('car_id,cena,foto_url,created_at').limit(5000),
-        supabase.from('expenses').select('car_id,znesek,receipt_url,kategorija,created_at').neq('kategorija', 'km_sprememba').limit(5000),
+        supabase.from('fuel_logs').select('car_id,cena_skupaj,receipt_url,created_at').limit(2000),
+        supabase.from('service_logs').select('car_id,cena,foto_url,created_at').limit(2000),
+        supabase.from('expenses').select('car_id,znesek,receipt_url,kategorija,created_at').neq('kategorija', 'km_sprememba').limit(2000),
       ])
 
       if (carsData.error) throw carsData.error
@@ -780,7 +780,11 @@ export default function AdminPage() {
     try {
       const { data: sessionData } = await supabase.auth.getSession()
       const token = sessionData.session?.access_token
-      const response = await fetch(`/api/admin/users?search=${encodeURIComponent(search.trim())}`, {
+      const params = new URLSearchParams({
+        search: search.trim(),
+        includeTotal: search.trim() ? '0' : '1',
+      })
+      const response = await fetch(`/api/admin/users?${params.toString()}`, {
         headers: {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
