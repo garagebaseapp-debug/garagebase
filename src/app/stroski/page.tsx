@@ -817,6 +817,12 @@ export default function Stroski() {
   const skupajGarageBase = renderSummary.garageBase || Math.max(0, skupajVse - skupajUvoz)
   const ownershipCost = vehicleOwnershipCostValue(avto)
   const skupajZLastnistvom = skupajVse + ownershipCost
+  const purchasePrice = numericValue(avto?.purchase_price)
+  const downPayment = numericValue(avto?.down_payment)
+  const financeTotalPaid = numericValue(avto?.finance_total_paid)
+  const financeOverpayment = numericValue(avto?.finance_overpayment)
+  const resaleValue = numericValue(avto?.resale_value)
+  const ownershipBase = financeTotalPaid > 0 ? financeTotalPaid : purchasePrice + downPayment + financeOverpayment
   const stGorivo = renderSummary.rows.fuel
   const stServis = renderSummary.rows.service
   const stOstalo = renderSummary.rows.expense
@@ -868,6 +874,10 @@ export default function Stroski() {
   const prikazStServis = stServis
   const prikazStOstalo = stOstalo
   const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
+  const operatingPerKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
+  const garageBasePerKm = kmPrevozeni > 0 && skupajGarageBase > 0 ? (skupajGarageBase / kmPrevozeni).toFixed(3) : null
+  const ownershipOnlyPerKm = kmPrevozeni > 0 && ownershipCost > 0 ? (ownershipCost / kmPrevozeni).toFixed(3) : null
+  const totalOwnershipPerKm = kmPrevozeni > 0 && skupajZLastnistvom > 0 ? (skupajZLastnistvom / kmPrevozeni).toFixed(3) : null
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {
@@ -1214,6 +1224,84 @@ export default function Stroski() {
         )}
       </div>
 
+      <div className="mb-4 overflow-hidden rounded-3xl border border-[#2a2a40] bg-[#0f0f1a] p-4 shadow-2xl shadow-black/10 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-[#a09aff]">{tx('Pregled izračuna', 'Calculation overview')}</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{tx('Obratovanje ali celotno lastništvo', 'Running costs or total ownership')}</h2>
+            <p className="mt-1 text-sm font-semibold text-[#8a8aa8]">
+              {tx('Primerjaj stroške brez cene avta in z nakupom, lizingom ali prodajno vrednostjo.', 'Compare costs without vehicle price and with purchase, finance or resale value.')}
+            </p>
+          </div>
+          <div className="flex rounded-2xl border border-[#2a2a40] bg-[#13131f] p-1">
+            <button type="button" onClick={() => setIncludeVehiclePrice(false)}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition-all ${!includeVehiclePrice ? 'bg-[#3ecfcf] text-[#051114]' : 'text-[#8a8aa8] hover:text-white'}`}>
+              {tx('Brez cene avta', 'Without car price')}
+            </button>
+            <button type="button" onClick={() => setIncludeVehiclePrice(true)}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition-all ${includeVehiclePrice ? 'bg-[#6c63ff] text-white' : 'text-[#8a8aa8] hover:text-white'}`}>
+              {tx('Z lastništvom', 'With ownership')}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          <button type="button" onClick={() => setIncludeVehiclePrice(false)}
+            className={`min-w-0 rounded-2xl border p-4 text-left transition-all ${!includeVehiclePrice ? 'border-[#3ecfcf] bg-[#3ecfcf14] shadow-[inset_0_0_0_1px_rgba(62,207,207,0.24)]' : 'border-[#2a2a40] bg-[#13131f]'}`}>
+            <p className="text-xs font-black uppercase tracking-wide text-[#3ecfcf]">{tx('Obratovalni stroški', 'Running costs')}</p>
+            <p className="mt-2 break-words text-3xl font-black text-white">{formatMoney(skupajVse, valuta)}</p>
+            <p className="mt-1 text-sm font-bold text-[#a8b0c0]">
+              {operatingPerKm ? `${operatingPerKm} ${znakValute}/${enotaRazdalje}` : '-'}
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2 text-xs font-bold">
+              <div className="rounded-xl bg-[#0b1020] p-2"><p className="text-[#8a8aa8]">{tx('Gorivo', 'Fuel')}</p><p className="mt-1 text-white">{formatMoney(prikazGorivo, valuta)}</p></div>
+              <div className="rounded-xl bg-[#0b1020] p-2"><p className="text-[#8a8aa8]">{tx('Servis', 'Service')}</p><p className="mt-1 text-white">{formatMoney(prikazServis, valuta)}</p></div>
+              <div className="rounded-xl bg-[#0b1020] p-2"><p className="text-[#8a8aa8]">{tx('Ostalo', 'Other')}</p><p className="mt-1 text-white">{formatMoney(prikazExpenses, valuta)}</p></div>
+            </div>
+          </button>
+
+          <div className="min-w-0 rounded-2xl border border-[#2a2a40] bg-[#13131f] p-4">
+            <p className="text-xs font-black uppercase tracking-wide text-[#a09aff]">{tx('Vir stroškov', 'Cost source')}</p>
+            <div className="mt-3 space-y-3">
+              <div>
+                <div className="flex items-center justify-between gap-3 text-sm font-bold">
+                  <span className="text-[#c8c4ff]">{tx('GarageBase vnosi', 'GarageBase entries')}</span>
+                  <span className="text-white">{formatMoney(prikazGarageBase, valuta)}</span>
+                </div>
+                <p className="mt-1 text-xs font-bold text-[#8a8aa8]">{garageBasePerKm ? `${garageBasePerKm} ${znakValute}/${enotaRazdalje}` : '-'}</p>
+              </div>
+              <div>
+                <div className="flex items-center justify-between gap-3 text-sm font-bold">
+                  <span className="text-[#86efac]">{tx('Uvožena zgodovina', 'Imported history')}</span>
+                  <span className="text-white">{formatMoney(prikazUvoz, valuta)}</span>
+                </div>
+                <p className="mt-1 text-xs font-bold text-[#8a8aa8]">{tx('Ločeno od tvojih GarageBase vnosov.', 'Separate from your GarageBase entries.')}</p>
+              </div>
+              <div className="rounded-xl border border-[#6c63ff44] bg-[#6c63ff10] p-3">
+                <p className="text-xs font-black uppercase tracking-wide text-[#a09aff]">{tx('Prevoženo v izračunu', 'Distance in calculation')}</p>
+                <p className="mt-1 text-lg font-black text-white">{formatDistance(kmPrevozeni, enotaRazdalje)}</p>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" onClick={() => setIncludeVehiclePrice(true)}
+            className={`min-w-0 rounded-2xl border p-4 text-left transition-all ${includeVehiclePrice ? 'border-[#6c63ff] bg-[#6c63ff18] shadow-[inset_0_0_0_1px_rgba(108,99,255,0.26)]' : 'border-[#2a2a40] bg-[#13131f]'}`}>
+            <p className="text-xs font-black uppercase tracking-wide text-[#a09aff]">{tx('Skupni strošek lastništva', 'Total ownership cost')}</p>
+            <p className="mt-2 break-words text-3xl font-black text-white">{formatMoney(skupajZLastnistvom, valuta)}</p>
+            <p className="mt-1 text-sm font-bold text-[#c8c4ff]">
+              {totalOwnershipPerKm ? `${totalOwnershipPerKm} ${znakValute}/${enotaRazdalje}` : '-'}
+            </p>
+            <div className="mt-4 space-y-2 text-xs font-bold">
+              <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Obratovanje', 'Running')}</span><span className="text-white">{formatMoney(skupajVse, valuta)}</span></div>
+              <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Cena/lizing', 'Price/finance')}</span><span className="text-white">{formatMoney(ownershipBase, valuta)}</span></div>
+              <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Prodajna vrednost', 'Resale value')}</span><span className="text-[#86efac]">- {formatMoney(resaleValue, valuta)}</span></div>
+              <div className="flex justify-between gap-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff10] p-2"><span className="text-[#c8c4ff]">{tx('Neto vozilo', 'Net vehicle')}</span><span className="text-white">{formatMoney(ownershipCost, valuta)}</span></div>
+            </div>
+            {ownershipOnlyPerKm && <p className="mt-3 text-xs font-bold text-[#8a8aa8]">{tx('Samo vozilo', 'Vehicle only')}: {ownershipOnlyPerKm} {znakValute}/{enotaRazdalje}</p>}
+          </button>
+        </div>
+      </div>
+
       <div className="mb-4 max-w-full overflow-hidden rounded-3xl border border-[#6c63ff33] bg-[#0f0f1a] p-4 shadow-2xl shadow-black/10 sm:p-6">
         <div className="mb-5 flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -1252,23 +1340,6 @@ export default function Stroski() {
         )}
         {prikazStrosekNaKm && <p className="mt-4 text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
-
-      {ownershipCost > 0 && (
-        <div className="mb-4 rounded-2xl border border-[#6c63ff44] bg-[#6c63ff10] p-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-[#a09aff]">{tx('Cena vozila', 'Vehicle price')}</p>
-              <p className="mt-1 text-sm font-bold text-white">
-                {formatMoney(ownershipCost, valuta)} · {includeVehiclePrice ? tx('všteto v prikaz', 'included in view') : tx('ločeno od obratovalnih stroškov', 'separate from running costs')}
-              </p>
-            </div>
-            <button type="button" onClick={() => setIncludeVehiclePrice((value) => !value)}
-              className={`rounded-xl px-4 py-2 text-xs font-black ${includeVehiclePrice ? 'bg-[#6c63ff] text-white' : 'border border-[#6c63ff55] text-[#a09aff]'}`}>
-              {includeVehiclePrice ? tx('Prikaži brez cene avta', 'Show without car price') : tx('Prištej ceno avta', 'Add car price')}
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="hidden">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
