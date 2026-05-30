@@ -168,8 +168,8 @@ export default function GumePage() {
     return list[0] || null
   }, [tires, currentKm])
   const calculatedReminderDate = useMemo(
-    () => nextSeasonReminderDate(form.season, seasonSettings),
-    [form.season, seasonSettings]
+    () => nextSeasonReminderDate(form.season, { ...seasonSettings, warnDaysBefore: form.remindDaysBefore }),
+    [form.season, form.remindDaysBefore, seasonSettings]
   )
   const seasonReminderText = (season: string) => {
     if (season === 'winter') return tx('opomnik pred koncem zimske sezone', 'reminder before winter season ends')
