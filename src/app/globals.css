@@ -280,6 +280,7 @@ body:not(.landing) {
 .light-mode .bg-\[\#080810\],
 .light-mode .bg-\[\#0a0a14\],
 .light-mode .bg-\[\#0a0a12\],
+.light-mode .bg-\[\#0d1020\],
 .light-mode .bg-\[\#f4f6ff\],
 .light-mode .bg-\[\#f6f7fb\],
 .light-mode .bg-\[\#eef2ff\] {
@@ -287,7 +288,10 @@ body:not(.landing) {
 }
 
 .light-mode .bg-\[\#0f0f1a\],
+.light-mode .bg-\[\#0b1020\],
 .light-mode .bg-\[\#11111d\],
+.light-mode .bg-\[\#101524\],
+.light-mode .bg-\[\#11182a\],
 .light-mode .bg-\[\#1a1630\],
 .light-mode .bg-\[\#1a1a2e\],
 .light-mode .bg-\[\#ffffff\] {
@@ -317,7 +321,9 @@ body:not(.landing) {
 
 .light-mode .border-\[\#1e1e32\],
 .light-mode .border-\[\#1a1a28\],
-.light-mode .border-\[\#2a2a40\] {
+.light-mode .border-\[\#2a2a40\],
+.light-mode .border-\[\#2e344a\],
+.light-mode .border-\[\#30364c\] {
   border-color: var(--gb-border) !important;
 }
 
@@ -342,6 +348,8 @@ body:not(.landing) {
 .light-mode .text-\[\#8080a0\],
 .light-mode .text-\[\#8a8aa8\],
 .light-mode .text-\[\#8e8ac0\],
+.light-mode .text-\[\#a8b0c0\],
+.light-mode .text-\[\#d8def0\],
 .light-mode .text-\[\#d8d8e8\],
 .light-mode .text-\[\#d8d4ff\],
 .light-mode .text-\[\#ddd8ff\],
