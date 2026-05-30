@@ -620,8 +620,9 @@ export default function Dashboard() {
   }
 
   const kmDo = (kmOpomnik: number) => {
-    if (!aktivniAvto?.km_trenutni) return null
-    return kmOpomnik - aktivniAvto.km_trenutni
+    const trenutniKm = Number(aktivniAvto?.km_trenutni)
+    if (!Number.isFinite(trenutniKm)) return null
+    return kmOpomnik - trenutniKm
   }
 
   // Barva glede na dni
@@ -710,6 +711,76 @@ export default function Dashboard() {
     .sort((a, b) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())[0]
   const vinjetaDatum = vinjetaOpomnik?.datum ? new Date(vinjetaOpomnik.datum).toLocaleDateString(datumLocale) : ''
   const vinjetaLabel = vinjetaDatum ? `${tx('Vinjeta do', 'Vignette until')} ${vinjetaDatum}` : ''
+  const servisOpomniki = opomniki
+    .filter((op) => String(op.tip || '').toLowerCase().includes('servis') || String(op.tip || '').toLowerCase().includes('service'))
+    .map((op) => {
+      const dni = dniDo(op.datum)
+      const km = op.km_opomnik ? kmDo(op.km_opomnik) : null
+      return {
+        ...op,
+        dni,
+        km,
+        sortValue: Math.min(
+          dni ?? 99999,
+          km !== null ? Math.ceil(km / 50) : 99999,
+        ),
+      }
+    })
+    .sort((a, b) => a.sortValue - b.sortValue)
+  const naslednjiServis = servisOpomniki[0] || null
+  const servisStatusTone = naslednjiServis
+    ? skupnaBarva(naslednjiServis.dni, naslednjiServis.km)
+    : { text: 'text-[#a09aff]', bg: 'bg-[#6c63ff11]', border: 'border-[#6c63ff44]' }
+  const servisDniText = (dni: number | null) => {
+    if (dni === null) return '-'
+    if (dni < 0) return tx(`+${Math.abs(dni)} dni zamude`, `+${Math.abs(dni)} days overdue`)
+    if (dni === 0) return tx('danes', 'today')
+    return tx(`${dni} dni`, `${dni} days`)
+  }
+  const servisKmText = (km: number | null) => {
+    if (km === null) return '-'
+    if (km < 0) return tx(`+${Math.abs(km).toLocaleString()} km čez`, `+${Math.abs(km).toLocaleString()} km over`)
+    return tx(`${km.toLocaleString()} km še`, `${km.toLocaleString()} km left`)
+  }
+  const ServisStatusCard = ({ compact = false }: { compact?: boolean }) => (
+    <div className={`${servisStatusTone.bg} border ${servisStatusTone.border} rounded-2xl p-4 shadow-[0_14px_32px_rgba(0,0,0,0.18)]`}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[#8a8aa6] text-xs uppercase tracking-wider mb-1">{tx('Naslednji servis', 'Next service')}</p>
+          <h3 className="text-white font-black text-lg">{naslednjiServis ? tx('Servisni opomnik', 'Service reminder') : tx('Servis ni nastavljen', 'Service not set')}</h3>
+          <p className="mt-1 text-sm text-[#c9c7d8]">
+            {naslednjiServis
+              ? tx('Spremlja datum in kilometre, če sta v opomniku nastavljena.', 'Tracks date and mileage when they are set in the reminder.')
+              : tx('Dodaj servisni opomnik z datumom, kilometri ali obojim.', 'Add a service reminder with date, mileage or both.')}
+          </p>
+        </div>
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#f59e0b55] bg-[#f59e0b18] text-2xl">🔧</div>
+      </div>
+
+      {naslednjiServis ? (
+        <div className={`mt-4 grid gap-3 ${compact ? 'grid-cols-1' : 'grid-cols-2'}`}>
+          <div className="rounded-xl border border-white/10 bg-black/16 p-3">
+            <p className="text-[#8a8aa6] text-xs uppercase tracking-wider">{tx('Čas do servisa', 'Time to service')}</p>
+            <p className={`mt-1 text-2xl font-black ${barvaZaDni(naslednjiServis.dni).text}`}>{servisDniText(naslednjiServis.dni)}</p>
+            {naslednjiServis.datum && <p className="mt-1 text-xs text-[#8a8aa6]">{new Date(naslednjiServis.datum).toLocaleDateString(datumLocale)}</p>}
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/16 p-3">
+            <p className="text-[#8a8aa6] text-xs uppercase tracking-wider">{tx('Kilometri do servisa', 'Mileage to service')}</p>
+            <p className={`mt-1 text-2xl font-black ${barvaZaKm(naslednjiServis.km).text}`}>{servisKmText(naslednjiServis.km)}</p>
+            {naslednjiServis.km_opomnik && <p className="mt-1 text-xs text-[#8a8aa6]">{tx('pri', 'at')} {Number(naslednjiServis.km_opomnik).toLocaleString()} km</p>}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => router.push(`/opomniki?car=${aktivniAvto?.id || ''}`)}
+          className="mt-4 w-full rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-3 text-sm font-black text-[#c8c4ff] transition-all hover:border-[#8b5cf6] hover:bg-[#6c63ff33]"
+        >
+          + {tx('Dodaj servisni opomnik', 'Add service reminder')}
+        </button>
+      )}
+    </div>
+  )
 
   if (nacin === 'lite' && aktivniAvto) {
     const aktivniStatus = statusZaAvto(aktivniAvto)
@@ -758,6 +829,10 @@ export default function Dashboard() {
             <h2 className="text-2xl font-black text-white">{aktivnoIme}</h2>
             <p className="mt-1 text-sm text-[#a0a0b8]">{[aktivniAvto.letnik, aktivniAvto.gorivo].filter(Boolean).join(' - ')}</p>
           </div>
+        </div>
+
+        <div className="mb-4">
+          <ServisStatusCard compact />
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
@@ -951,6 +1026,7 @@ export default function Dashboard() {
                       </div>
                     </button>
                   </div>
+                  <ServisStatusCard />
                   <div className="grid grid-cols-3 gap-3 mt-auto">
                     <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>{tx('Gorivo', 'Fuel')}</button>
                     <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>{tx('Servis', 'Service')}</button>
@@ -1043,6 +1119,10 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
+                <div className="mx-5 mb-4">
+                  <ServisStatusCard compact />
+                </div>
 
                 {hasConsumptionBreakdown && (
                   <button

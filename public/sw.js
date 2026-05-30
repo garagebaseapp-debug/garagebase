@@ -1,6 +1,6 @@
 // GarageBase service worker for push notifications and basic offline support.
 
-const STATIC_CACHE = 'garagebase-static-v10'
+const STATIC_CACHE = 'garagebase-static-v11'
 const OFFLINE_FALLBACK_URL = '/domov'
 const STATIC_ASSETS = [
   '/',
