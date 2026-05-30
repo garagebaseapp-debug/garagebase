@@ -822,7 +822,7 @@ export default function Stroski() {
   const financeTotalPaid = numericValue(avto?.finance_total_paid)
   const financeOverpayment = numericValue(avto?.finance_overpayment)
   const resaleValue = numericValue(avto?.resale_value)
-  const ownershipBase = financeTotalPaid > 0 ? financeTotalPaid : purchasePrice + downPayment + financeOverpayment
+  const ownershipBase = financeTotalPaid > 0 ? downPayment + financeTotalPaid : purchasePrice + financeOverpayment
   const stGorivo = renderSummary.rows.fuel
   const stServis = renderSummary.rows.service
   const stOstalo = renderSummary.rows.expense

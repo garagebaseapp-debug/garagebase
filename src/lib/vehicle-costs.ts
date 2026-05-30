@@ -294,7 +294,9 @@ export const vehicleOwnershipCostValue = (car?: any) => {
   const financeTotal = numberValue(car?.finance_total_paid)
   const overpayment = numberValue(car?.finance_overpayment)
   const resale = numberValue(car?.resale_value)
-  const base = financeTotal > 0 ? financeTotal : purchase + overpayment + downPayment
+  const base = financeTotal > 0
+    ? downPayment + financeTotal
+    : purchase + overpayment
   return Math.max(0, base - resale)
 }
 
