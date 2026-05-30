@@ -41,7 +41,7 @@ function activeKeyFromPath(path: string) {
   if (path.includes('admin')) return 'admin'
   if (path.includes('gorivo') || path.includes('goriva') || path.includes('vnos-goriva') || path.includes('zgodovina-goriva')) return 'gorivo'
   if (path.includes('opomniki')) return 'opomniki'
-  if (path.includes('servis') || path.includes('report') || path.includes('scan')) return 'servis'
+  if (path.includes('servis') || path.includes('gume') || path.includes('report') || path.includes('scan')) return 'servis'
   if (path.includes('stroski') || path.includes('vnos-stroska')) return 'stroski'
   if (path.includes('vec') || path.includes('nastavitve') || path.includes('feedback') || path.includes('pomocnik') || path.includes('prijava-napake') || path.includes('uvoz-podatkov')) return 'nastavitve'
   if (path.includes('garaza') || path.includes('dashboard') || path.includes('dodaj-avto') || path.includes('prenos')) return 'garaza'

@@ -729,7 +729,7 @@ export default function Garaza() {
     </div>
   )
 
-  const renderVehicleImage = (avto: any, index: number, className = 'h-full w-full object-cover') => {
+  const renderVehicleImage = (avto: any, index: number, className = 'h-full w-full object-contain object-center') => {
     const imageSrc = slikaVozila(avto)
     return imageSrc ? (
       <img
@@ -767,7 +767,7 @@ export default function Garaza() {
           onClick={() => odpriVozilo(glavni)}
           className="relative mb-4 min-h-[330px] overflow-hidden rounded-[30px] border border-[#6c63ff55] bg-[#0f0f1a] shadow-[0_26px_70px_rgba(108,99,255,0.22)]"
         >
-          {renderVehicleImage(glavni, 0, 'absolute inset-0 h-full w-full object-cover object-center')}
+          {renderVehicleImage(glavni, 0, 'absolute inset-0 h-full w-full object-contain object-center')}
           <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/10 to-black/0" />
           <div className="absolute left-4 top-4 rounded-full border border-white/25 bg-black/30 px-3 py-1 text-xs font-black text-white shadow-lg shadow-black/25 backdrop-blur-md">
             {tx('Glavno vozilo', 'Main vehicle')}
@@ -781,11 +781,12 @@ export default function Garaza() {
                 {tx('Klikni vozilo za nastavitve', 'Tap a vehicle to edit settings')}
               </p>
             )}
-            <div className="mt-4 grid grid-cols-4 gap-2 rounded-3xl border border-white/15 bg-white/10 p-2 shadow-xl shadow-black/20 backdrop-blur-md">
+            <div className="mt-4 grid grid-cols-5 gap-2 rounded-3xl border border-white/15 bg-white/10 p-2 shadow-xl shadow-black/20 backdrop-blur-md">
               {[
                 { label: tx('Stroški', 'Costs'), href: `/stroski?car=${glavni.id}`, icon: '▥' },
                 { label: tx('Servis', 'Service'), href: `/servis?car=${glavni.id}`, icon: '⌘' },
                 { label: tx('Dokumenti', 'Docs'), href: `/report?car=${glavni.id}`, icon: '▤' },
+                { label: tx('Gume', 'Tires'), href: `/gume?car=${glavni.id}`, icon: 'G' },
                 { label: tx('Opomniki', 'Reminders'), href: `/opomniki?car=${glavni.id}`, icon: '!' },
               ].map((action) => (
                 <button
@@ -816,7 +817,7 @@ export default function Garaza() {
               onClick={() => odpriVozilo(avto)}
               className="w-[150px] shrink-0 overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
             >
-              <div className="h-36 w-full overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
+              <div className="h-36 w-full overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-contain object-center')}</div>
               <div className="p-3">
                 <p className="truncate text-sm font-black text-white">{imeVozila(avto)}</p>
                 <p className="mt-1 truncate text-xs font-semibold text-[#8a8ab0]">{metaVozila(avto) || '-'}</p>
@@ -858,7 +859,7 @@ export default function Garaza() {
                     onClick={() => odpriVozilo(avto)}
                     className="overflow-hidden rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] text-left shadow-lg shadow-black/10"
                   >
-                    <div className="h-28 overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-cover')}</div>
+                    <div className="h-28 overflow-hidden">{renderVehicleImage(avto, index, 'h-full w-full object-contain object-center')}</div>
                     <div className="p-3">
                       <p className="truncate text-sm font-black text-white">{imeVozila(avto)}</p>
                       <p className="mt-1 truncate text-xs font-semibold text-[#8a8ab0]">{avto.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : '-'}</p>
@@ -898,7 +899,7 @@ export default function Garaza() {
               className={`flex w-full items-center gap-3 rounded-2xl border border-[#1e1e32] border-l-4 ${statusColor} p-3 text-left shadow-lg shadow-black/10`}
             >
               <div className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-[#13131f]">
-                {renderVehicleImage(avto, index, 'h-full w-full object-cover')}
+                {renderVehicleImage(avto, index, 'h-full w-full object-contain object-center')}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-base font-black text-white">{imeVozila(avto)}</p>
@@ -956,7 +957,7 @@ export default function Garaza() {
                     className={`grid w-full grid-cols-[88px_minmax(0,1fr)_190px] items-center gap-4 rounded-2xl border p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
                   >
                     <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
-                      {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
+                      {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
                     </div>
                     <div className="min-w-0">
                       <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
@@ -998,7 +999,7 @@ export default function Garaza() {
             className={`grid w-full grid-cols-[96px_minmax(0,1fr)_260px] items-center gap-5 rounded-2xl border border-l-4 p-3 text-left shadow-xl transition-colors hover:border-[#6c63ff66] ${statusColor} ${desktopLight ? 'border-[#dde3f2] bg-white shadow-[#101225]/6' : 'border-[#1e1e32] bg-[#0f0f1a] shadow-black/10'}`}
           >
             <div className={`h-20 overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
-              {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
+              {imageSrc ? <img src={imageSrc} alt={imeVozila(car)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" /> : <div className="flex h-full w-full items-center justify-center text-xs font-black text-[#6c63ff]">{imeVozila(car)}</div>}
             </div>
             <div className="min-w-0">
               <p className={`truncate text-lg font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{imeVozila(car)}</p>
@@ -1205,7 +1206,7 @@ export default function Garaza() {
                 >
                   <div className={`h-64 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
-                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-lg font-black text-[#6c63ff]">{imeVozila(avto)}</div>
                     )}
@@ -1237,7 +1238,7 @@ export default function Garaza() {
                 >
                   <div className={`${compact ? 'h-14' : 'h-20'} overflow-hidden rounded-xl ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
-                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(avto)}</div>
                     )}
@@ -1267,7 +1268,7 @@ export default function Garaza() {
                 >
                   <div className={`h-40 ${desktopLight ? 'bg-[#eef2fb]' : 'bg-[#13131f]'}`}>
                     {imageSrc ? (
-                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                      <img src={imageSrc} alt={imeVozila(avto)} loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-sm font-black text-[#6c63ff]">{imeVozila(avto)}</div>
                     )}
@@ -1493,7 +1494,7 @@ export default function Garaza() {
                     <span className="relative block h-32 bg-[#111827]">
                       {imageSrc ? (
                         <img src={imageSrc} alt={imeVozila(avto)}
-                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
                           {imeVozila(avto)}
@@ -1530,7 +1531,7 @@ export default function Garaza() {
                     <span className="relative h-24 overflow-hidden rounded-[18px] bg-[#111827]">
                       {imageSrc ? (
                         <img src={imageSrc} alt={imeVozila(avto)}
-                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-cover" />
+                          loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center px-2 text-center text-xs font-black text-[#6c63ff]">
                           {imeVozila(avto)}
@@ -1572,7 +1573,7 @@ export default function Garaza() {
                   </div>
                 </div>
                 <div className="relative h-44">
-                  {renderVehicleImage(liteAvto, 0, 'h-full w-full object-cover')}
+                  {renderVehicleImage(liteAvto, 0, 'h-full w-full object-contain object-center')}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                   <button onClick={() => router.push(`/nastavitve-avta?car=${liteAvto.id}`)}
                     className="absolute right-4 top-4 rounded-2xl bg-white/15 px-4 py-2 text-sm font-black text-white backdrop-blur-md">
@@ -1589,6 +1590,9 @@ export default function Garaza() {
                   </button>
                   <button onClick={() => pojdiNaVnos('/vnos-servisa')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
                     <span className="mb-2 block text-3xl">🔧</span>{tx('Servis', 'Service')}
+                  </button>
+                  <button onClick={() => pojdiNaVnos('/gume')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
+                    <span className="mb-2 block text-3xl">G</span>{tx('Gume', 'Tires')}
                   </button>
                   <button onClick={() => pojdiNaVnos('/vnos-stroska')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
                     <span className="mb-2 block text-3xl">💵</span>{tx('Strosek', 'Cost')}
@@ -1727,7 +1731,7 @@ export default function Garaza() {
                   } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}>
                   {imageSrc ? (
                     <img src={imageSrc} alt={imeVozila(avto)}
-                      loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover" />
+                      loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-contain object-center" />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-[#1a1630] to-[#080810]" />
                   )}
@@ -1807,7 +1811,7 @@ export default function Garaza() {
                 style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
                 {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
-                    loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover object-center" />
+                    loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-contain object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0
@@ -1864,7 +1868,7 @@ export default function Garaza() {
                 <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
                   {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
-                    loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-cover object-center" />
+                    loading={index < 8 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-contain object-center" />
                 ) : (
                   <div className={`absolute inset-0 ${
                     index % 2 === 0
