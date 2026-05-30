@@ -621,6 +621,10 @@ export default function Stroski() {
           supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
           supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
         ])
+        if (avtoRes.error) {
+          console.warn('[GarageBase costs] car cost columns failed, retrying full car row', avtoRes.error.message)
+          avtoRes = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
+        }
         if (gorivoRes.error) {
           console.warn('[GarageBase costs] fuel full select failed, retrying minimal columns', gorivoRes.error.message)
           gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1)

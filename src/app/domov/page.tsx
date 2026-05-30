@@ -250,7 +250,8 @@ export default function DomovPage() {
   }
 
   const vstopiVGarazo = () => {
-    if (cars.length === 0) {
+    const cachedCars = readGarageCache()?.avti || []
+    if (cars.length === 0 && cachedCars.length === 0) {
       router.push('/dodaj-avto')
       return
     }
@@ -338,7 +339,7 @@ export default function DomovPage() {
 
       let { data: carsData, error: carsError } = await supabase
         .from('cars')
-        .select(homeCarColumns)
+        .select('*')
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })

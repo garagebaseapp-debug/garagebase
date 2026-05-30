@@ -332,7 +332,7 @@ export default function Dashboard() {
       let selectedCar: any = null
       if (carIdFromUrl) {
         const { data } = await supabase
-          .from('cars').select(dashboardCarColumns)
+          .from('cars').select('*')
           .eq('user_id', user.id)
           .eq('id', carIdFromUrl)
           .maybeSingle()
@@ -340,12 +340,12 @@ export default function Dashboard() {
       }
       const archiveMode = Boolean(selectedCar?.arhivirano)
       let { data: avtiData, error: avtiError } = await supabase
-        .from('cars').select(dashboardCarColumns).eq('user_id', user.id)
+        .from('cars').select('*').eq('user_id', user.id)
         .eq('arhivirano', archiveMode)
         .order('vrstni_red', { ascending: true })
       if (avtiError) {
         const fallback = await supabase
-          .from('cars').select(dashboardCarColumns).eq('user_id', user.id)
+          .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
         avtiData = fallback.data || []
       }

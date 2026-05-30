@@ -56,7 +56,19 @@ export async function GET(req: NextRequest) {
 
   if (canUseServiceRole) carQuery.eq('user_id', userData.user.id)
 
-  const { data: car, error: carError } = await carQuery.maybeSingle()
+  let { data: car, error: carError }: any = await carQuery.maybeSingle()
+  if (carError) {
+    const fallbackCarQuery = dataClient
+      .from('cars')
+      .select('id,user_id,km_trenutni,km_ob_vnosu')
+      .eq('id', carId)
+    if (canUseServiceRole) fallbackCarQuery.eq('user_id', userData.user.id)
+    const fallbackCar = await fallbackCarQuery.maybeSingle()
+    if (!fallbackCar.error) {
+      car = fallbackCar.data
+      carError = null
+    }
+  }
 
   if (carError) {
     return NextResponse.json({ ok: false, error: carError.message }, { status: 500 })
