@@ -28,8 +28,9 @@ type TesterActivity = {
   summary: Record<string, any>
   topEvents: Array<{ name: string; label: string; count: number }>
   topPages: Array<{ page: string; count: number }>
+  platformStats: Array<{ key: string; label: string; count: number; users: number; percent: number }>
   daily: Array<{ day: string; count: number }>
-  recentEvents: Array<{ id: string; label: string; page: string; created_at: string }>
+  recentEvents: Array<{ id: string; label: string; page: string; platform?: string; created_at: string }>
   recentErrors: Array<{ id: string; name: string; page: string; message?: string; status?: string; created_at: string }>
 }
 
@@ -130,6 +131,45 @@ const eventName = (name: string) => {
     expense_saved: 'Strosek shranjen',
   }
   return names[name] || name
+}
+
+const platformFromEvent = (event: any) => {
+  const metadata = event?.metadata || {}
+  const stored = metadata.clientPlatform || metadata.platform || {}
+  if (stored.key) return {
+    key: stored.key,
+    label: stored.label || stored.key,
+  }
+  const userAgent = String(metadata.userAgent || metadata.deviceInfo || '')
+  const width = Number(metadata.width || metadata.viewport?.width || 0)
+  const standalone = metadata.standalone === true || stored.standalone === true || stored.display === 'standalone'
+  const android = /Android/i.test(userAgent)
+  const ios = /iPhone|iPad|iPod/i.test(userAgent)
+  if (standalone && android) return { key: 'android_app', label: 'Android app' }
+  if (standalone && ios) return { key: 'ios_app', label: 'iOS app' }
+  if (standalone) return { key: 'desktop_pwa', label: 'Desktop PWA' }
+  if (android) return { key: 'android_web', label: 'Android web' }
+  if (ios) return { key: 'ios_web', label: 'iOS web' }
+  if (width >= 1024) return { key: 'desktop_web', label: 'Desktop web' }
+  if (width > 0) return { key: 'mobile_web', label: 'Mobile web' }
+  return { key: 'unknown', label: 'Neznano' }
+}
+
+const aggregatePlatforms = (events: any[]) => {
+  const pageViews = events.filter((event: any) => event.event_name === 'page_view')
+  const rows = pageViews.length > 0 ? pageViews : events
+  const total = Math.max(1, rows.length)
+  const counts = new Map<string, { key: string; label: string; count: number; users: Set<string> }>()
+  for (const event of rows) {
+    const platform = platformFromEvent(event)
+    const current = counts.get(platform.key) || { ...platform, count: 0, users: new Set<string>() }
+    current.count += 1
+    if (event.user_id) current.users.add(event.user_id)
+    counts.set(platform.key, current)
+  }
+  return Array.from(counts.values())
+    .map((item) => ({ key: item.key, label: item.label, count: item.count, users: item.users.size, percent: Math.round((item.count / total) * 100) }))
+    .sort((a, b) => b.count - a.count)
 }
 
 const dayKey = (value: string) => new Date(value).toISOString().slice(0, 10)
@@ -306,6 +346,7 @@ export default function AdminPage() {
   const [recordMix, setRecordMix] = useState<any[]>([])
   const [costMix, setCostMix] = useState<any[]>([])
   const [conversionStats, setConversionStats] = useState<any[]>([])
+  const [platformStats, setPlatformStats] = useState<any[]>([])
   const [errorStatusStats, setErrorStatusStats] = useState<any[]>([])
   const [testerSearch, setTesterSearch] = useState('')
   const [testerCandidates, setTesterCandidates] = useState<AdminUser[]>([])
@@ -645,6 +686,7 @@ export default function AdminPage() {
         { label: tx('Report -> QR/prenos', 'Report -> QR/transfer'), value: reportOpen ? Math.round((qrTransfer / reportOpen) * 100) : 0, detail: `${qrTransfer}/${reportOpen}` },
         { label: tx('Napake na 100 dogodkov', 'Errors per 100 events'), value: events.length ? Math.round((newErrorsCount / events.length) * 100) : 0, detail: `${newErrorsCount}/${events.length}` },
       ]
+      const platformItems = aggregatePlatforms(events)
       const errorStatusCounts = new Map<string, number>()
       for (const error of (errorsData.data || [])) {
         const key = error.status || 'new'
@@ -744,6 +786,7 @@ export default function AdminPage() {
       setRecordMix(recordItems)
       setCostMix(costItems)
       setConversionStats(conversionItems)
+      setPlatformStats(platformItems)
       setErrorStatusStats(errorStatuses)
       setSettingsStats([
         aggregateSetting(settingsEvents, 'usageMode', (m) => m.usageMode),
@@ -1189,6 +1232,30 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+            <div className="mt-4 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-black text-white">{tx('Android app / web uporaba', 'Android app / web usage')}</h3>
+                  <p className="text-xs font-semibold text-[#8a8aa8]">{tx('Odstotki temeljijo na ogledih strani zadnjih 30 dni.', 'Percentages are based on page views in the last 30 days.')}</p>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {platformStats.length === 0 ? (
+                  <p className="rounded-xl bg-[#0f0f1a] p-3 text-xs text-[#8a8aa8]">{tx('Ni platformnih podatkov.', 'No platform data yet.')}</p>
+                ) : platformStats.map((item) => (
+                  <div key={item.key} className="rounded-xl border border-[#2a2a40] bg-[#0f0f1a] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-black text-white">{item.label}</p>
+                      <p className="text-lg font-black text-[#3ecfcf]">{item.percent}%</p>
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-[#8a8aa8]">{item.count} {tx('ogledov', 'views')} · {item.users} {tx('uporabnikov', 'users')}</p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#080810]">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </>
         )}
         {activeAdminTab === 'users' && (
@@ -1471,6 +1538,27 @@ export default function AdminPage() {
                   {tx('Čas je ocena iz zabeleženih akcij. Nova seja se šteje po 30 minutah brez aktivnosti.', 'Time is estimated from tracked actions. A new session starts after 30 minutes without activity.')}
                 </p>
 
+                <div className="mt-4 rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
+                  <h3 className="text-sm font-black text-white">{tx('Platforma uporabnika', 'User platform')}</h3>
+                  <p className="mt-1 text-xs font-semibold text-[#8a8aa8]">{tx('Android app, Android web ali web na računalniku po ogledih strani.', 'Android app, Android web or desktop web by page views.')}</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {(testerActivity.platformStats || []).length === 0 ? (
+                      <p className="rounded-xl bg-[#0f0f1a] p-3 text-xs text-[#8a8aa8]">{tx('Ni platformnih podatkov.', 'No platform data.')}</p>
+                    ) : testerActivity.platformStats.map((item) => (
+                      <div key={item.key} className="rounded-xl bg-[#0f0f1a] p-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="text-xs font-black text-white">{item.label}</p>
+                          <p className="text-sm font-black text-[#3ecfcf]">{item.percent}%</p>
+                        </div>
+                        <p className="mt-1 text-[11px] font-bold text-[#8a8aa8]">{item.count} {tx('ogledov', 'views')}</p>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#080810]">
+                          <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="mt-4 rounded-2xl border border-[#6c63ff44] bg-[#13131f] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -1601,7 +1689,7 @@ export default function AdminPage() {
                       ) : testerActivity.recentEvents.map((event) => (
                         <div key={event.id} className="rounded-xl bg-[#0f0f1a] p-2">
                           <p className="text-xs font-black text-white">{event.label}</p>
-                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{event.page} - {new Date(event.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{event.page} - {event.platform || '-'} - {new Date(event.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
                         </div>
                       ))}
                     </div>

@@ -52,6 +52,42 @@ function getClientContext() {
   }
 }
 
+function getClientPlatform() {
+  if (typeof window === 'undefined') return {
+    key: 'unknown',
+    label: 'Unknown',
+    os: 'unknown',
+    display: 'unknown',
+  }
+  const userAgent = navigator.userAgent || ''
+  const isAndroid = /Android/i.test(userAgent)
+  const isIos = /iPhone|iPad|iPod/i.test(userAgent)
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
+  const isDesktopWidth = window.innerWidth >= 1024
+  const os = isAndroid ? 'android' : isIos ? 'ios' : isDesktopWidth ? 'desktop' : 'mobile'
+  const key = standalone
+    ? isAndroid ? 'android_app' : isIos ? 'ios_app' : 'desktop_pwa'
+    : isAndroid ? 'android_web' : isIos ? 'ios_web' : isDesktopWidth ? 'desktop_web' : 'mobile_web'
+  const label: Record<string, string> = {
+    android_app: 'Android app',
+    android_web: 'Android web',
+    ios_app: 'iOS app',
+    ios_web: 'iOS web',
+    desktop_pwa: 'Desktop PWA',
+    desktop_web: 'Desktop web',
+    mobile_web: 'Mobile web',
+  }
+  return {
+    key,
+    label: label[key] || 'Unknown',
+    os,
+    display: standalone ? 'standalone' : 'browser',
+    standalone,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }
+}
+
 function rememberEvent(eventName: string, metadata: Record<string, any>) {
   if (typeof window === 'undefined') return
   try {
@@ -96,6 +132,7 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
       car_id: metadata.carId || metadata.car_id || null,
       metadata: {
         ...metadata,
+        clientPlatform: getClientPlatform(),
         userEmail: user.email,
         appVersion: APP_VERSION,
         releaseChannel: RELEASE_CHANNEL,

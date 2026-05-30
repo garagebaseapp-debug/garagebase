@@ -117,6 +117,45 @@ const sessionStats = (events: any[]) => {
   }
 }
 
+const platformFromEvent = (event: any) => {
+  const metadata = event?.metadata || {}
+  const stored = metadata.clientPlatform || metadata.platform || {}
+  if (stored.key) return {
+    key: stored.key,
+    label: stored.label || stored.key,
+  }
+  const userAgent = String(metadata.userAgent || metadata.deviceInfo || '')
+  const width = Number(metadata.width || metadata.viewport?.width || 0)
+  const standalone = metadata.standalone === true || stored.standalone === true || stored.display === 'standalone'
+  const android = /Android/i.test(userAgent)
+  const ios = /iPhone|iPad|iPod/i.test(userAgent)
+  if (standalone && android) return { key: 'android_app', label: 'Android app' }
+  if (standalone && ios) return { key: 'ios_app', label: 'iOS app' }
+  if (standalone) return { key: 'desktop_pwa', label: 'Desktop PWA' }
+  if (android) return { key: 'android_web', label: 'Android web' }
+  if (ios) return { key: 'ios_web', label: 'iOS web' }
+  if (width >= 1024) return { key: 'desktop_web', label: 'Desktop web' }
+  if (width > 0) return { key: 'mobile_web', label: 'Mobile web' }
+  return { key: 'unknown', label: 'Unknown' }
+}
+
+const platformStats = (events: any[]) => {
+  const source = events.filter((event) => event.event_name === 'page_view')
+  const rows = source.length > 0 ? source : events
+  const total = Math.max(1, rows.length)
+  const map = new Map<string, { key: string; label: string; count: number; users: Set<string> }>()
+  for (const event of rows) {
+    const platform = platformFromEvent(event)
+    const current = map.get(platform.key) || { ...platform, count: 0, users: new Set<string>() }
+    current.count += 1
+    if (event.user_id) current.users.add(event.user_id)
+    map.set(platform.key, current)
+  }
+  return Array.from(map.values())
+    .map((item) => ({ key: item.key, label: item.label, count: item.count, users: item.users.size, percent: Math.round((item.count / total) * 100) }))
+    .sort((a, b) => b.count - a.count)
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (auth.error) return auth.error
@@ -185,12 +224,12 @@ export async function GET(request: NextRequest) {
     countQuery(admin.from('app_errors').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId)),
     countQuery(admin.from('push_subscriptions').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId)),
     admin.from('app_events')
-      .select('id,event_name,page_path,created_at')
+      .select('id,event_name,page_path,created_at,metadata,user_id')
       .eq('user_id', targetUserId)
       .order('created_at', { ascending: false })
       .limit(2000),
     admin.from('app_events')
-      .select('id,event_name,page_path,created_at,metadata')
+      .select('id,event_name,page_path,created_at,metadata,user_id')
       .eq('user_id', targetUserId)
       .gte('created_at', since30)
       .order('created_at', { ascending: false })
@@ -284,8 +323,10 @@ export async function GET(request: NextRequest) {
       name: event.event_name,
       label: eventLabel(event.event_name),
       page: pageLabel(event.page_path),
+      platform: platformFromEvent(event).label,
       created_at: event.created_at,
     })),
+    platformStats: platformStats(events),
     recentErrors: (errorsData.data || []).map((error: any) => ({
       id: error.id,
       name: error.error_name,
