@@ -63,6 +63,12 @@ const cardTone = {
   },
 }
 
+const homeCarColumns = 'id,user_id,znamka,model,slika_url,slika_updated_at,updated_at,created_at,km_trenutni,arhivirano,vrstni_red,tip_vozila'
+const homeReminderColumns = 'id,car_id,tip,datum,km_opomnik,created_at'
+const homeFuelColumns = 'id,car_id,datum,created_at,litri,km,cena_skupaj,cena_na_liter,postaja'
+const homeServiceColumns = 'id,car_id,datum,created_at,opis,servis,cena,km'
+const homeExpenseColumns = 'id,car_id,datum,created_at,znesek,opis,kategorija'
+
 function Icon({ type, className = 'h-6 w-6' }: { type: 'home' | 'car' | 'shield' | 'wrench' | 'calendar' | 'fuel' | 'cost' | 'bell' | 'box' | 'settings' | 'plus' | 'menu'; className?: string }) {
   if (type === 'car') return (
     <svg className={className} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -332,7 +338,7 @@ export default function DomovPage() {
 
       let { data: carsData, error: carsError } = await supabase
         .from('cars')
-        .select('*')
+        .select(homeCarColumns)
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
@@ -340,7 +346,7 @@ export default function DomovPage() {
       if (carsError || (carsData || []).length === 0) {
         const fallback = await supabase
           .from('cars')
-          .select('*')
+          .select(homeCarColumns)
           .eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
         carsData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
@@ -368,10 +374,10 @@ export default function DomovPage() {
       }
 
       const [remindersRes, fuelRes, serviceRes, expenseRes] = await Promise.all([
-        supabase.from('reminders').select('*').in('car_id', ids).order('datum', { ascending: true }).limit(24),
-        supabase.from('fuel_logs').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(8),
-        supabase.from('service_logs').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(8),
-        supabase.from('expenses').select('*').in('car_id', ids).order('datum', { ascending: false }).limit(8),
+        supabase.from('reminders').select(homeReminderColumns).in('car_id', ids).order('datum', { ascending: true }).limit(24),
+        supabase.from('fuel_logs').select(homeFuelColumns).in('car_id', ids).order('datum', { ascending: false }).limit(8),
+        supabase.from('service_logs').select(homeServiceColumns).in('car_id', ids).order('datum', { ascending: false }).limit(8),
+        supabase.from('expenses').select(homeExpenseColumns).in('car_id', ids).order('datum', { ascending: false }).limit(8),
       ])
       const startOfMonth = new Date()
       startOfMonth.setDate(1)
@@ -501,6 +507,12 @@ export default function DomovPage() {
     { label: tx('Dodaj strošek', 'Add expense'), href: favoriteCar?.id ? `/vnos-stroska?car=${favoriteCar.id}` : '/vnos-stroska', icon: 'box' as const },
     { label: tx('Tankanje', 'Fill-up'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
   ]
+  const onboardingSteps = [
+    { done: cars.length > 0, label: tx('Dodaj prvo vozilo', 'Add first vehicle'), href: '/dodaj-avto', icon: 'car' as const },
+    { done: recentEvents.length > 0, label: tx('Zabeleži prvi vnos', 'Log first entry'), href: favoriteCar?.id ? `/vnos-goriva?car=${favoriteCar.id}` : '/vnos-goriva', icon: 'fuel' as const },
+    { done: reminders.length > 0, label: tx('Nastavi opomnik', 'Set a reminder'), href: favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki', icon: 'bell' as const },
+  ]
+  const showOnboarding = onboardingSteps.some((step) => !step.done)
   return (
     <div className={`gb-app-home mx-auto min-h-screen w-full max-w-none px-0 pb-[calc(7.4rem+env(safe-area-inset-bottom))] pt-0 sm:px-0 xl:pl-[280px] xl:pb-12 ${isLightTheme ? 'bg-[#f1f3fb] text-[#101225]' : 'bg-[#130f1d] text-white'}`}>
       <div className="mx-auto w-full max-w-none">
@@ -561,6 +573,33 @@ export default function DomovPage() {
             </div>
           </div>
         </section>
+
+        {showOnboarding && (
+          <section className={`mx-4 mb-5 rounded-[24px] border p-4 shadow-lg xl:mx-auto xl:mb-8 xl:max-w-6xl xl:p-5 ${isLightTheme ? 'border-[#d9def0] bg-[#fbfbff]/90 text-[#101225] shadow-[0_16px_36px_rgba(69,77,115,0.12)]' : 'border-[#5b4a86] bg-[#1c1730]/94 text-white shadow-[0_18px_42px_rgba(4,3,12,0.26)]'}`}>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#6c63ff]">{tx('Začni tukaj', 'Start here')}</p>
+                <h2 className="mt-1 text-lg font-black">{tx('Osnovna nastavitev garaže', 'Garage setup basics')}</h2>
+              </div>
+              <p className={`text-sm font-black ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>
+                {onboardingSteps.filter((step) => step.done).length}/{onboardingSteps.length}
+              </p>
+            </div>
+            <div className="grid gap-2 xl:grid-cols-3">
+              {onboardingSteps.map((step) => (
+                <button key={step.label} onClick={() => router.push(step.href)} className={`flex min-h-[72px] items-center gap-3 rounded-2xl border p-3 text-left transition-transform active:scale-[0.99] ${step.done ? 'border-[#22c55e44] bg-[#22c55e12]' : isLightTheme ? 'border-[#d9def0] bg-white/80' : 'border-white/10 bg-white/6'}`}>
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${step.done ? 'bg-[#22c55e] text-white' : 'bg-[#6c63ff] text-white'}`}>
+                    {step.done ? '✓' : <Icon type={step.icon} className="h-5 w-5" />}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-black">{step.label}</span>
+                    <span className={`mt-0.5 block text-xs font-semibold ${isLightTheme ? 'text-[#4f5668]' : 'text-[#c9c7d8]'}`}>{step.done ? tx('Urejeno', 'Done') : tx('Odpri', 'Open')}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mb-5 grid w-full grid-cols-3 gap-3 px-4 xl:hidden">
           {mobileStatCards.map((item) => (

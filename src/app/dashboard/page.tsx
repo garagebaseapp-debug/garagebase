@@ -35,6 +35,8 @@ const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: nul
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
 const TIRE_SEASON_SETTINGS_KEY = 'garagebase_tire_season_settings'
 const defaultTireSeasonSettings = { winterStart: '11-15', winterEnd: '03-15' }
+const dashboardCarColumns = 'id,user_id,znamka,model,letnik,gorivo,barva,tablica,km_trenutni,km_ob_vnosu,slika_url,slika,slika_updated_at,updated_at,created_at,arhivirano,vrstni_red,tip_vozila'
+const dashboardReminderColumns = 'id,car_id,tip,datum,km_opomnik,created_at'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -330,7 +332,7 @@ export default function Dashboard() {
       let selectedCar: any = null
       if (carIdFromUrl) {
         const { data } = await supabase
-          .from('cars').select('*')
+          .from('cars').select(dashboardCarColumns)
           .eq('user_id', user.id)
           .eq('id', carIdFromUrl)
           .maybeSingle()
@@ -338,12 +340,12 @@ export default function Dashboard() {
       }
       const archiveMode = Boolean(selectedCar?.arhivirano)
       let { data: avtiData, error: avtiError } = await supabase
-        .from('cars').select('*').eq('user_id', user.id)
+        .from('cars').select(dashboardCarColumns).eq('user_id', user.id)
         .eq('arhivirano', archiveMode)
         .order('vrstni_red', { ascending: true })
       if (avtiError) {
         const fallback = await supabase
-          .from('cars').select('*').eq('user_id', user.id)
+          .from('cars').select(dashboardCarColumns).eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
         avtiData = fallback.data || []
       }
@@ -394,7 +396,7 @@ export default function Dashboard() {
     if (ids.length === 0) return
     const { data } = await supabase
       .from('reminders')
-      .select('*')
+      .select(dashboardReminderColumns)
       .in('car_id', ids)
       .order('datum', { ascending: true })
 
@@ -501,19 +503,22 @@ export default function Dashboard() {
       if (cachedStroski.total > 0 || cachedStroski.garageBase > 0 || cachedStroski.imported > 0) setStroski(cachedStroski)
     }
 
+    const dashboardFuelColumns = 'id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,polni_rezervar'
+    const dashboardServiceColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label'
+    const dashboardExpenseColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label'
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       supabase
         .from('fuel_logs')
-        .select('*')
+        .select(dashboardFuelColumns)
         .eq('car_id', carId)
         .order('km', { ascending: true }),
       supabase
         .from('service_logs')
-        .select('*')
+        .select(dashboardServiceColumns)
         .eq('car_id', carId),
       supabase
         .from('expenses')
-        .select('*')
+        .select(dashboardExpenseColumns)
         .eq('car_id', carId),
     ])
     if (activeLoadRef.current !== carId) return { poraba: emptyConsumption, stroski: emptyCosts, fuelRows: [] }
@@ -672,7 +677,7 @@ export default function Dashboard() {
     }
 
     const [opRes] = await Promise.all([
-      supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true }),
+      supabase.from('reminders').select(dashboardReminderColumns).eq('car_id', carId).order('datum', { ascending: true }),
     ])
 
     const opData = opRes.data || []

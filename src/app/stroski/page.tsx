@@ -11,6 +11,8 @@ import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDist
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
+const COST_ROW_LIMIT = 300
+const carCostColumns = 'id,user_id,znamka,model,km_trenutni,km_ob_vnosu,purchase_price,purchase_date,purchase_mileage,down_payment,finance_total_paid,finance_overpayment,monthly_payment,resale_value,include_vehicle_price_in_costs'
 const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
 const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,import_batch_id,source_owner_label'
 const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label'
@@ -614,22 +616,22 @@ export default function Stroski() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { window.location.href = '/'; return }
         let [avtoRes, gorivoRes, servisRes, expensesRes]: any[] = await Promise.all([
-          supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle(),
-          supabase.from('fuel_logs').select(fuelCostColumns, { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999),
-          supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
-          supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999),
+          supabase.from('cars').select(carCostColumns).eq('id', carId).eq('user_id', user.id).maybeSingle(),
+          supabase.from('fuel_logs').select(fuelCostColumns, { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
+          supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
+          supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
         ])
         if (gorivoRes.error) {
           console.warn('[GarageBase costs] fuel full select failed, retrying minimal columns', gorivoRes.error.message)
-          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, 999)
+          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
         }
         if (servisRes.error) {
           console.warn('[GarageBase costs] service full select failed, retrying minimal columns', servisRes.error.message)
-          servisRes = await supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999)
+          servisRes = await supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
         }
         if (expensesRes.error) {
           console.warn('[GarageBase costs] expenses full select failed, retrying minimal columns', expensesRes.error.message)
-          expensesRes = await supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, 999)
+          expensesRes = await supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
         }
         const dataError = gorivoRes.error || servisRes.error || expensesRes.error
         if (dataError) throw dataError
@@ -1282,6 +1284,54 @@ export default function Stroski() {
 
   const filtrirani = vsiVnosi.filter(v => filter === 'vse' || v._tip === filter)
   const vidniVnosi = filtrirani.slice(0, visibleCostCount)
+  const listMayBeLimited = displayGorivo.length >= COST_ROW_LIMIT || displayServisi.length >= COST_ROW_LIMIT || displayExpenses.length >= COST_ROW_LIMIT
+  const exportRows = filtrirani
+  const htmlEscape = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => {
+    if (char === '&') return '&amp;'
+    if (char === '<') return '&lt;'
+    if (char === '>') return '&gt;'
+    if (char === '"') return '&quot;'
+    if (char === "'") return '&#39;'
+    return char
+  })
+  const exportCsv = () => {
+    const header = ['type', 'date', 'vehicle', 'description', 'mileage', 'amount', 'source']
+    const csvRows = exportRows.map((row: any) => {
+      const type = row._tip === 'gorivo' ? tx('Gorivo', 'Fuel') : row._tip === 'servis' ? tx('Servis', 'Service') : tx('Ostalo', 'Other')
+      const description = row._tip === 'gorivo'
+        ? [row.litri ? `${row.litri} L` : '', row.postaja || ''].filter(Boolean).join(' - ')
+        : row.opis || row.servis || row.kategorija || ''
+      const amount = row._tip === 'gorivo' ? fuelCostValue(row) : row._tip === 'servis' ? numericValue(row.cena) : numericValue(row.znesek)
+      return [
+        type,
+        row.datum || row.created_at || '',
+        `${avto?.znamka || ''} ${avto?.model || ''}`.trim(),
+        description,
+        row.km || '',
+        amount.toFixed(2),
+        row.import_batch_id ? tx('Uvoz', 'Import') : 'GarageBase',
+      ].map((value) => `"${String(value).replace(/"/g, '""')}"`).join(',')
+    })
+    const blob = new Blob([[header.join(','), ...csvRows].join('\n')], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `garagebase-stroski-${avto?.znamka || 'vozilo'}-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+  const exportPdf = () => {
+    const win = window.open('', '_blank')
+    if (!win) return
+    const rows = exportRows.slice(0, 120).map((row: any) => {
+      const type = row._tip === 'gorivo' ? tx('Gorivo', 'Fuel') : row._tip === 'servis' ? tx('Servis', 'Service') : tx('Ostalo', 'Other')
+      const amount = row._tip === 'gorivo' ? fuelCostValue(row) : row._tip === 'servis' ? numericValue(row.cena) : numericValue(row.znesek)
+      const description = row.opis || row.servis || row.kategorija || row.postaja || ''
+      return `<tr><td>${htmlEscape(type)}</td><td>${htmlEscape(row.datum || row.created_at || '')}</td><td>${htmlEscape(description)}</td><td>${htmlEscape(formatMoney(amount, valuta))}</td></tr>`
+    }).join('')
+    win.document.write(`<!doctype html><html><head><title>GarageBase</title><style>body{font-family:Arial,sans-serif;color:#111827;padding:28px}h1{margin:0 0 4px}p{color:#4b5563}table{width:100%;border-collapse:collapse;margin-top:20px}td,th{border-bottom:1px solid #e5e7eb;padding:10px;text-align:left}th{background:#f3f4f6}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px}.card{border:1px solid #dbe2f0;border-radius:12px;padding:14px}.value{font-size:22px;font-weight:800;color:#111827}</style></head><body><h1>${htmlEscape(tx('Stroški vozila', 'Vehicle costs'))}</h1><p>${htmlEscape(`${avto?.znamka || ''} ${avto?.model || ''}`)} - ${htmlEscape(new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI'))}</p><div class="cards"><div class="card"><div>${htmlEscape(tx('Obratovanje', 'Running'))}</div><div class="value">${htmlEscape(formatMoney(skupajVse, valuta))}</div></div><div class="card"><div>${htmlEscape(tx('Lastništvo', 'Ownership'))}</div><div class="value">${htmlEscape(formatMoney(skupajZLastnistvom, valuta))}</div></div><div class="card"><div>${htmlEscape(tx('Prevoženo', 'Distance'))}</div><div class="value">${htmlEscape(formatDistance(kmPrevozeni, enotaRazdalje))}</div></div></div><table><thead><tr><th>${htmlEscape(tx('Tip', 'Type'))}</th><th>${htmlEscape(tx('Datum', 'Date'))}</th><th>${htmlEscape(tx('Opis', 'Description'))}</th><th>${htmlEscape(tx('Znesek', 'Amount'))}</th></tr></thead><tbody>${rows}</tbody></table><p>${htmlEscape(tx('PDF zajema zadnje prikazane vnose, celotni izračuni zgoraj pa uporabljajo skupno statistiko vozila.', 'PDF includes the latest displayed entries, while totals above use the vehicle summary statistics.'))}</p><script>window.print()</script></body></html>`)
+    win.document.close()
+  }
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#080810] px-4 py-6 pb-24">
@@ -1296,15 +1346,33 @@ export default function Stroski() {
         </div>
       </div>
 
-        {avto?.id && (
+        <div className="flex flex-wrap justify-end gap-2">
           <button
-            onClick={() => naloziStroske(avto.id)}
-            disabled={refreshing}
-            className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-3 py-2 text-xs font-bold text-[#a09aff] disabled:opacity-50"
+            type="button"
+            onClick={exportCsv}
+            disabled={exportRows.length === 0}
+            className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-3 py-2 text-xs font-bold text-[#3ecfcf] disabled:opacity-40"
           >
-            {refreshing ? tx('Osvezujem...', 'Refreshing...') : tx('Osvezi', 'Refresh')}
+            {tx('CSV izvoz', 'CSV export')}
           </button>
-        )}
+          <button
+            type="button"
+            onClick={exportPdf}
+            disabled={exportRows.length === 0}
+            className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-3 py-2 text-xs font-bold text-[#f59e0b] disabled:opacity-40"
+          >
+            {tx('PDF izvoz', 'PDF export')}
+          </button>
+          {avto?.id && (
+            <button
+              onClick={() => naloziStroske(avto.id)}
+              disabled={refreshing}
+              className="rounded-xl border border-[#2a2a40] bg-[#13131f] px-3 py-2 text-xs font-bold text-[#a09aff] disabled:opacity-50"
+            >
+              {refreshing ? tx('Osvezujem...', 'Refreshing...') : tx('Osvezi', 'Refresh')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mb-4 overflow-hidden rounded-3xl border border-[#2a2a40] bg-[#0f0f1a] p-4 shadow-2xl shadow-black/10 sm:p-5">
@@ -1605,10 +1673,22 @@ export default function Stroski() {
         </div>
       )}
 
+      {listMayBeLimited && (
+        <div className="mb-3 rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf12] p-3 text-xs font-bold text-[#9af6f6]">
+          {tx('Za hitro delovanje je spodaj prikazan zadnji del zgodovine. Skupni zneski, €/km in grafi se računajo iz celotne statistike vozila.', 'For faster loading, the list below shows the latest part of history. Totals, cost per distance and charts use the full vehicle statistics.')}
+        </div>
+      )}
+
       <div className="flex flex-col gap-3">
         {filtrirani.length === 0 ? (
-          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center">
-            <p className="text-white font-semibold mb-1">{tx('Ni vnosov', 'No entries')}</p>
+          <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6">
+            <p className="text-white font-black mb-1">{tx('Ni še stroškov za ta prikaz.', 'No costs for this view yet.')}</p>
+            <p className="text-[#8a8aa8] text-sm font-semibold">{tx('Dodaj tankanje, servis ali strošek. Če misliš, da vnos manjka, pošlji napako iz strani Več.', 'Add a fill-up, service or expense. If you think an entry is missing, report it from the More page.')}</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <button onClick={() => router.push(`/vnos-goriva?car=${avto?.id || ''}`)} className="rounded-xl bg-[#3ecfcf] px-3 py-2 text-sm font-black text-black">{tx('Tankanje', 'Fill-up')}</button>
+              <button onClick={() => router.push(`/vnos-servisa?car=${avto?.id || ''}`)} className="rounded-xl bg-[#f59e0b] px-3 py-2 text-sm font-black text-black">{tx('Servis', 'Service')}</button>
+              <button onClick={() => router.push('/vec')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-3 py-2 text-sm font-black text-[#c8c4ff]">{tx('Prijavi napako', 'Report issue')}</button>
+            </div>
           </div>
         ) : (
           vidniVnosi.map((v) => {

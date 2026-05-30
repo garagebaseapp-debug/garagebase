@@ -9,6 +9,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const fuelColumns = 'id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar'
 const serviceColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label'
 const expenseColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label'
+const carStatsColumns = 'id,user_id,km_trenutni,km_ob_vnosu,purchase_price,purchase_mileage,down_payment,finance_total_paid,finance_overpayment,resale_value'
 
 const rowCounts = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) => ({
   fuel: rowSet.fuelRows.length,
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const carQuery = dataClient
     .from('cars')
-    .select('id,user_id,km_trenutni,km_ob_vnosu')
+    .select(carStatsColumns)
     .eq('id', carId)
 
   if (canUseServiceRole) carQuery.eq('user_id', userData.user.id)
