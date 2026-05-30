@@ -244,11 +244,6 @@ export default function GumePage() {
       return next
     })
   }
-  const applySeasonPreset = (preset: TireSeasonSettings) => {
-    setSeasonSettings(preset)
-    try { localStorage.setItem(TIRE_SEASON_SETTINGS_KEY, JSON.stringify(preset)) } catch {}
-  }
-
   const saveTires = async () => {
     if (!car?.id) return
     if (!form.brand.trim() && !form.size.trim()) {
@@ -420,21 +415,13 @@ export default function GumePage() {
             </div>
 
             <div className="mb-5 rounded-[28px] border border-[#2e344a] bg-[#101524] p-4 shadow-xl shadow-black/12">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div className="mb-4">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-[#7f77ff]">{tx('Sezonsko pravilo', 'Season rule')}</p>
                   <h2 className="mt-1 text-xl font-black">{tx('Zimska sezona po državi', 'Winter season by country')}</h2>
                   <p className="mt-1 text-sm font-semibold text-[#a8b0c0]">
-                    {tx('Na osnovi teh datumov GarageBase samodejno nastavi opomnik za menjavo gum.', 'GarageBase uses these dates to set the tire change reminder automatically.')}
+                    {tx('Vpiši pravilo za svojo državo. GarageBase na osnovi teh datumov samodejno nastavi opomnik za menjavo gum.', 'Enter the rule for your country. GarageBase uses these dates to set the tire change reminder automatically.')}
                   </p>
-                </div>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => applySeasonPreset(defaultSeasonSettings)} className="rounded-xl border border-[#30364c] px-3 py-2 text-xs font-black text-[#d8def0]">
-                    {tx('Slovenija', 'Slovenia')}
-                  </button>
-                  <button type="button" onClick={() => applySeasonPreset({ countryLabel: 'Bosna', winterStart: '11-01', winterEnd: '04-01', warnDaysBefore: '7' })} className="rounded-xl border border-[#30364c] px-3 py-2 text-xs font-black text-[#d8def0]">
-                    {tx('Bosna', 'Bosnia')}
-                  </button>
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-4">
