@@ -46,6 +46,8 @@ export default function NastavitveAvta() {
   const [lastnikMesto, setLastnikMesto] = useState('')
   const [lastnikStarost, setLastnikStarost] = useState('')
   const [purchasePrice, setPurchasePrice] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState('')
+  const [purchaseMileage, setPurchaseMileage] = useState('')
   const [downPayment, setDownPayment] = useState('')
   const [financeTotalPaid, setFinanceTotalPaid] = useState('')
   const [financeOverpayment, setFinanceOverpayment] = useState('')
@@ -105,7 +107,7 @@ export default function NastavitveAvta() {
   }
   const isMissingOwnershipColumn = (error: any) => {
     const message = String(error?.message || '')
-    return ['purchase_price', 'down_payment', 'finance_total_paid', 'finance_overpayment', 'monthly_payment', 'resale_value', 'include_vehicle_price_in_costs']
+    return ['purchase_price', 'purchase_date', 'purchase_mileage', 'down_payment', 'finance_total_paid', 'finance_overpayment', 'monthly_payment', 'resale_value', 'include_vehicle_price_in_costs']
       .some((column) => message.includes(column))
   }
   const normalizedVin = () => String(vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -199,6 +201,8 @@ export default function NastavitveAvta() {
         setLastnikStarost(data.lastnik_starost?.toString() || '')
         const storedOwnership = readStoredOwnershipSettings(data.id)
         setPurchasePrice((data.purchase_price ?? storedOwnership.purchase_price ?? '')?.toString() || '')
+        setPurchaseDate((data.purchase_date ?? storedOwnership.purchase_date ?? '')?.toString() || '')
+        setPurchaseMileage((data.purchase_mileage ?? storedOwnership.purchase_mileage ?? data.km_ob_vnosu ?? '')?.toString() || '')
         setDownPayment((data.down_payment ?? storedOwnership.down_payment ?? '')?.toString() || '')
         setFinanceTotalPaid((data.finance_total_paid ?? storedOwnership.finance_total_paid ?? '')?.toString() || '')
         setFinanceOverpayment((data.finance_overpayment ?? storedOwnership.finance_overpayment ?? '')?.toString() || '')
@@ -306,6 +310,8 @@ export default function NastavitveAvta() {
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
     const ownershipPayload = {
       purchase_price: decimalValue(purchasePrice),
+      purchase_date: purchaseDate || null,
+      purchase_mileage: purchaseMileage ? parseInt(purchaseMileage) : null,
       down_payment: decimalValue(downPayment),
       finance_total_paid: decimalValue(financeTotalPaid),
       finance_overpayment: decimalValue(financeOverpayment),
@@ -348,6 +354,8 @@ export default function NastavitveAvta() {
     let ownershipFallback = false
     if (error && isMissingOwnershipColumn(error)) {
       delete payload.purchase_price
+      delete payload.purchase_date
+      delete payload.purchase_mileage
       delete payload.down_payment
       delete payload.finance_total_paid
       delete payload.finance_overpayment
@@ -702,6 +710,16 @@ export default function NastavitveAvta() {
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Nakupna cena', 'Purchase price')}</label>
             <input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} inputMode="decimal" placeholder="npr. 18500"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Datum nakupa', 'Purchase date')}</label>
+            <input value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} type="date"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Km ob nakupu', 'Mileage at purchase')}</label>
+            <input value={purchaseMileage} onChange={e => setPurchaseMileage(e.target.value)} inputMode="numeric" placeholder="npr. 125000"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
           </div>
           <div>

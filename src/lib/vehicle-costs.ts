@@ -300,6 +300,13 @@ export const vehicleOwnershipCostValue = (car?: any) => {
   return Math.max(0, base - resale)
 }
 
+export const vehicleOwnershipDistance = (car?: any, fallbackDistance = 0) => {
+  const current = numberValue(car?.km_trenutni)
+  const purchaseMileage = numberValue(car?.purchase_mileage) || numberValue(car?.km_ob_vnosu)
+  const distance = current > purchaseMileage ? current - purchaseMileage : 0
+  return distance > 0 ? distance : Math.max(0, fallbackDistance)
+}
+
 export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: any[], car?: any): VehicleStats => {
   const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
   const fuelSplit = splitRowsBySource(fuelRows)
@@ -325,6 +332,7 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
   const totalCost = garageBaseCost + importedCost
   const ownershipCost = vehicleOwnershipCostValue(car)
   const totalWithOwnership = totalCost + ownershipCost
+  const ownershipDistance = vehicleOwnershipDistance(car, drivenKm)
 
   return {
     rows: {
@@ -343,7 +351,7 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
       total: totalCost,
       totalWithOwnership,
       perKm: drivenKm > 0 && garageBaseCost > 0 ? garageBaseCost / drivenKm : null,
-      perKmWithOwnership: drivenKm > 0 && totalWithOwnership > 0 ? totalWithOwnership / drivenKm : null,
+      perKmWithOwnership: ownershipDistance > 0 && totalWithOwnership > 0 ? totalWithOwnership / ownershipDistance : null,
     },
     consumption: {
       garageBase: garageBaseConsumption.average,

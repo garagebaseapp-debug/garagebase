@@ -30,6 +30,8 @@ const writeStoredOwnershipSettings = (carId: string, data: Record<string, unknow
 }
 const ownershipDraftFrom = (data: any = {}) => ({
   purchase_price: data.purchase_price?.toString?.() || '',
+  purchase_date: data.purchase_date?.toString?.() || '',
+  purchase_mileage: data.purchase_mileage?.toString?.() || data.km_ob_vnosu?.toString?.() || '',
   down_payment: data.down_payment?.toString?.() || '',
   finance_total_paid: data.finance_total_paid?.toString?.() || '',
   finance_overpayment: data.finance_overpayment?.toString?.() || '',
@@ -431,6 +433,8 @@ export default function Stroski() {
   const [ownershipFallback, setOwnershipFallback] = useState<any>({})
   const [ownershipDraft, setOwnershipDraft] = useState<any>({
     purchase_price: '',
+    purchase_date: '',
+    purchase_mileage: '',
     down_payment: '',
     finance_total_paid: '',
     finance_overpayment: '',
@@ -492,6 +496,8 @@ export default function Stroski() {
   }
   const ownershipPayloadFromDraft = (include = includeVehiclePrice) => ({
     purchase_price: numericValue(ownershipDraft.purchase_price) || null,
+    purchase_date: ownershipDraft.purchase_date || null,
+    purchase_mileage: numericValue(ownershipDraft.purchase_mileage) || null,
     down_payment: numericValue(ownershipDraft.down_payment) || null,
     finance_total_paid: numericValue(ownershipDraft.finance_total_paid) || null,
     finance_overpayment: numericValue(ownershipDraft.finance_overpayment) || null,
@@ -878,6 +884,8 @@ export default function Stroski() {
   const ownershipValue = (key: string) => avto?.[key] ?? ownershipFallback?.[key]
   const ownershipCar = {
     purchase_price: ownershipValue('purchase_price'),
+    purchase_date: ownershipValue('purchase_date'),
+    purchase_mileage: ownershipValue('purchase_mileage'),
     down_payment: ownershipValue('down_payment'),
     finance_total_paid: ownershipValue('finance_total_paid'),
     finance_overpayment: ownershipValue('finance_overpayment'),
@@ -892,6 +900,10 @@ export default function Stroski() {
   const financeOverpayment = numericValue(ownershipCar?.finance_overpayment)
   const resaleValue = numericValue(ownershipCar?.resale_value)
   const ownershipBase = financeTotalPaid > 0 ? downPayment + financeTotalPaid : purchasePrice + financeOverpayment
+  const currentVehicleKm = numericValue(avto?.km_trenutni)
+  const purchaseMileage = numericValue(ownershipCar?.purchase_mileage) || numericValue(avto?.km_ob_vnosu)
+  const ownershipKm = currentVehicleKm > purchaseMileage ? currentVehicleKm - purchaseMileage : 0
+  const ownershipKmForPerKm = ownershipKm > 0 ? ownershipKm : costDistanceFromFuelRows(displayGorivo, avto || {})
   const stGorivo = renderSummary.rows.fuel
   const stServis = renderSummary.rows.service
   const stOstalo = renderSummary.rows.expense
@@ -942,11 +954,13 @@ export default function Stroski() {
   const prikazStGorivo = stGorivo
   const prikazStServis = stServis
   const prikazStOstalo = stOstalo
-  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
+  const prikazStrosekNaKm = includeVehiclePrice && ownershipKmForPerKm > 0 && prikazSkupaj > 0
+    ? (prikazSkupaj / ownershipKmForPerKm).toFixed(3)
+    : kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
   const operatingPerKm = kmPrevozeni > 0 && skupajVse > 0 ? (skupajVse / kmPrevozeni).toFixed(3) : null
   const garageBasePerKm = kmPrevozeni > 0 && skupajGarageBase > 0 ? (skupajGarageBase / kmPrevozeni).toFixed(3) : null
-  const ownershipOnlyPerKm = kmPrevozeni > 0 && ownershipCost > 0 ? (ownershipCost / kmPrevozeni).toFixed(3) : null
-  const totalOwnershipPerKm = kmPrevozeni > 0 && skupajZLastnistvom > 0 ? (skupajZLastnistvom / kmPrevozeni).toFixed(3) : null
+  const ownershipOnlyPerKm = ownershipKmForPerKm > 0 && ownershipCost > 0 ? (ownershipCost / ownershipKmForPerKm).toFixed(3) : null
+  const totalOwnershipPerKm = ownershipKmForPerKm > 0 && skupajZLastnistvom > 0 ? (skupajZLastnistvom / ownershipKmForPerKm).toFixed(3) : null
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {
@@ -1364,6 +1378,7 @@ export default function Stroski() {
               <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Obratovanje', 'Running')}</span><span className="text-white">{formatMoney(skupajVse, valuta)}</span></div>
               <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Cena/lizing', 'Price/finance')}</span><span className="text-white">{formatMoney(ownershipBase, valuta)}</span></div>
               <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Prodajna vrednost', 'Resale value')}</span><span className="text-[#86efac]">- {formatMoney(resaleValue, valuta)}</span></div>
+              <div className="flex justify-between gap-3 rounded-xl bg-[#0b1020] p-2"><span className="text-[#8a8aa8]">{tx('Km od nakupa', 'Distance since purchase')}</span><span className="text-white">{ownershipKmForPerKm > 0 ? formatDistance(ownershipKmForPerKm, enotaRazdalje) : '-'}</span></div>
               <div className="flex justify-between gap-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff10] p-2"><span className="text-[#c8c4ff]">{tx('Neto vozilo', 'Net vehicle')}</span><span className="text-white">{formatMoney(ownershipCost, valuta)}</span></div>
             </div>
             {ownershipOnlyPerKm && <p className="mt-3 text-xs font-bold text-[#8a8aa8]">{tx('Samo vozilo', 'Vehicle only')}: {ownershipOnlyPerKm} {znakValute}/{enotaRazdalje}</p>}
@@ -1388,13 +1403,31 @@ export default function Stroski() {
               {tx('Shrani in upoštevaj', 'Save and include')}
             </button>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <label className="text-xs font-black text-[#a8b0c0]">
               {tx('Nakupna cena', 'Purchase price')}
               <input
                 value={ownershipDraft.purchase_price}
                 onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_price: e.target.value }))}
                 inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Datum nakupa', 'Purchase date')}
+              <input
+                value={ownershipDraft.purchase_date}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_date: e.target.value }))}
+                type="date"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Km ob nakupu', 'Mileage at purchase')}
+              <input
+                value={ownershipDraft.purchase_mileage}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_mileage: e.target.value }))}
+                inputMode="numeric"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
             </label>
