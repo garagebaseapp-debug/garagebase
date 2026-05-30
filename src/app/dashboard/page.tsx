@@ -24,8 +24,17 @@ type CostBreakdown = {
   naKm: number | null
 }
 
+type TireDashboardSummary = {
+  season: string
+  label: string
+  drivenKm: number
+  daysToSeasonEnd: number | null
+}
+
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
 const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: null }
+const TIRE_SEASON_SETTINGS_KEY = 'garagebase_tire_season_settings'
+const defaultTireSeasonSettings = { winterStart: '11-15', winterEnd: '03-15' }
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -42,6 +51,30 @@ const numberValue = (value: unknown) => {
   const cleaned = normalized.replace(/[^0-9.-]/g, '')
   const parsed = Number(cleaned)
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+const normalizeMonthDay = (value: string) => {
+  const match = String(value || '').trim().match(/^(\d{1,2})[-./](\d{1,2})$/)
+  if (!match) return ''
+  const month = Number(match[1])
+  const day = Number(match[2])
+  if (month < 1 || month > 12 || day < 1 || day > 31) return ''
+  return `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+const dateFromMonthDay = (monthDay: string, year: number) => {
+  const normalized = normalizeMonthDay(monthDay)
+  if (!normalized) return null
+  const [month, day] = normalized.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  if (date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return date
+}
+
+const normalizeTireStatus = (status: string) => {
+  if (status === 'active') return 'mounted'
+  if (status === 'archived') return 'retired'
+  return status || 'mounted'
 }
 
 const fuelCostValue = (row: any) => {
@@ -196,6 +229,7 @@ export default function Dashboard() {
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [jezik, setJezik] = useState<Language>('sl')
   const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
+  const [tireSummary, setTireSummary] = useState<TireDashboardSummary | null>(null)
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -229,6 +263,38 @@ export default function Dashboard() {
   const hasConsumptionBreakdown = renderPoraba.total !== null || renderPoraba.garageBase !== null || renderPoraba.imported !== null
   const hasCostBreakdown = renderStroski.total > 0 || renderStroski.garageBase > 0 || renderStroski.imported > 0
   const consumptionText = (value: number | null) => value !== null ? `${value.toFixed(1)} L/100` : '-'
+  const tireSeasonLabel = (season: string) => ({
+    summer: tx('Letne', 'Summer'),
+    winter: tx('Zimske', 'Winter'),
+    all_season: tx('Celoletne', 'All-season'),
+  }[season] || tx('Gume', 'Tires'))
+  const readTireSeasonSettings = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(TIRE_SEASON_SETTINGS_KEY) || '{}')
+      return {
+        winterStart: normalizeMonthDay(parsed.winterStart) || defaultTireSeasonSettings.winterStart,
+        winterEnd: normalizeMonthDay(parsed.winterEnd) || defaultTireSeasonSettings.winterEnd,
+      }
+    } catch {
+      return defaultTireSeasonSettings
+    }
+  }
+  const daysToSeasonEnd = (season: string) => {
+    if (season === 'all_season') return null
+    const settings = readTireSeasonSettings()
+    const targetMonthDay = season === 'winter' ? settings.winterEnd : settings.winterStart
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    let target = dateFromMonthDay(targetMonthDay, today.getFullYear())
+    if (!target) return null
+    target.setHours(0, 0, 0, 0)
+    if (target < today) {
+      target = dateFromMonthDay(targetMonthDay, today.getFullYear() + 1)
+      if (!target) return null
+      target.setHours(0, 0, 0, 0)
+    }
+    return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -516,6 +582,54 @@ export default function Dashboard() {
     return { poraba: nextPoraba, stroski: nextStroski, fuelRows }
   }
 
+  const naloziGumeZaDashboard = async (carId: string, currentKm: number) => {
+    setTireSummary(null)
+    try {
+      const cached = localStorage.getItem(`garagebase_dashboard_tires_${carId}`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (parsed?.season) setTireSummary(parsed)
+      }
+    } catch {}
+
+    const { data: tireRows, error } = await supabase
+      .from('tire_sets')
+      .select('id,season,brand,model,installed_km,total_km,status')
+      .eq('car_id', carId)
+      .in('status', ['mounted', 'active'])
+      .order('installed_at', { ascending: false })
+      .limit(1)
+
+    if (error || !tireRows?.length) {
+      setTireSummary(null)
+      return
+    }
+
+    const tire = tireRows.find((item: any) => normalizeTireStatus(item.status) === 'mounted') || tireRows[0]
+    let drivenKm = Math.max(0, Number(currentKm || 0) - Number(tire.installed_km || 0)) + numberValue(tire.total_km)
+    const { data: mountRows } = await supabase
+      .from('tire_mounts')
+      .select('mounted_km,removed_km')
+      .eq('tire_set_id', tire.id)
+
+    if (mountRows?.length) {
+      drivenKm = mountRows.reduce((sum: number, mount: any) => {
+        const start = numberValue(mount.mounted_km)
+        const end = mount.removed_km === null || mount.removed_km === undefined ? Number(currentKm || 0) : numberValue(mount.removed_km)
+        return sum + Math.max(0, end - start)
+      }, 0)
+    }
+
+    const next = {
+      season: tire.season || 'all_season',
+      label: [tire.brand, tire.model].filter(Boolean).join(' ') || tireSeasonLabel(tire.season || 'all_season'),
+      drivenKm,
+      daysToSeasonEnd: daysToSeasonEnd(tire.season || 'all_season'),
+    }
+    setTireSummary(next)
+    try { localStorage.setItem(`garagebase_dashboard_tires_${carId}`, JSON.stringify(next)) } catch {}
+  }
+
   const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
     activeLoadRef.current = carId
     const shouldApply = () => activeLoadRef.current === carId
@@ -564,6 +678,7 @@ export default function Dashboard() {
     const opData = opRes.data || []
     if (!shouldApply()) return
     setOpomniki(opData)
+    await naloziGumeZaDashboard(carId, avtoKmStart)
 
     const stats = await naloziStatistikoVozila(carId, avtoKmStart, kmObVnosu)
     if (!shouldApply()) return
@@ -578,6 +693,7 @@ export default function Dashboard() {
     setOpomniki([])
     setPoraba({ garageBase: null, imported: null, total: null })
     setStroski({ garageBase: 0, imported: 0, total: 0, naKm: null })
+    setTireSummary(null)
     router.push(`/dashboard?car=${encodeURIComponent(avto.id)}`)
     if (nacin === 'lite') await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
     await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
@@ -950,7 +1066,7 @@ export default function Dashboard() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-4 gap-3">
                     <div className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4">
                       <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Kilometri', 'Mileage')}</p>
                       <p className="text-white font-bold text-2xl">{aktivniAvto.km_trenutni ? aktivniAvto.km_trenutni.toLocaleString() : '-'} km</p>
@@ -993,6 +1109,29 @@ export default function Dashboard() {
                           <span className="text-[#bbf7d0] font-semibold">{renderStroski.imported > 0 ? formatMoney(renderStroski.imported, valuta) : '-'}</span>
                         </div>
                       </div>
+                    </button>
+                    <button onClick={() => router.push('/gume?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] rounded-xl p-4 text-left hover:border-[#a09aff] transition-all">
+                      <div className="mb-3 flex items-center justify-between gap-2">
+                        <p className="text-[#5a5a80] text-xs uppercase tracking-wider">{tx('Gume', 'Tires')}</p>
+                        <TireSeasonIcon season={tireSummary?.season || 'all_season'} className="h-9 w-9 shrink-0" />
+                      </div>
+                      {tireSummary ? (
+                        <div className="space-y-2">
+                          <p className="truncate text-white font-bold">{tireSummary.label}</p>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-[#3ecfcf] text-xs font-bold uppercase">{tx('Prevoženo', 'Driven')}</span>
+                            <span className="text-white font-bold">{Math.round(tireSummary.drivenKm).toLocaleString(datumLocale)} km</span>
+                          </div>
+                          {tireSummary.daysToSeasonEnd !== null && (
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="text-[#a09aff] text-xs font-bold uppercase">{tx('Do konca', 'Until end')}</span>
+                              <span className="text-[#c8c4ff] font-semibold">{tireSummary.daysToSeasonEnd} {tx('dni', 'days')}</span>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm font-semibold text-[#8080a0]">{tx('Ni montiranih gum', 'No mounted tires')}</p>
+                      )}
                     </button>
                   </div>
                   <ServisStatusCard />
@@ -1093,6 +1232,26 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => router.push(`/gume?car=${aktivniAvto.id}`)}
+                  className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1">{tx('Gume', 'Tires')}</p>
+                      <p className="truncate text-white font-bold">{tireSummary ? tireSummary.label : tx('Ni montiranih gum', 'No mounted tires')}</p>
+                      {tireSummary && (
+                        <p className="mt-1 text-sm font-semibold text-[#a8b0c0]">
+                          {Math.round(tireSummary.drivenKm).toLocaleString(datumLocale)} km
+                          {tireSummary.daysToSeasonEnd !== null ? ` · ${tireSummary.daysToSeasonEnd} ${tx('dni do konca sezone', 'days until season end')}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <TireSeasonIcon season={tireSummary?.season || 'all_season'} className="h-14 w-14 shrink-0" />
+                  </div>
+                </button>
 
                 <div className="mx-5 mb-4">
                   <ServisStatusCard compact />
