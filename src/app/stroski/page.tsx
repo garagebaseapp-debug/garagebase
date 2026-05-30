@@ -15,6 +15,14 @@ const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,post
 const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,import_batch_id,source_owner_label'
 const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label'
 const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
+const ownershipSettingsKey = (carId: string) => `garagebase_vehicle_ownership_${carId}`
+const readStoredOwnershipSettings = (carId: string) => {
+  try {
+    return JSON.parse(localStorage.getItem(ownershipSettingsKey(carId)) || '{}')
+  } catch {
+    return {}
+  }
+}
 
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -408,6 +416,7 @@ export default function Stroski() {
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
   const [avto, setAvto] = useState<any>(null)
+  const [ownershipFallback, setOwnershipFallback] = useState<any>({})
   const [gorivo, setGorivo] = useState<any[]>([])
   const [servisi, setServisi] = useState<any[]>([])
   const [expenses, setExpenses] = useState<any[]>([])
@@ -483,6 +492,7 @@ export default function Stroski() {
     setRowStats(null)
     setDisplayStats(null)
     setIncludeVehiclePrice(false)
+    setOwnershipFallback({})
     setDebugSource('')
   }
 
@@ -502,6 +512,9 @@ export default function Stroski() {
         const cachedCar = parsedGarage.avti?.find((a: any) => a.id === carId)
         if (cachedCar) {
           setAvto(cachedCar)
+          const storedOwnership = readStoredOwnershipSettings(carId)
+          setOwnershipFallback(storedOwnership)
+          if (storedOwnership.include_vehicle_price_in_costs === true) setIncludeVehiclePrice(true)
           setLoading(false)
         }
       }
@@ -575,7 +588,9 @@ export default function Stroski() {
       setActiveCarId(carId)
       if (avtoRes.data) {
         setAvto(avtoRes.data)
-        setIncludeVehiclePrice(avtoRes.data.include_vehicle_price_in_costs === true)
+        const storedOwnership = readStoredOwnershipSettings(carId)
+        setOwnershipFallback(storedOwnership)
+        setIncludeVehiclePrice(avtoRes.data.include_vehicle_price_in_costs === true || storedOwnership.include_vehicle_price_in_costs === true)
       } else {
         setAvto((prev: any) => prev || { id: carId })
       }
@@ -815,13 +830,22 @@ export default function Stroski() {
   const skupajVse = renderSummary.total || skupajGorivo + skupajServis + skupajExpenses
   const skupajUvoz = renderSummary.imported
   const skupajGarageBase = renderSummary.garageBase || Math.max(0, skupajVse - skupajUvoz)
-  const ownershipCost = vehicleOwnershipCostValue(avto)
+  const ownershipValue = (key: string) => avto?.[key] ?? ownershipFallback?.[key]
+  const ownershipCar = {
+    purchase_price: ownershipValue('purchase_price'),
+    down_payment: ownershipValue('down_payment'),
+    finance_total_paid: ownershipValue('finance_total_paid'),
+    finance_overpayment: ownershipValue('finance_overpayment'),
+    monthly_payment: ownershipValue('monthly_payment'),
+    resale_value: ownershipValue('resale_value'),
+  }
+  const ownershipCost = vehicleOwnershipCostValue(ownershipCar)
   const skupajZLastnistvom = skupajVse + ownershipCost
-  const purchasePrice = numericValue(avto?.purchase_price)
-  const downPayment = numericValue(avto?.down_payment)
-  const financeTotalPaid = numericValue(avto?.finance_total_paid)
-  const financeOverpayment = numericValue(avto?.finance_overpayment)
-  const resaleValue = numericValue(avto?.resale_value)
+  const purchasePrice = numericValue(ownershipCar?.purchase_price)
+  const downPayment = numericValue(ownershipCar?.down_payment)
+  const financeTotalPaid = numericValue(ownershipCar?.finance_total_paid)
+  const financeOverpayment = numericValue(ownershipCar?.finance_overpayment)
+  const resaleValue = numericValue(ownershipCar?.resale_value)
   const ownershipBase = financeTotalPaid > 0 ? downPayment + financeTotalPaid : purchasePrice + financeOverpayment
   const stGorivo = renderSummary.rows.fuel
   const stServis = renderSummary.rows.service

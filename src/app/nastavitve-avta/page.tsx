@@ -7,6 +7,20 @@ import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } fro
 import { getStoredLanguage } from '@/lib/i18n'
 import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
 
+const ownershipSettingsKey = (carId: string) => `garagebase_vehicle_ownership_${carId}`
+const readStoredOwnershipSettings = (carId: string) => {
+  try {
+    return JSON.parse(localStorage.getItem(ownershipSettingsKey(carId)) || '{}')
+  } catch {
+    return {}
+  }
+}
+const writeStoredOwnershipSettings = (carId: string, data: Record<string, unknown>) => {
+  try {
+    localStorage.setItem(ownershipSettingsKey(carId), JSON.stringify(data))
+  } catch {}
+}
+
 export default function NastavitveAvta() {
   const [avto, setAvto] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -183,13 +197,14 @@ export default function NastavitveAvta() {
         setStLastnikov(data.st_lastnikov?.toString() || '')
         setLastnikMesto(data.lastnik_mesto || '')
         setLastnikStarost(data.lastnik_starost?.toString() || '')
-        setPurchasePrice(data.purchase_price?.toString() || '')
-        setDownPayment(data.down_payment?.toString() || '')
-        setFinanceTotalPaid(data.finance_total_paid?.toString() || '')
-        setFinanceOverpayment(data.finance_overpayment?.toString() || '')
-        setMonthlyPayment(data.monthly_payment?.toString() || '')
-        setResaleValue(data.resale_value?.toString() || '')
-        setIncludeVehiclePriceInCosts(data.include_vehicle_price_in_costs === true)
+        const storedOwnership = readStoredOwnershipSettings(data.id)
+        setPurchasePrice((data.purchase_price ?? storedOwnership.purchase_price ?? '')?.toString() || '')
+        setDownPayment((data.down_payment ?? storedOwnership.down_payment ?? '')?.toString() || '')
+        setFinanceTotalPaid((data.finance_total_paid ?? storedOwnership.finance_total_paid ?? '')?.toString() || '')
+        setFinanceOverpayment((data.finance_overpayment ?? storedOwnership.finance_overpayment ?? '')?.toString() || '')
+        setMonthlyPayment((data.monthly_payment ?? storedOwnership.monthly_payment ?? '')?.toString() || '')
+        setResaleValue((data.resale_value ?? storedOwnership.resale_value ?? '')?.toString() || '')
+        setIncludeVehiclePriceInCosts(data.include_vehicle_price_in_costs === true || storedOwnership.include_vehicle_price_in_costs === true)
         setPrenosSoglasje(data.prenos_soglasje === true)
         setPrenosOpomba(data.prenos_opomba || '')
         setHomologacijaStevilka(data.homologacija_stevilka || '')
@@ -289,6 +304,16 @@ export default function NastavitveAvta() {
     setSaving(true)
     setMessage('')
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
+    const ownershipPayload = {
+      purchase_price: decimalValue(purchasePrice),
+      down_payment: decimalValue(downPayment),
+      finance_total_paid: decimalValue(financeTotalPaid),
+      finance_overpayment: decimalValue(financeOverpayment),
+      monthly_payment: decimalValue(monthlyPayment),
+      resale_value: decimalValue(resaleValue),
+      include_vehicle_price_in_costs: includeVehiclePriceInCosts,
+    }
+    if (avto?.id) writeStoredOwnershipSettings(avto.id, ownershipPayload)
     const payload: any = {
       tip_vozila: finalniTip,
       oblika: oblika || null,
@@ -305,13 +330,7 @@ export default function NastavitveAvta() {
       st_lastnikov: stLastnikov ? parseInt(stLastnikov) : null,
       lastnik_mesto: lastnikMesto || null,
       lastnik_starost: lastnikStarost ? parseInt(lastnikStarost) : null,
-      purchase_price: decimalValue(purchasePrice),
-      down_payment: decimalValue(downPayment),
-      finance_total_paid: decimalValue(financeTotalPaid),
-      finance_overpayment: decimalValue(financeOverpayment),
-      monthly_payment: decimalValue(monthlyPayment),
-      resale_value: decimalValue(resaleValue),
-      include_vehicle_price_in_costs: includeVehiclePriceInCosts,
+      ...ownershipPayload,
       prenos_soglasje: prenosSoglasje,
       prenos_opomba: prenosOpomba || null,
       homologacija_stevilka: homologacijaStevilka || null,
