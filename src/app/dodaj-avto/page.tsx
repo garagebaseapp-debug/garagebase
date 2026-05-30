@@ -223,7 +223,8 @@ export default function DodajAvto() {
   }
 
   return (
-    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
+    <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:pl-[280px]">
+      <div className="mx-auto w-full max-w-5xl">
       <div className="flex items-center gap-3 mb-8">
         <BackButton href="/garaza" />
         <div>
@@ -521,6 +522,7 @@ export default function DodajAvto() {
           className={`${korak < 3 ? 'hidden' : ''} w-full bg-[#6c63ff] hover:bg-[#5a52e0] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50`}>
           {loading ? 'Shranjevanje...' : 'Shrani vozilo →'}
         </button>
+      </div>
       </div>
 
       <BottomNav />

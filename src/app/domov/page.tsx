@@ -346,9 +346,12 @@ export default function DomovPage() {
       if (carsError || (carsData || []).length === 0) {
         const fallback = await supabase
           .from('cars')
-          .select(homeCarColumns)
+          .select('*')
           .eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
+        if (fallback.error) {
+          console.warn('[GarageBase home] optimized cars select failed', carsError?.message || fallback.error.message)
+        }
         carsData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
       }
 
