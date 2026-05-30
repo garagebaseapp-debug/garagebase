@@ -9,6 +9,7 @@ import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
 import { GARAGE_CACHE_VERSION, ensureVehicleStatsCacheVersion, imageUrlWithVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
+import { TireSeasonIcon } from '@/lib/tire-icon'
 
 type ConsumptionBreakdown = {
   garageBase: number | null
@@ -998,7 +999,7 @@ export default function Dashboard() {
                   <div className="grid grid-cols-4 gap-3 mt-auto">
                     <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>{tx('Gorivo', 'Fuel')}</button>
                     <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>{tx('Servis', 'Service')}</button>
-                    <button onClick={() => router.push('/gume?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#a09aff] hover:text-[#a09aff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-current text-[10px] font-black">T</span>{tx('Gume', 'Tires')}</button>
+                    <button onClick={() => router.push('/gume?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#a09aff] hover:text-[#a09aff] transition-all flex items-center justify-center gap-3 font-semibold"><TireSeasonIcon className="h-8 w-8 shrink-0" />{tx('Gume', 'Tires')}</button>
                     <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>{tx('Opomniki', 'Reminders')}</button>
                     <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>{tx('Stroski', 'Costs')}</button>
                     <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>{tx('Nastavitve', 'Settings')}</button>
@@ -1054,7 +1055,7 @@ export default function Dashboard() {
                   </button>
                   <button onClick={() => router.push(`/gume?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#a09aff] py-3.5 rounded-2xl hover:border-[#a09aff] transition-all flex flex-col items-center gap-1.5">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-current text-[11px] font-black leading-none">T</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Gume', 'Tires')}</span>
+                    <TireSeasonIcon className="h-9 w-9 shrink-0" /><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Gume', 'Tires')}</span>
                   </button>
                   <button onClick={() => router.push(`/opomniki?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#1e1e32] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] transition-all flex flex-col items-center gap-1.5">

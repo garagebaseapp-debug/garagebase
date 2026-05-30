@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { clearVehicleDataCaches } from '@/lib/vehicle-cache'
+import { TireSeasonIcon } from '@/lib/tire-icon'
 
 type TireSet = {
   id: string
@@ -82,28 +83,6 @@ const nextSeasonReminderDate = (season: string, settings: TireSeasonSettings) =>
     target.setDate(target.getDate() - warnDays)
   }
   return toIsoDate(target)
-}
-
-function SeasonIcon({ season, className = 'h-10 w-10' }: { season: string; className?: string }) {
-  const showSun = season === 'summer' || season === 'all_season'
-  const showSnow = season === 'winter' || season === 'all_season'
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <circle cx="32" cy="32" r="22" stroke="currentColor" strokeWidth="5" />
-      <circle cx="32" cy="32" r="10" stroke="currentColor" strokeWidth="4" opacity="0.62" />
-      {showSun && (
-        <g stroke="#f59e0b" strokeWidth="3" strokeLinecap="round">
-          <circle cx="18" cy="18" r="5" fill="#f59e0b" stroke="none" />
-          <path d="M18 7v4M18 25v4M7 18h4M25 18h4M10 10l3 3M26 26l-3-3M26 10l-3 3M10 26l3-3" />
-        </g>
-      )}
-      {showSnow && (
-        <g stroke="#67e8f9" strokeWidth="3" strokeLinecap="round">
-          <path d="M47 37v18M39 41l16 10M55 41 39 51M47 37l-4 5M47 37l4 5M47 55l-4-5M47 55l4-5" />
-        </g>
-      )}
-    </svg>
-  )
 }
 
 export default function GumePage() {
@@ -450,7 +429,7 @@ export default function GumePage() {
                   <label className="text-sm font-black">{tx('Sezona', 'Season')}<select value={form.season} onChange={(e) => updateForm('season', e.target.value)} className={inputClass}><option value="summer">{tx('Letne', 'Summer')}</option><option value="winter">{tx('Zimske', 'Winter')}</option><option value="all_season">{tx('Celoletne', 'All-season')}</option></select></label>
                   <div className="rounded-2xl border border-[#30364c] bg-[#0b1020] p-3">
                     <div className="flex items-center gap-3">
-                      <SeasonIcon season={form.season} className="h-12 w-12 shrink-0 text-[#d8def0]" />
+                      <TireSeasonIcon season={form.season} className="h-12 w-12 shrink-0" />
                       <div>
                         <p className="text-sm font-black">{seasonLabel(form.season)}</p>
                         <p className="text-xs font-bold text-[#a8b0c0]">{seasonReminderText(form.season)}</p>
@@ -486,7 +465,7 @@ export default function GumePage() {
                 {activeTires.map((item) => (
                   <div key={item.id} className={cardClass}>
                     <div className="flex items-start justify-between gap-3">
-                      <SeasonIcon season={item.season} className="h-12 w-12 shrink-0 text-[#d8def0]" />
+                      <TireSeasonIcon season={item.season} className="h-12 w-12 shrink-0" />
                       <div>
                         <p className="text-xs font-black uppercase text-[#3ecfcf]">{seasonLabel(item.season)}</p>
                         <h3 className="mt-1 text-xl font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
@@ -512,7 +491,7 @@ export default function GumePage() {
                 {archivedTires.length === 0 && <div className={cardClass}>{tx('Arhiv je še prazen.', 'Archive is still empty.')}</div>}
                 {archivedTires.map((item) => (
                   <div key={item.id} className={`${cardClass} opacity-90`}>
-                    <SeasonIcon season={item.season} className="mb-2 h-10 w-10 text-[#d8def0]" />
+                    <TireSeasonIcon season={item.season} className="mb-2 h-10 w-10" />
                     <p className="text-xs font-black uppercase text-[#a8b0c0]">{seasonLabel(item.season)}</p>
                     <h3 className="mt-1 text-lg font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
                     <p className="text-sm font-bold text-[#a8b0c0]">{[item.size, item.dot].filter(Boolean).join(' · ') || '-'}</p>

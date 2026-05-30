@@ -7,6 +7,7 @@ import { BottomNav, NavIcon } from '@/lib/nav'
 import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
+import { TireSeasonIcon } from '@/lib/tire-icon'
 
 const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
@@ -786,7 +787,7 @@ export default function Garaza() {
                 { label: tx('Stroški', 'Costs'), href: `/stroski?car=${glavni.id}`, icon: '▥' },
                 { label: tx('Servis', 'Service'), href: `/servis?car=${glavni.id}`, icon: '⌘' },
                 { label: tx('Dokumenti', 'Docs'), href: `/report?car=${glavni.id}`, icon: '▤' },
-                { label: tx('Gume', 'Tires'), href: `/gume?car=${glavni.id}`, icon: 'T' },
+                { label: tx('Gume', 'Tires'), href: `/gume?car=${glavni.id}`, icon: 'tire' },
                 { label: tx('Opomniki', 'Reminders'), href: `/opomniki?car=${glavni.id}`, icon: '!' },
               ].map((action) => (
                 <button
@@ -795,7 +796,7 @@ export default function Garaza() {
                   onClick={(e) => { e.stopPropagation(); router.push(action.href) }}
                   className="rounded-2xl border border-white/15 bg-black/30 px-2 py-3 text-center text-xs font-black text-white shadow-lg shadow-black/20 backdrop-blur-md"
                 >
-                  <span className="mb-1 block text-lg">{action.icon}</span>
+                  <span className="mb-1 flex min-h-6 items-center justify-center text-lg">{action.icon === 'tire' ? <TireSeasonIcon className="h-8 w-8" /> : action.icon}</span>
                   {action.label}
                 </button>
               ))}
@@ -1592,7 +1593,7 @@ export default function Garaza() {
                     <span className="mb-2 block text-3xl">🔧</span>{tx('Servis', 'Service')}
                   </button>
                   <button onClick={() => pojdiNaVnos('/gume')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
-                    <span className="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-current text-base font-black">T</span>{tx('Gume', 'Tires')}
+                    <TireSeasonIcon className="mx-auto mb-2 h-10 w-10" />{tx('Gume', 'Tires')}
                   </button>
                   <button onClick={() => pojdiNaVnos('/vnos-stroska')} className={`rounded-2xl border p-4 text-center font-black ${desktopLight ? 'border-[#e2e7f2] bg-[#f8f9fd] text-[#101225]' : 'border-[#253142] bg-[#0c121a] text-white'}`}>
                     <span className="mb-2 block text-3xl">💵</span>{tx('Strosek', 'Cost')}
