@@ -26,6 +26,7 @@ type TireSet = {
   total_km: number | null
   status: string
   notes: string | null
+  tire_scope?: string | null
   last_mounted_at?: string | null
   last_mounted_km?: number | null
 }
@@ -38,6 +39,7 @@ type TireMount = {
   removed_at: string | null
   removed_km: number | null
   km_driven: number | null
+  axle_position?: string | null
 }
 
 type TireSeasonSettings = {
@@ -106,6 +108,12 @@ const normalizeTireStatus = (status: string) => {
   return 'mounted'
 }
 
+const defaultPositionForScope = (scope: string) => {
+  if (scope === 'front_pair') return 'front'
+  if (scope === 'rear_pair') return 'rear'
+  return 'all'
+}
+
 export default function GumePage() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
@@ -120,10 +128,11 @@ export default function GumePage() {
   const [showForm, setShowForm] = useState(false)
   const [storeCurrent, setStoreCurrent] = useState(true)
   const [mountingTireId, setMountingTireId] = useState('')
-  const [mountForm, setMountForm] = useState({ mountedAt: todayIso(), mountedKm: '' })
+  const [mountForm, setMountForm] = useState({ mountedAt: todayIso(), mountedKm: '', position: 'all' })
   const [seasonSettings, setSeasonSettings] = useState<TireSeasonSettings>(defaultSeasonSettings)
   const [form, setForm] = useState({
     season: 'summer',
+    tireScope: 'full_set',
     brand: '',
     model: '',
     size: '',
@@ -146,6 +155,16 @@ export default function GumePage() {
     winter: tx('Zimske', 'Winter'),
     all_season: tx('Celoletne', 'All-season'),
   }[season] || season)
+  const scopeLabel = (scope: string | null | undefined) => ({
+    full_set: tx('Vse 4 gume', 'All 4 tires'),
+    front_pair: tx('Sprednji par', 'Front pair'),
+    rear_pair: tx('Zadnji par', 'Rear pair'),
+  }[scope || 'full_set'] || tx('Vse 4 gume', 'All 4 tires'))
+  const positionLabel = (position: string | null | undefined) => ({
+    all: tx('Vse pozicije', 'All positions'),
+    front: tx('Spredaj', 'Front'),
+    rear: tx('Zadaj', 'Rear'),
+  }[position || 'all'] || tx('Vse pozicije', 'All positions'))
   const formatKm = (value: number | null | undefined) => typeof value === 'number' && Number.isFinite(value)
     ? `${value.toLocaleString(locale)} km`
     : '-'
@@ -164,6 +183,7 @@ export default function GumePage() {
       return sum + Math.max(0, end - start)
     }, 0)
   }
+  const openMountFor = (item: TireSet) => mounts.find((mount) => mount.tire_set_id === item.id && !mount.removed_at)
   const bestTire = useMemo(() => {
     const list = tires.map((item) => ({ item, km: tireKm(item) })).sort((a, b) => b.km - a.km)
     return list[0] || null
@@ -285,6 +305,13 @@ export default function GumePage() {
     const tiresToStore = mountedTires.filter((item) => item.id !== exceptId)
     await Promise.all(tiresToStore.map(async (item) => {
       const usedKm = tireKm(item)
+      const { data: openMount } = await supabase
+        .from('tire_mounts')
+        .select('id')
+        .eq('tire_set_id', item.id)
+        .eq('user_id', userId)
+        .is('removed_at', null)
+        .maybeSingle()
       await supabase
         .from('tire_mounts')
         .update({ removed_at: date, removed_km: km })
@@ -301,6 +328,7 @@ export default function GumePage() {
         })
         .eq('id', item.id)
         .eq('user_id', userId)
+      await logMileageEvent(userId, 'tire_remove', openMount?.id || item.id, date, km)
     }))
   }
 
@@ -325,14 +353,14 @@ export default function GumePage() {
     }
   }
 
-  const logMileageEvent = async (userId: string, type: 'tire_mount' | 'tire_remove', tireSetId: string, date: string, km: number, note?: string) => {
+  const logMileageEvent = async (userId: string, type: 'tire_mount' | 'tire_remove', sourceId: string, date: string, km: number, note?: string) => {
     if (!car?.id || !km) return
     await supabase.from('vehicle_mileage_events').insert({
       user_id: userId,
       car_id: car.id,
       event_type: type,
-      source_table: 'tire_sets',
-      source_id: tireSetId,
+      source_table: 'tire_mounts',
+      source_id: sourceId,
       event_date: date,
       km,
       previous_known_km: currentKm || null,
@@ -363,6 +391,7 @@ export default function GumePage() {
         user_id: user.id,
         car_id: car.id,
         season: form.season,
+        tire_scope: form.tireScope,
         brand: form.brand.trim() || null,
         model: form.model.trim() || null,
         size: form.size.trim() || null,
@@ -388,19 +417,21 @@ export default function GumePage() {
       return
     }
     if (inserted?.id) {
-      await supabase.from('tire_mounts').insert({
+      const { data: mountRow } = await supabase.from('tire_mounts').insert({
         user_id: user.id,
         car_id: car.id,
         tire_set_id: inserted.id,
         mounted_at: installedAt,
         mounted_km: installedKm,
-      })
-      await logMileageEvent(user.id, 'tire_mount', inserted.id, installedAt, installedKm, form.lateEntryNote.trim() || undefined)
+        axle_position: defaultPositionForScope(form.tireScope),
+      }).select('id').single()
+      await logMileageEvent(user.id, 'tire_mount', mountRow?.id || inserted.id, installedAt, installedKm, form.lateEntryNote.trim() || undefined)
     }
     await createTireReminder(calculatedReminderDate, numberOrNull(form.remindDaysBefore) || 7)
     setShowForm(false)
     setForm({
       season: 'summer',
+      tireScope: 'full_set',
       brand: '',
       model: '',
       size: '',
@@ -422,6 +453,13 @@ export default function GumePage() {
   const storeTireSet = async (item: TireSet) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const { data: openMount } = await supabase
+      .from('tire_mounts')
+      .select('id')
+      .eq('tire_set_id', item.id)
+      .eq('user_id', user.id)
+      .is('removed_at', null)
+      .maybeSingle()
     await supabase
       .from('tire_mounts')
       .update({ removed_at: todayIso(), removed_km: currentKm })
@@ -438,7 +476,7 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
-    await logMileageEvent(user.id, 'tire_remove', item.id, todayIso(), currentKm)
+    await logMileageEvent(user.id, 'tire_remove', openMount?.id || item.id, todayIso(), currentKm)
     clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
@@ -446,6 +484,13 @@ export default function GumePage() {
   const retireTireSet = async (item: TireSet) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const { data: openMount } = await supabase
+      .from('tire_mounts')
+      .select('id')
+      .eq('tire_set_id', item.id)
+      .eq('user_id', user.id)
+      .is('removed_at', null)
+      .maybeSingle()
     await supabase
       .from('tire_mounts')
       .update({ removed_at: todayIso(), removed_km: currentKm })
@@ -462,7 +507,7 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
-    await logMileageEvent(user.id, 'tire_remove', item.id, todayIso(), currentKm)
+    await logMileageEvent(user.id, 'tire_remove', openMount?.id || item.id, todayIso(), currentKm)
     clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
@@ -488,17 +533,19 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
-    await supabase.from('tire_mounts').insert({
+    const mountPosition = item.tire_scope === 'full_set' ? 'all' : mountForm.position || defaultPositionForScope(item.tire_scope || 'full_set')
+    const { data: mountRow } = await supabase.from('tire_mounts').insert({
       user_id: user.id,
       car_id: car.id,
       tire_set_id: item.id,
       mounted_at: mountedAt,
       mounted_km: mountedKm,
-    })
-    await logMileageEvent(user.id, 'tire_mount', item.id, mountedAt, mountedKm)
+      axle_position: mountPosition,
+    }).select('id').single()
+    await logMileageEvent(user.id, 'tire_mount', mountRow?.id || item.id, mountedAt, mountedKm)
     await createTireReminder(nextSeasonReminderDate(item.season, seasonSettings), numberOrNull(seasonSettings.warnDaysBefore) || 7)
     setMountingTireId('')
-    setMountForm({ mountedAt: todayIso(), mountedKm: String(currentKm || '') })
+    setMountForm({ mountedAt: todayIso(), mountedKm: String(currentKm || ''), position: 'all' })
     clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
@@ -595,12 +642,13 @@ export default function GumePage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="text-sm font-black">{tx('Sezona', 'Season')}<select value={form.season} onChange={(e) => updateForm('season', e.target.value)} className={inputClass}><option value="summer">{tx('Letne', 'Summer')}</option><option value="winter">{tx('Zimske', 'Winter')}</option><option value="all_season">{tx('Celoletne', 'All-season')}</option></select></label>
+                  <label className="text-sm font-black">{tx('Obseg gum', 'Tire scope')}<select value={form.tireScope} onChange={(e) => updateForm('tireScope', e.target.value)} className={inputClass}><option value="full_set">{tx('Vse 4 gume', 'All 4 tires')}</option><option value="front_pair">{tx('Sprednji par', 'Front pair')}</option><option value="rear_pair">{tx('Zadnji par', 'Rear pair')}</option></select></label>
                   <div className="rounded-2xl border border-[#30364c] bg-[#0b1020] p-3">
                     <div className="flex items-center gap-3">
                       <TireSeasonIcon season={form.season} className="h-12 w-12 shrink-0" />
                       <div>
                         <p className="text-sm font-black">{seasonLabel(form.season)}</p>
-                        <p className="text-xs font-bold text-[#a8b0c0]">{seasonPeriodText(form.season)}</p>
+                        <p className="text-xs font-bold text-[#a8b0c0]">{scopeLabel(form.tireScope)} · {seasonPeriodText(form.season)}</p>
                       </div>
                     </div>
                   </div>
@@ -642,7 +690,7 @@ export default function GumePage() {
                       <div>
                         <p className="text-xs font-black uppercase text-[#3ecfcf]">{seasonLabel(item.season)}</p>
                         <h3 className="mt-1 text-xl font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
-                        <p className="text-sm font-bold text-[#a8b0c0]">{[item.size, item.dot].filter(Boolean).join(' · ') || '-'}</p>
+                        <p className="text-sm font-bold text-[#a8b0c0]">{[scopeLabel(item.tire_scope), item.size, item.dot].filter(Boolean).join(' · ')}</p>
                       </div>
                       <div className="flex flex-col gap-2">
                         <button onClick={() => storeTireSet(item)} className="rounded-xl border border-[#3ecfcf66] bg-[#3ecfcf14] px-3 py-2 text-xs font-black text-[#8df0f0]">{tx('V hrambo', 'Store')}</button>
@@ -653,7 +701,7 @@ export default function GumePage() {
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Prevoženo', 'Driven')}</p><p className="font-black">{formatKm(tireKm(item))}</p></div>
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{item.tread_depth_mm ? `${item.tread_depth_mm} mm` : '-'}</p></div>
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Montirano', 'Installed')}</p><p className="font-black">{item.installed_at || '-'}</p></div>
-                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Opomnik', 'Reminder')}</p><p className="font-black">{item.next_change_date || '-'}</p></div>
+                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Pozicija', 'Position')}</p><p className="font-black">{positionLabel(openMountFor(item)?.axle_position || defaultPositionForScope(item.tire_scope || 'full_set'))}</p></div>
                     </div>
                     {item.notes && <p className="mt-3 rounded-2xl bg-[#0b1020] p-3 text-sm font-semibold text-[#d8def0]">{item.notes}</p>}
                   </div>
@@ -672,13 +720,13 @@ export default function GumePage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-black uppercase text-[#a09aff]">{seasonLabel(item.season)}</p>
                         <h3 className="mt-1 text-xl font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
-                        <p className="text-sm font-bold text-[#a8b0c0]">{[item.size, item.dot].filter(Boolean).join(' · ') || '-'}</p>
+                        <p className="text-sm font-bold text-[#a8b0c0]">{[scopeLabel(item.tire_scope), item.size, item.dot].filter(Boolean).join(' · ')}</p>
                         <p className="mt-2 text-xs font-bold text-[#a8b0c0]">{seasonPeriodText(item.season)}</p>
                       </div>
                       <button
                         onClick={() => {
                           setMountingTireId(item.id)
-                          setMountForm({ mountedAt: todayIso(), mountedKm: String(currentKm || '') })
+                          setMountForm({ mountedAt: todayIso(), mountedKm: String(currentKm || ''), position: defaultPositionForScope(item.tire_scope || 'full_set') })
                         }}
                         className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#c8c4ff]"
                       >
@@ -690,12 +738,13 @@ export default function GumePage() {
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{item.tread_depth_mm ? `${item.tread_depth_mm} mm` : '-'}</p></div>
                     </div>
                     {mountingTireId === item.id && (
-                      <div className="mt-4 grid gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] p-3 md:grid-cols-[1fr_1fr_auto]">
+                      <div className="mt-4 grid gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
                         <label className="text-sm font-black">{tx('Datum montaže', 'Mount date')}<input type="date" value={mountForm.mountedAt} onChange={(e) => setMountForm((prev) => ({ ...prev, mountedAt: e.target.value }))} className={inputClass} /></label>
                         <label className="text-sm font-black">{tx('Km ob montaži', 'Mileage at mount')}<input value={mountForm.mountedKm} onChange={(e) => setMountForm((prev) => ({ ...prev, mountedKm: e.target.value }))} inputMode="numeric" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Pozicija', 'Position')}<select value={item.tire_scope === 'full_set' ? 'all' : mountForm.position} disabled={item.tire_scope === 'full_set'} onChange={(e) => setMountForm((prev) => ({ ...prev, position: e.target.value }))} className={inputClass}><option value="all">{tx('Vse pozicije', 'All positions')}</option><option value="front">{tx('Spredaj', 'Front')}</option><option value="rear">{tx('Zadaj', 'Rear')}</option></select></label>
                         <button onClick={() => mountStoredTire(item)} className="self-end rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white">{tx('Potrdi', 'Confirm')}</button>
                         {(numberOrNull(mountForm.mountedKm) ?? currentKm) < currentKm && (
-                          <p className="text-xs font-bold text-[#fbbf24] md:col-span-3">
+                          <p className="text-xs font-bold text-[#fbbf24] md:col-span-4">
                             {tx('Ta montaža bo označena kot naknadno vnesena, ker so km nižji od trenutnega stanja vozila.', 'This mount will be marked as entered later because mileage is below the current vehicle mileage.')}
                           </p>
                         )}
@@ -716,7 +765,7 @@ export default function GumePage() {
                     <TireSeasonIcon season={item.season} className="mb-2 h-10 w-10" />
                     <p className="text-xs font-black uppercase text-[#a8b0c0]">{seasonLabel(item.season)}</p>
                     <h3 className="mt-1 text-lg font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
-                    <p className="text-sm font-bold text-[#a8b0c0]">{[item.size, item.dot].filter(Boolean).join(' · ') || '-'}</p>
+                    <p className="text-sm font-bold text-[#a8b0c0]">{[scopeLabel(item.tire_scope), item.size, item.dot].filter(Boolean).join(' · ')}</p>
                     <p className="mt-3 text-2xl font-black text-[#6c63ff]">{formatKm(tireKm(item))}</p>
                     <p className="mt-1 text-xs font-bold text-[#a8b0c0]">{item.installed_at || '-'} - {item.removed_at || '-'}</p>
                   </div>
