@@ -32,7 +32,10 @@ declare
     'vehicle_public_registry_events',
     'vehicle_public_registry_lookups',
     'api_rate_limits',
-    'archived_cars'
+    'archived_cars',
+    'tire_sets',
+    'tire_mounts',
+    'vehicle_mileage_events'
   ];
 begin
   foreach table_name in array data_api_tables loop
