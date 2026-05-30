@@ -590,7 +590,7 @@ export default function GumePage() {
                   <label className="text-sm font-black">{tx('Začetni km', 'Start mileage')}<input value={form.installedKm} onChange={(e) => updateForm('installedKm', e.target.value)} inputMode="numeric" className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Opozori dni prej', 'Warn days before')}<input value={form.remindDaysBefore} onChange={(e) => updateForm('remindDaysBefore', e.target.value)} inputMode="numeric" className={inputClass} /></label>
                   <label className="flex items-center gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] px-4 py-3 text-sm font-black"><input type="checkbox" checked={storeCurrent} onChange={(e) => setStoreCurrent(e.target.checked)} />{tx('Trenutno montirane gume prestavi v hrambo', 'Move currently mounted tires to storage')}</label>
-                  <p className="rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf14] px-4 py-3 text-sm font-bold text-[#9ff3f3] md:col-span-3">
+                  <p className="rounded-2xl border border-[#8b5cf666] bg-[#ede9fe] px-4 py-3 text-sm font-black text-[#4338ca] md:col-span-3">
                     {seasonPeriodText(form.season)}{calculatedReminderDate ? ` · ${tx('opomnik', 'reminder')}: ${calculatedReminderDate}` : ''}
                   </p>
                   <label className="text-sm font-black md:col-span-3">{tx('Opombe', 'Notes')}<textarea value={form.notes} onChange={(e) => updateForm('notes', e.target.value)} rows={3} className={inputClass} /></label>
