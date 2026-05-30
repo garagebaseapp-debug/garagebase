@@ -27,10 +27,83 @@ type TireSet = {
   notes: string | null
 }
 
+type TireSeasonSettings = {
+  countryLabel: string
+  winterStart: string
+  winterEnd: string
+  warnDaysBefore: string
+}
+
+const TIRE_SEASON_SETTINGS_KEY = 'garagebase_tire_season_settings'
+const defaultSeasonSettings: TireSeasonSettings = {
+  countryLabel: 'Slovenija',
+  winterStart: '11-15',
+  winterEnd: '03-15',
+  warnDaysBefore: '7',
+}
+
 const todayIso = () => new Date().toISOString().split('T')[0]
 const numberOrNull = (value: string) => {
   const next = Number(value)
   return Number.isFinite(next) ? next : null
+}
+const pad2 = (value: number) => String(value).padStart(2, '0')
+const normalizeMonthDay = (value: string) => {
+  const match = String(value || '').trim().match(/^(\d{1,2})[-./](\d{1,2})$/)
+  if (!match) return ''
+  const month = Number(match[1])
+  const day = Number(match[2])
+  if (month < 1 || month > 12 || day < 1 || day > 31) return ''
+  return `${pad2(month)}-${pad2(day)}`
+}
+const dateFromMonthDay = (monthDay: string, year: number) => {
+  const normalized = normalizeMonthDay(monthDay)
+  if (!normalized) return null
+  const [month, day] = normalized.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  if (date.getMonth() !== month - 1 || date.getDate() !== day) return null
+  return date
+}
+const toIsoDate = (date: Date) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 10)
+}
+const nextSeasonReminderDate = (season: string, settings: TireSeasonSettings) => {
+  const warnDays = Math.max(0, numberOrNull(settings.warnDaysBefore) ?? 7)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const targetMonthDay = season === 'winter' ? settings.winterEnd : settings.winterStart
+  let target = dateFromMonthDay(targetMonthDay, today.getFullYear())
+  if (!target) return ''
+  target.setDate(target.getDate() - warnDays)
+  if (target < today) {
+    target = dateFromMonthDay(targetMonthDay, today.getFullYear() + 1)
+    if (!target) return ''
+    target.setDate(target.getDate() - warnDays)
+  }
+  return toIsoDate(target)
+}
+
+function SeasonIcon({ season, className = 'h-10 w-10' }: { season: string; className?: string }) {
+  const showSun = season === 'summer' || season === 'all_season'
+  const showSnow = season === 'winter' || season === 'all_season'
+  return (
+    <svg className={className} viewBox="0 0 64 64" fill="none" aria-hidden="true">
+      <circle cx="32" cy="32" r="22" stroke="currentColor" strokeWidth="5" />
+      <circle cx="32" cy="32" r="10" stroke="currentColor" strokeWidth="4" opacity="0.62" />
+      {showSun && (
+        <g stroke="#f59e0b" strokeWidth="3" strokeLinecap="round">
+          <circle cx="18" cy="18" r="5" fill="#f59e0b" stroke="none" />
+          <path d="M18 7v4M18 25v4M7 18h4M25 18h4M10 10l3 3M26 26l-3-3M26 10l-3 3M10 26l3-3" />
+        </g>
+      )}
+      {showSnow && (
+        <g stroke="#67e8f9" strokeWidth="3" strokeLinecap="round">
+          <path d="M47 37v18M39 41l16 10M55 41 39 51M47 37l-4 5M47 37l4 5M47 55l-4-5M47 55l4-5" />
+        </g>
+      )}
+    </svg>
+  )
 }
 
 export default function GumePage() {
@@ -45,6 +118,7 @@ export default function GumePage() {
   const [tires, setTires] = useState<TireSet[]>([])
   const [showForm, setShowForm] = useState(false)
   const [archiveCurrent, setArchiveCurrent] = useState(true)
+  const [seasonSettings, setSeasonSettings] = useState<TireSeasonSettings>(defaultSeasonSettings)
   const [form, setForm] = useState({
     season: 'summer',
     brand: '',
@@ -81,6 +155,15 @@ export default function GumePage() {
     const list = tires.map((item) => ({ item, km: tireKm(item) })).sort((a, b) => b.km - a.km)
     return list[0] || null
   }, [tires, currentKm])
+  const calculatedReminderDate = useMemo(
+    () => nextSeasonReminderDate(form.season, seasonSettings),
+    [form.season, seasonSettings]
+  )
+  const seasonReminderText = (season: string) => {
+    if (season === 'winter') return tx('opomnik pred koncem zimske sezone', 'reminder before winter season ends')
+    if (season === 'all_season') return tx('opomnik za pregled pred zimo', 'reminder to check tires before winter')
+    return tx('opomnik pred zimsko sezono', 'reminder before winter season')
+  }
 
   const loadData = async (forcedCarId?: string) => {
     setLoading(true)
@@ -130,10 +213,41 @@ export default function GumePage() {
   }
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(TIRE_SEASON_SETTINGS_KEY)
+      const parsed = raw ? JSON.parse(raw) : null
+      if (parsed) {
+        setSeasonSettings({
+          countryLabel: String(parsed.countryLabel || defaultSeasonSettings.countryLabel),
+          winterStart: normalizeMonthDay(parsed.winterStart) || defaultSeasonSettings.winterStart,
+          winterEnd: normalizeMonthDay(parsed.winterEnd) || defaultSeasonSettings.winterEnd,
+          warnDaysBefore: String(numberOrNull(parsed.warnDaysBefore) ?? 7),
+        })
+      }
+    } catch {}
     loadData()
   }, [])
 
+  useEffect(() => {
+    setForm((prev) => ({
+      ...prev,
+      nextChangeDate: calculatedReminderDate,
+      remindDaysBefore: seasonSettings.warnDaysBefore,
+    }))
+  }, [calculatedReminderDate, seasonSettings.warnDaysBefore])
+
   const updateForm = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+  const updateSeasonSettings = (key: keyof TireSeasonSettings, value: string) => {
+    setSeasonSettings((prev) => {
+      const next = { ...prev, [key]: key === 'winterStart' || key === 'winterEnd' ? normalizeMonthDay(value) || value : value }
+      try { localStorage.setItem(TIRE_SEASON_SETTINGS_KEY, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+  const applySeasonPreset = (preset: TireSeasonSettings) => {
+    setSeasonSettings(preset)
+    try { localStorage.setItem(TIRE_SEASON_SETTINGS_KEY, JSON.stringify(preset)) } catch {}
+  }
 
   const saveTires = async () => {
     if (!car?.id) return
@@ -220,8 +334,8 @@ export default function GumePage() {
       purchaseDate: '',
       installedAt: todayIso(),
       installedKm: String(currentKm || ''),
-      nextChangeDate: '',
-      remindDaysBefore: '7',
+      nextChangeDate: calculatedReminderDate,
+      remindDaysBefore: seasonSettings.warnDaysBefore,
       notes: '',
     })
     clearVehicleDataCaches(car.id)
@@ -305,6 +419,40 @@ export default function GumePage() {
               </div>
             </div>
 
+            <div className="mb-5 rounded-[28px] border border-[#2e344a] bg-[#101524] p-4 shadow-xl shadow-black/12">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#7f77ff]">{tx('Sezonsko pravilo', 'Season rule')}</p>
+                  <h2 className="mt-1 text-xl font-black">{tx('Zimska sezona po državi', 'Winter season by country')}</h2>
+                  <p className="mt-1 text-sm font-semibold text-[#a8b0c0]">
+                    {tx('Na osnovi teh datumov GarageBase samodejno nastavi opomnik za menjavo gum.', 'GarageBase uses these dates to set the tire change reminder automatically.')}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => applySeasonPreset(defaultSeasonSettings)} className="rounded-xl border border-[#30364c] px-3 py-2 text-xs font-black text-[#d8def0]">
+                    {tx('Slovenija', 'Slovenia')}
+                  </button>
+                  <button type="button" onClick={() => applySeasonPreset({ countryLabel: 'Bosna', winterStart: '11-01', winterEnd: '04-01', warnDaysBefore: '7' })} className="rounded-xl border border-[#30364c] px-3 py-2 text-xs font-black text-[#d8def0]">
+                    {tx('Bosna', 'Bosnia')}
+                  </button>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-4">
+                <label className="text-sm font-black">{tx('Država / pravilo', 'Country / rule')}
+                  <input value={seasonSettings.countryLabel} onChange={(e) => updateSeasonSettings('countryLabel', e.target.value)} className={inputClass} />
+                </label>
+                <label className="text-sm font-black">{tx('Začetek zime', 'Winter starts')}
+                  <input value={seasonSettings.winterStart} onChange={(e) => updateSeasonSettings('winterStart', e.target.value)} placeholder="11-15" className={inputClass} />
+                </label>
+                <label className="text-sm font-black">{tx('Konec zime', 'Winter ends')}
+                  <input value={seasonSettings.winterEnd} onChange={(e) => updateSeasonSettings('winterEnd', e.target.value)} placeholder="03-15" className={inputClass} />
+                </label>
+                <label className="text-sm font-black">{tx('Opozori dni prej', 'Warn days before')}
+                  <input value={seasonSettings.warnDaysBefore} onChange={(e) => updateSeasonSettings('warnDaysBefore', e.target.value)} inputMode="numeric" className={inputClass} />
+                </label>
+              </div>
+            </div>
+
             {showForm && (
               <div className="mb-5 rounded-[28px] border border-[#6c63ff55] bg-[#11182a] p-4 shadow-2xl shadow-[#6c63ff22]">
                 <div className="mb-4 flex items-center justify-between">
@@ -313,6 +461,15 @@ export default function GumePage() {
                 </div>
                 <div className="grid gap-3 md:grid-cols-3">
                   <label className="text-sm font-black">{tx('Sezona', 'Season')}<select value={form.season} onChange={(e) => updateForm('season', e.target.value)} className={inputClass}><option value="summer">{tx('Letne', 'Summer')}</option><option value="winter">{tx('Zimske', 'Winter')}</option><option value="all_season">{tx('Celoletne', 'All-season')}</option></select></label>
+                  <div className="rounded-2xl border border-[#30364c] bg-[#0b1020] p-3">
+                    <div className="flex items-center gap-3">
+                      <SeasonIcon season={form.season} className="h-12 w-12 shrink-0 text-[#d8def0]" />
+                      <div>
+                        <p className="text-sm font-black">{seasonLabel(form.season)}</p>
+                        <p className="text-xs font-bold text-[#a8b0c0]">{seasonReminderText(form.season)}</p>
+                      </div>
+                    </div>
+                  </div>
                   <label className="text-sm font-black">{tx('Znamka', 'Brand')}<input value={form.brand} onChange={(e) => updateForm('brand', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Model', 'Model')}<input value={form.model} onChange={(e) => updateForm('model', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Dimenzija', 'Size')}<input value={form.size} onChange={(e) => updateForm('size', e.target.value)} placeholder="205/55 R16" className={inputClass} /></label>
@@ -321,9 +478,12 @@ export default function GumePage() {
                   <label className="text-sm font-black">{tx('Datum nakupa', 'Purchase date')}<input type="date" value={form.purchaseDate} onChange={(e) => updateForm('purchaseDate', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Montirano dne', 'Installed on')}<input type="date" value={form.installedAt} onChange={(e) => updateForm('installedAt', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Začetni km', 'Start mileage')}<input value={form.installedKm} onChange={(e) => updateForm('installedKm', e.target.value)} inputMode="numeric" className={inputClass} /></label>
-                  <label className="text-sm font-black">{tx('Opomnik za menjavo', 'Change reminder')}<input type="date" value={form.nextChangeDate} onChange={(e) => updateForm('nextChangeDate', e.target.value)} className={inputClass} /></label>
+                  <label className="text-sm font-black">{tx('Samodejni opomnik', 'Automatic reminder')}<input type="date" value={form.nextChangeDate} onChange={(e) => updateForm('nextChangeDate', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Opozori dni prej', 'Warn days before')}<input value={form.remindDaysBefore} onChange={(e) => updateForm('remindDaysBefore', e.target.value)} inputMode="numeric" className={inputClass} /></label>
                   <label className="flex items-center gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] px-4 py-3 text-sm font-black"><input type="checkbox" checked={archiveCurrent} onChange={(e) => setArchiveCurrent(e.target.checked)} />{tx('Arhiviraj trenutne aktivne gume', 'Archive current active tires')}</label>
+                  <p className="rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf14] px-4 py-3 text-sm font-bold text-[#9ff3f3] md:col-span-3">
+                    {tx('Izračunano iz pravila', 'Calculated from rule')}: {seasonSettings.countryLabel || '-'} ({seasonSettings.winterStart || '-'} - {seasonSettings.winterEnd || '-'}) · {seasonReminderText(form.season)}
+                  </p>
                   <label className="text-sm font-black md:col-span-3">{tx('Opombe', 'Notes')}<textarea value={form.notes} onChange={(e) => updateForm('notes', e.target.value)} rows={3} className={inputClass} /></label>
                 </div>
                 <button disabled={saving} onClick={saveTires} className="mt-4 w-full rounded-2xl bg-[#6c63ff] px-5 py-4 text-sm font-black text-white shadow-lg shadow-[#6c63ff44] disabled:opacity-60">
@@ -339,6 +499,7 @@ export default function GumePage() {
                 {activeTires.map((item) => (
                   <div key={item.id} className={cardClass}>
                     <div className="flex items-start justify-between gap-3">
+                      <SeasonIcon season={item.season} className="h-12 w-12 shrink-0 text-[#d8def0]" />
                       <div>
                         <p className="text-xs font-black uppercase text-[#3ecfcf]">{seasonLabel(item.season)}</p>
                         <h3 className="mt-1 text-xl font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
@@ -364,6 +525,7 @@ export default function GumePage() {
                 {archivedTires.length === 0 && <div className={cardClass}>{tx('Arhiv je še prazen.', 'Archive is still empty.')}</div>}
                 {archivedTires.map((item) => (
                   <div key={item.id} className={`${cardClass} opacity-90`}>
+                    <SeasonIcon season={item.season} className="mb-2 h-10 w-10 text-[#d8def0]" />
                     <p className="text-xs font-black uppercase text-[#a8b0c0]">{seasonLabel(item.season)}</p>
                     <h3 className="mt-1 text-lg font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
                     <p className="text-sm font-bold text-[#a8b0c0]">{[item.size, item.dot].filter(Boolean).join(' · ') || '-'}</p>
