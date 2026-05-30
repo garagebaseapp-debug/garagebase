@@ -23,6 +23,18 @@ const readStoredOwnershipSettings = (carId: string) => {
     return {}
   }
 }
+const writeStoredOwnershipSettings = (carId: string, data: Record<string, unknown>) => {
+  try {
+    localStorage.setItem(ownershipSettingsKey(carId), JSON.stringify(data))
+  } catch {}
+}
+const ownershipDraftFrom = (data: any = {}) => ({
+  purchase_price: data.purchase_price?.toString?.() || '',
+  down_payment: data.down_payment?.toString?.() || '',
+  finance_total_paid: data.finance_total_paid?.toString?.() || '',
+  finance_overpayment: data.finance_overpayment?.toString?.() || '',
+  resale_value: data.resale_value?.toString?.() || '',
+})
 
 const numericValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -417,6 +429,13 @@ export default function Stroski() {
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
   const [avto, setAvto] = useState<any>(null)
   const [ownershipFallback, setOwnershipFallback] = useState<any>({})
+  const [ownershipDraft, setOwnershipDraft] = useState<any>({
+    purchase_price: '',
+    down_payment: '',
+    finance_total_paid: '',
+    finance_overpayment: '',
+    resale_value: '',
+  })
   const [gorivo, setGorivo] = useState<any[]>([])
   const [servisi, setServisi] = useState<any[]>([])
   const [expenses, setExpenses] = useState<any[]>([])
@@ -471,6 +490,29 @@ export default function Stroski() {
     setCommittedSummary(summary)
     return summary
   }
+  const ownershipPayloadFromDraft = (include = includeVehiclePrice) => ({
+    purchase_price: numericValue(ownershipDraft.purchase_price) || null,
+    down_payment: numericValue(ownershipDraft.down_payment) || null,
+    finance_total_paid: numericValue(ownershipDraft.finance_total_paid) || null,
+    finance_overpayment: numericValue(ownershipDraft.finance_overpayment) || null,
+    resale_value: numericValue(ownershipDraft.resale_value) || null,
+    include_vehicle_price_in_costs: include,
+  })
+
+  const shraniLastnistvoIzStroskov = async (include = true) => {
+    if (!activeCarId) return
+    const payload = ownershipPayloadFromDraft(include)
+    writeStoredOwnershipSettings(activeCarId, payload)
+    setOwnershipFallback(payload)
+    setIncludeVehiclePrice(include)
+    setAvto((prev: any) => ({ ...(prev || {}), ...payload }))
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase.from('cars').update(payload).eq('id', activeCarId).eq('user_id', user.id)
+      if (error) console.warn('[GarageBase costs] ownership save skipped', error.message)
+    }
+    clearVehicleDataCaches(activeCarId)
+  }
 
   const resetVehicleState = (carId: string) => {
     activeLoadRef.current = carId
@@ -493,6 +535,7 @@ export default function Stroski() {
     setDisplayStats(null)
     setIncludeVehiclePrice(false)
     setOwnershipFallback({})
+    setOwnershipDraft(ownershipDraftFrom())
     setDebugSource('')
   }
 
@@ -514,6 +557,7 @@ export default function Stroski() {
           setAvto(cachedCar)
           const storedOwnership = readStoredOwnershipSettings(carId)
           setOwnershipFallback(storedOwnership)
+          setOwnershipDraft(ownershipDraftFrom({ ...storedOwnership, ...cachedCar }))
           if (storedOwnership.include_vehicle_price_in_costs === true) setIncludeVehiclePrice(true)
           setLoading(false)
         }
@@ -590,6 +634,7 @@ export default function Stroski() {
         setAvto(avtoRes.data)
         const storedOwnership = readStoredOwnershipSettings(carId)
         setOwnershipFallback(storedOwnership)
+        setOwnershipDraft(ownershipDraftFrom({ ...storedOwnership, ...avtoRes.data }))
         setIncludeVehiclePrice(avtoRes.data.include_vehicle_price_in_costs === true || storedOwnership.include_vehicle_price_in_costs === true)
       } else {
         setAvto((prev: any) => prev || { id: carId })
@@ -1323,6 +1368,73 @@ export default function Stroski() {
             </div>
             {ownershipOnlyPerKm && <p className="mt-3 text-xs font-bold text-[#8a8aa8]">{tx('Samo vozilo', 'Vehicle only')}: {ownershipOnlyPerKm} {znakValute}/{enotaRazdalje}</p>}
           </button>
+        </div>
+
+        <div className="mt-3 rounded-2xl border border-[#2a2a40] bg-[#13131f] p-3">
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#c8c4ff]">{tx('Cena vozila za izračun', 'Vehicle price for calculation')}</p>
+              {ownershipCost <= 0 && (
+                <p className="mt-1 text-xs font-bold text-[#f59e0b]">
+                  {tx('Cena vozila še ni shranjena za ta izračun. Vpiši jo tukaj in se bo takoj upoštevala.', 'Vehicle price is not saved for this calculation yet. Enter it here and it will apply immediately.')}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => shraniLastnistvoIzStroskov(true)}
+              className="rounded-xl bg-[#6c63ff] px-4 py-2 text-xs font-black text-white transition-all hover:bg-[#5a52df]"
+            >
+              {tx('Shrani in upoštevaj', 'Save and include')}
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Nakupna cena', 'Purchase price')}
+              <input
+                value={ownershipDraft.purchase_price}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_price: e.target.value }))}
+                inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Polog', 'Down payment')}
+              <input
+                value={ownershipDraft.down_payment}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, down_payment: e.target.value }))}
+                inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Kredit/lizing', 'Finance paid')}
+              <input
+                value={ownershipDraft.finance_total_paid}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, finance_total_paid: e.target.value }))}
+                inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Preplačilo', 'Overpayment')}
+              <input
+                value={ownershipDraft.finance_overpayment}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, finance_overpayment: e.target.value }))}
+                inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+            <label className="text-xs font-black text-[#a8b0c0]">
+              {tx('Prodajna vrednost', 'Resale value')}
+              <input
+                value={ownershipDraft.resale_value}
+                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, resale_value: e.target.value }))}
+                inputMode="decimal"
+                className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
+              />
+            </label>
+          </div>
         </div>
       </div>
 
