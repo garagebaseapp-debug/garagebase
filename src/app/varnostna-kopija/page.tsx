@@ -75,7 +75,7 @@ export default function BackupPage() {
       const cars = await safeQuery('cars', supabase.from('cars').select('*').eq('user_id', user.id).order('created_at', { ascending: true }))
       const carIds = cars.map((car: any) => car.id).filter(Boolean)
 
-      const [fuelLogs, serviceLogs, expenses, reminders, transfers, tireSets, tireMounts] = carIds.length ? await Promise.all([
+      const [fuelLogs, serviceLogs, expenses, reminders, transfers, tireSets, tireMounts, mileageEvents] = carIds.length ? await Promise.all([
         safeQuery('fuel_logs', supabase.from('fuel_logs').select('*').in('car_id', carIds).order('datum', { ascending: true })),
         safeQuery('service_logs', supabase.from('service_logs').select('*').in('car_id', carIds).order('datum', { ascending: true })),
         safeQuery('expenses', supabase.from('expenses').select('*').in('car_id', carIds).order('datum', { ascending: true })),
@@ -83,7 +83,8 @@ export default function BackupPage() {
         safeQuery('vehicle_transfers', supabase.from('vehicle_transfers').select('id,car_id,mode,created_at,expires_at,used_at,status').in('car_id', carIds).order('created_at', { ascending: false })),
         safeQuery('tire_sets', supabase.from('tire_sets').select('*').in('car_id', carIds).order('created_at', { ascending: true })),
         safeQuery('tire_mounts', supabase.from('tire_mounts').select('*').in('car_id', carIds).order('mounted_at', { ascending: true })),
-      ]) : [[], [], [], [], [], [], []]
+        safeQuery('vehicle_mileage_events', supabase.from('vehicle_mileage_events').select('*').in('car_id', carIds).order('event_date', { ascending: true })),
+      ]) : [[], [], [], [], [], [], [], []]
 
       const localSettings = {
         garagebase_nastavitve: localStorage.getItem('garagebase_nastavitve'),
@@ -109,6 +110,7 @@ export default function BackupPage() {
           vehicle_transfers: transfers,
           tire_sets: tireSets,
           tire_mounts: tireMounts,
+          vehicle_mileage_events: mileageEvents,
           local_settings: localSettings,
         },
       }
@@ -127,7 +129,7 @@ export default function BackupPage() {
       const next = { ...settings, lastBackupAt: new Date().toISOString(), lastDismissedAt: new Date().toISOString() }
       setSettings(next)
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
-      setSummary({ cars: cars.length, rows: fuelLogs.length + serviceLogs.length + expenses.length + reminders.length + tireSets.length + tireMounts.length })
+      setSummary({ cars: cars.length, rows: fuelLogs.length + serviceLogs.length + expenses.length + reminders.length + tireSets.length + tireMounts.length + mileageEvents.length })
       setMessage(tx('Varnostna kopija je prenesena.', 'Backup downloaded.'))
     } catch (error: any) {
       setMessage(error.message || tx('Backup ni uspel.', 'Backup failed.'))

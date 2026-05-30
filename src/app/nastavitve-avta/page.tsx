@@ -31,6 +31,13 @@ export default function NastavitveAvta() {
   const [stLastnikov, setStLastnikov] = useState('')
   const [lastnikMesto, setLastnikMesto] = useState('')
   const [lastnikStarost, setLastnikStarost] = useState('')
+  const [purchasePrice, setPurchasePrice] = useState('')
+  const [downPayment, setDownPayment] = useState('')
+  const [financeTotalPaid, setFinanceTotalPaid] = useState('')
+  const [financeOverpayment, setFinanceOverpayment] = useState('')
+  const [monthlyPayment, setMonthlyPayment] = useState('')
+  const [resaleValue, setResaleValue] = useState('')
+  const [includeVehiclePriceInCosts, setIncludeVehiclePriceInCosts] = useState(false)
   const [prenosSoglasje, setPrenosSoglasje] = useState(false)
   const [prenosOpomba, setPrenosOpomba] = useState('')
   const [homologacijaStevilka, setHomologacijaStevilka] = useState('')
@@ -81,6 +88,11 @@ export default function NastavitveAvta() {
   const isMissingReservoirColumn = (error: any) => {
     const message = String(error?.message || '')
     return message.includes('rezervar_litri') || message.includes('tank_capacity')
+  }
+  const isMissingOwnershipColumn = (error: any) => {
+    const message = String(error?.message || '')
+    return ['purchase_price', 'down_payment', 'finance_total_paid', 'finance_overpayment', 'monthly_payment', 'resale_value', 'include_vehicle_price_in_costs']
+      .some((column) => message.includes(column))
   }
   const normalizedVin = () => String(vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
   const hasLookupVin = () => normalizedVin().length >= 6
@@ -171,6 +183,13 @@ export default function NastavitveAvta() {
         setStLastnikov(data.st_lastnikov?.toString() || '')
         setLastnikMesto(data.lastnik_mesto || '')
         setLastnikStarost(data.lastnik_starost?.toString() || '')
+        setPurchasePrice(data.purchase_price?.toString() || '')
+        setDownPayment(data.down_payment?.toString() || '')
+        setFinanceTotalPaid(data.finance_total_paid?.toString() || '')
+        setFinanceOverpayment(data.finance_overpayment?.toString() || '')
+        setMonthlyPayment(data.monthly_payment?.toString() || '')
+        setResaleValue(data.resale_value?.toString() || '')
+        setIncludeVehiclePriceInCosts(data.include_vehicle_price_in_costs === true)
         setPrenosSoglasje(data.prenos_soglasje === true)
         setPrenosOpomba(data.prenos_opomba || '')
         setHomologacijaStevilka(data.homologacija_stevilka || '')
@@ -286,6 +305,13 @@ export default function NastavitveAvta() {
       st_lastnikov: stLastnikov ? parseInt(stLastnikov) : null,
       lastnik_mesto: lastnikMesto || null,
       lastnik_starost: lastnikStarost ? parseInt(lastnikStarost) : null,
+      purchase_price: decimalValue(purchasePrice),
+      down_payment: decimalValue(downPayment),
+      finance_total_paid: decimalValue(financeTotalPaid),
+      finance_overpayment: decimalValue(financeOverpayment),
+      monthly_payment: decimalValue(monthlyPayment),
+      resale_value: decimalValue(resaleValue),
+      include_vehicle_price_in_costs: includeVehiclePriceInCosts,
       prenos_soglasje: prenosSoglasje,
       prenos_opomba: prenosOpomba || null,
       homologacija_stevilka: homologacijaStevilka || null,
@@ -299,6 +325,19 @@ export default function NastavitveAvta() {
       const retry = await supabase.from('cars').update(payload).eq('id', avto.id).eq('user_id', avto.user_id)
       error = retry.error
       reservoirFallback = !retry.error
+    }
+    let ownershipFallback = false
+    if (error && isMissingOwnershipColumn(error)) {
+      delete payload.purchase_price
+      delete payload.down_payment
+      delete payload.finance_total_paid
+      delete payload.finance_overpayment
+      delete payload.monthly_payment
+      delete payload.resale_value
+      delete payload.include_vehicle_price_in_costs
+      const retry = await supabase.from('cars').update(payload).eq('id', avto.id).eq('user_id', avto.user_id)
+      error = retry.error
+      ownershipFallback = !retry.error
     }
     if (error) setMessage(error.message.includes('homologacija') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_HOMOLOGACIJA.sql' : error.message.includes('st_lastnikov') ? 'Napaka: v Supabase najprej zaženi SUPABASE_MIGRACIJA_PRENOS.sql' : 'Napaka: ' + error.message)
     else {
@@ -630,6 +669,51 @@ export default function NastavitveAvta() {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4 mb-4">
+        <div>
+          <h2 className="text-white font-semibold">{tx('Cena vozila in lastništvo', 'Vehicle price and ownership')}</h2>
+          <p className="text-[#5a5a80] text-xs mt-1">
+            {tx('Uporabi se za ločen izračun skupnega stroška lastništva. Osnovni stroški na km ostanejo prikazani tudi brez cene vozila.', 'Used for a separate total ownership cost calculation. Running cost per km remains available without vehicle price.')}
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Nakupna cena', 'Purchase price')}</label>
+            <input value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} inputMode="decimal" placeholder="npr. 18500"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Polog', 'Down payment')}</label>
+            <input value={downPayment} onChange={e => setDownPayment(e.target.value)} inputMode="decimal" placeholder="npr. 3000"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Skupaj plačano kredit/lizing', 'Total finance paid')}</label>
+            <input value={financeTotalPaid} onChange={e => setFinanceTotalPaid(e.target.value)} inputMode="decimal" placeholder="npr. 22000"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Preplačilo/obresti', 'Overpayment/interest')}</label>
+            <input value={financeOverpayment} onChange={e => setFinanceOverpayment(e.target.value)} inputMode="decimal" placeholder="npr. 1800"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Mesečni obrok', 'Monthly payment')}</label>
+            <input value={monthlyPayment} onChange={e => setMonthlyPayment(e.target.value)} inputMode="decimal" placeholder="npr. 280"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+          <div>
+            <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Prodajna vrednost', 'Resale value')}</label>
+            <input value={resaleValue} onChange={e => setResaleValue(e.target.value)} inputMode="decimal" placeholder="npr. 12000"
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+          </div>
+        </div>
+        <label className="flex items-center gap-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff10] p-4 text-sm font-bold text-white">
+          <input type="checkbox" checked={includeVehiclePriceInCosts} onChange={e => setIncludeVehiclePriceInCosts(e.target.checked)} className="h-4 w-4 accent-[#6c63ff]" />
+          {tx('V stroških privzeto prikaži tudi ceno vozila', 'Include vehicle price in costs by default')}
+        </label>
       </div>
 
 

@@ -134,6 +134,7 @@ export default function GumePage() {
     installedKm: '',
     remindDaysBefore: '7',
     notes: '',
+    lateEntryNote: '',
   })
 
   const currentKm = Number(car?.km_trenutni || 0)
@@ -171,6 +172,8 @@ export default function GumePage() {
     () => nextSeasonReminderDate(form.season, { ...seasonSettings, warnDaysBefore: form.remindDaysBefore }),
     [form.season, form.remindDaysBefore, seasonSettings]
   )
+  const mountedKmValue = numberOrNull(form.installedKm) ?? currentKm
+  const isBackfilledMount = mountedKmValue > 0 && currentKm > 0 && mountedKmValue < currentKm
   const seasonReminderText = (season: string) => {
     if (season === 'winter') return tx('opomnik pred koncem zimske sezone', 'reminder before winter season ends')
     if (season === 'all_season') return tx('celoletne gume nimajo konca sezone', 'all-season tires have no season end')
@@ -322,6 +325,22 @@ export default function GumePage() {
     }
   }
 
+  const logMileageEvent = async (userId: string, type: 'tire_mount' | 'tire_remove', tireSetId: string, date: string, km: number, note?: string) => {
+    if (!car?.id || !km) return
+    await supabase.from('vehicle_mileage_events').insert({
+      user_id: userId,
+      car_id: car.id,
+      event_type: type,
+      source_table: 'tire_sets',
+      source_id: tireSetId,
+      event_date: date,
+      km,
+      previous_known_km: currentKm || null,
+      entry_timing: currentKm > 0 && km < currentKm ? 'backfilled' : 'normal',
+      note: note || null,
+    })
+  }
+
   const saveTires = async () => {
     if (!car?.id) return
     if (!form.brand.trim() && !form.size.trim()) {
@@ -376,6 +395,7 @@ export default function GumePage() {
         mounted_at: installedAt,
         mounted_km: installedKm,
       })
+      await logMileageEvent(user.id, 'tire_mount', inserted.id, installedAt, installedKm, form.lateEntryNote.trim() || undefined)
     }
     await createTireReminder(calculatedReminderDate, numberOrNull(form.remindDaysBefore) || 7)
     setShowForm(false)
@@ -391,6 +411,7 @@ export default function GumePage() {
       installedKm: String(currentKm || ''),
       remindDaysBefore: seasonSettings.warnDaysBefore,
       notes: '',
+      lateEntryNote: '',
     })
     clearVehicleDataCaches(car.id)
     setMessage(inserted?.id ? tx('Gume so shranjene.', 'Tires saved.') : '')
@@ -417,6 +438,7 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
+    await logMileageEvent(user.id, 'tire_remove', item.id, todayIso(), currentKm)
     clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
@@ -440,6 +462,7 @@ export default function GumePage() {
       })
       .eq('id', item.id)
       .eq('user_id', user.id)
+    await logMileageEvent(user.id, 'tire_remove', item.id, todayIso(), currentKm)
     clearVehicleDataCaches(car.id)
     await loadData(car.id)
   }
@@ -472,6 +495,7 @@ export default function GumePage() {
       mounted_at: mountedAt,
       mounted_km: mountedKm,
     })
+    await logMileageEvent(user.id, 'tire_mount', item.id, mountedAt, mountedKm)
     await createTireReminder(nextSeasonReminderDate(item.season, seasonSettings), numberOrNull(seasonSettings.warnDaysBefore) || 7)
     setMountingTireId('')
     setMountForm({ mountedAt: todayIso(), mountedKm: String(currentKm || '') })
@@ -590,6 +614,12 @@ export default function GumePage() {
                   <label className="text-sm font-black">{tx('Začetni km', 'Start mileage')}<input value={form.installedKm} onChange={(e) => updateForm('installedKm', e.target.value)} inputMode="numeric" className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Opozori dni prej', 'Warn days before')}<input value={form.remindDaysBefore} onChange={(e) => updateForm('remindDaysBefore', e.target.value)} inputMode="numeric" className={inputClass} /></label>
                   <label className="flex items-center gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] px-4 py-3 text-sm font-black"><input type="checkbox" checked={storeCurrent} onChange={(e) => setStoreCurrent(e.target.checked)} />{tx('Trenutno montirane gume prestavi v hrambo', 'Move currently mounted tires to storage')}</label>
+                  {isBackfilledMount && (
+                    <label className="rounded-2xl border border-[#f59e0b66] bg-[#f59e0b14] px-4 py-3 text-sm font-black text-[#fbbf24] md:col-span-3">
+                      {tx('Vpisuješ km, ki so nižji od trenutnih km vozila. To bomo označili kot naknadno vneseno.', 'You are entering mileage below the vehicle current mileage. This will be marked as entered later.')}
+                      <input value={form.lateEntryNote} onChange={(e) => updateForm('lateEntryNote', e.target.value)} placeholder={tx('Opomba, npr. menjava je bila prejšnji teden', 'Note, e.g. change was last week')} className={`${inputClass} mt-2`} />
+                    </label>
+                  )}
                   <p className="rounded-2xl border border-[#8b5cf666] bg-[#ede9fe] px-4 py-3 text-sm font-black text-[#4338ca] md:col-span-3">
                     {seasonPeriodText(form.season)}{calculatedReminderDate ? ` · ${tx('opomnik', 'reminder')}: ${calculatedReminderDate}` : ''}
                   </p>
@@ -664,6 +694,11 @@ export default function GumePage() {
                         <label className="text-sm font-black">{tx('Datum montaže', 'Mount date')}<input type="date" value={mountForm.mountedAt} onChange={(e) => setMountForm((prev) => ({ ...prev, mountedAt: e.target.value }))} className={inputClass} /></label>
                         <label className="text-sm font-black">{tx('Km ob montaži', 'Mileage at mount')}<input value={mountForm.mountedKm} onChange={(e) => setMountForm((prev) => ({ ...prev, mountedKm: e.target.value }))} inputMode="numeric" className={inputClass} /></label>
                         <button onClick={() => mountStoredTire(item)} className="self-end rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white">{tx('Potrdi', 'Confirm')}</button>
+                        {(numberOrNull(mountForm.mountedKm) ?? currentKm) < currentKm && (
+                          <p className="text-xs font-bold text-[#fbbf24] md:col-span-3">
+                            {tx('Ta montaža bo označena kot naknadno vnesena, ker so km nižji od trenutnega stanja vozila.', 'This mount will be marked as entered later because mileage is below the current vehicle mileage.')}
+                          </p>
+                        )}
                       </div>
                     )}
                     <button onClick={() => retireTireSet(item)} className="mt-3 rounded-xl border border-[#f59e0b66] bg-[#f59e0b14] px-3 py-2 text-xs font-black text-[#fbbf24]">{tx('Premakni v arhiv', 'Move to archive')}</button>

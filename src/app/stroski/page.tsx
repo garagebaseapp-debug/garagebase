@@ -7,7 +7,7 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
-import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDistanceFromFuelRows, costValueFor, splitRowsBySource } from '@/lib/vehicle-costs'
+import { buildCostSummary as buildSharedCostSummary, buildVehicleStats, costDistanceFromFuelRows, costValueFor, splitRowsBySource, vehicleOwnershipCostValue } from '@/lib/vehicle-costs'
 import { clearVehicleDataCaches, ensureVehicleStatsCacheVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 
 const COST_LIST_SIZE = 60
@@ -421,6 +421,7 @@ export default function Stroski() {
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
+  const [includeVehiclePrice, setIncludeVehiclePrice] = useState(false)
   const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
   const [refreshing, setRefreshing] = useState(false)
   const [serverStats, setServerStats] = useState<any>(null)
@@ -481,6 +482,7 @@ export default function Stroski() {
     setServerStats(null)
     setRowStats(null)
     setDisplayStats(null)
+    setIncludeVehiclePrice(false)
     setDebugSource('')
   }
 
@@ -573,6 +575,7 @@ export default function Stroski() {
       setActiveCarId(carId)
       if (avtoRes.data) {
         setAvto(avtoRes.data)
+        setIncludeVehiclePrice(avtoRes.data.include_vehicle_price_in_costs === true)
       } else {
         setAvto((prev: any) => prev || { id: carId })
       }
@@ -812,6 +815,8 @@ export default function Stroski() {
   const skupajVse = renderSummary.total || skupajGorivo + skupajServis + skupajExpenses
   const skupajUvoz = renderSummary.imported
   const skupajGarageBase = renderSummary.garageBase || Math.max(0, skupajVse - skupajUvoz)
+  const ownershipCost = vehicleOwnershipCostValue(avto)
+  const skupajZLastnistvom = skupajVse + ownershipCost
   const stGorivo = renderSummary.rows.fuel
   const stServis = renderSummary.rows.service
   const stOstalo = renderSummary.rows.expense
@@ -856,13 +861,13 @@ export default function Stroski() {
   const prikazGorivo = skupajGorivo
   const prikazServis = skupajServis
   const prikazExpenses = skupajExpenses
-  const prikazSkupaj = skupajVse
+  const prikazSkupaj = includeVehiclePrice ? skupajZLastnistvom : skupajVse
   const prikazGarageBase = skupajGarageBase
   const prikazUvoz = skupajUvoz
   const prikazStGorivo = stGorivo
   const prikazStServis = stServis
   const prikazStOstalo = stOstalo
-  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazGarageBase > 0 ? (prikazGarageBase / kmPrevozeni).toFixed(3) : strosekNaKm
+  const prikazStrosekNaKm = kmPrevozeni > 0 && prikazSkupaj > 0 ? (prikazSkupaj / kmPrevozeni).toFixed(3) : strosekNaKm
   const maxVrednost = Math.max(...meseci.map(m => m.gorivo + m.servis + m.ostalo), 1)
   const maxKategorija = Math.max(...meseci.flatMap(m => [m.gorivo, m.servis, m.ostalo]), 1)
   const compactMoney = (value: number) => {
@@ -1247,6 +1252,23 @@ export default function Stroski() {
         )}
         {prikazStrosekNaKm && <p className="mt-4 text-[#5a5a80] text-sm">{prikazStrosekNaKm} {znakValute}/{enotaRazdalje} · {tx('skupaj po razponu zapisov', 'total across record range')} · {formatDistance(kmPrevozeni, enotaRazdalje)}</p>}
       </div>
+
+      {ownershipCost > 0 && (
+        <div className="mb-4 rounded-2xl border border-[#6c63ff44] bg-[#6c63ff10] p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-[#a09aff]">{tx('Cena vozila', 'Vehicle price')}</p>
+              <p className="mt-1 text-sm font-bold text-white">
+                {formatMoney(ownershipCost, valuta)} · {includeVehiclePrice ? tx('všteto v prikaz', 'included in view') : tx('ločeno od obratovalnih stroškov', 'separate from running costs')}
+              </p>
+            </div>
+            <button type="button" onClick={() => setIncludeVehiclePrice((value) => !value)}
+              className={`rounded-xl px-4 py-2 text-xs font-black ${includeVehiclePrice ? 'bg-[#6c63ff] text-white' : 'border border-[#6c63ff55] text-[#a09aff]'}`}>
+              {includeVehiclePrice ? tx('Prikaži brez cene avta', 'Show without car price') : tx('Prištej ceno avta', 'Add car price')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="hidden">
         <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2">{tx('Skupni stroški', 'Total costs')}</p>
