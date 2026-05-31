@@ -47,6 +47,28 @@ type MonthPoint = {
   total: number | null
 }
 
+type ConsumptionSegmentValue = {
+  average: number | null
+  distance: number
+  liters: number
+}
+
+const combineConsumptionSegmentDetails = (segments: ConsumptionSegmentValue[]): ConsumptionSegmentValue => {
+  const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
+  const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
+  const liters = measured.reduce((sum, segment) => sum + segment.liters, 0)
+  if (distance > 0 && liters > 0) return { average: (liters / distance) * 100, distance, liters }
+
+  const known = segments.map((segment) => segment.average).filter((value): value is number => value !== null)
+  if (known.length === 0) return { average: null, distance: 0, liters: 0 }
+
+  return {
+    average: known.reduce((sum, value) => sum + value, 0) / known.length,
+    distance: 0,
+    liters: 0,
+  }
+}
+
 const monthKey = (value: string | null | undefined) => {
   const date = value ? new Date(value) : null
   if (!date || Number.isNaN(date.getTime())) return ''
@@ -322,6 +344,20 @@ export default function GorivoPage() {
   const buckets = useMemo(() => importBuckets(fuelRows), [fuelRows])
   const importedRows = useMemo(() => fuelRows.filter((row) => isImportedHistoryRow(row, buckets)), [fuelRows, buckets])
   const garageBaseRows = useMemo(() => fuelRows.filter((row) => !isImportedHistoryRow(row, buckets)), [fuelRows, buckets])
+  const consumptionSegmentsForRows = (rows: any[]) => {
+    if (cars.length === 1) return [consumptionSegment(rows, cars[0])]
+
+    const byCar = new Map<string, any[]>()
+    rows.forEach((row) => {
+      const carId = row?.car_id
+      if (!carId) return
+      const list = byCar.get(carId) || []
+      list.push(row)
+      byCar.set(carId, list)
+    })
+
+    return Array.from(byCar.entries()).map(([carId, carRows]) => consumptionSegment(carRows, carById[carId]))
+  }
 
   const now = new Date()
   const yearStart = new Date(now.getFullYear(), 0, 1).getTime()
@@ -333,10 +369,11 @@ export default function GorivoPage() {
   const monthImportedRows = lastMonthRows.filter((row) => isImportedHistoryRow(row, buckets))
   const monthGarageRows = lastMonthRows.filter((row) => !isImportedHistoryRow(row, buckets))
 
-  const singleCarForConsumption = cars.length === 1 ? cars[0] : undefined
-  const garageConsumption = consumptionSegment(garageBaseRows, singleCarForConsumption)
-  const importedConsumption = consumptionSegment(importedRows, singleCarForConsumption)
-  const totalConsumption = combineConsumptionSegments([garageConsumption, importedConsumption])
+  const garageConsumptionSegments = consumptionSegmentsForRows(garageBaseRows)
+  const importedConsumptionSegments = consumptionSegmentsForRows(importedRows)
+  const garageConsumption = combineConsumptionSegmentDetails(garageConsumptionSegments)
+  const importedConsumption = combineConsumptionSegmentDetails(importedConsumptionSegments)
+  const totalConsumption = combineConsumptionSegments([...garageConsumptionSegments, ...importedConsumptionSegments])
   const hasImportedConsumption = importedConsumption.average !== null && importedRows.length > 0
   const tankCapacityLiters = cars.length === 1
     ? numberValue(cars[0]?.rezervar_litri ?? cars[0]?.tank_capacity_liters)

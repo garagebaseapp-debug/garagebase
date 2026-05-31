@@ -1262,8 +1262,7 @@ export default function Dashboard() {
                   <ServisStatusCard compact />
                 </div>
 
-                {hasConsumptionBreakdown && (
-                  <button
+                <button
                     type="button"
                     onClick={() => router.push(`/gorivo?car=${aktivniAvto.id}`)}
                     className="mx-5 mb-4 w-[calc(100%-2.5rem)] rounded-2xl bg-[#13131f] p-4 text-left shadow-[0_16px_36px_rgba(0,0,0,0.22)] transition-transform active:scale-[0.99]"
@@ -1275,7 +1274,8 @@ export default function Dashboard() {
                         <p className="text-sm font-semibold text-[#d8d8e8]">{tx('Pregled po viru vnosa', 'Breakdown by source')}</p>
                       </div>
                     </div>
-                    {renderPoraba.imported !== null ? (
+                    {hasConsumptionBreakdown ? (
+                    renderPoraba.imported !== null ? (
                       <div className="grid grid-cols-3 gap-2">
                         <div className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] p-3 shadow-[inset_4px_0_0_rgba(108,99,255,0.95)]">
                           <p className="text-[10px] font-black uppercase tracking-wider text-[#a09aff]">{tx('Naši vnosi', 'Our entries')}</p>
@@ -1295,9 +1295,14 @@ export default function Dashboard() {
                         <p className="text-[10px] font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Skupaj', 'Total')}</p>
                         <p className="mt-1 text-3xl font-black text-white">{consumptionText(renderPoraba.total ?? renderPoraba.garageBase)}</p>
                       </div>
+                    )
+                    ) : (
+                      <div className="rounded-xl border border-[#ffffff1a] bg-white/[0.08] p-4">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[#9aa3b8]">{tx('Ni še dovolj podatkov', 'Not enough data yet')}</p>
+                        <p className="mt-1 text-sm font-semibold text-[#d8d8e8]">{tx('Vnesi km ob nakupu in vsaj eno polno tankanje z litri.', 'Enter purchase mileage and at least one full fill-up with liters.')}</p>
+                      </div>
                     )}
                   </button>
-                )}
 
                 {/* Kalkulator stroškov €/km */}
                 {hasCostBreakdown && (
