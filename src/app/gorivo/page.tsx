@@ -414,7 +414,7 @@ export default function GorivoPage() {
   const rangeText = (value: number | null) => value ? formatDistance(Math.round(value), distanceUnit) : '-'
   const recentRows = [...fuelRows].sort((a, b) => toDateValue(b.datum || b.created_at) - toDateValue(a.datum || a.created_at)).slice(0, 5)
   const firstCarId = cars[0]?.id
-  const addFuelHref = cars.length > 0 ? '/vnos-goriva' : '/dodaj-avto'
+  const addFuelHref = firstCarId ? `/vnos-goriva?car=${firstCarId}` : '/dodaj-avto'
   const hasImported = importedRows.length > 0
 
   if (loading) {

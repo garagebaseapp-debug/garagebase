@@ -136,7 +136,10 @@ export default function VnosGoriva() {
       if (!data || data.length === 0) return
 
       setAvti(data)
-      const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
+      const cachedPreferredId = cachedCars.find((car: any) => data.some((item: any) => item.id === car.id))?.id
+      const izbrani = (carParam ? data.find((a: any) => a.id === carParam) : null) ||
+        (cachedPreferredId ? data.find((a: any) => a.id === cachedPreferredId) : null) ||
+        data[0]
       await naloziPostaje(data.map((a: any) => a.id))
       if (izbrani) {
         setCarId(izbrani.id)
