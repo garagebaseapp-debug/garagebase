@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { BottomNav } from '@/lib/nav'
+import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { formatMoney, getCurrencyFromSettings, type GarageBaseCurrency } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
@@ -223,9 +223,12 @@ export default function ServisPage() {
     <div className="min-h-screen bg-[#080810] px-4 pt-5 pb-28 text-white md:px-8">
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 flex items-center justify-between gap-4">
-          <div>
+          <div className="flex min-w-0 items-start gap-3">
+            <BackButton />
+            <div className="min-w-0">
             <p className="text-lg font-black text-white">Garage<span className="text-[#6c63ff]">Base</span></p>
             <h1 className="mt-4 text-4xl font-black tracking-tight text-white">{tx('Servis.', 'Service.')}</h1>
+            </div>
           </div>
           <button
             onClick={() => window.location.href = addServiceHref}

@@ -570,13 +570,22 @@ export default function VnosGoriva() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:pl-[280px] xl:pr-8">
       <div className="w-full xl:mx-auto xl:max-w-5xl">
-      <div className="flex items-center gap-3 mb-8">
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
         <BackButton />
-        <div>
+        <div className="min-w-0">
           <p className="hidden text-sm font-black text-[#6c63ff] xl:block">GarageBase</p>
           <h1 className="text-xl font-bold text-white xl:text-4xl">⛽ {tx('Vnos goriva', 'Fuel entry')}</h1>
           <p className="mt-1 hidden text-sm font-semibold text-[#8a8aa8] xl:block">{tx('Vnesi točenje, kilometre in račun na enem preglednem mestu.', 'Enter fill-up, mileage and receipt in one clear place.')}</p>
         </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.href = carId ? `/gorivo?car=${carId}` : '/gorivo'}
+          className="shrink-0 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-black text-[#c8c4ff] transition-colors hover:border-[#6c63ff] hover:bg-[#6c63ff24] xl:px-5"
+        >
+          {tx('Ogled goriva', 'View fuel')}
+        </button>
       </div>
 
       {poslusam && (

@@ -391,9 +391,18 @@ export default function VnosServisa() {
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
-      <div className="flex items-center gap-3 mb-8">
+      <div className="mb-8 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
         <BackButton />
-        <h1 className="text-xl font-bold text-white">🔧 {tx('Vnos servisa', 'Service entry')}</h1>
+        <h1 className="truncate text-xl font-bold text-white">🔧 {tx('Vnos servisa', 'Service entry')}</h1>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.location.href = carId ? `/servis?car=${carId}` : '/servis'}
+          className="shrink-0 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-black text-[#c8c4ff] transition-colors hover:border-[#6c63ff] hover:bg-[#6c63ff24]"
+        >
+          {tx('Ogled servisov', 'View service')}
+        </button>
       </div>
 
       {poslusam && (
