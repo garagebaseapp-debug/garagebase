@@ -227,13 +227,27 @@ const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
   return { average: (liters / distance) * 100, distance, liters }
 }
 
+const rangeConsumptionFromVehicle = (rows: any[], car?: any) => {
+  const startKm = startMileageValue(car)
+  if (startKm <= 0) return null
+  const usableRows = rows.filter((row) => rowMileageValue(row) > 0 && fuelLitersValue(row) > 0 && !isPartialFillUpRow(row))
+  if (usableRows.length === 0) return null
+  const latestFuelKm = Math.max(...usableRows.map(rowMileageValue))
+  const currentKm = numberValue(car?.km_trenutni)
+  const endKm = Math.max(latestFuelKm, currentKm)
+  const distance = endKm - startKm
+  const liters = usableRows.reduce((sum, row) => sum + fuelLitersValue(row), 0)
+  if (distance <= 0 || liters <= 0) return null
+  return { average: (liters / distance) * 100, distance, liters }
+}
+
 export const consumptionSegment = (rows: any[], car?: any) => {
   const sorted = rows
     .filter((row) => numberValue(row?.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
   if (sorted.length < 2) {
-    return firstFillConsumptionFromStart(rows, car) || { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
+    return rangeConsumptionFromVehicle(rows, car) || firstFillConsumptionFromStart(rows, car) || { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
   }
 
   if (sorted.some(isPartialFillUpRow)) {
@@ -273,7 +287,7 @@ export const consumptionSegment = (rows: any[], car?: any) => {
   }
 
   return {
-    average: distance > 0 ? (liters / distance) * 100 : firstFillConsumptionFromStart(rows, car)?.average ?? averageKnownConsumption(rows),
+    average: distance > 0 ? (liters / distance) * 100 : rangeConsumptionFromVehicle(rows, car)?.average ?? firstFillConsumptionFromStart(rows, car)?.average ?? averageKnownConsumption(rows),
     distance,
     liters,
   }
