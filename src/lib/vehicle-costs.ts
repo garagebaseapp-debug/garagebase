@@ -211,12 +211,14 @@ const averageKnownConsumption = (rows: any[]) => {
 
 const isPartialFillUpRow = (row: any) => row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
-const startMileageValue = (car?: any) =>
-  numberValue(car?.purchase_mileage ?? car?.km_ob_vnosu ?? car?.initial_mileage)
+const startMileageValue = (car?: any) => {
+  const raw = car?.purchase_mileage ?? car?.km_ob_vnosu ?? car?.initial_mileage
+  return raw === null || raw === undefined || raw === '' ? null : numberValue(raw)
+}
 
 const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
   const startKm = startMileageValue(car)
-  if (startKm <= 0) return null
+  if (startKm === null || startKm < 0) return null
   const firstFill = rows
     .filter((row) => rowMileageValue(row) > startKm && fuelLitersValue(row) > 0 && !isPartialFillUpRow(row))
     .sort((a, b) => rowMileageValue(a) - rowMileageValue(b))[0]
@@ -229,7 +231,7 @@ const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
 
 const rangeConsumptionFromVehicle = (rows: any[], car?: any) => {
   const startKm = startMileageValue(car)
-  if (startKm <= 0) return null
+  if (startKm === null || startKm < 0) return null
   const usableRows = rows.filter((row) => rowMileageValue(row) > 0 && fuelLitersValue(row) > 0 && !isPartialFillUpRow(row))
   if (usableRows.length === 0) return null
   const latestFuelKm = Math.max(...usableRows.map(rowMileageValue))
