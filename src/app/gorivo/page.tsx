@@ -68,7 +68,7 @@ const literSum = (rows: any[]) => rows.reduce((sum, row) => sum + fuelLitersValu
 const averageLiters = (rows: any[]) => rows.length > 0 ? literSum(rows) / rows.length : 0
 
 const isPartialFill = (row: any) =>
-  row?.polni_rezervar === false || row?.polni_rezervar === null || String(row?.polni_rezervar).toLowerCase() === 'false'
+  row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
 function Icon({ type, className = 'h-6 w-6' }: { type: MetricCardProps['icon'] | 'car' | 'plus', className?: string }) {
   if (type === 'fuel') return (

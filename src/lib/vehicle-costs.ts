@@ -209,7 +209,7 @@ const averageKnownConsumption = (rows: any[]) => {
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const isPartialFillUpRow = (row: any) => row?.polni_rezervar === false || row?.polni_rezervar === null || String(row?.polni_rezervar).toLowerCase() === 'false'
+const isPartialFillUpRow = (row: any) => row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
 export const consumptionSegment = (rows: any[]) => {
   const sorted = rows

@@ -56,7 +56,7 @@ export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
   const [litri, setLitri] = useState('')
-  const [polniRezervar, setPolniRezervar] = useState<boolean | null>(null)
+  const [polniRezervar, setPolniRezervar] = useState<boolean | null>(true)
   const [cenaNaLiter, setCenaNaLiter] = useState('')
   const [postaja, setPostaja] = useState('')
   const [tipGoriva, setTipGoriva] = useState('')
@@ -720,7 +720,7 @@ export default function VnosGoriva() {
             </button>
           </div>
           <p className="mt-2 text-xs text-[#7b7ba6]">
-            {tx('Za pravilen izracun porabe oznaci, ali si tankal do polnega.', 'For correct consumption, mark whether you filled the tank fully.')}
+            {tx('Privzeto je nastavljen poln rezervar. Spremeni na delno samo, ce nisi tankal do polnega.', 'Full tank is selected by default. Switch to partial only if you did not fill up completely.')}
           </p>
         </div>
 

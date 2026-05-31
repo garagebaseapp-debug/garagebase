@@ -161,7 +161,7 @@ export default function ZgodovinaGoriva() {
   const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && fuelLitersValue(vnos) === 0 && fuelCostValue(vnos) === 0
   const displayedImportBuckets = importBuckets(vnosi)
   const jeUvozen = (vnos: any) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
-  const jeDelnoTankanje = (vnos: any) => vnos?.polni_rezervar === false || vnos?.polni_rezervar === null || String(vnos?.polni_rezervar).toLowerCase() === 'false'
+  const jeDelnoTankanje = (vnos: any) => vnos?.polni_rezervar === false || String(vnos?.polni_rezervar).toLowerCase() === 'false'
   const editable = (vnos: any) => Boolean(preostaliCas(vnos.created_at))
   const filteredVnosi = vnosi.filter((vnos) => {
     const imported = jeUvozen(vnos)
