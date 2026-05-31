@@ -211,13 +211,29 @@ const averageKnownConsumption = (rows: any[]) => {
 
 const isPartialFillUpRow = (row: any) => row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
-export const consumptionSegment = (rows: any[]) => {
+const startMileageValue = (car?: any) =>
+  numberValue(car?.purchase_mileage ?? car?.km_ob_vnosu ?? car?.initial_mileage)
+
+const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
+  const startKm = startMileageValue(car)
+  if (startKm <= 0) return null
+  const firstFill = rows
+    .filter((row) => rowMileageValue(row) > startKm && fuelLitersValue(row) > 0 && !isPartialFillUpRow(row))
+    .sort((a, b) => rowMileageValue(a) - rowMileageValue(b))[0]
+  if (!firstFill) return null
+  const distance = rowMileageValue(firstFill) - startKm
+  const liters = fuelLitersValue(firstFill)
+  if (distance <= 0 || liters <= 0) return null
+  return { average: (liters / distance) * 100, distance, liters }
+}
+
+export const consumptionSegment = (rows: any[], car?: any) => {
   const sorted = rows
     .filter((row) => numberValue(row?.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
 
   if (sorted.length < 2) {
-    return { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
+    return firstFillConsumptionFromStart(rows, car) || { average: averageKnownConsumption(rows), distance: 0, liters: 0 }
   }
 
   if (sorted.some(isPartialFillUpRow)) {
@@ -257,7 +273,7 @@ export const consumptionSegment = (rows: any[]) => {
   }
 
   return {
-    average: distance > 0 ? (liters / distance) * 100 : averageKnownConsumption(rows),
+    average: distance > 0 ? (liters / distance) * 100 : firstFillConsumptionFromStart(rows, car)?.average ?? averageKnownConsumption(rows),
     distance,
     liters,
   }
@@ -323,8 +339,8 @@ export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRo
     serviceSplit.garageBase.reduce((sum, row) => sum + numberValue(row?.cena), 0) +
     expenseSplit.garageBase.reduce((sum, row) => sum + numberValue(row?.znesek), 0)
 
-  const garageBaseConsumption = consumptionSegment(fuelSplit.garageBase)
-  const importedConsumption = consumptionSegment(fuelSplit.imported)
+  const garageBaseConsumption = consumptionSegment(fuelSplit.garageBase, car)
+  const importedConsumption = consumptionSegment(fuelSplit.imported, car)
   const drivenKm = costDistanceFromFuelRows(fuelRows, car)
   const fuelCost = fuelRows.reduce((sum, row) => sum + fuelCostValue(row), 0)
   const serviceCost = serviceRows.reduce((sum, row) => sum + numberValue(row?.cena), 0)

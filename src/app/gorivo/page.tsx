@@ -333,8 +333,9 @@ export default function GorivoPage() {
   const monthImportedRows = lastMonthRows.filter((row) => isImportedHistoryRow(row, buckets))
   const monthGarageRows = lastMonthRows.filter((row) => !isImportedHistoryRow(row, buckets))
 
-  const garageConsumption = consumptionSegment(garageBaseRows)
-  const importedConsumption = consumptionSegment(importedRows)
+  const singleCarForConsumption = cars.length === 1 ? cars[0] : undefined
+  const garageConsumption = consumptionSegment(garageBaseRows, singleCarForConsumption)
+  const importedConsumption = consumptionSegment(importedRows, singleCarForConsumption)
   const totalConsumption = combineConsumptionSegments([garageConsumption, importedConsumption])
   const hasImportedConsumption = importedConsumption.average !== null && importedRows.length > 0
   const tankCapacityLiters = cars.length === 1
