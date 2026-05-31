@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { parseReceiptText, readReceiptTextFromImage } from '@/lib/receipt-ocr'
@@ -12,6 +13,7 @@ import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 export default function VnosStroska() {
+  const router = useRouter()
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [kategorija, setKategorija] = useState('registracija')
   const [kategorijaCustom, setKategorijaCustom] = useState('')
@@ -260,13 +262,20 @@ export default function VnosStroska() {
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24 xl:px-8">
       <div className="w-full xl:mx-auto xl:max-w-5xl">
 
-      <div className="flex items-center gap-3 mb-8">
+      <div className="mb-8 flex items-center justify-between gap-3">
         <BackButton />
         <div>
           <p className="hidden text-sm font-black text-[#6c63ff] xl:block">GarageBase</p>
           <h1 className="text-xl font-bold text-white xl:text-4xl">💰 {tx('Vnos stroška', 'Expense entry')}</h1>
           <p className="mt-1 hidden text-sm font-semibold text-[#8a8aa8] xl:block">{tx('Dodaj strošek vozila z dokazilom ali opombo.', 'Add a vehicle cost with proof or a note.')}</p>
         </div>
+        <button
+          type="button"
+          onClick={() => router.push('/stroski-garaza')}
+          className="shrink-0 rounded-2xl border border-[#6c63ff55] bg-[#6c63ff18] px-4 py-3 text-sm font-black text-[#c8c4ff] transition-colors hover:border-[#6c63ff] hover:bg-[#6c63ff24] xl:px-5"
+        >
+          {tx('Ogled stroškov', 'View costs')}
+        </button>
       </div>
 
       {poslusam && (
