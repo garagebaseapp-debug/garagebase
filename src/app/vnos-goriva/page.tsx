@@ -56,7 +56,7 @@ export default function VnosGoriva() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
   const [litri, setLitri] = useState('')
-  const [polniRezervar, setPolniRezervar] = useState<boolean | null>(true)
+  const [polniRezervar, setPolniRezervar] = useState<boolean | null>(null)
   const [cenaNaLiter, setCenaNaLiter] = useState('')
   const [postaja, setPostaja] = useState('')
   const [tipGoriva, setTipGoriva] = useState('')
@@ -720,7 +720,7 @@ export default function VnosGoriva() {
             </button>
           </div>
           <p className="mt-2 text-xs text-[#7b7ba6]">
-            {tx('Privzeto je nastavljen poln rezervar. Spremeni na delno samo, ce nisi tankal do polnega.', 'Full tank is selected by default. Switch to partial only if you did not fill up completely.')}
+            {tx('Izberi, ali je bilo tankanje do polnega ali delno. Brez izbire se vnos ne shrani, ker to vpliva na izracun porabe.', 'Choose whether this was a full tank or a partial fill-up. Without a choice, the entry is not saved because it affects consumption calculation.')}
           </p>
         </div>
 

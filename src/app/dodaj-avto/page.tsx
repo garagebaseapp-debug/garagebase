@@ -412,7 +412,7 @@ export default function DodajAvto() {
                     </label>
                   ))}
                 </div>
-                <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3 text-xs font-bold leading-relaxed text-[#d8ffff]">
+                <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#0f766e66] bg-[#ccfbf1] p-3 text-xs font-bold leading-relaxed text-[#0f172a] dark:border-[#3ecfcf55] dark:bg-[#3ecfcf12] dark:text-[#d8ffff]">
                   <input type="checkbox" checked={registryUnderstand} onChange={(e) => setRegistryUnderstand(e.target.checked)}
                     className="mt-0.5 h-4 w-4 accent-[#3ecfcf]" />
                   <span>{tx('Razumem, da bo vozilo mogoče preveriti po VIN/šasiji in da lahko to kadarkoli izklopim.', 'I understand that this vehicle can be checked by VIN/chassis number and that I can disable this at any time.')}</span>
