@@ -108,6 +108,15 @@ const normalizeTireStatus = (status: string) => {
   return 'mounted'
 }
 
+const isMissingTireSchemaPart = (error: any) => {
+  const message = String(error?.message || '').toLowerCase()
+  return message.includes('last_mounted')
+    || message.includes('tire_scope')
+    || message.includes('tire_mounts')
+    || message.includes('schema cache')
+    || message.includes('violates check constraint')
+}
+
 const defaultPositionForScope = (scope: string) => {
   if (scope === 'front_pair') return 'front'
   if (scope === 'rear_pair') return 'rear'
@@ -385,32 +394,45 @@ export default function GumePage() {
     const installedKm = numberOrNull(form.installedKm) ?? currentKm
     const installedAt = form.installedAt || todayIso()
     if (storeCurrent && mountedTires.length > 0) await closeMountedTires(user.id, installedAt, installedKm)
-    const { data: inserted, error } = await supabase
+    const tirePayload: any = {
+      user_id: user.id,
+      car_id: car.id,
+      season: form.season,
+      tire_scope: form.tireScope,
+      brand: form.brand.trim() || null,
+      model: form.model.trim() || null,
+      size: form.size.trim() || null,
+      dot: form.dot.trim() || null,
+      tread_depth_mm: numberOrNull(form.treadDepth),
+      purchase_date: form.purchaseDate || null,
+      installed_at: installedAt,
+      installed_km: installedKm,
+      removed_at: null,
+      removed_km: null,
+      last_mounted_at: installedAt,
+      last_mounted_km: installedKm,
+      next_change_date: calculatedReminderDate || null,
+      remind_days_before: numberOrNull(form.remindDaysBefore) || 7,
+      notes: form.notes.trim() || null,
+      status: 'mounted',
+    }
+    let insertResult = await supabase
       .from('tire_sets')
-      .insert({
-        user_id: user.id,
-        car_id: car.id,
-        season: form.season,
-        tire_scope: form.tireScope,
-        brand: form.brand.trim() || null,
-        model: form.model.trim() || null,
-        size: form.size.trim() || null,
-        dot: form.dot.trim() || null,
-        tread_depth_mm: numberOrNull(form.treadDepth),
-        purchase_date: form.purchaseDate || null,
-        installed_at: installedAt,
-        installed_km: installedKm,
-        removed_at: null,
-        removed_km: null,
-        last_mounted_at: installedAt,
-        last_mounted_km: installedKm,
-        next_change_date: calculatedReminderDate || null,
-        remind_days_before: numberOrNull(form.remindDaysBefore) || 7,
-        notes: form.notes.trim() || null,
-        status: 'mounted',
-      })
+      .insert(tirePayload)
       .select('id')
       .single()
+    if (insertResult.error && isMissingTireSchemaPart(insertResult.error)) {
+      const legacyPayload = { ...tirePayload, status: 'active' }
+      delete legacyPayload.tire_scope
+      delete legacyPayload.last_mounted_at
+      delete legacyPayload.last_mounted_km
+      insertResult = await supabase
+        .from('tire_sets')
+        .insert(legacyPayload)
+        .select('id')
+        .single()
+    }
+    const { data: inserted, error } = insertResult
     if (error) {
       setMessage(`${tx('Napaka pri shranjevanju gum:', 'Error saving tires:')} ${error.message}`)
       setSaving(false)
