@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { hasAppLockCredential, unlockWithAppLock } from '@/lib/app-lock'
+import { getStoredLanguage } from '@/lib/i18n'
 
 const LOGIN_RATE_LIMIT_MAX = 10
 const LOGIN_RATE_LIMIT_WINDOW_MS = 60 * 1000
@@ -49,6 +50,7 @@ const clearLoginRateLimit = (email: string) => {
 }
 
 export default function LoginPage() {
+  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -58,6 +60,18 @@ export default function LoginPage() {
   const [resetMode, setResetMode] = useState(false)
   const [biometricReady, setBiometricReady] = useState(false)
   const [acceptedLegal, setAcceptedLegal] = useState(false)
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
+  const cleanEmail = () => email.trim().toLowerCase()
+  const authErrorText = (error: any) => {
+    const text = String(error?.message || '')
+    const lower = text.toLowerCase()
+    if (lower.includes('invalid login credentials')) return tx('Email ali geslo ni pravilno.', 'Email or password is not correct.')
+    if (lower.includes('email not confirmed')) return tx('Najprej potrdi registracijo prek povezave v emailu.', 'Confirm your registration using the link in your email first.')
+    if (lower.includes('password should be at least') || lower.includes('weak password')) return tx('Geslo mora imeti vsaj 6 znakov.', 'Password must have at least 6 characters.')
+    if (lower.includes('unable to validate email') || lower.includes('invalid email')) return tx('Vpiši veljaven email naslov.', 'Enter a valid email address.')
+    if (lower.includes('rate limit')) return tx('Preveč poskusov. Poskusi znova malo kasneje.', 'Too many attempts. Try again a little later.')
+    return text || tx('Prijava trenutno ni uspela. Poskusi znova.', 'Sign-in failed right now. Try again.')
+  }
 
   const markAfterLoginHome = () => {
     const stamp = String(Date.now())
@@ -78,6 +92,7 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
+    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
     document.body.classList.add('landing')
     setBiometricReady(hasAppLockCredential())
     const url = new URL(window.location.href)
@@ -111,17 +126,18 @@ export default function LoginPage() {
   const handleAuth = async () => {
     setLoading(true)
     setMessage('')
+    const normalizedEmail = cleanEmail()
 
     if (resetMode) {
       if (newPassword.length < 6) {
-        setMessage('Novo geslo mora imeti vsaj 6 znakov.')
+        setMessage(tx('Novo geslo mora imeti vsaj 6 znakov.', 'The new password must have at least 6 characters.'))
         setLoading(false)
         return
       }
       const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) setMessage(error.message)
+      if (error) setMessage(authErrorText(error))
       else {
-        setMessage('Geslo je spremenjeno. Zdaj se lahko prijaviš.')
+        setMessage(tx('Geslo je spremenjeno. Zdaj se lahko prijaviš.', 'Password changed. You can sign in now.'))
         setResetMode(false)
         setPassword('')
         setNewPassword('')
@@ -130,32 +146,52 @@ export default function LoginPage() {
       return
     }
 
+    if (!normalizedEmail || !normalizedEmail.includes('@')) {
+      setMessage(tx('Vpiši veljaven email naslov.', 'Enter a valid email address.'))
+      setLoading(false)
+      return
+    }
+    if (password.length < 6) {
+      setMessage(tx('Geslo mora imeti vsaj 6 znakov.', 'Password must have at least 6 characters.'))
+      setLoading(false)
+      return
+    }
+
     if (isRegister) {
       if (!acceptedLegal) {
-        setMessage('Za registracijo se moraš strinjati s pogoji uporabe in politiko zasebnosti.')
+        setMessage(tx('Za registracijo se moraš strinjati s pogoji uporabe in politiko zasebnosti.', 'To register, you must accept the terms of use and privacy policy.'))
         setLoading(false)
         return
       }
-      const { error } = await supabase.auth.signUp({ email, password })
-      if (error) setMessage(error.message)
+      const { data, error } = await supabase.auth.signUp({ email: normalizedEmail, password })
+      if (error) setMessage(authErrorText(error))
       else {
         try {
           const current = JSON.parse(localStorage.getItem('garagebase_nastavitve') || '{}')
           localStorage.setItem('garagebase_nastavitve', JSON.stringify({ ...current, pisava: current.pisava || 140, fontPresetVersion: current.fontPresetVersion || 3 }))
         } catch {}
-        setMessage('Preveri email za potrditev registracije!')
+        if (data.session) {
+          clearLoginRateLimit(normalizedEmail)
+          markAfterLoginHome()
+          window.location.replace(afterLoginPath())
+          return
+        }
+        const identities = data.user?.identities || []
+        setMessage(identities.length === 0
+          ? tx('Če račun že obstaja, se prijavi ali uporabi pozabljeno geslo. Če je nov, preveri email za potrditev.', 'If the account already exists, sign in or use forgot password. If it is new, check your email to confirm it.')
+          : tx('Preveri email za potrditev registracije.', 'Check your email to confirm registration.'))
       }
     } else {
-      const rateLimit = checkLoginRateLimit(email)
+      const rateLimit = checkLoginRateLimit(normalizedEmail)
       if (!rateLimit.allowed) {
-        setMessage(`Prevec poskusov prijave. Poskusi znova cez ${rateLimit.retrySeconds} s. / Too many login attempts. Try again in ${rateLimit.retrySeconds}s.`)
+        setMessage(tx(`Preveč poskusov prijave. Poskusi znova čez ${rateLimit.retrySeconds} s.`, `Too many login attempts. Try again in ${rateLimit.retrySeconds}s.`))
         setLoading(false)
         return
       }
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) setMessage(error.message)
+      const { error } = await supabase.auth.signInWithPassword({ email: normalizedEmail, password })
+      if (error) setMessage(authErrorText(error))
       else {
-        clearLoginRateLimit(email)
+        clearLoginRateLimit(normalizedEmail)
         markAfterLoginHome()
         window.location.replace(afterLoginPath())
       }
@@ -164,17 +200,17 @@ export default function LoginPage() {
   }
 
   const sendPasswordReset = async () => {
-    if (!email) {
-      setMessage('Najprej vpiši email naslov.')
+    if (!cleanEmail()) {
+      setMessage(tx('Najprej vpiši email naslov.', 'Enter your email address first.'))
       return
     }
     setLoading(true)
     setMessage('')
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail(), {
       redirectTo: `${window.location.origin}/login?type=recovery`,
     })
-    if (error) setMessage(error.message)
-    else setMessage('Poslali smo ti email povezavo za ponastavitev gesla.')
+    if (error) setMessage(authErrorText(error))
+    else setMessage(tx('Poslali smo ti email povezavo za ponastavitev gesla.', 'We sent you a password reset link by email.'))
     setLoading(false)
   }
 
@@ -252,7 +288,7 @@ export default function LoginPage() {
 
           {message && (
             <div className={`mb-4 p-3 rounded-xl text-sm border ${
-              message.includes('Preveri') || message.includes('Poslali') || message.includes('spremenjeno')
+              message.includes('Preveri') || message.includes('Poslali') || message.includes('spremenjeno') || message.includes('Check') || message.includes('sent') || message.includes('changed')
                 ? 'bg-[#16a34a22] border-[#16a34a44] text-[#4ade80]'
                 : 'bg-[#ef444422] border-[#ef444444] text-[#fca5a5]'
             }`}>

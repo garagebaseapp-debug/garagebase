@@ -17,6 +17,7 @@ export default function Opomniki() {
   const [kmOpomnik, setKmOpomnik] = useState('')
   const [opozoriloDni, setOpozoriloDni] = useState('30')
   const [opozoriloDniCustom, setOpozoriloDniCustom] = useState('')
+  const [paketLetniDokumenti, setPaketLetniDokumenti] = useState(false)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [koledarPrioritete, setKoledarPrioritete] = useState<{ [key: string]: string }>({})
@@ -128,21 +129,25 @@ export default function Opomniki() {
     setSaving(true)
     const finalniTip = tip === 'custom' ? tipCustom : tip
     const finalniDni = opozoriloDni === 'custom' ? parseInt(opozoriloDniCustom) : parseInt(opozoriloDni)
+    const letniDokumenti = ['registracija', 'tehnicni', 'zavarovanje']
+    const tipiZaShranjevanje = paketLetniDokumenti && datum && letniDokumenti.includes(tip)
+      ? letniDokumenti
+      : [finalniTip]
 
-    const { error } = await supabase.from('reminders').insert({
+    const { error } = await supabase.from('reminders').insert(tipiZaShranjevanje.map((tipZaShranjevanje) => ({
       car_id: avto.id,
-      tip: finalniTip,
+      tip: tipZaShranjevanje,
       datum: datum || null,
       km_opomnik: vneseniKmOpomnik,
       opozorilo_dni_prej: finalniDni,
-    })
+    })))
 
     if (error) { setMessage(`${tx('Napaka:', 'Error:')} ${error.message}`) }
     else {
       const { data } = await supabase.from('reminders').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
       setOpomniki(data || [])
       setShowForm(false)
-      setDatum(''); setKmOpomnik(''); setTipCustom(''); setOpozoriloDniCustom('')
+      setDatum(''); setKmOpomnik(''); setTipCustom(''); setOpozoriloDniCustom(''); setPaketLetniDokumenti(false)
       setTip('registracija'); setOpozoriloDni('30')
       setMessage('')
     }
@@ -305,6 +310,18 @@ export default function Opomniki() {
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             </div>
           </div>
+
+          {['registracija', 'tehnicni', 'zavarovanje'].includes(tip) && datum && (
+            <label className="flex items-start gap-3 rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3 text-sm font-semibold text-[#d8ffff]">
+              <input
+                type="checkbox"
+                checked={paketLetniDokumenti}
+                onChange={(e) => setPaketLetniDokumenti(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#3ecfcf]"
+              />
+              <span>{tx('Dodaj skupaj registracijo, tehnični pregled in zavarovanje za isti datum.', 'Add registration, technical inspection and insurance together for the same date.')}</span>
+            </label>
+          )}
 
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Opozori X dni prej', 'Alert X days before')}</label>
@@ -483,6 +500,18 @@ export default function Opomniki() {
               placeholder={`${tx('npr.', 'e.g.')} ${(avto?.km_trenutni || 0) + 15000}`}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
           </div>
+
+          {['registracija', 'tehnicni', 'zavarovanje'].includes(tip) && datum && (
+            <label className="flex items-start gap-3 rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3 text-sm font-semibold text-[#d8ffff]">
+              <input
+                type="checkbox"
+                checked={paketLetniDokumenti}
+                onChange={(e) => setPaketLetniDokumenti(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[#3ecfcf]"
+              />
+              <span>{tx('Dodaj skupaj registracijo, tehnični pregled in zavarovanje za isti datum.', 'Add registration, technical inspection and insurance together for the same date.')}</span>
+            </label>
+          )}
 
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Opozori X dni prej', 'Alert X days before')}</label>

@@ -299,10 +299,17 @@ export default function VnosServisa() {
     if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
     const vneseniKm = parseInt(km)
     const sveziKm = await sveziMinimalniKm(carId)
+    const jeKmNaknaden = vneseniKm < sveziKm
     if (vneseniKm < sveziKm) {
       setZadnjiKm(sveziKm)
-      setMessage(`⚠️ ${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${formatDistance(sveziKm, enotaRazdalje)}!`)
-      return
+      const ok = window.confirm(tx(
+        `Vpisuješ ${formatDistance(vneseniKm, enotaRazdalje)}, zadnje stanje pa je ${formatDistance(sveziKm, enotaRazdalje)}. Servis bomo označili kot naknadno vnesen in trenutnih km vozila ne bomo znižali. Nadaljujem?`,
+        `You are entering ${formatDistance(vneseniKm, enotaRazdalje)}, while the latest mileage is ${formatDistance(sveziKm, enotaRazdalje)}. This service will be marked as entered later and vehicle current mileage will not be lowered. Continue?`
+      ))
+      if (!ok) {
+        setMessage(tx('Vnos ni shranjen. Popravi kilometre ali potrdi naknadni vnos.', 'Entry was not saved. Correct the mileage or confirm the later entry.'))
+        return
+      }
     }
     if (sveziKm > 0 && vneseniKm - sveziKm > KM_ANOMALY_THRESHOLD) {
       const ok = window.confirm(tx(
@@ -319,7 +326,9 @@ export default function VnosServisa() {
 
     const { data: servisData, error } = await supabase.from('service_logs').insert({
       car_id: carId, datum, km: vneseniKm,
-      opis: jeNaknaden ? `${opis} [Naknadno vnešeno: ${danes}]` : opis,
+      opis: jeNaknaden || jeKmNaknaden
+        ? `${opis} [${tx('Naknadno vneseno', 'Entered later')}: ${danes}${jeKmNaknaden ? `, ${tx('km nižji od zadnjega stanja', 'mileage below latest state')}` : ''}]`
+        : opis,
       servis: servis || null,
       cena: cena ? parseFloat(cena) : null,
     }).select().single()
@@ -443,12 +452,12 @@ export default function VnosServisa() {
           <div className="flex gap-2">
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
               placeholder={carId ? (kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')) : tx('najprej izberi vozilo', 'choose a vehicle first')}
-              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
+              className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
             <MicButton polje="km" />
           </div>
           {km && parseInt(km) < zadnjiKm && (
-            <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">⛔ {tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {formatDistance(zadnjiKm, enotaRazdalje)}!</p>
+            <div className="mt-2 rounded-lg border border-[#f59e0b66] bg-[#f59e0b14] p-2">
+              <p className="text-xs font-semibold text-[#fbbf24]">{tx('Km so nižji od zadnjega stanja. Ob shranjevanju bo to označeno kot naknadni vnos.', 'Mileage is below the latest state. When saved, it will be marked as a later entry.')}</p>
             </div>
           )}
         </div>

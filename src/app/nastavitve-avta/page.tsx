@@ -721,6 +721,12 @@ export default function NastavitveAvta() {
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Km ob nakupu', 'Mileage at purchase')}</label>
             <input value={purchaseMileage} onChange={e => setPurchaseMileage(e.target.value)} inputMode="numeric" placeholder="npr. 125000"
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
+            <p className="mt-2 rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] px-3 py-2 text-xs font-black leading-snug text-[#8b7cff]">
+              {tx(
+                'Začetne kilometre je najbolje popraviti čim prej. Priporočeno okno za popravek je 24 ur po dodajanju vozila.',
+                'It is best to correct starting mileage as soon as possible. The recommended correction window is 24 hours after adding the vehicle.'
+              )}
+            </p>
           </div>
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Polog', 'Down payment')}</label>

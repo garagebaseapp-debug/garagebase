@@ -447,10 +447,17 @@ export default function VnosGoriva() {
 
     const vneseniKm = parseInt(km)
     const sveziKm = await sveziMinimalniKm(carId)
+    const jeKmNaknaden = vneseniKm < sveziKm
     if (vneseniKm < sveziKm) {
       setZadnjiKm(sveziKm)
-      setMessage(`${tx('Km ne smejo biti nižji od', 'Mileage cannot be lower than')} ${formatDistance(sveziKm, enotaRazdalje)}!`)
-      return
+      const ok = window.confirm(tx(
+        `Vpisuješ ${formatDistance(vneseniKm, enotaRazdalje)}, zadnje stanje pa je ${formatDistance(sveziKm, enotaRazdalje)}. Vnos bomo označili kot naknadno vnesen in trenutnih km vozila ne bomo znižali. Nadaljujem?`,
+        `You are entering ${formatDistance(vneseniKm, enotaRazdalje)}, while the latest mileage is ${formatDistance(sveziKm, enotaRazdalje)}. This entry will be marked as entered later and vehicle current mileage will not be lowered. Continue?`
+      ))
+      if (!ok) {
+        setMessage(tx('Vnos ni shranjen. Popravi kilometre ali potrdi naknadni vnos.', 'Entry was not saved. Correct the mileage or confirm the later entry.'))
+        return
+      }
     }
 
     if (sveziKm > 0 && vneseniKm - sveziKm > KM_ANOMALY_THRESHOLD) {
@@ -479,8 +486,10 @@ export default function VnosGoriva() {
     }
 
     const datumVnosa = new Date().toLocaleDateString('sl-SI')
-    const opombaNaknaden = jeNaknaden ? ` [Naknadno vneseno: ${datumVnosa}]` : ''
-    const postajaZOpombo = postaja ? postaja + opombaNaknaden : jeNaknaden ? opombaNaknaden.trim() : null
+    const opombaNaknaden = jeNaknaden || jeKmNaknaden
+      ? ` [${tx('Naknadno vneseno', 'Entered later')}: ${datumVnosa}${jeKmNaknaden ? `, ${tx('km nižji od zadnjega stanja', 'mileage below latest state')}` : ''}]`
+      : ''
+    const postajaZOpombo = postaja ? postaja + opombaNaknaden : opombaNaknaden ? opombaNaknaden.trim() : null
 
     const fuelPayload = {
       car_id: carId,
@@ -671,14 +680,14 @@ export default function VnosGoriva() {
               onChange={(event) => setKm(event.target.value)}
               placeholder={carId ? (kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')) : tx('najprej izberi vozilo', 'choose a vehicle first')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${
-                km && parseInt(km) < zadnjiKm ? 'border-[#ef4444]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
+                km && parseInt(km) < zadnjiKm ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
               }`}
             />
             <MicButton polje="km" />
           </div>
           {km && parseInt(km) < zadnjiKm && (
-            <div className="mt-2 p-2 rounded-lg bg-[#ef444422] border border-[#ef444444]">
-              <p className="text-[#ef4444] text-xs">{tx('Km ne smejo biti nizji od', 'Mileage cannot be lower than')} {formatDistance(zadnjiKm, enotaRazdalje)}!</p>
+            <div className="mt-2 rounded-lg border border-[#f59e0b66] bg-[#f59e0b14] p-2">
+              <p className="text-xs font-semibold text-[#fbbf24]">{tx('Km so nižji od zadnjega stanja. Ob shranjevanju bo to označeno kot naknadni vnos.', 'Mileage is below the latest state. When saved, it will be marked as a later entry.')}</p>
             </div>
           )}
         </div>

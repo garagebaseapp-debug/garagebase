@@ -86,8 +86,8 @@ export default function DodajAvto() {
       if (!ok) return
     } else {
       const ok = window.confirm(tx(
-        'Preveri začetne kilometre pred shranjevanjem. Ti kilometri določijo začetek zgodovine vozila in jih kasneje ni mogoče ročno spreminjati.',
-        'Check the initial mileage before saving. This mileage defines the start of the vehicle history and cannot be manually changed later.'
+        'Začetne kilometre preveri pred shranjevanjem. Ti kilometri določijo začetek zgodovine vozila, po shranjevanju pa jih lahko v nastavitvah vozila popraviš še 24 ur.',
+        'Check the initial mileage before saving. This mileage defines the start of the vehicle history, and after saving you can still correct it in vehicle settings for 24 hours.'
       ))
       if (!ok) return
     }
@@ -343,6 +343,14 @@ export default function DodajAvto() {
                 {tx(
                   'Brez začetnih kilometrov bo PDF/QR poročilo manj verodostojno. Vozilo lahko vseeno shraniš, če poročila ne potrebuješ.',
                   'Without starting mileage the PDF/QR report will be less credible. You can still save the vehicle if you do not need the report.'
+                )}
+              </p>
+            )}
+            {km.trim() && (
+              <p className="mt-2 rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] px-3 py-2 text-xs font-black leading-snug text-[#4f46e5]">
+                {tx(
+                  'Začetne kilometre lahko po dodajanju popraviš v nastavitvah vozila še 24 ur.',
+                  'After adding the vehicle, you can correct the starting mileage in vehicle settings for 24 hours.'
                 )}
               </p>
             )}

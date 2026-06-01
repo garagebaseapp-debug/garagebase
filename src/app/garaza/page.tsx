@@ -80,6 +80,39 @@ export default function Garaza() {
     if (!src) return
     setBrokenImageUrls(prev => prev[src] ? prev : { ...prev, [src]: true })
   }
+  const izbrisiSlikoVozila = async (avto: any) => {
+    if (!avto?.id || !slikaVozila(avto)) return
+    const ok = window.confirm(tx('Izbrišem sliko tega vozila?', 'Delete this vehicle photo?'))
+    if (!ok) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      window.location.href = '/'
+      return
+    }
+    const previousPath = String(avto?.slika_url || '').split('/car-images/')[1]?.split('?')[0]
+    const deletedAt = new Date().toISOString()
+    let { error } = await supabase
+      .from('cars')
+      .update({ slika_url: null, slika_updated_at: deletedAt })
+      .eq('id', avto.id)
+      .eq('user_id', user.id)
+    if (error && String(error.message || '').includes('slika_updated_at')) {
+      const retry = await supabase
+        .from('cars')
+        .update({ slika_url: null })
+        .eq('id', avto.id)
+        .eq('user_id', user.id)
+      error = retry.error
+    }
+    if (error) {
+      setArchiveMessage(tx('Slike ni bilo mogoče izbrisati.', 'The photo could not be deleted.'))
+      return
+    }
+    if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
+    setAvti(prev => prev.map((item) => item.id === avto.id ? { ...item, slika_url: null, slika: null, slika_updated_at: deletedAt } : item))
+    localStorage.removeItem('garagebase_garaza_cache')
+    setArchiveMessage(tx('Slika je izbrisana.', 'Photo deleted.'))
+  }
   const tipVozila = (avto: any) => String(avto?.tip_vozila || avto?.oblika || '').toLowerCase()
   const metaVozila = (avto: any) => [
     avto?.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : null,
@@ -733,14 +766,34 @@ export default function Garaza() {
   const renderVehicleImage = (avto: any, index: number, className = 'h-full w-full object-contain object-center') => {
     const imageSrc = slikaVozila(avto)
     return imageSrc ? (
-      <img
-        src={imageSrc}
-        alt={imeVozila(avto)}
-        loading={index < 6 ? 'eager' : 'lazy'}
-        decoding="async"
-        onError={() => oznaciPokvarjenoSliko(imageSrc)}
-        className={className}
-      />
+      <>
+        <img
+          src={imageSrc}
+          alt={imeVozila(avto)}
+          loading={index < 6 ? 'eager' : 'lazy'}
+          decoding="async"
+          onError={() => oznaciPokvarjenoSliko(imageSrc)}
+          className={className}
+        />
+        <span className="absolute right-2 top-2 z-10 flex gap-1">
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(event) => { event.stopPropagation(); router.push(`/nastavitve-avta?car=${avto.id}`) }}
+            className="rounded-xl border border-[#6c63ff66] bg-[#101425]/90 px-2 py-1 text-[10px] font-black text-white shadow-lg"
+          >
+            {tx('Zamenjaj', 'Replace')}
+          </span>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(event) => { event.stopPropagation(); izbrisiSlikoVozila(avto) }}
+            className="rounded-xl border border-[#ef444466] bg-[#101425]/90 px-2 py-1 text-[10px] font-black text-[#fca5a5] shadow-lg"
+          >
+            {tx('Izbriši', 'Delete')}
+          </span>
+        </span>
+      </>
     ) : (
       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#17172a] to-[#080810] px-4 text-center text-sm font-black text-[#6c63ff]">
         {imeVozila(avto)}
