@@ -235,6 +235,14 @@ export default function Dashboard() {
   const [tireSummary, setTireSummary] = useState<TireDashboardSummary | null>(null)
   const [imageMessage, setImageMessage] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
+  const [mileageOpen, setMileageOpen] = useState(false)
+  const [mileageSaving, setMileageSaving] = useState(false)
+  const [mileageMessage, setMileageMessage] = useState('')
+  const [mileageForm, setMileageForm] = useState({
+    event_date: new Date().toISOString().split('T')[0],
+    km: '',
+    note: '',
+  })
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -249,6 +257,69 @@ export default function Dashboard() {
     setAvti((prev) => prev.map((item) => item.id === aktivniAvto?.id ? { ...item, slika_url: url, slika: null, slika_updated_at: updatedAt } : item))
     if (aktivniAvto?.id) clearVehicleDataCaches(aktivniAvto.id)
     try { localStorage.removeItem('garagebase_garaza_cache') } catch {}
+  }
+  const updateActiveCarMileage = (nextKm: number) => {
+    setAktivniAvto((prev: any) => prev ? { ...prev, km_trenutni: nextKm } : prev)
+    setAvti((prev) => prev.map((item) => item.id === aktivniAvto?.id ? { ...item, km_trenutni: nextKm } : item))
+    if (aktivniAvto?.id) clearVehicleDataCaches(aktivniAvto.id)
+    try { localStorage.removeItem('garagebase_garaza_cache') } catch {}
+  }
+  const saveMileageReading = async () => {
+    if (!aktivniAvto?.id) return
+    const km = Math.round(numberValue(mileageForm.km))
+    if (!mileageForm.event_date || km <= 0) {
+      setMileageMessage(tx('Vnesi datum in stanje kilometrov.', 'Enter the date and mileage reading.'))
+      return
+    }
+    const currentKm = numberValue(aktivniAvto.km_trenutni)
+    const isBackfilled = currentKm > 0 && km < currentKm
+    if (isBackfilled) {
+      const ok = window.confirm(tx(
+        `Vpisuješ ${km.toLocaleString(datumLocale)} km, trenutno stanje vozila pa je ${currentKm.toLocaleString(datumLocale)} km. Odčitek bomo označili kot naknadno vnesen in trenutnih km vozila ne bomo znižali. Nadaljujem?`,
+        `You are entering ${km.toLocaleString(datumLocale)} km, while the vehicle current mileage is ${currentKm.toLocaleString(datumLocale)} km. The reading will be marked as entered later and current vehicle mileage will not be lowered. Continue?`
+      ))
+      if (!ok) return
+    }
+    setMileageSaving(true)
+    setMileageMessage('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+    const noteParts = [
+      mileageForm.note.trim(),
+      isBackfilled ? tx(`Naknadno vneseno: ${new Date().toLocaleDateString('sl-SI')}`, `Entered later: ${new Date().toLocaleDateString('en-US')}`) : '',
+    ].filter(Boolean)
+    const { error: eventError } = await supabase.from('vehicle_mileage_events').insert({
+      user_id: user.id,
+      car_id: aktivniAvto.id,
+      event_type: 'manual',
+      event_date: mileageForm.event_date,
+      km,
+      previous_known_km: currentKm || null,
+      entry_timing: isBackfilled ? 'backfilled' : 'normal',
+      note: noteParts.join(' | ') || null,
+    })
+    if (eventError) {
+      setMileageMessage(tx('Napaka pri shranjevanju odčitka: ', 'Error saving mileage reading: ') + eventError.message)
+      setMileageSaving(false)
+      return
+    }
+    const nextKm = Math.max(currentKm, km)
+    if (nextKm !== currentKm) {
+      const { error: carError } = await supabase.from('cars').update({ km_trenutni: nextKm }).eq('id', aktivniAvto.id).eq('user_id', user.id)
+      if (carError) {
+        setMileageMessage(tx('Odčitek je shranjen, trenutnih km vozila pa ni bilo mogoče posodobiti: ', 'Reading saved, but vehicle current mileage could not be updated: ') + carError.message)
+        setMileageSaving(false)
+        return
+      }
+      updateActiveCarMileage(nextKm)
+    } else {
+      clearVehicleDataCaches(aktivniAvto.id)
+    }
+    setMileageMessage(isBackfilled
+      ? tx('Odčitek je shranjen kot naknadni vnos.', 'Reading saved as a backdated entry.')
+      : tx('Stanje kilometrov je shranjeno.', 'Mileage reading saved.'))
+    setMileageForm({ event_date: new Date().toISOString().split('T')[0], km: '', note: '' })
+    setMileageSaving(false)
   }
   const uploadVehicleImage = async (event: any) => {
     const file = event.target.files?.[0]
@@ -1110,6 +1181,46 @@ export default function Dashboard() {
 
           {aktivniAvto && (
             <>
+              {mileageOpen && (
+                <div className="mb-5 rounded-2xl border border-[#6c63ff55] bg-[#111827] p-4 shadow-xl shadow-black/10 lg:p-5">
+                  <div className="mb-4 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-wider text-[#a09aff]">{tx('Stanje km', 'Mileage reading')}</p>
+                      <h3 className="mt-1 text-lg font-black text-white">{tx('Dodaj ročni odčitek kilometrov', 'Add a manual mileage reading')}</h3>
+                      <p className="mt-1 text-sm font-semibold text-[#9aa3b8]">
+                        {tx('Za mesečni odčitek ali stanje števca. Če vpišeš starejši km, ga označimo kot naknadni vnos in ne znižamo trenutnih km vozila.', 'For a monthly reading or odometer state. If you enter older mileage, it is marked as backdated and vehicle current mileage is not lowered.')}
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => setMileageOpen(false)} className="rounded-xl border border-[#2a2a40] px-3 py-2 text-xs font-black text-[#d8d8e8]">
+                      {tx('Zapri', 'Close')}
+                    </button>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[180px_180px_minmax(0,1fr)]">
+                    <div>
+                      <label className="mb-2 block text-xs font-black uppercase tracking-wider text-[#8a8aa8]">{tx('Datum', 'Date')}</label>
+                      <input type="date" value={mileageForm.event_date} onChange={e => setMileageForm(prev => ({ ...prev, event_date: e.target.value }))}
+                        className="w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6c63ff]" />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-black uppercase tracking-wider text-[#8a8aa8]">{tx('Km', 'Mileage')}</label>
+                      <input type="number" value={mileageForm.km} onChange={e => setMileageForm(prev => ({ ...prev, km: e.target.value }))} placeholder="178900"
+                        className="w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6c63ff]" />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-black uppercase tracking-wider text-[#8a8aa8]">{tx('Opomba', 'Note')}</label>
+                      <input value={mileageForm.note} onChange={e => setMileageForm(prev => ({ ...prev, note: e.target.value }))} placeholder={tx('npr. mesečni odčitek', 'e.g. monthly reading')}
+                        className="w-full rounded-xl border border-[#2a2a40] bg-[#0f0f1a] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6c63ff]" />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    <button type="button" onClick={saveMileageReading} disabled={mileageSaving}
+                      className="rounded-xl bg-[#6c63ff] px-5 py-3 text-sm font-black text-white shadow-lg shadow-[#6c63ff33] disabled:opacity-60">
+                      {mileageSaving ? tx('Shranjujem...', 'Saving...') : tx('Shrani stanje km', 'Save mileage')}
+                    </button>
+                    {mileageMessage && <p className="text-sm font-black text-[#fbbf24]">{mileageMessage}</p>}
+                  </div>
+                </div>
+              )}
               <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[320px_minmax(0,1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-[28px] overflow-hidden mb-6 shadow-2xl shadow-black/20">
                 <div className="relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
                   {slikaVozila(aktivniAvto) ? (
@@ -1235,6 +1346,7 @@ export default function Dashboard() {
                     <button onClick={() => router.push('/gume?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#a09aff] hover:text-[#a09aff] transition-all flex items-center justify-center gap-3 font-semibold"><TireSeasonIcon className="h-8 w-8 shrink-0" />{tx('Gume', 'Tires')}</button>
                     <button onClick={() => router.push('/opomniki?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔔</span>{tx('Opomniki', 'Reminders')}</button>
                     <button onClick={() => router.push('/stroski?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📊</span>{tx('Stroski', 'Costs')}</button>
+                    <button onClick={() => setMileageOpen(true)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#6c63ff] hover:text-[#a09aff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl font-black">km</span>{tx('Stanje km', 'Mileage')}</button>
                     <button onClick={() => router.push('/nastavitve-avta?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#5a5a80] hover:text-white transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⚙️</span>{tx('Nastavitve', 'Settings')}</button>
                     <button onClick={() => router.push('/report?car=' + aktivniAvto.id)} className="bg-[#6c63ff22] border border-[#6c63ff55] text-[#a09aff] py-4 rounded-xl hover:border-[#6c63ff] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">📄</span>Report</button>
                   </div>
@@ -1320,6 +1432,10 @@ export default function Dashboard() {
                   <button onClick={() => router.push(`/report?car=${aktivniAvto.id}`)}
                     className="bg-[#13131f] border border-[#6c63ff44] text-[#6c63ff] py-3.5 rounded-2xl hover:border-[#6c63ff] hover:bg-[#6c63ff22] transition-all flex flex-col items-center gap-1.5">
                     <span className="text-2xl leading-none">📄</span><span className="text-[12px] font-black text-[#d8d8e8]">Report</span>
+                  </button>
+                  <button onClick={() => setMileageOpen(true)}
+                    className="bg-[#13131f] border border-[#1e1e32] text-[#a09aff] py-3.5 rounded-2xl hover:border-[#a09aff] transition-all flex flex-col items-center gap-1.5">
+                    <span className="text-xl font-black leading-none">km</span><span className="text-[12px] font-black text-[#d8d8e8]">{tx('Stanje km', 'Mileage')}</span>
                   </button>
                 </div>
 

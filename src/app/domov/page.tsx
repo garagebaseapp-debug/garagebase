@@ -540,13 +540,13 @@ export default function DomovPage() {
                   type="button"
                   onClick={preklopiTemo}
                   aria-label={isLightTheme ? tx('Preklopi na temni način', 'Switch to dark mode') : tx('Preklopi na svetli način', 'Switch to light mode')}
-                  className={`flex h-10 w-[72px] items-center rounded-full border p-1 shadow-lg transition-colors xl:h-12 xl:w-[82px] ${
+                  className={`flex h-10 w-[72px] shrink-0 items-center overflow-hidden rounded-full border p-1 shadow-lg transition-colors xl:h-12 xl:w-[82px] ${
                     isLightTheme ? 'border-white/80 bg-white/88 shadow-[#101225]/10' : 'border-white/15 bg-white/14 shadow-black/20'
                   }`}
                 >
                   <span className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-black shadow-md transition-transform xl:h-10 xl:w-10 ${
                     isLightTheme
-                      ? 'translate-x-8 bg-[#6c63ff] text-white xl:translate-x-8'
+                      ? 'translate-x-[32px] bg-[#6c63ff] text-white xl:translate-x-[34px]'
                       : 'translate-x-0 bg-white text-[#101225]'
                   }`}>
                     {isLightTheme ? '☀' : '☾'}

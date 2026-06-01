@@ -80,14 +80,14 @@ export default function DodajAvto() {
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage(tx('Vnesi tip vozila!', 'Enter the vehicle type!')); return }
     if (!km.trim()) {
       const ok = window.confirm(tx(
-        'Brez začetnih kilometrov bo PDF/QR poročilo manj verodostojno, ker ni jasno, pri katerih kilometrih se evidenca začne. Vozilo lahko vseeno shraniš, začetne kilometre pa priporočamo za bolj zanesljivo zgodovino.',
-        'Without initial mileage, the PDF/QR report will be less credible because it is not clear at which mileage the history starts. You can still save the vehicle, but initial mileage is recommended for a more reliable history.'
+        'Brez trenutnih kilometrov bo PDF/QR poročilo manj verodostojno, ker ni jasno, pri katerem stanju števca se evidenca začne. Vozilo lahko vseeno shraniš, trenutne kilometre pa priporočamo za bolj zanesljivo zgodovino.',
+        'Without current mileage, the PDF/QR report will be less credible because it is not clear at which odometer reading the history starts. You can still save the vehicle, but current mileage is recommended for a more reliable history.'
       ))
       if (!ok) return
     } else {
       const ok = window.confirm(tx(
-        'Začetne kilometre preveri pred shranjevanjem. Ti kilometri določijo začetek zgodovine vozila, po shranjevanju pa jih lahko v nastavitvah vozila popraviš še 24 ur.',
-        'Check the initial mileage before saving. This mileage defines the start of the vehicle history, and after saving you can still correct it in vehicle settings for 24 hours.'
+        'Vpiši trenutne kilometre, ki jih ima vozilo danes. Stare servise, tankanja in stroške lahko vneseš naknadno, km ob nakupu pa nastaviš v lastništvu vozila. Po shranjevanju lahko trenutne km popraviš še 24 ur.',
+        'Enter the current mileage the vehicle has today. Older services, fuel entries and costs can be entered later, and purchase mileage can be set in vehicle ownership. After saving, you can still correct current mileage for 24 hours.'
       ))
       if (!ok) return
     }
@@ -341,16 +341,16 @@ export default function DodajAvto() {
             {!km.trim() && (
               <p className="mt-2 rounded-xl border border-[#f59e0b66] bg-[#f59e0b18] px-3 py-2 text-xs font-black leading-snug text-[#fbbf24]">
                 {tx(
-                  'Brez začetnih kilometrov bo PDF/QR poročilo manj verodostojno. Vozilo lahko vseeno shraniš, če poročila ne potrebuješ.',
-                  'Without starting mileage the PDF/QR report will be less credible. You can still save the vehicle if you do not need the report.'
+                  'Brez trenutnih kilometrov bo PDF/QR poročilo manj verodostojno. Vozilo lahko vseeno shraniš, če poročila ne potrebuješ.',
+                  'Without current mileage the PDF/QR report will be less credible. You can still save the vehicle if you do not need the report.'
                 )}
               </p>
             )}
             {km.trim() && (
               <p className="mt-2 rounded-xl border border-[#6c63ff55] bg-[#6c63ff14] px-3 py-2 text-xs font-black leading-snug text-[#4f46e5]">
                 {tx(
-                  'Začetne kilometre lahko po dodajanju popraviš v nastavitvah vozila še 24 ur.',
-                  'After adding the vehicle, you can correct the starting mileage in vehicle settings for 24 hours.'
+                  'To je trenutno stanje števca. Stare vnose lahko dodaš naknadno, km ob nakupu pa nastaviš v lastništvu vozila.',
+                  'This is the current odometer reading. Older entries can be added later, and purchase mileage can be set in vehicle ownership.'
                 )}
               </p>
             )}

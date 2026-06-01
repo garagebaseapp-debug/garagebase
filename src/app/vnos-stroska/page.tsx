@@ -239,12 +239,18 @@ export default function VnosStroska() {
     }
 
     const finalnaKategorija = kategorija === 'custom' ? kategorijaCustom : kategorija
+    const danesIso = new Date().toISOString().split('T')[0]
+    const jeNaknaden = datum < danesIso
+    const datumVnosa = new Date().toLocaleDateString('sl-SI')
+    const opisZOpombo = jeNaknaden
+      ? `${opis || ''} [${tx('Naknadno vneseno', 'Entered later')}: ${datumVnosa}]`.trim()
+      : (opis || null)
 
     const { error } = await supabase.from('expenses').insert({
       car_id: carId,
       datum,
       kategorija: finalnaKategorija,
-      opis: opis || null,
+      opis: opisZOpombo,
       znesek: parseFloat(znesek),
       receipt_url: receiptUrl,
     })
