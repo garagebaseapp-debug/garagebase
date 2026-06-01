@@ -1130,7 +1130,7 @@ export default function Garaza() {
               </button>
             )}
             <button onClick={preklopiTemo} className={`hidden rounded-xl border px-4 py-2 text-sm font-black ${desktopLight ? 'border-[#d8def0] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#2a2a40] bg-[#0f0f1a] text-[#d8d8e8]'}`}>
-              {desktopLight ? tx('Temni način', 'Dark mode') : tx('Svetli način', 'Light mode')}
+              {desktopLight ? tx('Svetli način', 'Light mode') : tx('Temni način', 'Dark mode')}
             </button>
             <button onClick={osveziGarazo} disabled={refreshing} className={`rounded-xl border px-4 py-2 text-sm font-black disabled:opacity-60 ${desktopLight ? 'border-[#6c21c9] bg-white text-[#6c21c9] shadow-lg shadow-[#101225]/5' : 'border-[#3ecfcf55] bg-[#3ecfcf12] text-[#3ecfcf]'}`}>
               {refreshing ? tx('Osveževanje...', 'Refreshing...') : tx('Osveži garažo', 'Refresh garage')}
@@ -1469,7 +1469,7 @@ export default function Garaza() {
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}
                   aria-label={desktopLight ? tx('Preklopi na temni način', 'Switch to dark mode') : tx('Preklopi na svetli način', 'Switch to light mode')}
                 >
-                  {desktopLight ? '☾' : '☀'}
+                  {desktopLight ? '☀' : '☾'}
                 </button>
                 <button onClick={() => router.push('/vec')}
                   className={`rounded-2xl border px-4 py-3 text-sm font-black ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}>
