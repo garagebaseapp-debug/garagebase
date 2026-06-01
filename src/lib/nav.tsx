@@ -125,6 +125,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
   }, [])
 
   const desktopLinks = namiznePovezave.filter((item) => !('adminOnly' in item) || !item.adminOnly || isAdmin)
+  const sidebarVisual = aktivna === 'garaza' ? '/home-garage-web-dark-opt.jpg' : '/garagebase-app-icon.png'
   return (
     <aside className="gb-desktop-nav fixed left-0 top-0 z-50 hidden h-screen w-[280px] flex-col border-r border-[#252a3d] bg-[#0f1320]/96 px-5 py-6 text-white shadow-2xl shadow-[#050814]/24 backdrop-blur-md">
       <button onClick={() => pojdiNa(router, '/domov')} className="gb-desktop-brand mb-8 px-3 text-left text-xl font-black tracking-tight text-white">
@@ -151,7 +152,7 @@ function DesktopNav({ aktivna }: { aktivna?: string }) {
         className="gb-sidebar-app-icon group relative mt-6 flex h-64 w-full items-center justify-center overflow-visible border-0 bg-transparent p-0 text-left shadow-none"
         aria-label={language === 'en' ? 'GarageBase home' : 'GarageBase domov'}
       >
-        <img src="/garagebase-app-icon.png" alt="" className="relative h-full w-[210%] max-w-none object-contain object-center drop-shadow-[0_22px_26px_rgba(0,0,0,0.34)] transition-transform duration-300 group-hover:scale-[1.02]" />
+        <img src={sidebarVisual} alt="" className={`relative h-full max-w-none object-center drop-shadow-[0_22px_26px_rgba(0,0,0,0.34)] transition-transform duration-300 group-hover:scale-[1.02] ${aktivna === 'garaza' ? 'w-full rounded-[28px] object-cover' : 'w-[210%] object-contain'}`} />
       </button>
       <button
         type="button"

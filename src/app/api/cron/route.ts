@@ -40,7 +40,7 @@ const defaultNotificationSettings: NotificationSettings = {
   dateReminders: true,
   kmReminders: true,
   transitionAlerts: true,
-  dailyRedAlerts: true,
+  dailyRedAlerts: false,
   sendTime: '08:00',
 }
 
@@ -74,6 +74,13 @@ function isWorseStatus(previous?: ReminderStatus, current?: ReminderStatus) {
   const rank: Record<ReminderStatus, number> = { green: 1, yellow: 2, red: 3 }
   if (!previous || !current) return false
   return rank[current] > rank[previous]
+}
+
+function shouldSendStatusTransition(previous: ReminderStatus | undefined, current: ReminderStatus) {
+  if (current === 'green') return false
+  if (!previous) return true
+  if (previous === current) return false
+  return isWorseStatus(previous, current)
 }
 
 function shouldRunForSendTime(sendTime: string) {
@@ -400,22 +407,10 @@ export async function GET(req: Request) {
 
             const sendTransition =
               settings.transitionAlerts &&
-              isWorseStatus(previousStatus, check.status) &&
+              shouldSendStatusTransition(previousStatus, check.status) &&
               (check.status === 'yellow' || check.status === 'red')
 
-            const slot = `${today}:${settings.sendTime}`
-            const sendDailyRed =
-              settings.dailyRedAlerts &&
-              check.status === 'red' &&
-              previous?.lastDailySlot !== slot
-
             if (sendTransition) messages.push(check.transitionText)
-
-            if (sendDailyRed) {
-              messages.push(check.dailyText)
-              nextState.lastDailyDate = today
-              nextState.lastDailySlot = slot
-            }
 
             state[check.key] = nextState
             changedState = true

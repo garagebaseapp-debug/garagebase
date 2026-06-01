@@ -42,6 +42,17 @@ type TireMount = {
   axle_position?: string | null
 }
 
+type TireTreadMeasurement = {
+  id: string
+  tire_set_id: string
+  measured_at: string
+  km: number
+  tread_mm: number | null
+  front_tread_mm: number | null
+  rear_tread_mm: number | null
+  note: string | null
+}
+
 type TireSeasonSettings = {
   countryLabel: string
   winterStart: string
@@ -134,10 +145,13 @@ export default function GumePage() {
   const [car, setCar] = useState<any>(null)
   const [tires, setTires] = useState<TireSet[]>([])
   const [mounts, setMounts] = useState<TireMount[]>([])
+  const [treadMeasurements, setTreadMeasurements] = useState<TireTreadMeasurement[]>([])
   const [showForm, setShowForm] = useState(false)
   const [storeCurrent, setStoreCurrent] = useState(true)
   const [mountingTireId, setMountingTireId] = useState('')
   const [mountForm, setMountForm] = useState({ mountedAt: todayIso(), mountedKm: '', position: 'all' })
+  const [measuringTireId, setMeasuringTireId] = useState('')
+  const [treadForm, setTreadForm] = useState({ measuredAt: todayIso(), km: '', tread: '', front: '', rear: '', note: '' })
   const [seasonSettings, setSeasonSettings] = useState<TireSeasonSettings>(defaultSeasonSettings)
   const [form, setForm] = useState({
     season: 'summer',
@@ -191,6 +205,43 @@ export default function GumePage() {
       const end = mount.removed_km !== null && mount.removed_km !== undefined ? Number(mount.removed_km) : currentKm
       return sum + Math.max(0, end - start)
     }, 0)
+  }
+  const averageTread = (measurement: Partial<TireTreadMeasurement> | null | undefined) => {
+    if (!measurement) return null
+    const values = [measurement.tread_mm, measurement.front_tread_mm, measurement.rear_tread_mm]
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0)
+    if (values.length === 0) return null
+    return values.reduce((sum, value) => sum + value, 0) / values.length
+  }
+  const tireTreadList = (item: TireSet) => treadMeasurements
+    .filter((measurement) => measurement.tire_set_id === item.id)
+    .sort((a, b) => {
+      const dateDiff = new Date(b.measured_at).getTime() - new Date(a.measured_at).getTime()
+      if (dateDiff !== 0) return dateDiff
+      return Number(b.km || 0) - Number(a.km || 0)
+    })
+  const latestTread = (item: TireSet) => {
+    const latest = tireTreadList(item)[0]
+    return averageTread(latest) ?? (Number(item.tread_depth_mm || 0) || null)
+  }
+  const treadLimitFor = (item: TireSet) => item.season === 'summer' ? 3 : 4
+  const treadStats = (item: TireSet) => {
+    const sorted = tireTreadList(item)
+      .filter((measurement) => averageTread(measurement) !== null)
+      .sort((a, b) => Number(a.km || 0) - Number(b.km || 0))
+    const first = sorted[0]
+    const last = sorted[sorted.length - 1]
+    const latest = latestTread(item)
+    if (!first || !last || first.id === last.id) return { latest, wearPer1000: null, remainingKm: null }
+    const startTread = averageTread(first)
+    const endTread = averageTread(last)
+    const distance = Number(last.km || 0) - Number(first.km || 0)
+    const wear = Number(startTread || 0) - Number(endTread || 0)
+    const wearPer1000 = distance > 0 && wear > 0 ? (wear / distance) * 1000 : null
+    const limit = treadLimitFor(item)
+    const remainingKm = wearPer1000 && latest && latest > limit ? Math.round(((latest - limit) / wearPer1000) * 1000) : null
+    return { latest, wearPer1000, remainingKm }
   }
   const openMountFor = (item: TireSet) => mounts.find((mount) => mount.tire_set_id === item.id && !mount.removed_at)
   const bestTire = useMemo(() => {
@@ -255,6 +306,7 @@ export default function GumePage() {
     if (tireError) {
       setTires([])
       setMounts([])
+      setTreadMeasurements([])
       setMessage(tx('Za gume najprej zaženi SQL migracijo SUPABASE_MIGRACIJA_GUME.sql.', 'Run the SUPABASE_MIGRACIJA_GUME.sql migration before using tire tracking.'))
     } else {
       setTires(tireRows || [])
@@ -271,8 +323,20 @@ export default function GumePage() {
         } else {
           setMounts(mountRows || [])
         }
+        const { data: treadRows, error: treadError } = await supabase
+          .from('tire_tread_measurements')
+          .select('*')
+          .in('tire_set_id', tireIds)
+          .order('measured_at', { ascending: false })
+          .order('km', { ascending: false })
+        if (treadError) {
+          setTreadMeasurements([])
+        } else {
+          setTreadMeasurements(treadRows || [])
+        }
       } else {
         setMounts([])
+        setTreadMeasurements([])
       }
     }
     setLoading(false)
@@ -572,6 +636,56 @@ export default function GumePage() {
     await loadData(car.id)
   }
 
+  const openTreadMeasurement = (item: TireSet) => {
+    const latest = latestTread(item)
+    setMeasuringTireId(item.id)
+    setTreadForm({
+      measuredAt: todayIso(),
+      km: String(currentKm || ''),
+      tread: latest ? String(latest) : '',
+      front: '',
+      rear: '',
+      note: '',
+    })
+  }
+
+  const saveTreadMeasurement = async (item: TireSet) => {
+    if (!car?.id) return
+    const tread = numberOrNull(treadForm.tread)
+    const front = numberOrNull(treadForm.front)
+    const rear = numberOrNull(treadForm.rear)
+    if (tread === null && front === null && rear === null) {
+      setMessage(tx('Vnesi vsaj eno meritev profila v mm.', 'Enter at least one tread measurement in mm.'))
+      return
+    }
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const measuredKm = numberOrNull(treadForm.km) ?? currentKm
+    const { error } = await supabase.from('tire_tread_measurements').insert({
+      user_id: user.id,
+      car_id: car.id,
+      tire_set_id: item.id,
+      measured_at: treadForm.measuredAt || todayIso(),
+      km: measuredKm,
+      tread_mm: tread,
+      front_tread_mm: front,
+      rear_tread_mm: rear,
+      note: treadForm.note.trim() || null,
+    })
+    if (error) {
+      setMessage(tx('Za meritve profila zaženi SQL migracijo SUPABASE_MIGRACIJA_GUME_PROFIL.sql.', 'Run SUPABASE_MIGRACIJA_GUME_PROFIL.sql for tread measurements.'))
+      return
+    }
+    await supabase
+      .from('tire_sets')
+      .update({ tread_depth_mm: averageTread({ tread_mm: tread, front_tread_mm: front, rear_tread_mm: rear }) })
+      .eq('id', item.id)
+      .eq('user_id', user.id)
+    setMeasuringTireId('')
+    setMessage(tx('Meritev profila je shranjena.', 'Tread measurement saved.'))
+    await loadData(car.id)
+  }
+
   const cardClass = 'rounded-[24px] border border-[#2e344a] bg-[#101524] p-4 shadow-xl shadow-black/12'
   const inputClass = 'w-full rounded-2xl border border-[#30364c] bg-[#0b1020] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6c63ff]'
 
@@ -721,10 +835,25 @@ export default function GumePage() {
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Prevoženo', 'Driven')}</p><p className="font-black">{formatKm(tireKm(item))}</p></div>
-                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{item.tread_depth_mm ? `${item.tread_depth_mm} mm` : '-'}</p></div>
+                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{treadStats(item).latest ? `${treadStats(item).latest?.toFixed(1)} mm` : '-'}</p></div>
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Montirano', 'Installed')}</p><p className="font-black">{item.installed_at || '-'}</p></div>
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Pozicija', 'Position')}</p><p className="font-black">{positionLabel(openMountFor(item)?.axle_position || defaultPositionForScope(item.tire_scope || 'full_set'))}</p></div>
+                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Obraba', 'Wear')}</p><p className="font-black">{treadStats(item).wearPer1000 ? `${treadStats(item).wearPer1000?.toFixed(2)} mm / 1000 km` : '-'}</p></div>
+                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Ocena še', 'Est. left')}</p><p className="font-black">{treadStats(item).remainingKm ? formatKm(treadStats(item).remainingKm) : '-'}</p></div>
                     </div>
+                    <button onClick={() => openTreadMeasurement(item)} className="mt-3 rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#c8c4ff]">+ {tx('Meritev profila', 'Tread measurement')}</button>
+                    {measuringTireId === item.id && (
+                      <div className="mt-3 grid gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] p-3 md:grid-cols-3">
+                        <label className="text-sm font-black">{tx('Datum', 'Date')}<input type="date" value={treadForm.measuredAt} onChange={(e) => setTreadForm((prev) => ({ ...prev, measuredAt: e.target.value }))} className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Km', 'Mileage')}<input value={treadForm.km} onChange={(e) => setTreadForm((prev) => ({ ...prev, km: e.target.value }))} inputMode="numeric" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Povprečni profil mm', 'Average tread mm')}<input value={treadForm.tread} onChange={(e) => setTreadForm((prev) => ({ ...prev, tread: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Spredaj mm', 'Front mm')}<input value={treadForm.front} onChange={(e) => setTreadForm((prev) => ({ ...prev, front: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Zadaj mm', 'Rear mm')}<input value={treadForm.rear} onChange={(e) => setTreadForm((prev) => ({ ...prev, rear: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Opomba', 'Note')}<input value={treadForm.note} onChange={(e) => setTreadForm((prev) => ({ ...prev, note: e.target.value }))} className={inputClass} /></label>
+                        <button onClick={() => saveTreadMeasurement(item)} className="rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white md:col-span-2">{tx('Shrani meritev', 'Save measurement')}</button>
+                        <button onClick={() => setMeasuringTireId('')} className="rounded-2xl border border-[#30364c] px-4 py-3 text-sm font-black text-[#d8def0]">{tx('Prekliči', 'Cancel')}</button>
+                      </div>
+                    )}
                     {item.notes && <p className="mt-3 rounded-2xl bg-[#0b1020] p-3 text-sm font-semibold text-[#d8def0]">{item.notes}</p>}
                   </div>
                 ))}
@@ -757,8 +886,21 @@ export default function GumePage() {
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
                       <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Skupaj prevoženo', 'Total driven')}</p><p className="font-black">{formatKm(tireKm(item))}</p></div>
-                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{item.tread_depth_mm ? `${item.tread_depth_mm} mm` : '-'}</p></div>
+                      <div className="rounded-2xl bg-[#0b1020] p-3"><p className="text-[#a8b0c0]">{tx('Profil', 'Tread')}</p><p className="font-black">{treadStats(item).latest ? `${treadStats(item).latest?.toFixed(1)} mm` : '-'}</p></div>
                     </div>
+                    <button onClick={() => openTreadMeasurement(item)} className="mt-3 rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#c8c4ff]">+ {tx('Meritev profila', 'Tread measurement')}</button>
+                    {measuringTireId === item.id && (
+                      <div className="mt-3 grid gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] p-3 md:grid-cols-3">
+                        <label className="text-sm font-black">{tx('Datum', 'Date')}<input type="date" value={treadForm.measuredAt} onChange={(e) => setTreadForm((prev) => ({ ...prev, measuredAt: e.target.value }))} className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Km', 'Mileage')}<input value={treadForm.km} onChange={(e) => setTreadForm((prev) => ({ ...prev, km: e.target.value }))} inputMode="numeric" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Povprečni profil mm', 'Average tread mm')}<input value={treadForm.tread} onChange={(e) => setTreadForm((prev) => ({ ...prev, tread: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Spredaj mm', 'Front mm')}<input value={treadForm.front} onChange={(e) => setTreadForm((prev) => ({ ...prev, front: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Zadaj mm', 'Rear mm')}<input value={treadForm.rear} onChange={(e) => setTreadForm((prev) => ({ ...prev, rear: e.target.value }))} inputMode="decimal" className={inputClass} /></label>
+                        <label className="text-sm font-black">{tx('Opomba', 'Note')}<input value={treadForm.note} onChange={(e) => setTreadForm((prev) => ({ ...prev, note: e.target.value }))} className={inputClass} /></label>
+                        <button onClick={() => saveTreadMeasurement(item)} className="rounded-2xl bg-[#6c63ff] px-4 py-3 text-sm font-black text-white md:col-span-2">{tx('Shrani meritev', 'Save measurement')}</button>
+                        <button onClick={() => setMeasuringTireId('')} className="rounded-2xl border border-[#30364c] px-4 py-3 text-sm font-black text-[#d8def0]">{tx('Prekliči', 'Cancel')}</button>
+                      </div>
+                    )}
                     {mountingTireId === item.id && (
                       <div className="mt-4 grid gap-3 rounded-2xl border border-[#30364c] bg-[#0b1020] p-3 md:grid-cols-[1fr_1fr_1fr_auto]">
                         <label className="text-sm font-black">{tx('Datum montaže', 'Mount date')}<input type="date" value={mountForm.mountedAt} onChange={(e) => setMountForm((prev) => ({ ...prev, mountedAt: e.target.value }))} className={inputClass} /></label>

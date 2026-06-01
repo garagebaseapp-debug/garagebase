@@ -7,9 +7,10 @@ import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney } from '@/lib/currency'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { buildVehicleStats, fuelCostValue as sharedFuelCostValue, fuelLitersValue } from '@/lib/vehicle-costs'
-import { GARAGE_CACHE_VERSION, ensureVehicleStatsCacheVersion, imageUrlWithVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
+import { GARAGE_CACHE_VERSION, clearVehicleDataCaches, ensureVehicleStatsCacheVersion, imageUrlWithVersion, readGarageCache, VEHICLE_STATS_CACHE_VERSION } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { TireSeasonIcon } from '@/lib/tire-icon'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 
 type ConsumptionBreakdown = {
   garageBase: number | null
@@ -232,6 +233,8 @@ export default function Dashboard() {
   const [jezik, setJezik] = useState<Language>('sl')
   const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
   const [tireSummary, setTireSummary] = useState<TireDashboardSummary | null>(null)
+  const [imageMessage, setImageMessage] = useState('')
+  const [imageBusy, setImageBusy] = useState(false)
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
@@ -239,6 +242,80 @@ export default function Dashboard() {
     const rawUrl = avto?.slika_url || avto?.slika || ''
     if (!rawUrl) return ''
     return imageUrlWithVersion(rawUrl, avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION)
+  }
+  const imageError = (error: unknown) => imageCompressionErrorText(error, jezik)
+  const updateActiveCarImage = (url: string | null, updatedAt = new Date().toISOString()) => {
+    setAktivniAvto((prev: any) => prev ? { ...prev, slika_url: url, slika: null, slika_updated_at: updatedAt } : prev)
+    setAvti((prev) => prev.map((item) => item.id === aktivniAvto?.id ? { ...item, slika_url: url, slika: null, slika_updated_at: updatedAt } : item))
+    if (aktivniAvto?.id) clearVehicleDataCaches(aktivniAvto.id)
+    try { localStorage.removeItem('garagebase_garaza_cache') } catch {}
+  }
+  const uploadVehicleImage = async (event: any) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file || !aktivniAvto?.id) return
+    setImageBusy(true)
+    setImageMessage('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+    let preparedFile = file
+    try {
+      preparedFile = (await compressImageFile(file, uploadImageProfiles.vehicle)).file
+    } catch (error) {
+      setImageMessage(imageError(error))
+      setImageBusy(false)
+      return
+    }
+    const fileExt = preparedFile.name.split('.').pop() || 'jpg'
+    const previousPath = String(aktivniAvto?.slika_url || '').split('/car-images/')[1]?.split('?')[0]
+    const fileName = `${user.id}/${aktivniAvto.id}-${Date.now()}.${fileExt}`
+    const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, preparedFile, { cacheControl: '31536000', upsert: false })
+    if (uploadError) {
+      setImageMessage(tx('Napaka pri nalaganju slike.', 'Error uploading photo.'))
+      setImageBusy(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
+    const updatedAt = new Date().toISOString()
+    let { error: updateError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl, slika_updated_at: updatedAt }).eq('id', aktivniAvto.id).eq('user_id', user.id)
+    if (updateError && String(updateError.message || '').includes('slika_updated_at')) {
+      const retry = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', aktivniAvto.id).eq('user_id', user.id)
+      updateError = retry.error
+    }
+    if (updateError) {
+      setImageMessage(tx('Napaka pri shranjevanju slike.', 'Error saving photo.'))
+      setImageBusy(false)
+      return
+    }
+    if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
+    updateActiveCarImage(urlData.publicUrl, updatedAt)
+    setImageMessage(tx('Slika je shranjena.', 'Photo saved.'))
+    setImageBusy(false)
+  }
+  const deleteVehicleImage = async () => {
+    if (!aktivniAvto?.id || !slikaVozila(aktivniAvto)) return
+    const ok = window.confirm(tx('Izbrišem sliko tega vozila?', 'Delete this vehicle photo?'))
+    if (!ok) return
+    setImageBusy(true)
+    setImageMessage('')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { window.location.href = '/'; return }
+    const previousPath = String(aktivniAvto?.slika_url || '').split('/car-images/')[1]?.split('?')[0]
+    const updatedAt = new Date().toISOString()
+    let { error } = await supabase.from('cars').update({ slika_url: null, slika_updated_at: updatedAt }).eq('id', aktivniAvto.id).eq('user_id', user.id)
+    if (error && String(error.message || '').includes('slika_updated_at')) {
+      const retry = await supabase.from('cars').update({ slika_url: null }).eq('id', aktivniAvto.id).eq('user_id', user.id)
+      error = retry.error
+    }
+    if (error) {
+      setImageMessage(tx('Slike ni bilo mogoče izbrisati.', 'The photo could not be deleted.'))
+      setImageBusy(false)
+      return
+    }
+    if (previousPath) await supabase.storage.from('car-images').remove([decodeURIComponent(previousPath)])
+    updateActiveCarImage(null, updatedAt)
+    setImageMessage(tx('Slika je izbrisana.', 'Photo deleted.'))
+    setImageBusy(false)
   }
   const renderStats = aktivniAvto?.id ? readVehicleStatsCache(aktivniAvto.id) : null
   const cachedConsumption: ConsumptionBreakdown = renderStats?.consumption
@@ -1043,6 +1120,18 @@ export default function Dashboard() {
                       🚗
                     </div>
                   )}
+                  <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
+                    <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-xs font-black text-white shadow-lg">
+                      {slikaVozila(aktivniAvto) ? tx('Zamenjaj sliko', 'Replace photo') : tx('Dodaj sliko', 'Add photo')}
+                      <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
+                    </label>
+                    {slikaVozila(aktivniAvto) && (
+                      <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-xs font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
+                        {tx('Odstrani sliko', 'Remove photo')}
+                      </button>
+                    )}
+                    {imageMessage && <span className="rounded-xl border border-[#3ecfcf66] bg-[#0b2530]/92 px-3 py-2 text-xs font-black text-[#9ff3f3]">{imageMessage}</span>}
+                  </div>
                 </div>
 
                 <div className="p-7 flex flex-col gap-5">
@@ -1154,11 +1243,26 @@ export default function Dashboard() {
 
               <div key={`mobile-${aktivniAvto.id}`} className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
-                {slikaVozila(aktivniAvto) && (
+                {(
                   <div className="relative h-36 overflow-hidden">
-                    <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
-                      loading="eager" decoding="async" className="h-full w-full bg-[#111827] object-contain object-center" />
+                    {slikaVozila(aktivniAvto) ? (
+                      <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
+                        loading="eager" decoding="async" className="h-full w-full bg-[#111827] object-contain object-center" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1630] to-[#080810] text-5xl">đźš—</div>
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-[#1a1630] via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2">
+                      <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-white shadow-lg">
+                        {slikaVozila(aktivniAvto) ? tx('Zamenjaj', 'Replace') : tx('Dodaj sliko', 'Add photo')}
+                        <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
+                      </label>
+                      {slikaVozila(aktivniAvto) && (
+                        <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
+                          {tx('Odstrani', 'Remove')}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 
