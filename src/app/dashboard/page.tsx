@@ -1047,7 +1047,7 @@ export default function Dashboard() {
                 className={`rounded-2xl border p-1.5 text-left transition-all ${liteStatusStyle[status].border} ${liteStatusStyle[status].bg} ${active ? `ring-2 ${liteStatusStyle[status].ring}` : ''}`}
                 aria-label={ime}
               >
-                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#f7f8fc]">
+                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#11111d]">
                   {slikaVozila(avto) ? (
                     <img src={slikaVozila(avto)} alt={ime} loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
                   ) : (
@@ -1062,7 +1062,7 @@ export default function Dashboard() {
 
         <div className={`rounded-2xl border overflow-hidden mb-4 ${liteStatusStyle[aktivniStatus].border} bg-[#0f0f1a]`}>
           {slikaVozila(aktivniAvto) && (
-            <div className="h-40 bg-[#f7f8fc]">
+            <div className="h-40 bg-[#11111d]">
               <img src={slikaVozila(aktivniAvto)} alt={aktivnoIme} loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
             </div>
           )}
@@ -1226,7 +1226,7 @@ export default function Dashboard() {
                 </div>
               )}
               <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[320px_minmax(0,1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-[28px] overflow-hidden mb-6 shadow-2xl shadow-black/20">
-                <div className="relative min-h-[300px] bg-[#f7f8fc] border-r border-[#dfe3f0] flex items-center justify-center p-4">
+                <div className="relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
                   {slikaVozila(aktivniAvto) ? (
                     <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="h-full max-h-[300px] w-full rounded-2xl object-contain object-center" />
@@ -1236,12 +1236,12 @@ export default function Dashboard() {
                     </div>
                   )}
                   <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
-                    <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-white/95 px-3 py-2 text-xs font-black text-[#352c8f] shadow-lg">
+                    <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-xs font-black text-white shadow-lg">
                       {slikaVozila(aktivniAvto) ? tx('Zamenjaj sliko', 'Replace photo') : tx('Dodaj sliko', 'Add photo')}
                       <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
                     </label>
                     {slikaVozila(aktivniAvto) && (
-                      <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-white/95 px-3 py-2 text-xs font-black text-[#b91c1c] shadow-lg disabled:opacity-60">
+                      <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-xs font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
                         {tx('Odstrani sliko', 'Remove photo')}
                       </button>
                     )}
@@ -1360,7 +1360,7 @@ export default function Dashboard() {
               <div key={`mobile-${aktivniAvto.id}`} className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
                 {(
-                  <div className="relative h-36 overflow-hidden bg-[#f7f8fc]">
+                  <div className="relative h-36 overflow-hidden bg-[#111827]">
                     {slikaVozila(aktivniAvto) ? (
                       <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                         loading="eager" decoding="async" className="h-full w-full object-contain object-center" />
@@ -1368,12 +1368,12 @@ export default function Dashboard() {
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1630] to-[#080810] text-5xl">đźš—</div>
                     )}
                     <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2">
-                      <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-white/95 px-3 py-2 text-[11px] font-black text-[#352c8f] shadow-lg">
+                      <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-white shadow-lg">
                         {slikaVozila(aktivniAvto) ? tx('Zamenjaj', 'Replace') : tx('Dodaj sliko', 'Add photo')}
                         <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
                       </label>
                       {slikaVozila(aktivniAvto) && (
-                        <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-white/95 px-3 py-2 text-[11px] font-black text-[#b91c1c] shadow-lg disabled:opacity-60">
+                        <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
                           {tx('Odstrani', 'Remove')}
                         </button>
                       )}
