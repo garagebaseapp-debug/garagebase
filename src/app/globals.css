@@ -365,6 +365,13 @@ body:not(.landing) {
   color: #4c1d95 !important;
 }
 
+.light-mode .text-\[\#3ecfcf\],
+.light-mode .text-\[\#8df0f0\],
+.light-mode .text-\[\#9ff3f3\],
+.light-mode .text-\[\#d8ffff\] {
+  color: #0e7490 !important;
+}
+
 .light-mode .text-\[\#86efac\],
 .light-mode .text-\[\#bbf7d0\],
 .light-mode .text-\[\#4ade80\] {
@@ -417,6 +424,20 @@ body:not(.landing) {
   box-shadow: inset 0 0 0 1px rgba(8, 145, 178, 0.18), 0 8px 22px rgba(8, 145, 178, 0.1) !important;
 }
 
+.light-mode .bg-\[\#3ecfcf11\],
+.light-mode .bg-\[\#3ecfcf12\],
+.light-mode .bg-\[\#3ecfcf14\],
+.light-mode .bg-\[\#3ecfcf18\] {
+  background-color: #e0f7fb !important;
+}
+
+.light-mode .border-\[\#3ecfcf33\],
+.light-mode .border-\[\#3ecfcf44\],
+.light-mode .border-\[\#3ecfcf55\],
+.light-mode .border-\[\#3ecfcf66\] {
+  border-color: #0891b2 !important;
+}
+
 .light-mode .bg-\[\#f59e0b22\].border-\[\#f59e0b66\] {
   background-color: #fff8ed !important;
   border-color: #d97706 !important;
@@ -435,7 +456,6 @@ body:not(.landing) {
 }
 
 .light-mode .bg-\[\#6c63ff11\],
-.light-mode .bg-\[\#3ecfcf11\],
 .light-mode .bg-\[\#f59e0b11\],
 .light-mode .bg-\[\#16a34a11\],
 .light-mode .bg-\[\#ef444411\] {

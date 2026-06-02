@@ -18,6 +18,7 @@ export default function Opomniki() {
   const [opozoriloDni, setOpozoriloDni] = useState('30')
   const [opozoriloDniCustom, setOpozoriloDniCustom] = useState('')
   const [paketLetniDokumenti, setPaketLetniDokumenti] = useState(false)
+  const [izbraniDokumenti, setIzbraniDokumenti] = useState<string[]>(['registracija', 'tehnicni', 'zavarovanje'])
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [koledarPrioritete, setKoledarPrioritete] = useState<{ [key: string]: string }>({})
@@ -25,6 +26,7 @@ export default function Opomniki() {
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
 
   const tipi = [
+    { vrednost: 'dokumenti', ikona: 'DOC', naziv: 'Dokumenti vozila' },
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
     { vrednost: 'vinjeta', ikona: '🛣️', naziv: 'Vinjeta' },
     { vrednost: 'tehnicni', ikona: '🔍', naziv: 'Tehnični pregled' },
@@ -33,6 +35,8 @@ export default function Opomniki() {
     { vrednost: 'gume', ikona: '⚫', naziv: 'Gume' },
     { vrednost: 'custom', ikona: '✏️', naziv: 'Drugo...' },
   ]
+
+  const dokumentTipi = ['registracija', 'tehnicni', 'zavarovanje', 'vinjeta']
 
   useEffect(() => {
     const init = async () => {
@@ -107,6 +111,7 @@ export default function Opomniki() {
 
   const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
   const tipNaziv: any = {
+    dokumenti: tx('Dokumenti vozila', 'Vehicle documents'),
     registracija: tx('Registracija', 'Registration'),
     vinjeta: tx('Vinjeta', 'Vignette'),
     tehnicni: tx('Tehnični pregled', 'Technical inspection'),
@@ -115,12 +120,23 @@ export default function Opomniki() {
     gume: tx('Gume', 'Tires'),
     custom: tx('Drugo...', 'Other...'),
   }
+  tipIkona.dokumenti = 'DOC'
+
+  const preklopiDokument = (vrednost: string) => {
+    setIzbraniDokumenti((prev) => (
+      prev.includes(vrednost)
+        ? prev.filter((item) => item !== vrednost)
+        : [...prev, vrednost]
+    ))
+  }
 
   const shrani = async () => {
     if (!datum && !kmOpomnik) { setMessage(tx('Vnesi datum ali km!', 'Enter a date or mileage!')); return }
     if (tip === 'custom' && !tipCustom) { setMessage(tx('Vnesi naziv opomnika!', 'Enter reminder name!')); return }
+    if (tip === 'dokumenti' && !datum) { setMessage(tx('Za dokumente vozila vnesi datum.', 'Enter a date for vehicle documents.')); return }
+    if (tip === 'dokumenti' && izbraniDokumenti.length === 0) { setMessage(tx('Izberi vsaj en dokument vozila.', 'Choose at least one vehicle document.')); return }
     if (opozoriloDni === 'custom' && !opozoriloDniCustom) { setMessage(tx('Vnesi število dni!', 'Enter number of days!')); return }
-    const vneseniKmOpomnik = kmOpomnik ? parseInt(kmOpomnik) : null
+    const vneseniKmOpomnik = tip === 'dokumenti' ? null : (kmOpomnik ? parseInt(kmOpomnik) : null)
     if (vneseniKmOpomnik !== null && avto?.km_trenutni && vneseniKmOpomnik < avto.km_trenutni) {
       setMessage(`${tx('Km opomnik ne sme biti nižji od trenutnih', 'Mileage reminder cannot be lower than current')} ${avto.km_trenutni.toLocaleString(locale)} km.`)
       return
@@ -130,9 +146,11 @@ export default function Opomniki() {
     const finalniTip = tip === 'custom' ? tipCustom : tip
     const finalniDni = opozoriloDni === 'custom' ? parseInt(opozoriloDniCustom) : parseInt(opozoriloDni)
     const letniDokumenti = ['registracija', 'tehnicni', 'zavarovanje']
-    const tipiZaShranjevanje = paketLetniDokumenti && datum && letniDokumenti.includes(tip)
-      ? letniDokumenti
-      : [finalniTip]
+    const tipiZaShranjevanje = tip === 'dokumenti'
+      ? izbraniDokumenti
+      : paketLetniDokumenti && datum && letniDokumenti.includes(tip)
+        ? letniDokumenti
+        : [finalniTip]
 
     const { error } = await supabase.from('reminders').insert(tipiZaShranjevanje.map((tipZaShranjevanje) => ({
       car_id: avto.id,
@@ -147,7 +165,7 @@ export default function Opomniki() {
       const { data } = await supabase.from('reminders').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
       setOpomniki(data || [])
       setShowForm(false)
-      setDatum(''); setKmOpomnik(''); setTipCustom(''); setOpozoriloDniCustom(''); setPaketLetniDokumenti(false)
+      setDatum(''); setKmOpomnik(''); setTipCustom(''); setOpozoriloDniCustom(''); setPaketLetniDokumenti(false); setIzbraniDokumenti(['registracija', 'tehnicni', 'zavarovanje'])
       setTip('registracija'); setOpozoriloDni('30')
       setMessage('')
     }
@@ -157,6 +175,15 @@ export default function Opomniki() {
   const izbrisiOpomnik = async (id: string) => {
     await supabase.from('reminders').delete().eq('id', id).eq('car_id', avto.id)
     setOpomniki(opomniki.filter(o => o.id !== id))
+  }
+
+  const izbrisiOpomnike = async (ids: string[]) => {
+    if (ids.length === 1) {
+      await izbrisiOpomnik(ids[0])
+      return
+    }
+    await supabase.from('reminders').delete().in('id', ids).eq('car_id', avto.id)
+    setOpomniki(opomniki.filter(o => !ids.includes(o.id)))
   }
 
   const escapeIcs = (value: string) => String(value || '')
@@ -173,15 +200,21 @@ export default function Opomniki() {
       return
     }
 
-    const naziv = tipNaziv[op.tip] || op.tip
+    const opomnikiZaKoledar = Array.isArray(op.items) ? op.items : [op]
+    const jePaket = opomnikiZaKoledar.length > 1
+    const naziv = jePaket ? tipNaziv.dokumenti : (tipNaziv[op.tip] || op.tip)
+    const dokumentiOpis = jePaket
+      ? `${tx('Dokumenti', 'Documents')}: ${opomnikiZaKoledar.map((item: any) => tipNaziv[item.tip] || item.tip).join(', ')}`
+      : ''
     const avtoNaziv = `${avto?.znamka || ''} ${avto?.model || ''}`.trim()
     const prioriteta = koledarPrioritete[op.id] || '5'
     const start = formatIcsDate(op.datum)
-    const uid = `garagebase-${op.id}@getgaragebase.com`
+    const uid = `garagebase-${jePaket ? opomnikiZaKoledar.map((item: any) => item.id).join('-') : op.id}@getgaragebase.com`
     const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     const opis = [
       `${tx('Vozilo', 'Vehicle')}: ${avtoNaziv}`,
-      op.km_opomnik ? `${tx('Km opomnik', 'Mileage reminder')}: ${op.km_opomnik.toLocaleString(locale)} km` : '',
+      dokumentiOpis,
+      !jePaket && op.km_opomnik ? `${tx('Km opomnik', 'Mileage reminder')}: ${op.km_opomnik.toLocaleString(locale)} km` : '',
       `${tx('Opozori', 'Alert')} ${op.opozorilo_dni_prej || 30} ${tx('dni prej', 'days before')}`,
       tx('Ustvarjeno v GarageBase', 'Created in GarageBase')
     ].filter(Boolean).join('\\n')
@@ -227,6 +260,33 @@ export default function Opomniki() {
   })
   const kmOpomniki = opomniki.filter((op) => op.km_opomnik)
   const datumskiOpomniki = opomniki.filter((op) => op.datum)
+  const uporabljeniOpomniki = new Set<string>()
+  const prikazOpomnikov: any[] = []
+  const dokumentKljuči = new Map<string, any[]>()
+
+  opomniki.forEach((op) => {
+    if (op.datum && dokumentTipi.includes(op.tip) && !op.km_opomnik) {
+      const kljuc = `${op.datum}|${op.opozorilo_dni_prej || 30}`
+      dokumentKljuči.set(kljuc, [...(dokumentKljuči.get(kljuc) || []), op])
+    }
+  })
+
+  dokumentKljuči.forEach((items) => {
+    if (items.length < 2) return
+    items.forEach((item) => uporabljeniOpomniki.add(item.id))
+    prikazOpomnikov.push({
+      ...items[0],
+      id: `docs-${items.map((item) => item.id).join('-')}`,
+      tip: 'dokumenti',
+      items,
+    })
+  })
+
+  opomniki.forEach((op) => {
+    if (!uporabljeniOpomniki.has(op.id)) prikazOpomnikov.push(op)
+  })
+
+  prikazOpomnikov.sort((a, b) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -285,6 +345,21 @@ export default function Opomniki() {
             </div>
           </div>
 
+          {tip === 'dokumenti' && (
+            <div className="rounded-2xl border border-[#3ecfcf55] bg-[#3ecfcf12] p-3">
+              <p className="mb-2 text-xs font-black uppercase tracking-wider text-[#3ecfcf]">{tx('Izberi dokumente', 'Choose documents')}</p>
+              <div className="grid grid-cols-2 gap-2">
+                {dokumentTipi.map((vrednost) => (
+                  <label key={vrednost} className="flex items-center gap-2 rounded-xl border border-[#1e1e32] bg-[#13131f] px-3 py-2 text-sm font-black text-white">
+                    <input type="checkbox" checked={izbraniDokumenti.includes(vrednost)} onChange={() => preklopiDokument(vrednost)} className="h-4 w-4 accent-[#6c63ff]" />
+                    <span>{tipNaziv[vrednost]}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="mt-2 text-xs font-semibold text-[#a8b0c0]">{tx('Izbrani dokumenti se prikažejo kot ena kartica, obvestilo pa ostane pregledno.', 'Selected documents are shown as one card and the notification stays clear.')}</p>
+            </div>
+          )}
+
           {tip === 'custom' && (
             <div>
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Naziv opomnika', 'Reminder name')} *</label>
@@ -301,6 +376,7 @@ export default function Opomniki() {
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             </div>
 
+            {tip !== 'dokumenti' && (
             <div>
               <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">
                 {tx('Km opomnik', 'Mileage reminder')} <span className="text-[#3a3a5a] normal-case">({tx('trenutni', 'current')}: {avto?.km_trenutni?.toLocaleString(locale)} km)</span>
@@ -309,6 +385,7 @@ export default function Opomniki() {
                 placeholder={`${tx('npr.', 'e.g.')} ${(avto?.km_trenutni || 0) + 15000}`}
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#6c63ff] transition-colors" />
             </div>
+            )}
           </div>
 
           {['registracija', 'tehnicni', 'zavarovanje'].includes(tip) && datum && (
@@ -361,9 +438,11 @@ export default function Opomniki() {
       )}
 
       {/* Seznam opomnikov */}
-      {opomniki.length > 0 && (
+      {prikazOpomnikov.length > 0 && (
         <div className="flex flex-col gap-3 mb-4">
-          {opomniki.map((op) => {
+          {prikazOpomnikov.map((op) => {
+            const items = Array.isArray(op.items) ? op.items : [op]
+            const jePaket = items.length > 1
             const dni = dniDo(op.datum)
             const preostaloKm = op.km_opomnik ? kmDo(op.km_opomnik) : null
             const b = skupnaBarva(dni, preostaloKm)
@@ -375,10 +454,19 @@ export default function Opomniki() {
                     <span className="text-2xl">{tipIkona[op.tip] || '🔔'}</span>
                     <div>
                       <p className="text-white font-semibold">{tipNaziv[op.tip] || op.tip}</p>
+                      {jePaket && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {items.map((item: any) => (
+                            <span key={item.id} className="rounded-lg border border-[#3ecfcf44] bg-[#3ecfcf11] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">
+                              {tipNaziv[item.tip] || item.tip}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-[#3a3a5a] text-xs mt-0.5">{tx('opozori', 'alert')} {op.opozorilo_dni_prej} {tx('dni prej', 'days before')}</p>
                     </div>
                   </div>
-                  <button onClick={() => izbrisiOpomnik(op.id)}
+                  <button onClick={() => izbrisiOpomnike(items.map((item: any) => item.id))}
                     className="w-8 h-8 rounded-lg bg-[#ef444422] border border-[#ef444433] flex items-center justify-center text-[#ef4444] hover:bg-[#ef444444] transition-colors text-xs flex-shrink-0">
                     ✕
                   </button>

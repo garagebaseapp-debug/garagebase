@@ -300,7 +300,7 @@ export async function GET(req: Request) {
     for (const userIdBatch of chunkArray(dueUserIds, 200)) {
       const { data: reminderBatch, error: remindersError } = await supabase
         .from('reminders')
-        .select('id, tip, datum, km_opomnik, cars!inner(znamka, model, user_id, km_trenutni)')
+        .select('id, car_id, tip, datum, km_opomnik, cars!inner(znamka, model, user_id, km_trenutni)')
         .in('cars.user_id', userIdBatch)
 
       if (remindersError) throw remindersError
@@ -349,9 +349,37 @@ export async function GET(req: Request) {
         let changedState = false
         let delivered = false
 
+        const documentTypes = ['registracija', 'tehnicni', 'zavarovanje', 'vinjeta']
+        const usedDocumentReminderIds = new Set<string>()
+        const documentGroups = new Map<string, any[]>()
         for (const op of reminders) {
+          if (op.datum && !op.km_opomnik && documentTypes.includes(op.tip)) {
+            const key = `${op.car_id || op.cars?.user_id || userId}|${op.datum}|${op.opozorilo_dni_prej || 30}`
+            documentGroups.set(key, [...(documentGroups.get(key) || []), op])
+          }
+        }
+        const remindersForChecks: any[] = []
+        for (const items of documentGroups.values()) {
+          if (items.length < 2) continue
+          items.forEach((item) => usedDocumentReminderIds.add(item.id))
+          const sortedItems = [...items].sort((a, b) => String(a.tip).localeCompare(String(b.tip)))
+          remindersForChecks.push({
+            ...sortedItems[0],
+            id: `docs:${sortedItems.map((item) => item.tip).join(',')}:${sortedItems[0].datum}`,
+            tip: 'dokumenti',
+            documentItems: sortedItems,
+          })
+        }
+        for (const op of reminders) {
+          if (!usedDocumentReminderIds.has(op.id)) remindersForChecks.push(op)
+        }
+
+        for (const op of remindersForChecks) {
           const avtoNaziv = `${op.cars?.znamka || ''} ${op.cars?.model || ''}`.trim()
-          const naziv = tipNaziv[op.tip] || op.tip || 'Opomnik'
+          const documentItems = Array.isArray(op.documentItems) ? op.documentItems : []
+          const naziv = documentItems.length > 1
+            ? `Dokumenti (${documentItems.map((item: any) => tipNaziv[item.tip] || item.tip).join(', ')})`
+            : tipNaziv[op.tip] || op.tip || 'Opomnik'
 
           const checks: Array<{
             key: string
