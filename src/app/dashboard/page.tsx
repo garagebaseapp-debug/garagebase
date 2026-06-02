@@ -308,8 +308,8 @@ export default function Dashboard() {
       }
       if (isBackfilled) {
         setMileageMessage(tx(
-          'Zgodovina odčitkov kilometrov še ni aktivna, zato naknadnega odčitka ne moremo varno shraniti. Trenutnih km vozila nismo znižali. Zaženi SQL migracijo SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.',
-          'Mileage reading history is not active yet, so the backdated reading cannot be safely saved. Vehicle current mileage was not lowered. Run the SQL migration SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.'
+          'Zgodovina odčitkov kilometrov še ni aktivna, zato naknadnega odčitka ne moremo varno shraniti. Trenutnih km vozila nismo znižali. Administrator mora vključiti zgodovino km.',
+          'Mileage reading history is not active yet, so the backdated reading cannot be safely saved. Vehicle current mileage was not lowered. An administrator must enable mileage history.'
         ))
         setMileageSaving(false)
         return
@@ -328,7 +328,7 @@ export default function Dashboard() {
       clearVehicleDataCaches(aktivniAvto.id)
     }
     setMileageMessage(mileageAuditMissing
-      ? tx('Stanje kilometrov je posodobljeno. Zgodovina odčitkov bo aktivna po zagonu SQL migracije SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.', 'Mileage was updated. Reading history will be active after running the SQL migration SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.')
+      ? tx('Stanje kilometrov je posodobljeno. Zgodovina odčitkov trenutno še ni aktivna.', 'Mileage was updated. Reading history is not active yet.')
       : isBackfilled
         ? tx('Odčitek je shranjen kot naknadni vnos.', 'Reading saved as a backdated entry.')
         : tx('Stanje kilometrov je shranjeno.', 'Mileage reading saved.'))

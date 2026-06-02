@@ -27,6 +27,7 @@ async function powershellCheck(url) {
           $healthOk = ($json.ok -eq $true)
           $health = @{
             database = $json.database.status
+            schema = $json.schema.status
             push = $json.push.status
             cron = $json.cron.status
             storage = $json.storage.status
@@ -85,6 +86,7 @@ async function checkTarget(url) {
         result.healthOk = health.ok === true
         result.health = {
           database: health.database?.status,
+          schema: health.schema?.status,
           push: health.push?.status,
           cron: health.cron?.status,
           storage: health.storage?.status,
@@ -125,7 +127,7 @@ for (const result of results) {
   console.log(parts.join(' | '))
 
   if (result.health) {
-    console.log(`  health: db=${result.health.database} push=${result.health.push} cron=${result.health.cron} storage=${result.health.storage}`)
+    console.log(`  health: db=${result.health.database} schema=${result.health.schema || 'unknown'} push=${result.health.push} cron=${result.health.cron} storage=${result.health.storage}`)
   }
 
   if (!result.ok || result.healthOk === false) failed = true
