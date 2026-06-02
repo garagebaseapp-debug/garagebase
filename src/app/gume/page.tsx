@@ -823,7 +823,7 @@ export default function GumePage() {
                   <div key={item.id} className={cardClass}>
                     <div className="flex items-start justify-between gap-3">
                       <TireSeasonIcon season={item.season} className="h-12 w-12 shrink-0" />
-                      <div>
+                      <div className="xl:min-w-0 xl:flex-1">
                         <p className="text-xs font-black uppercase text-[#3ecfcf]">{seasonLabel(item.season)}</p>
                         <h3 className="mt-1 text-xl font-black">{[item.brand, item.model].filter(Boolean).join(' ') || tx('Gume', 'Tires')}</h3>
                         <p className="text-sm font-bold text-[#a8b0c0]">{[scopeLabel(item.tire_scope), item.size, item.dot].filter(Boolean).join(' · ')}</p>
