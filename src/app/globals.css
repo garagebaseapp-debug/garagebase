@@ -589,6 +589,18 @@ body:not(.landing) {
   background-color: #f7f8fc !important;
 }
 
+.light-mode .gb-vehicle-photo-change {
+  background-color: #ede9fe !important;
+  border-color: #c4b5fd !important;
+  color: #5b21b6 !important;
+}
+
+.light-mode .gb-vehicle-photo-remove {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+
 .light-mode body.landing {
   background: #eef2ff !important;
 }

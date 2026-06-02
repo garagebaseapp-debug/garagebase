@@ -1236,12 +1236,12 @@ export default function Dashboard() {
                     </div>
                   )}
                   <div className="absolute bottom-6 left-6 right-6 flex flex-wrap gap-2">
-                    <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-xs font-black text-white shadow-lg">
+                    <label className="gb-vehicle-photo-change cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-xs font-black text-white shadow-lg">
                       {slikaVozila(aktivniAvto) ? tx('Zamenjaj sliko', 'Replace photo') : tx('Dodaj sliko', 'Add photo')}
                       <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
                     </label>
                     {slikaVozila(aktivniAvto) && (
-                      <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-xs font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
+                      <button onClick={deleteVehicleImage} disabled={imageBusy} className="gb-vehicle-photo-remove rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-xs font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
                         {tx('Odstrani sliko', 'Remove photo')}
                       </button>
                     )}
@@ -1368,12 +1368,12 @@ export default function Dashboard() {
                       <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1630] to-[#080810] text-5xl">đźš—</div>
                     )}
                     <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2">
-                      <label className="cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-white shadow-lg">
+                      <label className="gb-vehicle-photo-change cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-white shadow-lg">
                         {slikaVozila(aktivniAvto) ? tx('Zamenjaj', 'Replace') : tx('Dodaj sliko', 'Add photo')}
                         <input type="file" accept="image/*" onChange={uploadVehicleImage} className="hidden" />
                       </label>
                       {slikaVozila(aktivniAvto) && (
-                        <button onClick={deleteVehicleImage} disabled={imageBusy} className="rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
+                        <button onClick={deleteVehicleImage} disabled={imageBusy} className="gb-vehicle-photo-remove rounded-xl border border-[#ef444466] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-[#fca5a5] shadow-lg disabled:opacity-60">
                           {tx('Odstrani', 'Remove')}
                         </button>
                       )}
