@@ -862,7 +862,7 @@ export default function GumePage() {
 
             <section className="mb-6">
               <h2 className="mb-3 text-xl font-black">{tx('Gume v hrambi', 'Stored tires')}</h2>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
                 {storedTires.length === 0 && <div className={cardClass}>{tx('Ni gum v hrambi.', 'No stored tires.')}</div>}
                 {storedTires.map((item) => (
                   <div key={item.id} className={cardClass}>
