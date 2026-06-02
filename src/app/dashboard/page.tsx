@@ -288,6 +288,7 @@ export default function Dashboard() {
       mileageForm.note.trim(),
       isBackfilled ? tx(`Naknadno vneseno: ${new Date().toLocaleDateString('sl-SI')}`, `Entered later: ${new Date().toLocaleDateString('en-US')}`) : '',
     ].filter(Boolean)
+    let mileageAuditMissing = false
     const { error: eventError } = await supabase.from('vehicle_mileage_events').insert({
       user_id: user.id,
       car_id: aktivniAvto.id,
@@ -299,9 +300,20 @@ export default function Dashboard() {
       note: noteParts.join(' | ') || null,
     })
     if (eventError) {
-      setMileageMessage(tx('Napaka pri shranjevanju odčitka: ', 'Error saving mileage reading: ') + eventError.message)
-      setMileageSaving(false)
-      return
+      mileageAuditMissing = eventError.code === 'PGRST205' || eventError.message?.includes('vehicle_mileage_events')
+      if (!mileageAuditMissing) {
+        setMileageMessage(tx('Napaka pri shranjevanju odčitka: ', 'Error saving mileage reading: ') + eventError.message)
+        setMileageSaving(false)
+        return
+      }
+      if (isBackfilled) {
+        setMileageMessage(tx(
+          'Zgodovina odčitkov kilometrov še ni aktivna, zato naknadnega odčitka ne moremo varno shraniti. Trenutnih km vozila nismo znižali. Zaženi SQL migracijo SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.',
+          'Mileage reading history is not active yet, so the backdated reading cannot be safely saved. Vehicle current mileage was not lowered. Run the SQL migration SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.'
+        ))
+        setMileageSaving(false)
+        return
+      }
     }
     const nextKm = Math.max(currentKm, km)
     if (nextKm !== currentKm) {
@@ -315,9 +327,11 @@ export default function Dashboard() {
     } else {
       clearVehicleDataCaches(aktivniAvto.id)
     }
-    setMileageMessage(isBackfilled
-      ? tx('Odčitek je shranjen kot naknadni vnos.', 'Reading saved as a backdated entry.')
-      : tx('Stanje kilometrov je shranjeno.', 'Mileage reading saved.'))
+    setMileageMessage(mileageAuditMissing
+      ? tx('Stanje kilometrov je posodobljeno. Zgodovina odčitkov bo aktivna po zagonu SQL migracije SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.', 'Mileage was updated. Reading history will be active after running the SQL migration SUPABASE_MIGRACIJA_KM_LASTNISTVO.sql.')
+      : isBackfilled
+        ? tx('Odčitek je shranjen kot naknadni vnos.', 'Reading saved as a backdated entry.')
+        : tx('Stanje kilometrov je shranjeno.', 'Mileage reading saved.'))
     setMileageForm({ event_date: new Date().toISOString().split('T')[0], km: '', note: '' })
     setMileageSaving(false)
   }
