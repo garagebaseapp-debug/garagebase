@@ -817,7 +817,7 @@ export default function GumePage() {
 
             <section className="mb-6">
               <h2 className="mb-3 text-xl font-black">{tx('Montirane gume', 'Mounted tires')}</h2>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3">
                 {mountedTires.length === 0 && <div className={cardClass}>{tx('Ni montiranih gum za to vozilo.', 'No mounted tires for this vehicle.')}</div>}
                 {mountedTires.map((item) => (
                   <div key={item.id} className={cardClass}>
