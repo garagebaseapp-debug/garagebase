@@ -585,6 +585,10 @@ body:not(.landing) {
   color: #083344 !important;
 }
 
+.light-mode .gb-vehicle-photo-canvas {
+  background-color: #f7f8fc !important;
+}
+
 .light-mode body.landing {
   background: #eef2ff !important;
 }

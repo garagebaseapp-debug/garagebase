@@ -1545,7 +1545,7 @@ export default function Garaza() {
                       desktopLight ? 'border-[#e2e7f2] bg-white shadow-[#101225]/6' : 'border-[#253142] bg-[#101720] shadow-black/20'
                     }`}
                   >
-                    <span className="relative block h-32 bg-[#111827]">
+                    <span className="gb-vehicle-photo-canvas relative block h-32 bg-[#111827]">
                       {imageSrc ? (
                         <img src={imageSrc} alt={imeVozila(avto)}
                           loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
@@ -1582,7 +1582,7 @@ export default function Garaza() {
                         : `bg-[#101720] text-white shadow-black/20 ${selected ? 'border-[#6c63ff]' : 'border-[#253142]'}`
                     }`}
                   >
-                    <span className="relative h-24 overflow-hidden rounded-[18px] bg-[#111827]">
+                    <span className="gb-vehicle-photo-canvas relative h-24 overflow-hidden rounded-[18px] bg-[#111827]">
                       {imageSrc ? (
                         <img src={imageSrc} alt={imeVozila(avto)}
                           loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="h-full w-full object-contain object-center" />
@@ -1626,7 +1626,7 @@ export default function Garaza() {
                     <p className={`text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Dodaj nov vnos', 'Add a new entry')}</p>
                   </div>
                 </div>
-                <div className="relative h-44 bg-[#111827]">
+                <div className="gb-vehicle-photo-canvas relative h-44 bg-[#111827]">
                   {renderVehicleImage(liteAvto, 0, 'h-full w-full object-contain object-center')}
                   <button onClick={() => router.push(`/nastavitve-avta?car=${liteAvto.id}`)}
                     className="absolute right-4 top-4 rounded-2xl border border-[#6c63ff66] bg-[#101425]/92 px-4 py-2 text-sm font-black text-white shadow-lg">

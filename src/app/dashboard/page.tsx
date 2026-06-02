@@ -1047,7 +1047,7 @@ export default function Dashboard() {
                 className={`rounded-2xl border p-1.5 text-left transition-all ${liteStatusStyle[status].border} ${liteStatusStyle[status].bg} ${active ? `ring-2 ${liteStatusStyle[status].ring}` : ''}`}
                 aria-label={ime}
               >
-                <div className="aspect-[4/3] overflow-hidden rounded-xl bg-[#11111d]">
+                <div className="gb-vehicle-photo-canvas aspect-[4/3] overflow-hidden rounded-xl bg-[#11111d]">
                   {slikaVozila(avto) ? (
                     <img src={slikaVozila(avto)} alt={ime} loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
                   ) : (
@@ -1062,7 +1062,7 @@ export default function Dashboard() {
 
         <div className={`rounded-2xl border overflow-hidden mb-4 ${liteStatusStyle[aktivniStatus].border} bg-[#0f0f1a]`}>
           {slikaVozila(aktivniAvto) && (
-            <div className="h-40 bg-[#11111d]">
+            <div className="gb-vehicle-photo-canvas h-40 bg-[#11111d]">
               <img src={slikaVozila(aktivniAvto)} alt={aktivnoIme} loading="lazy" decoding="async" className="h-full w-full object-contain object-center" />
             </div>
           )}
@@ -1226,7 +1226,7 @@ export default function Dashboard() {
                 </div>
               )}
               <div key={`desktop-${aktivniAvto.id}`} className="hidden lg:grid grid-cols-[320px_minmax(0,1fr)] bg-gradient-to-br from-[#12111f] to-[#0b0b12] border border-[#2a2a40] rounded-[28px] overflow-hidden mb-6 shadow-2xl shadow-black/20">
-                <div className="relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
+                <div className="gb-vehicle-photo-canvas relative min-h-[300px] bg-[#07070d] border-r border-[#1e1e32] flex items-center justify-center p-4">
                   {slikaVozila(aktivniAvto) ? (
                     <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                       loading="eager" decoding="async" className="h-full max-h-[300px] w-full rounded-2xl object-contain object-center" />
@@ -1360,7 +1360,7 @@ export default function Dashboard() {
               <div key={`mobile-${aktivniAvto.id}`} className="lg:hidden bg-gradient-to-br from-[#1a1630] to-[#0f0f1a] border border-[#2a2a40] rounded-2xl overflow-hidden mb-4">
 
                 {(
-                  <div className="relative h-36 overflow-hidden bg-[#111827]">
+                  <div className="gb-vehicle-photo-canvas relative h-36 overflow-hidden bg-[#111827]">
                     {slikaVozila(aktivniAvto) ? (
                       <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                         loading="eager" decoding="async" className="h-full w-full object-contain object-center" />
