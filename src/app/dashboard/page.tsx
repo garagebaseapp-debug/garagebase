@@ -1160,10 +1160,10 @@ export default function Dashboard() {
                     <button
                       type="button"
                       onClick={() => oznaciOpomnikOpravljeno(op)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#22c55e66] bg-[#22c55e18] text-sm font-black text-[#86efac]"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#6c63ff66] bg-[#6c63ff18] text-sm font-black text-[#8b5cf6]"
                       aria-label={tx('Označi kot opravljeno', 'Mark as done')}
                     >
-                      ✓
+                      OK
                     </button>
                   </div>
                 )
@@ -1621,10 +1621,10 @@ export default function Dashboard() {
                             <button
                               type="button"
                               onClick={() => oznaciOpomnikOpravljeno(op)}
-                              className="rounded-xl border border-[#22c55e66] bg-[#22c55e18] px-3 py-2 text-xs font-black text-[#86efac]"
+                              className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff18] px-3 py-2 text-xs font-black text-[#8b5cf6]"
                               aria-label={tx('Označi kot opravljeno', 'Mark as done')}
                             >
-                              ✓ {tx('Opravljeno', 'Done')}
+                              {tx('Označi', 'Mark done')}
                             </button>
                           </div>
 

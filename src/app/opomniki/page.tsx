@@ -571,8 +571,8 @@ export default function Opomniki() {
                     {pogled === 'active' ? (
                       <>
                         <button onClick={() => oznaciOpomnikeOpravljeno(items.map((item: any) => item.id))}
-                          className="rounded-xl border border-[#22c55e66] bg-[#22c55e18] px-3 py-2 text-xs font-black text-[#86efac] hover:bg-[#22c55e2a] transition-colors">
-                          ✓ {tx('Opravljeno', 'Done')}
+                          className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff18] px-3 py-2 text-xs font-black text-[#8b5cf6] hover:bg-[#6c63ff2a] transition-colors">
+                          {tx('Označi', 'Mark done')}
                         </button>
                         <button onClick={() => izbrisiOpomnike(items.map((item: any) => item.id))}
                           className="rounded-xl border border-[#ef444433] bg-[#ef444422] px-3 py-2 text-xs font-black text-[#ef4444] hover:bg-[#ef444444] transition-colors">
