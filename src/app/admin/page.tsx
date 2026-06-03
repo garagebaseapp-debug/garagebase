@@ -1148,7 +1148,7 @@ export default function AdminPage() {
           </button>
         </div>
       </div>
-      <div className="mt-5 flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-7 md:overflow-visible md:pb-0">
+      <div className="mt-5 flex flex-nowrap gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-7 xl:overflow-visible xl:pb-0">
         {[
           { label: tx('Pregled', 'Overview'), tab: 'overview' as AdminTab },
           { label: tx('Analitika', 'Analytics'), tab: 'analytics' as AdminTab },
@@ -1161,13 +1161,13 @@ export default function AdminPage() {
           <button
             key={item.tab}
             onClick={() => openAdminTab(item.tab)}
-            className={`min-w-[132px] shrink-0 rounded-2xl border px-4 py-3 text-center text-sm font-black leading-tight transition-all md:min-w-0 ${
+            className={`min-w-[156px] shrink-0 rounded-2xl border px-4 py-3 text-center text-sm font-black leading-tight transition-all xl:min-w-0 ${
               activeAdminTab === item.tab
                 ? 'border-[#a855f7] bg-[#7c3aed] !text-white shadow-lg shadow-[#7c3aed55]'
                 : 'border-[#1e1e32] bg-[#13131f] text-[#d8d8e8] hover:border-[#6c63ff66] hover:text-white'
             }`}
           >
-            <span>{item.label}</span>
+            <span className="whitespace-nowrap">{item.label}</span>
             {Boolean((item as any).badge) && (
               <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#ef4444] px-2 py-0.5 text-[11px] font-black !text-white">
                 {(item as any).badge}
