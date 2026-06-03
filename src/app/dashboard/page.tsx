@@ -37,7 +37,7 @@ const emptyCosts: CostBreakdown = { garageBase: 0, imported: 0, total: 0, naKm: 
 const TIRE_SEASON_SETTINGS_KEY = 'garagebase_tire_season_settings'
 const defaultTireSeasonSettings = { winterStart: '11-15', winterEnd: '03-15' }
 const dashboardCarColumns = 'id,user_id,znamka,model,letnik,gorivo,barva,tablica,km_trenutni,km_ob_vnosu,slika_url,slika,slika_updated_at,updated_at,created_at,arhivirano,vrstni_red,tip_vozila'
-const dashboardReminderColumns = 'id,car_id,tip,datum,km_opomnik,created_at'
+const dashboardReminderColumns = 'id,car_id,tip,datum,km_opomnik,created_at,status,completed_at,completed_note'
 
 const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
@@ -244,6 +244,7 @@ export default function Dashboard() {
     note: '',
   })
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
+  const activeReminderRows = (rows: any[] = []) => rows.filter((op) => (op?.status || 'active') === 'active')
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
   const slikaVozila = (avto: any) => {
@@ -546,7 +547,7 @@ export default function Dashboard() {
       if (!cached) return
       try {
         const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed.opomniki)) cachedGrouped[id] = parsed.opomniki
+        if (Array.isArray(parsed.opomniki)) cachedGrouped[id] = activeReminderRows(parsed.opomniki)
       } catch {}
     })
 
@@ -560,6 +561,7 @@ export default function Dashboard() {
       .from('reminders')
       .select(dashboardReminderColumns)
       .in('car_id', ids)
+      .or('status.is.null,status.eq.active')
       .order('datum', { ascending: true })
 
     const grouped: Record<string, any[]> = {}
@@ -804,7 +806,7 @@ export default function Dashboard() {
     if (cached) {
       try {
         const parsed = JSON.parse(cached)
-        if (Array.isArray(parsed.opomniki)) setOpomniki(parsed.opomniki)
+        if (Array.isArray(parsed.opomniki)) setOpomniki(activeReminderRows(parsed.opomniki))
         if (parsed.poraba) {
           const cachedPoraba = 'total' in parsed.poraba
             ? parsed.poraba
@@ -839,7 +841,7 @@ export default function Dashboard() {
     }
 
     const [opRes] = await Promise.all([
-      supabase.from('reminders').select(dashboardReminderColumns).eq('car_id', carId).order('datum', { ascending: true }),
+      supabase.from('reminders').select(dashboardReminderColumns).eq('car_id', carId).or('status.is.null,status.eq.active').order('datum', { ascending: true }),
     ])
 
     const opData = opRes.data || []
@@ -852,6 +854,29 @@ export default function Dashboard() {
     const nextPoraba = stats.poraba
     const nextStroski = stats.stroski
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
+  }
+  const oznaciOpomnikOpravljeno = async (op: any) => {
+    if (!op?.id || !aktivniAvto?.id) return
+    const completedAt = new Date().toISOString().split('T')[0]
+    const { error } = await supabase
+      .from('reminders')
+      .update({ status: 'completed', completed_at: completedAt })
+      .eq('id', op.id)
+      .eq('car_id', aktivniAvto.id)
+
+    if (error) {
+      console.warn('[GarageBase dashboard] reminder completion failed', error.message)
+      return
+    }
+
+    const nextOpomniki = opomniki.filter((item) => item.id !== op.id)
+    setOpomniki(nextOpomniki)
+    setLiteOpomnikiPoAvtu((prev) => ({ ...prev, [aktivniAvto.id]: activeReminderRows((prev[aktivniAvto.id] || []).filter((item) => item.id !== op.id)) }))
+    try {
+      const raw = localStorage.getItem(`garagebase_dashboard_cache_${aktivniAvto.id}`)
+      const parsed = raw ? JSON.parse(raw) : {}
+      localStorage.setItem(`garagebase_dashboard_cache_${aktivniAvto.id}`, JSON.stringify({ ...parsed, opomniki: nextOpomniki, savedAt: Date.now() }))
+    } catch {}
   }
   const preklopAvto = async (avto: any) => {
     if (!avto?.id) return
@@ -1132,6 +1157,14 @@ export default function Dashboard() {
                       <p className="truncate text-xs text-[#8a8aa6]">{op.datum ? new Date(op.datum).toLocaleDateString(datumLocale) : tx('KM opomnik', 'Mileage reminder')}</p>
                     </div>
                     <span className={`text-sm font-black ${liteStatusStyle[status].text}`}>{vrednost}</span>
+                    <button
+                      type="button"
+                      onClick={() => oznaciOpomnikOpravljeno(op)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#22c55e66] bg-[#22c55e18] text-sm font-black text-[#86efac]"
+                      aria-label={tx('Označi kot opravljeno', 'Mark as done')}
+                    >
+                      ✓
+                    </button>
                   </div>
                 )
               })}
@@ -1585,6 +1618,14 @@ export default function Dashboard() {
                               <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
                               <p className="text-white text-sm font-semibold">{tipNaziv[op.tip] || op.tip}</p>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => oznaciOpomnikOpravljeno(op)}
+                              className="rounded-xl border border-[#22c55e66] bg-[#22c55e18] px-3 py-2 text-xs font-black text-[#86efac]"
+                              aria-label={tx('Označi kot opravljeno', 'Mark as done')}
+                            >
+                              ✓ {tx('Opravljeno', 'Done')}
+                            </button>
                           </div>
 
                           {/* Datum vrstica */}

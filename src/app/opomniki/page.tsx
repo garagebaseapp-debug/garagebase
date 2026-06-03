@@ -19,6 +19,7 @@ export default function Opomniki() {
   const [opozoriloDniCustom, setOpozoriloDniCustom] = useState('')
   const [paketLetniDokumenti, setPaketLetniDokumenti] = useState(false)
   const [izbraniDokumenti, setIzbraniDokumenti] = useState<string[]>(['registracija', 'tehnicni', 'zavarovanje'])
+  const [pogled, setPogled] = useState<'active' | 'completed'>('active')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
   const [koledarPrioritete, setKoledarPrioritete] = useState<{ [key: string]: string }>({})
@@ -186,6 +187,52 @@ export default function Opomniki() {
     setOpomniki(opomniki.filter(o => !ids.includes(o.id)))
   }
 
+  const oznaciOpomnikeOpravljeno = async (ids: string[]) => {
+    if (!ids.length || !avto?.id) return
+    const completedAt = new Date().toISOString().split('T')[0]
+    const { error } = await supabase
+      .from('reminders')
+      .update({ status: 'completed', completed_at: completedAt })
+      .in('id', ids)
+      .eq('car_id', avto.id)
+
+    if (error) {
+      setMessage(`${tx('Napaka pri označevanju opomnika:', 'Error completing reminder:')} ${error.message}`)
+      return
+    }
+    setOpomniki(opomniki.map((op) => ids.includes(op.id) ? { ...op, status: 'completed', completed_at: completedAt } : op))
+  }
+
+  const obnoviOpomnike = async (ids: string[]) => {
+    if (!ids.length || !avto?.id) return
+    const { error } = await supabase
+      .from('reminders')
+      .update({ status: 'active', completed_at: null, completed_note: null })
+      .in('id', ids)
+      .eq('car_id', avto.id)
+
+    if (error) {
+      setMessage(`${tx('Napaka pri obnovi opomnika:', 'Error restoring reminder:')} ${error.message}`)
+      return
+    }
+    setOpomniki(opomniki.map((op) => ids.includes(op.id) ? { ...op, status: 'active', completed_at: null, completed_note: null } : op))
+  }
+
+  const arhivirajOpomnike = async (ids: string[]) => {
+    if (!ids.length || !avto?.id) return
+    const { error } = await supabase
+      .from('reminders')
+      .update({ status: 'archived' })
+      .in('id', ids)
+      .eq('car_id', avto.id)
+
+    if (error) {
+      setMessage(`${tx('Napaka pri arhiviranju opomnika:', 'Error archiving reminder:')} ${error.message}`)
+      return
+    }
+    setOpomniki(opomniki.map((op) => ids.includes(op.id) ? { ...op, status: 'archived' } : op))
+  }
+
   const escapeIcs = (value: string) => String(value || '')
     .replace(/\\/g, '\\\\')
     .replace(/;/g, '\\;')
@@ -253,18 +300,22 @@ export default function Opomniki() {
     </div>
   )
 
-  const rdeciOpomniki = opomniki.filter((op) => {
+  const activeOpomniki = opomniki.filter((op) => (op.status || 'active') === 'active')
+  const completedOpomniki = opomniki.filter((op) => op.status === 'completed')
+  const rdeciOpomniki = activeOpomniki.filter((op) => {
     const dni = dniDo(op.datum)
     const preostaloKm = op.km_opomnik ? kmDo(op.km_opomnik) : null
     return (dni !== null && dni < 0) || (preostaloKm !== null && preostaloKm <= 0)
   })
-  const kmOpomniki = opomniki.filter((op) => op.km_opomnik)
-  const datumskiOpomniki = opomniki.filter((op) => op.datum)
+  const kmOpomniki = activeOpomniki.filter((op) => op.km_opomnik)
+  const datumskiOpomniki = activeOpomniki.filter((op) => op.datum)
   const uporabljeniOpomniki = new Set<string>()
   const prikazOpomnikov: any[] = []
+  const prikazOpravljenihOpomnikov: any[] = []
   const dokumentKljuči = new Map<string, any[]>()
+  const opravljeniDokumentKljuči = new Map<string, any[]>()
 
-  opomniki.forEach((op) => {
+  activeOpomniki.forEach((op) => {
     if (op.datum && dokumentTipi.includes(op.tip) && !op.km_opomnik) {
       const kljuc = `${op.datum}|${op.opozorilo_dni_prej || 30}`
       dokumentKljuči.set(kljuc, [...(dokumentKljuči.get(kljuc) || []), op])
@@ -282,11 +333,36 @@ export default function Opomniki() {
     })
   })
 
-  opomniki.forEach((op) => {
+  activeOpomniki.forEach((op) => {
     if (!uporabljeniOpomniki.has(op.id)) prikazOpomnikov.push(op)
   })
 
   prikazOpomnikov.sort((a, b) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())
+
+  completedOpomniki.forEach((op) => {
+    if (op.datum && dokumentTipi.includes(op.tip) && !op.km_opomnik) {
+      const kljuc = `${op.datum}|${op.opozorilo_dni_prej || 30}|${op.completed_at || ''}`
+      opravljeniDokumentKljuči.set(kljuc, [...(opravljeniDokumentKljuči.get(kljuc) || []), op])
+    }
+  })
+
+  const uporabljeniOpravljeniOpomniki = new Set<string>()
+  opravljeniDokumentKljuči.forEach((items) => {
+    if (items.length < 2) return
+    items.forEach((item) => uporabljeniOpravljeniOpomniki.add(item.id))
+    prikazOpravljenihOpomnikov.push({
+      ...items[0],
+      id: `done-docs-${items.map((item) => item.id).join('-')}`,
+      tip: 'dokumenti',
+      items,
+    })
+  })
+
+  completedOpomniki.forEach((op) => {
+    if (!uporabljeniOpravljeniOpomniki.has(op.id)) prikazOpravljenihOpomnikov.push(op)
+  })
+  prikazOpravljenihOpomnikov.sort((a, b) => new Date(b.completed_at || b.datum || '1900-01-01').getTime() - new Date(a.completed_at || a.datum || '1900-01-01').getTime())
+  const seznamZaPrikaz = pogled === 'active' ? prikazOpomnikov : prikazOpravljenihOpomnikov
 
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
@@ -310,7 +386,7 @@ export default function Opomniki() {
 
       <div className="mb-6 hidden grid-cols-4 gap-4 xl:grid">
         {[
-          { label: tx('Vsi opomniki', 'All reminders'), value: opomniki.length, tone: 'text-[#a09aff]' },
+          { label: tx('Aktivni opomniki', 'Active reminders'), value: activeOpomniki.length, tone: 'text-[#a09aff]' },
           { label: tx('Nujni', 'Urgent'), value: rdeciOpomniki.length, tone: 'text-[#ef4444]' },
           { label: tx('Datumski opomniki', 'Date reminders'), value: datumskiOpomniki.length, tone: 'text-[#3ecfcf]' },
           { label: tx('KM opomniki', 'Mileage reminders'), value: kmOpomniki.length, tone: 'text-[#22c55e]' },
@@ -437,15 +513,37 @@ export default function Opomniki() {
         </div>
       )}
 
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-1">
+        {[
+          { key: 'active' as const, label: tx('Aktivni', 'Active'), count: activeOpomniki.length },
+          { key: 'completed' as const, label: tx('Opravljeni', 'Completed'), count: completedOpomniki.length },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setPogled(item.key)}
+            className={`rounded-xl px-3 py-2 text-sm font-black transition-all ${
+              pogled === item.key
+                ? 'bg-[#6c63ff] text-white shadow-lg shadow-[#6c63ff33]'
+                : 'text-[#8a8aa8] hover:bg-[#151524] hover:text-white'
+            }`}
+          >
+            {item.label} <span className="ml-1 opacity-70">{item.count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Seznam opomnikov */}
-      {prikazOpomnikov.length > 0 && (
+      {seznamZaPrikaz.length > 0 && (
         <div className="flex flex-col gap-3 mb-4">
-          {prikazOpomnikov.map((op) => {
+          {seznamZaPrikaz.map((op) => {
             const items = Array.isArray(op.items) ? op.items : [op]
             const jePaket = items.length > 1
             const dni = dniDo(op.datum)
             const preostaloKm = op.km_opomnik ? kmDo(op.km_opomnik) : null
-            const b = skupnaBarva(dni, preostaloKm)
+            const b = pogled === 'completed'
+              ? { text: 'text-[#22c55e]', bg: 'bg-[#22c55e11]', border: 'border-[#22c55e44]' }
+              : skupnaBarva(dni, preostaloKm)
 
             return (
               <div key={op.id} className={`${b.bg} border ${b.border} rounded-2xl p-4`}>
@@ -464,12 +562,36 @@ export default function Opomniki() {
                         </div>
                       )}
                       <p className="text-[#3a3a5a] text-xs mt-0.5">{tx('opozori', 'alert')} {op.opozorilo_dni_prej} {tx('dni prej', 'days before')}</p>
+                      {pogled === 'completed' && (
+                        <p className="mt-1 text-xs font-black text-[#22c55e]">{tx('Opravljeno', 'Completed')}: {op.completed_at ? new Date(op.completed_at).toLocaleDateString(locale) : '-'}</p>
+                      )}
                     </div>
                   </div>
-                  <button onClick={() => izbrisiOpomnike(items.map((item: any) => item.id))}
-                    className="w-8 h-8 rounded-lg bg-[#ef444422] border border-[#ef444433] flex items-center justify-center text-[#ef4444] hover:bg-[#ef444444] transition-colors text-xs flex-shrink-0">
-                    ✕
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    {pogled === 'active' ? (
+                      <>
+                        <button onClick={() => oznaciOpomnikeOpravljeno(items.map((item: any) => item.id))}
+                          className="rounded-xl border border-[#22c55e66] bg-[#22c55e18] px-3 py-2 text-xs font-black text-[#86efac] hover:bg-[#22c55e2a] transition-colors">
+                          ✓ {tx('Opravljeno', 'Done')}
+                        </button>
+                        <button onClick={() => izbrisiOpomnike(items.map((item: any) => item.id))}
+                          className="rounded-xl border border-[#ef444433] bg-[#ef444422] px-3 py-2 text-xs font-black text-[#ef4444] hover:bg-[#ef444444] transition-colors">
+                          {tx('Izbriši', 'Delete')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => obnoviOpomnike(items.map((item: any) => item.id))}
+                          className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#c8c4ff] hover:bg-[#6c63ff33] transition-colors">
+                          {tx('Obnovi', 'Restore')}
+                        </button>
+                        <button onClick={() => arhivirajOpomnike(items.map((item: any) => item.id))}
+                          className="rounded-xl border border-[#5a5a8044] bg-[#13131f] px-3 py-2 text-xs font-black text-[#8a8aa8] hover:text-white transition-colors">
+                          {tx('Arhiviraj', 'Archive')}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Datumski prikaz */}
@@ -645,11 +767,11 @@ export default function Opomniki() {
         </button>
       )}
 
-      {opomniki.length === 0 && !showForm && (
+      {seznamZaPrikaz.length === 0 && !showForm && (
         <div className="bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-6 text-center mt-4">
           <p className="text-4xl mb-3">🔔</p>
-          <p className="text-white font-semibold mb-1">{tx('Še ni opomnikov', 'No reminders yet')}</p>
-          <p className="text-[#5a5a80] text-sm">{tx('Dodaj registracijo, vinjeto ali drug opomnik', 'Add registration, vignette or another reminder')}</p>
+          <p className="text-white font-semibold mb-1">{pogled === 'active' ? tx('Ni aktivnih opomnikov', 'No active reminders') : tx('Ni opravljenih opomnikov', 'No completed reminders')}</p>
+          <p className="text-[#5a5a80] text-sm">{pogled === 'active' ? tx('Dodaj registracijo, vinjeto ali drug opomnik', 'Add registration, vignette or another reminder') : tx('Opravljeni opomniki se prikažejo tukaj.', 'Completed reminders are shown here.')}</p>
         </div>
       )}
 

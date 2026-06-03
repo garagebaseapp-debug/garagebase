@@ -199,6 +199,7 @@ export default function Garaza() {
     const ids = cars.map((avto: any) => avto.id).filter(Boolean)
     const { data: opData } = await supabase
       .from('reminders').select('*').in('car_id', ids)
+      .or('status.is.null,status.eq.active')
       .order('datum', { ascending: true })
 
     for (const op of opData || []) {

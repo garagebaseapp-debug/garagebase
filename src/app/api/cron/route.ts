@@ -302,6 +302,7 @@ export async function GET(req: Request) {
         .from('reminders')
         .select('id, car_id, tip, datum, km_opomnik, cars!inner(znamka, model, user_id, km_trenutni)')
         .in('cars.user_id', userIdBatch)
+        .or('status.is.null,status.eq.active')
 
       if (remindersError) throw remindersError
       opomniki.push(...(reminderBatch || []))
