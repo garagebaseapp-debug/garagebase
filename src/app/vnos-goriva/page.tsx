@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
@@ -22,6 +22,58 @@ type FuelType = {
   activeBg: string
 }
 
+type FuelEntryCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | null
+  gorivo?: string | null
+  arhivirano?: boolean | null
+}
+
+type FuelStationRow = {
+  postaja?: string | null
+}
+
+type SchemaError = {
+  code?: string
+  message?: string
+  details?: string
+}
+
+type SpeechRecognitionResultEvent = {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+type SpeechRecognitionInstance = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
+type ReceiptError = Error & {
+  code?: string
+}
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+
 const optionalFuelInsertColumns = new Set([
   'polni_rezervar',
   'receipt_url',
@@ -30,7 +82,7 @@ const optionalFuelInsertColumns = new Set([
 ])
 const KM_ANOMALY_THRESHOLD = 2000
 
-const getMissingSchemaColumn = (error: any) => {
+const getMissingSchemaColumn = (error: SchemaError | null | undefined) => {
   const text = `${error?.code || ''} ${error?.message || ''} ${error?.details || ''}`
   if (
     !text.toLowerCase().includes('could not find') &&
@@ -61,7 +113,7 @@ export default function VnosGoriva() {
   const [postaja, setPostaja] = useState('')
   const [tipGoriva, setTipGoriva] = useState('')
   const [carId, setCarId] = useState('')
-  const [avti, setAvti] = useState<any[]>([])
+  const [avti, setAvti] = useState<FuelEntryCar[]>([])
   const [zadnjiKm, setZadnjiKm] = useState(0)
   const [kmReady, setKmReady] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -116,7 +168,7 @@ export default function VnosGoriva() {
         setEnotaRazdalje(getDistanceUnitFromSettings())
         setNacin('full')
       }
-      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      const cachedCars = ((readGarageCache()?.avti || []) as FuelEntryCar[]).filter((car) => car?.arhivirano !== true)
       if (cachedCars.length > 0) setAvti(cachedCars)
 
       const params = new URLSearchParams(window.location.search)
@@ -125,22 +177,22 @@ export default function VnosGoriva() {
         .from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano')
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
-      let data: any[] = activeCarsResult.data || []
+      let data = (activeCarsResult.data || []) as FuelEntryCar[]
       if (activeCarsResult.error || data.length === 0) {
         if (activeCarsResult.error) console.warn('[GarageBase fuel entry] active cars query failed', activeCarsResult.error)
         const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, gorivo, arhivirano').eq('user_id', user.id)
         if (fallback.error) console.warn('[GarageBase fuel entry] fallback cars query failed', fallback.error)
-        data = fallback.data || []
+        data = (fallback.data || []) as FuelEntryCar[]
       }
-      data = (data || []).filter((car: any) => car?.arhivirano !== true)
+      data = (data || []).filter((car) => car?.arhivirano !== true)
       if (!data || data.length === 0) return
 
       setAvti(data)
-      const cachedPreferredId = cachedCars.find((car: any) => data.some((item: any) => item.id === car.id))?.id
-      const izbrani = (carParam ? data.find((a: any) => a.id === carParam) : null) ||
-        (cachedPreferredId ? data.find((a: any) => a.id === cachedPreferredId) : null) ||
+      const cachedPreferredId = cachedCars.find((car) => data.some((item) => item.id === car.id))?.id
+      const izbrani = (carParam ? data.find((a) => a.id === carParam) : null) ||
+        (cachedPreferredId ? data.find((a) => a.id === cachedPreferredId) : null) ||
         data[0]
-      await naloziPostaje(data.map((a: any) => a.id))
+      await naloziPostaje(data.map((a) => a.id))
       if (izbrani) {
         setCarId(izbrani.id)
         setKmReady(false)
@@ -196,14 +248,14 @@ export default function VnosGoriva() {
       .limit(200)
 
     if (data) {
-      setPostajeHistory([...new Set(data.map((v: any) => v.postaja).filter(Boolean))] as string[])
+      setPostajeHistory([...new Set(((data || []) as FuelStationRow[]).map((v) => v.postaja).filter(Boolean))] as string[])
     }
   }
 
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
     setKmReady(false)
-    const avto = avti.find((a: any) => a.id === noviId)
+    const avto = avti.find((a) => a.id === noviId)
     if (!avto) {
       setZadnjiKm(0)
       return
@@ -228,7 +280,8 @@ export default function VnosGoriva() {
   }
 
   const glasovniVnos = (polje: string) => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const speechWindow = window as SpeechRecognitionWindow
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
     if (!SpeechRecognition) {
       setMessage(tx('Glasovni vnos ni podprt v tem brskalniku.', 'Voice input is not supported in this browser.'))
       return
@@ -240,7 +293,7 @@ export default function VnosGoriva() {
     recognition.interimResults = false
     setPoslusam(polje)
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const tekst = event.results[0][0].transcript.toLowerCase().trim()
       if (polje === 'postaja') {
         setPostaja(tekst)
@@ -297,21 +350,23 @@ export default function VnosGoriva() {
       setOcrText(text)
       uporabiPrebranTekst(text)
       trackEvent('receipt_scan_success', { carId, type: 'fuel', textLength: text.length })
-    } catch (error: any) {
-      trackEvent('receipt_scan_failed', { carId, type: 'fuel', message: error.message })
-      const unsupported = error?.code === 'TEXT_DETECTOR_UNSUPPORTED' || error?.message === 'TEXT_DETECTOR_UNSUPPORTED'
+    } catch (error: unknown) {
+      const receiptError = error as ReceiptError
+      const message = getErrorMessage(error)
+      trackEvent('receipt_scan_failed', { carId, type: 'fuel', message })
+      const unsupported = receiptError?.code === 'TEXT_DETECTOR_UNSUPPORTED' || message === 'TEXT_DETECTOR_UNSUPPORTED'
       setOcrMessage(unsupported
         ? tx(
             'Ta brskalnik trenutno ne podpira branja teksta iz slike. Za admin test prilepi tekst racuna v rocno polje spodaj; javni AI scan ostane zaklenjen do 2027.',
             'This browser does not currently support text detection from images. For admin testing, paste the receipt text into the manual field below; public AI scan remains locked until 2027.'
           )
-        : `${error.message} ${tx('Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
+        : `${message} ${tx('Lahko prilepis tekst racuna spodaj in kliknes "Uporabi tekst".', 'You can paste the receipt text below and click "Use text".')}`)
     } finally {
       setOcrLoading(false)
     }
   }
 
-  const dodajRacun = async (event: any) => {
+  const dodajRacun = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     await pripraviInPreberiRacun(file)
@@ -331,7 +386,7 @@ export default function VnosGoriva() {
           compressedBytes: result.compressedBytes,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(imageCompressionErrorText(error, language))
       return
     }
@@ -422,7 +477,7 @@ export default function VnosGoriva() {
     return data.publicUrl
   }
 
-  const selectedCar = avti.find((a: any) => a.id === carId)
+  const selectedCar = avti.find((a) => a.id === carId)
 
   const shrani = async () => {
     if (!carId) {
@@ -479,8 +534,8 @@ export default function VnosGoriva() {
     let receiptUrl: string | null = null
     try {
       receiptUrl = await naloziRacun()
-    } catch (error: any) {
-      setMessage(tx('Napaka pri nalaganju slike: ', 'Error uploading image: ') + error.message)
+    } catch (error: unknown) {
+      setMessage(tx('Napaka pri nalaganju slike: ', 'Error uploading image: ') + getErrorMessage(error))
       setLoading(false)
       return
     }
@@ -621,7 +676,7 @@ export default function VnosGoriva() {
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors"
             >
               <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
-              {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
+              {avti.map((a) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
         )}
