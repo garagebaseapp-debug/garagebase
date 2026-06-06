@@ -26,6 +26,15 @@ export type VehicleStats = {
   }
 }
 
+type CostLikeRow = Record<string, unknown> & {
+  _tip?: CostRowType
+}
+
+type CostStatsLike = {
+  costs?: Partial<Record<'fuel' | 'service' | 'expense' | 'total' | 'imported' | 'garageBase', unknown>>
+  rows?: Partial<Record<'fuel' | 'service' | 'expense', unknown>>
+}
+
 export const numberValue = (value: unknown) => {
   const raw = String(value ?? '').trim()
   let normalized = raw
@@ -43,19 +52,19 @@ export const numberValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-export const rowMileageValue = (row: any) =>
+export const rowMileageValue = (row?: CostLikeRow) =>
   numberValue(row?.km ?? row?.kilometri ?? row?.km_trenutni)
 
-const rowDateValue = (row: any) => new Date(row?.datum || row?.created_at || 0).getTime() || 0
+const rowDateValue = (row?: CostLikeRow) => new Date(String(row?.datum || row?.created_at || 0)).getTime() || 0
 
-export const sortRowsByMileageAndDate = <T extends Record<string, any>>(rows: T[] = []) =>
+export const sortRowsByMileageAndDate = <T extends CostLikeRow>(rows: T[] = []) =>
   [...(rows || [])].sort((a, b) => {
     const kmDiff = rowMileageValue(b) - rowMileageValue(a)
     if (kmDiff !== 0) return kmDiff
     return rowDateValue(b) - rowDateValue(a)
   })
 
-const firstNumberValue = (row: any, keys: string[]) => {
+const firstNumberValue = (row: CostLikeRow | undefined, keys: string[]) => {
   for (const key of keys) {
     const value = numberValue(row?.[key])
     if (value > 0) return value
@@ -63,13 +72,13 @@ const firstNumberValue = (row: any, keys: string[]) => {
   return 0
 }
 
-export const fuelLitersValue = (row: any) =>
+export const fuelLitersValue = (row?: CostLikeRow) =>
   firstNumberValue(row, ['litri', 'liters', 'litres', 'liter', 'volume', 'volumen', 'Volumen', 'kolicina', 'količina', 'quantity', 'qty'])
 
-export const fuelPriceValue = (row: any) =>
+export const fuelPriceValue = (row?: CostLikeRow) =>
   firstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
 
-export const fuelCostValue = (row: any) => {
+export const fuelCostValue = (row?: CostLikeRow) => {
   const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
   const liters = fuelLitersValue(row)
@@ -86,7 +95,7 @@ const parseConsumptionValue = (value: unknown) => {
   return Number.isFinite(parsed) && parsed > 0 && parsed < 100 ? parsed : null
 }
 
-const firstConsumptionValue = (row: any, keys: string[]) => {
+const firstConsumptionValue = (row: CostLikeRow | undefined, keys: string[]) => {
   for (const key of keys) {
     const value = parseConsumptionValue(row?.[key])
     if (value !== null) return value
@@ -94,19 +103,19 @@ const firstConsumptionValue = (row: any, keys: string[]) => {
   return null
 }
 
-export const costValueFor = (row: any) => {
+export const costValueFor = (row: CostLikeRow) => {
   if (row?._tip === 'gorivo') return fuelCostValue(row)
   if (row?._tip === 'servis') return numberValue(row?.cena)
   return numberValue(row?.znesek)
 }
 
-export const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+export const importBuckets = (rows: CostLikeRow[]) => rows.reduce((buckets: Record<string, number>, row) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
   if (key) buckets[key] = (buckets[key] || 0) + 1
   return buckets
 }, {})
 
-export const isImportedHistoryRow = (row: any, buckets?: Record<string, number>) => {
+export const isImportedHistoryRow = (row: CostLikeRow, buckets?: Record<string, number>) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.servis || ''} ${row?.kategorija || ''}`
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
   return Boolean(
@@ -117,10 +126,10 @@ export const isImportedHistoryRow = (row: any, buckets?: Record<string, number>)
   )
 }
 
-export const splitRowsBySource = (rows: any[]) => {
+export const splitRowsBySource = (rows: CostLikeRow[]) => {
   const buckets = importBuckets(rows)
-  const imported: any[] = []
-  const garageBase: any[] = []
+  const imported: CostLikeRow[] = []
+  const garageBase: CostLikeRow[] = []
 
   rows.forEach((row) => {
     if (isImportedHistoryRow(row, buckets)) imported.push(row)
@@ -130,13 +139,13 @@ export const splitRowsBySource = (rows: any[]) => {
   return { imported, garageBase }
 }
 
-export const withCostTypes = (fuelRows: any[], serviceRows: any[], expenseRows: any[]) => [
+export const withCostTypes = (fuelRows: CostLikeRow[], serviceRows: CostLikeRow[], expenseRows: CostLikeRow[]) => [
   ...fuelRows.map((row) => ({ ...row, _tip: 'gorivo' as const })),
   ...serviceRows.map((row) => ({ ...row, _tip: 'servis' as const })),
   ...expenseRows.map((row) => ({ ...row, _tip: 'ostalo' as const })),
 ]
 
-export const buildCostSummary = (fuelRows: any[], serviceRows: any[], expenseRows: any[], stats?: any) => {
+export const buildCostSummary = (fuelRows: CostLikeRow[], serviceRows: CostLikeRow[], expenseRows: CostLikeRow[], stats?: CostStatsLike) => {
   const rows = withCostTypes(fuelRows, serviceRows, expenseRows)
   const fuel = fuelRows.reduce((sum, row) => sum + fuelCostValue(row), 0)
   const service = serviceRows.reduce((sum, row) => sum + numberValue(row?.cena), 0)
@@ -182,7 +191,7 @@ export const buildCostSummary = (fuelRows: any[], serviceRows: any[], expenseRow
   }
 }
 
-const knownConsumptionValue = (row: any) => {
+const knownConsumptionValue = (row: CostLikeRow) => {
   const direct = firstConsumptionValue(row, [
     'poraba',
     'consumption',
@@ -203,20 +212,20 @@ const knownConsumptionValue = (row: any) => {
   return parseConsumptionValue(match[1])
 }
 
-const averageKnownConsumption = (rows: any[]) => {
+const averageKnownConsumption = (rows: CostLikeRow[]) => {
   const values = rows.map(knownConsumptionValue).filter((value): value is number => value !== null)
   if (values.length === 0) return null
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const isPartialFillUpRow = (row: any) => row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
+const isPartialFillUpRow = (row: CostLikeRow) => row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
-const startMileageValue = (car?: any) => {
+const startMileageValue = (car?: CostLikeRow) => {
   const raw = car?.purchase_mileage ?? car?.km_ob_vnosu ?? car?.initial_mileage
   return raw === null || raw === undefined || raw === '' ? null : numberValue(raw)
 }
 
-const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
+const firstFillConsumptionFromStart = (rows: CostLikeRow[], car?: CostLikeRow) => {
   const startKm = startMileageValue(car)
   if (startKm === null || startKm < 0) return null
   const firstFill = rows
@@ -229,7 +238,7 @@ const firstFillConsumptionFromStart = (rows: any[], car?: any) => {
   return { average: (liters / distance) * 100, distance, liters }
 }
 
-const rangeConsumptionFromVehicle = (rows: any[], car?: any) => {
+const rangeConsumptionFromVehicle = (rows: CostLikeRow[], car?: CostLikeRow) => {
   const startKm = startMileageValue(car)
   if (startKm === null || startKm < 0) return null
   const usableRows = rows.filter((row) => rowMileageValue(row) > 0 && fuelLitersValue(row) > 0 && !isPartialFillUpRow(row))
@@ -243,7 +252,7 @@ const rangeConsumptionFromVehicle = (rows: any[], car?: any) => {
   return { average: (liters / distance) * 100, distance, liters }
 }
 
-export const consumptionSegment = (rows: any[], car?: any) => {
+export const consumptionSegment = (rows: CostLikeRow[], car?: CostLikeRow) => {
   const sorted = rows
     .filter((row) => numberValue(row?.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
@@ -306,7 +315,7 @@ export const combineConsumptionSegments = (segments: Array<{ average: number | n
   return known.reduce((sum, value) => sum + value, 0) / known.length
 }
 
-export const costDistanceFromFuelRows = (fuelRows: any[], car?: any) => {
+export const costDistanceFromFuelRows = (fuelRows: CostLikeRow[], car?: CostLikeRow) => {
   const mileageValues = fuelRows
     .map(rowMileageValue)
     .filter((value) => value > 0)
@@ -320,7 +329,7 @@ export const costDistanceFromFuelRows = (fuelRows: any[], car?: any) => {
   return Math.max(0, numberValue(car?.km_trenutni) - numberValue(car?.km_ob_vnosu))
 }
 
-export const vehicleOwnershipCostValue = (car?: any) => {
+export const vehicleOwnershipCostValue = (car?: CostLikeRow) => {
   const purchase = numberValue(car?.purchase_price)
   const downPayment = numberValue(car?.down_payment)
   const financeTotal = numberValue(car?.finance_total_paid)
@@ -332,15 +341,15 @@ export const vehicleOwnershipCostValue = (car?: any) => {
   return Math.max(0, base - resale)
 }
 
-export const vehicleOwnershipDistance = (car?: any, fallbackDistance = 0) => {
+export const vehicleOwnershipDistance = (car?: CostLikeRow, fallbackDistance = 0) => {
   const current = numberValue(car?.km_trenutni)
   const purchaseMileage = numberValue(car?.purchase_mileage) || numberValue(car?.km_ob_vnosu)
   const distance = current > purchaseMileage ? current - purchaseMileage : 0
   return distance > 0 ? distance : Math.max(0, fallbackDistance)
 }
 
-export const buildVehicleStats = (fuelRows: any[], serviceRows: any[], expenseRows: any[], car?: any): VehicleStats => {
-  const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
+export const buildVehicleStats = (fuelRows: CostLikeRow[], serviceRows: CostLikeRow[], expenseRows: CostLikeRow[], car?: CostLikeRow): VehicleStats => {
+  const filteredExpenses = expenseRows.filter((row) => row?.kategorija !== 'km_sprememba')
   const fuelSplit = splitRowsBySource(fuelRows)
   const serviceSplit = splitRowsBySource(serviceRows)
   const expenseSplit = splitRowsBySource(filteredExpenses)
