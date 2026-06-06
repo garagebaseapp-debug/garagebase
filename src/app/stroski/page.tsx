@@ -810,7 +810,9 @@ export default function Stroski() {
   }
 
   useEffect(() => {
-    setVisibleCostCount(COST_LIST_SIZE)
+    queueMicrotask(() => {
+      setVisibleCostCount(COST_LIST_SIZE)
+    })
   }, [filter])
   const preostaliCas = (createdAt: string) => {
     const ustvarjen = new Date(createdAt).getTime()
@@ -982,7 +984,7 @@ export default function Stroski() {
     grid: '#263049',
   }
 
-  const GrafStolpci = () => (
+  const grafStolpci = () => (
     <div className="grid min-w-0 grid-cols-[38px_minmax(0,1fr)] gap-2 sm:grid-cols-[44px_minmax(0,1fr)]">
       <div className="flex h-40 flex-col justify-between pb-8 pt-1 text-right">
         {chartTicks(maxVrednost).map((tick, i) => (
@@ -1023,7 +1025,7 @@ export default function Stroski() {
     </div>
   )
 
-  const GrafCrta = () => {
+  const grafCrta = () => {
     const w = 340, h = 140, padLeft = 46, padRight = 10, padTop = 16, padBottom = 28
     const chartW = w - padLeft - padRight
     const chartH = h - padTop - padBottom
@@ -1062,7 +1064,7 @@ export default function Stroski() {
     )
   }
 
-  const GrafKategorije = () => {
+  const grafKategorije = () => {
     const w = 340
     const h = 145
     const padLeft = 46
@@ -1124,7 +1126,7 @@ export default function Stroski() {
     )
   }
 
-  const GrafKolac = () => {
+  const grafKolac = () => {
     if (skupajVse === 0) return <div className="flex items-center justify-center h-36"><p className="text-[#5a5a80] text-sm">{tx('Ni podatkov', 'No data')}</p></div>
     const r = 45, cx = 60, cy = 60
     const segments = [
@@ -1631,10 +1633,10 @@ export default function Stroski() {
             {tx('V tem obdobju ni stroškov. Graf se zato opira na zadnje obdobje z vnesenimi podatki oziroma spodnje skupne zneske.', 'There are no costs in this period. The chart uses the latest period with data where possible, and the totals below remain available.')}
           </div>
         )}
-        {grafTip === 'stolpci' && <GrafStolpci />}
-        {grafTip === 'crta' && <GrafCrta />}
-        {grafTip === 'kategorije' && <GrafKategorije />}
-        {grafTip === 'kolac' && <GrafKolac />}
+        {grafTip === 'stolpci' && grafStolpci()}
+        {grafTip === 'crta' && grafCrta()}
+        {grafTip === 'kategorije' && grafKategorije()}
+        {grafTip === 'kolac' && grafKolac()}
         {grafTip !== 'kolac' && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-[#1e1e32]">
             <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: chartColors.gorivo }} /><p className="text-[#5a5a80] text-[10px]">{tx('Gorivo', 'Fuel')}</p></div>
