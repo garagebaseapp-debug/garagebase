@@ -12,14 +12,32 @@ import { GARAGE_CACHE_MAX_AGE_MS, GARAGE_CACHE_VERSION, imageUrlWithVersion, rea
 
 const COSTS_GARAGE_CACHE_KEY = 'garagebase_stroski_garaza_cache_v4'
 type CostSummary = { garageBase: number; imported: number; total: number }
+type GarageCostCar = Record<string, unknown> & {
+  id: string
+  user_id?: string
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  arhivirano?: boolean | null
+}
+type CostSourceRow = Record<string, unknown> & {
+  car_id?: string
+}
 
 const emptyCostSummary = (): CostSummary => ({ garageBase: 0, imported: 0, total: 0 })
 
-const normalizeCostSummary = (value: any): CostSummary => {
+const normalizeCostSummary = (value: unknown): CostSummary => {
   if (typeof value === 'number') return { garageBase: value, imported: 0, total: value }
-  const garageBase = Number(value?.garageBase || 0)
-  const imported = Number(value?.imported || 0)
-  const total = Number(value?.total || garageBase + imported || 0)
+  const source = typeof value === 'object' && value ? value as Partial<CostSummary> : {}
+  const garageBase = Number(source.garageBase || 0)
+  const imported = Number(source.imported || 0)
+  const total = Number(source.total || garageBase + imported || 0)
   return {
     garageBase: Number.isFinite(garageBase) ? garageBase : 0,
     imported: Number.isFinite(imported) ? imported : 0,
@@ -31,12 +49,12 @@ export default function StroškiGaraza() {
   const router = useRouter()
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-  const [avti, setAvti] = useState<any[]>([])
+  const [avti, setAvti] = useState<GarageCostCar[]>([])
   const [stroski, setStroski] = useState<{ [key: string]: CostSummary }>({})
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
-  const slikaVozila = (avto: any) => {
+  const slikaVozila = (avto: GarageCostCar) => {
     const rawUrl = avto?.slika_url || avto?.slika || ''
     if (!rawUrl) return ''
     return imageUrlWithVersion(rawUrl, avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION)
@@ -51,7 +69,7 @@ export default function StroškiGaraza() {
         const parsedGarage = readGarageCache()
         if (parsedGarage) {
           const cachedCars = Array.isArray(parsedGarage.avti)
-            ? parsedGarage.avti.filter((car: any) => car?.arhivirano !== true)
+            ? (parsedGarage.avti as GarageCostCar[]).filter((car) => car?.arhivirano !== true)
             : []
           if (cachedCars.length > 0) {
             hasUsableCache = true
@@ -89,16 +107,16 @@ export default function StroškiGaraza() {
             .from('cars').select('*').eq('user_id', user.id)
             .order('vrstni_red', { ascending: true })
           if (fallback.error) throw fallback.error
-          avtiData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+          avtiData = ((fallback.data || []) as GarageCostCar[]).filter((car) => car?.arhivirano !== true)
         }
-        const cars = (avtiData || []).filter((car: any) => car?.arhivirano !== true)
+        const cars = ((avtiData || []) as GarageCostCar[]).filter((car) => car?.arhivirano !== true)
         setAvti(cars)
 
         const stroskoviMap: { [key: string]: CostSummary } = {}
         for (const avto of cars) stroskoviMap[avto.id] = emptyCostSummary()
 
         if (cars.length > 0) {
-          const ids = cars.map((avto: any) => avto.id)
+          const ids = cars.map((avto) => avto.id)
           const [gorivoRes, servisiRes, expensesRes] = await Promise.all([
             supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_skupaj,cena_na_liter,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar').in('car_id', ids),
             supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label').in('car_id', ids),
@@ -108,9 +126,9 @@ export default function StroškiGaraza() {
           if (queryError) throw queryError
 
           for (const avto of cars) {
-            const fuelRows = (gorivoRes.data || []).filter((row: any) => row.car_id === avto.id)
-            const serviceRows = (servisiRes.data || []).filter((row: any) => row.car_id === avto.id)
-            const expenseRows = (expensesRes.data || []).filter((row: any) => row.car_id === avto.id)
+            const fuelRows = ((gorivoRes.data || []) as CostSourceRow[]).filter((row) => row.car_id === avto.id)
+            const serviceRows = ((servisiRes.data || []) as CostSourceRow[]).filter((row) => row.car_id === avto.id)
+            const expenseRows = ((expensesRes.data || []) as CostSourceRow[]).filter((row) => row.car_id === avto.id)
             const stats = buildVehicleStats(fuelRows, serviceRows, expenseRows, avto).costs
             stroskoviMap[avto.id] = {
               garageBase: stats.garageBase,
