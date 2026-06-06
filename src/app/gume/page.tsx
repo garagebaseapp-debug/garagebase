@@ -53,6 +53,39 @@ type TireTreadMeasurement = {
   note: string | null
 }
 
+type TireCar = {
+  id: string
+  user_id?: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | string | null
+  arhivirano?: boolean | null
+  vrstni_red?: number | null
+}
+
+type TirePayload = {
+  user_id: string
+  car_id: string
+  season: string
+  tire_scope: string
+  brand: string | null
+  model: string | null
+  size: string | null
+  dot: string | null
+  tread_depth_mm: number | null
+  purchase_date: string | null
+  installed_at: string
+  installed_km: number
+  removed_at: null
+  removed_km: null
+  last_mounted_at: string
+  last_mounted_km: number
+  next_change_date: string | null
+  remind_days_before: number
+  notes: string | null
+  status: string
+}
+
 type TireSeasonSettings = {
   countryLabel: string
   winterStart: string
@@ -136,8 +169,8 @@ const normalizeTireStatus = (status: string) => {
   return 'mounted'
 }
 
-const isMissingTireSchemaPart = (error: any) => {
-  const message = String(error?.message || '').toLowerCase()
+const isMissingTireSchemaPart = (error: unknown) => {
+  const message = String(typeof error === 'object' && error && 'message' in error ? error.message : '').toLowerCase()
   return message.includes('last_mounted')
     || message.includes('tire_scope')
     || message.includes('tire_mounts')
@@ -158,8 +191,8 @@ export default function GumePage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
-  const [cars, setCars] = useState<any[]>([])
-  const [car, setCar] = useState<any>(null)
+  const [cars, setCars] = useState<TireCar[]>([])
+  const [car, setCar] = useState<TireCar | null>(null)
   const [tires, setTires] = useState<TireSet[]>([])
   const [mounts, setMounts] = useState<TireMount[]>([])
   const [treadMeasurements, setTreadMeasurements] = useState<TireTreadMeasurement[]>([])
@@ -303,9 +336,9 @@ export default function GumePage() {
       setLoading(false)
       return
     }
-    const nextCars = carRows || []
+    const nextCars = (carRows || []) as TireCar[]
     setCars(nextCars)
-    const selected = nextCars.find((item: any) => item.id === requestedCarId) || nextCars[0]
+    const selected = nextCars.find((item) => item.id === requestedCarId) || nextCars[0]
     if (!selected) {
       setLoading(false)
       return
@@ -453,6 +486,7 @@ export default function GumePage() {
 
   const saveTires = async () => {
     if (!car?.id) return
+    const carId = car.id
     if (!form.brand.trim() && !form.size.trim()) {
       setMessage(tx('Vnesi vsaj znamko ali dimenzijo gum.', 'Enter at least the tire brand or size.'))
       return
@@ -467,9 +501,9 @@ export default function GumePage() {
     const installedKm = numberOrNull(form.installedKm) ?? currentKm
     const installedAt = form.installedAt || todayIso()
     if (storeCurrent && mountedTires.length > 0) await closeMountedTires(user.id, installedAt, installedKm)
-    const tirePayload: any = {
+    const tirePayload: TirePayload = {
       user_id: user.id,
-      car_id: car.id,
+      car_id: carId,
       season: form.season,
       tire_scope: form.tireScope,
       brand: form.brand.trim() || null,
@@ -554,13 +588,15 @@ export default function GumePage() {
       notes: '',
       lateEntryNote: '',
     })
-    clearVehicleDataCaches(car.id)
+    clearVehicleDataCaches(carId)
     setMessage(inserted?.id ? tx('Gume so shranjene.', 'Tires saved.') : '')
-    await loadData(car.id)
+    await loadData(carId)
     setSaving(false)
   }
 
   const storeTireSet = async (item: TireSet) => {
+    if (!car?.id) return
+    const carId = car.id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data: openMount } = await supabase
@@ -587,11 +623,13 @@ export default function GumePage() {
       .eq('id', item.id)
       .eq('user_id', user.id)
     await logMileageEvent(user.id, 'tire_remove', openMount?.id || item.id, todayIso(), currentKm)
-    clearVehicleDataCaches(car.id)
-    await loadData(car.id)
+    clearVehicleDataCaches(carId)
+    await loadData(carId)
   }
 
   const retireTireSet = async (item: TireSet) => {
+    if (!car?.id) return
+    const carId = car.id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data: openMount } = await supabase
@@ -618,8 +656,8 @@ export default function GumePage() {
       .eq('id', item.id)
       .eq('user_id', user.id)
     await logMileageEvent(user.id, 'tire_remove', openMount?.id || item.id, todayIso(), currentKm)
-    clearVehicleDataCaches(car.id)
-    await loadData(car.id)
+    clearVehicleDataCaches(carId)
+    await loadData(carId)
   }
 
   const mountStoredTire = async (item: TireSet) => {
