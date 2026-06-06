@@ -7,7 +7,21 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const storageBuckets = ['car-images', 'service-documents']
 
-async function removeUserStorageFiles(admin: any, userId: string) {
+type SupabaseStorageClient = {
+  storage: ReturnType<typeof createClient>['storage']
+}
+type StorageItem = {
+  name?: string
+}
+type CarRow = {
+  id?: string
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback
+}
+
+async function removeUserStorageFiles(admin: SupabaseStorageClient, userId: string) {
   const errors: string[] = []
 
   for (const bucket of storageBuckets) {
@@ -18,8 +32,8 @@ async function removeUserStorageFiles(admin: any, userId: string) {
     }
 
     const paths = (data || [])
-      .filter((item: any) => item?.name)
-      .map((item: any) => `${userId}/${item.name}`)
+      .filter((item: StorageItem): item is StorageItem & { name: string } => Boolean(item?.name))
+      .map((item) => `${userId}/${item.name}`)
 
     if (paths.length === 0) continue
 
@@ -62,7 +76,7 @@ export async function POST(request: NextRequest) {
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const userId = userData.user.id
     const { data: cars } = await admin.from('cars').select('id').eq('user_id', userId)
-    const carIds = (cars || []).map((car: any) => car.id)
+    const carIds = ((cars || []) as CarRow[]).map((car) => car.id).filter((id): id is string => Boolean(id))
     const storageErrors = await removeUserStorageFiles(admin, userId)
     if (storageErrors.length > 0) {
       return NextResponse.json({
@@ -104,7 +118,7 @@ export async function POST(request: NextRequest) {
     if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 })
 
     return NextResponse.json({ ok: true })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Brisanje računa ni uspelo.' }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: errorMessage(error, 'Brisanje računa ni uspelo.') }, { status: 500 })
   }
 }
