@@ -20,6 +20,35 @@ type StatCardProps = {
   icon: 'service' | 'cost' | 'range' | 'calendar'
 }
 
+type ServiceCar = Record<string, unknown> & {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  arhivirano?: boolean | null
+}
+
+type ServiceRow = Record<string, unknown> & {
+  id?: string
+  car_id?: string
+  datum?: string | null
+  created_at?: string | null
+  km?: number | string | null
+  cena?: number | string | null
+  servis?: string | null
+  opis?: string | null
+}
+
+type ReminderRow = Record<string, unknown> & {
+  tip?: string | null
+  naziv?: string | null
+  opis?: string | null
+}
+
 const toneClasses: Record<CardTone, string> = {
   purple: 'text-[#7c3aed] bg-[#6c63ff14]',
   green: 'text-[#16a34a] bg-[#16a34a14]',
@@ -98,9 +127,9 @@ async function loadActiveCars(userId: string) {
       .eq('user_id', userId)
       .order('vrstni_red', { ascending: true })
     if (fallback.error) console.warn('[GarageBase service] fallback cars query failed', fallback.error)
-    cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+    cars = ((fallback.data || []) as ServiceCar[]).filter((car) => car?.arhivirano !== true)
   }
-  return cars
+  return cars as ServiceCar[]
 }
 
 export default function ServisPage() {
@@ -108,9 +137,9 @@ export default function ServisPage() {
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const [loading, setLoading] = useState(true)
-  const [cars, setCars] = useState<any[]>([])
-  const [services, setServices] = useState<any[]>([])
-  const [reminders, setReminders] = useState<any[]>([])
+  const [cars, setCars] = useState<ServiceCar[]>([])
+  const [services, setServices] = useState<ServiceRow[]>([])
+  const [reminders, setReminders] = useState<ReminderRow[]>([])
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
 
@@ -127,11 +156,11 @@ export default function ServisPage() {
       let activeCars = await loadActiveCars(user.id)
       const carParam = new URLSearchParams(window.location.search).get('car')
       if (carParam) {
-        const selectedCar = activeCars.find((car: any) => car?.id === carParam)
+        const selectedCar = activeCars.find((car) => car?.id === carParam)
         if (selectedCar) activeCars = [selectedCar]
       }
       setCars(activeCars)
-      const ids = activeCars.map((car: any) => car.id).filter(Boolean)
+      const ids = activeCars.map((car) => car.id).filter((id): id is string => Boolean(id))
       if (ids.length === 0) {
         setLoading(false)
         return
@@ -143,15 +172,15 @@ export default function ServisPage() {
       ])
       if (servicesRes.error) console.warn('[GarageBase service] service logs query failed', servicesRes.error)
       if (remindersRes.error) console.warn('[GarageBase service] reminders query failed', remindersRes.error)
-      setServices(servicesRes.data || [])
-      setReminders(remindersRes.data || [])
+      setServices((servicesRes.data || []) as ServiceRow[])
+      setReminders((remindersRes.data || []) as ReminderRow[])
       setLoading(false)
     }
     load()
   }, [])
 
   const carById = useMemo(() => {
-    const map: Record<string, any> = {}
+    const map: Record<string, ServiceCar> = {}
     cars.forEach((car) => { if (car?.id) map[car.id] = car })
     return map
   }, [cars])
@@ -179,7 +208,7 @@ export default function ServisPage() {
 
   const averageGap = useMemo(() => {
     const diffs: number[] = []
-    const byCar = new Map<string, any[]>()
+    const byCar = new Map<string, ServiceRow[]>()
     services.forEach((row) => {
       if (!row?.car_id || rowMileageValue(row) <= 0) return
       const list = byCar.get(row.car_id) || []
@@ -198,13 +227,13 @@ export default function ServisPage() {
   }, [services])
 
   const latestService = services[0]
-  const latestCar = latestService ? carById[latestService.car_id] : null
+  const latestCar = latestService?.car_id ? carById[latestService.car_id] : null
   const firstCarId = cars[0]?.id
   const addServiceHref = cars.length > 0 ? '/vnos-servisa' : '/dodaj-avto'
   const recentServices = services.slice(0, 5)
   const hasImported = importedServices.length > 0
 
-  const carImage = (car: any) => {
+  const carImage = (car: ServiceCar) => {
     const raw = car?.slika_url || car?.slika || ''
     if (!raw) return ''
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at)
@@ -310,8 +339,8 @@ export default function ServisPage() {
                 {recentServices.length === 0 ? (
                   <div className="p-6 text-sm font-semibold text-[#8a8aa8]">{tx('Ni servisnih vnosov.', 'No service entries yet.')}</div>
                 ) : recentServices.map((row, index) => {
-                  const car = carById[row.car_id]
-                  const image = carImage(car)
+                  const car = row.car_id ? carById[row.car_id] : null
+                  const image = car ? carImage(car) : ''
                   const imported = isImportedHistoryRow(row, buckets)
                   return (
                     <button key={row.id || `${row.car_id}-${index}`} onClick={() => window.location.href = `/zgodovina-servisa?car=${row.car_id}`} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
