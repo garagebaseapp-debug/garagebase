@@ -55,9 +55,20 @@ const statusReply: Record<string, { sl: string; en: string }> = {
   },
 }
 
+type FeedbackUser = {
+  id: string
+}
+
+type MyFeedbackItem = {
+  id: string
+  feature_description?: string | null
+  status?: string | null
+  created_at: string
+}
+
 export default function FeedbackPage() {
   const { language } = useLanguage()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<FeedbackUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [featureDescription, setFeatureDescription] = useState('')
@@ -66,7 +77,7 @@ export default function FeedbackPage() {
   const [userType, setUserType] = useState('personal')
   const [priority, setPriority] = useState('normal')
   const [message, setMessage] = useState('')
-  const [myFeedback, setMyFeedback] = useState<any[]>([])
+  const [myFeedback, setMyFeedback] = useState<MyFeedbackItem[]>([])
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -91,10 +102,11 @@ export default function FeedbackPage() {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(10)
-    setMyFeedback(data || [])
+    setMyFeedback((data || []) as MyFeedbackItem[])
   }
 
   const submitFeedback = async () => {
+    if (!user) return
     setMessage('')
 
     if (!featureDescription.trim() || !usefulnessReason.trim()) {

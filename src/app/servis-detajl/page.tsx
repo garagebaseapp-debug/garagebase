@@ -5,9 +5,25 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
+type ServiceDetailRow = {
+  id: string
+  datum: string
+  km?: number | null
+  cena?: number | null
+  servis?: string | null
+  opis?: string | null
+  foto_url?: string | null
+}
+
+type ServiceCarRow = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+}
+
 export default function ServisDetajl() {
-  const [servis, setServis] = useState<any>(null)
-  const [avto, setAvto] = useState<any>(null)
+  const [servis, setServis] = useState<ServiceDetailRow | null>(null)
+  const [avto, setAvto] = useState<ServiceCarRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [odprtaSlika, setOdprtaSlika] = useState<string | null>(null)
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -30,12 +46,12 @@ export default function ServisDetajl() {
         setLoading(false)
         return
       }
-      setServis(servisData)
+      setServis(servisData as ServiceDetailRow)
 
       const { data: avtoData } = await supabase
         .from('cars').select('*').eq('id', carId).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
-      setAvto(avtoData)
+      setAvto(avtoData as ServiceCarRow)
 
       setLoading(false)
     }
