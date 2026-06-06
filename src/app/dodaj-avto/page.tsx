@@ -5,6 +5,26 @@ import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { getStoredLanguage } from '@/lib/i18n'
 
+type CarInsertPayload = {
+  user_id: string
+  tip_vozila: string
+  oblika: string | null
+  znamka: string
+  model: string
+  letnik: number | null
+  gorivo: string
+  rezervar_litri?: number | null
+  barva: string | null
+  tablica: string | null
+  vin: string | null
+  km_trenutni: number | null
+  km_ob_vnosu: number | null
+  kubikaza: number | null
+  kw: number | null
+  menjalnik: string | null
+  pogon: string | null
+}
+
 export default function DodajAvto() {
   const [tipVozila, setTipVozila] = useState('avto')
   const [tipVozilaCustom, setTipVozilaCustom] = useState('')
@@ -61,8 +81,8 @@ export default function DodajAvto() {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null
   }
 
-  const isMissingReservoirColumn = (error: any) => {
-    const message = String(error?.message || '')
+  const isMissingReservoirColumn = (error: unknown) => {
+    const message = String(typeof error === 'object' && error && 'message' in error ? error.message : '')
     return message.includes('rezervar_litri') || message.includes('tank_capacity')
   }
   const normalizedVin = () => String(vin || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
@@ -117,7 +137,7 @@ export default function DodajAvto() {
       return
     }
     const finalniTip = tipVozila === 'drugo' ? tipVozilaCustom : tipVozila
-    const payload: any = {
+    const payload: CarInsertPayload = {
       user_id: user.id,
       tip_vozila: finalniTip,
       oblika: oblika || null,
