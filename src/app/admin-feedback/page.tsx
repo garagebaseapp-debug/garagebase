@@ -37,7 +37,19 @@ const statusReply: Record<string, { sl: string; en: string }> = {
   },
 }
 
-const labels: any = {
+type FeedbackItem = {
+  id: string
+  status?: string
+  feature_description?: string
+  usefulness_reason?: string
+  usage_frequency?: string
+  user_type?: string
+  priority?: string
+  page_context?: string | null
+  created_at: string
+}
+
+const labels: Record<string, { sl: string; en: string }> = {
   daily: { sl: 'Vsak dan', en: 'Every day' },
   weekly: { sl: 'Vsak teden', en: 'Every week' },
   monthly: { sl: 'Obcasno', en: 'Sometimes' },
@@ -52,14 +64,14 @@ const labels: any = {
 
 export default function AdminFeedbackPage() {
   const { language } = useLanguage()
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [filter, setFilter] = useState('all')
   const [openId, setOpenId] = useState<string | null>(null)
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-  const pick = (value: string) => labels[value]?.[language] || value
+  const pick = (value?: string | null) => labels[value || '']?.[language] || value || '-'
 
   const filtered = useMemo(() => (
     filter === 'all' ? items : items.filter((item) => item.status === filter)
@@ -80,7 +92,7 @@ export default function AdminFeedbackPage() {
       ))
       setItems([])
     } else {
-      setItems(data || [])
+      setItems((data || []) as FeedbackItem[])
     }
     setLoading(false)
   }
@@ -195,7 +207,7 @@ export default function AdminFeedbackPage() {
               )}
 
               <div className="mb-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
-                {statusReply[item.status]?.[language] || statusReply.new[language]}
+                {statusReply[item.status || 'new']?.[language] || statusReply.new[language]}
               </div>
 
               <div className="grid grid-cols-5 gap-2">

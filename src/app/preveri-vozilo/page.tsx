@@ -4,11 +4,29 @@ import { useState } from 'react'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { getStoredLanguage } from '@/lib/i18n'
 
+type VehicleLookupResult = {
+  found?: boolean
+  vehicle?: {
+    make?: string | null
+    model?: string | null
+    year?: number | string | null
+    fuel?: string | null
+    vinLast4?: string | null
+    plate?: string | null
+  }
+  history?: {
+    latestMileage?: number | string | null
+    lastServiceDate?: string | null
+    hasServiceHistory?: boolean | null
+    documentsAvailableOnRequest?: boolean | null
+  }
+}
+
 export default function PreveriVoziloPage() {
   const [language] = useState<'sl' | 'en'>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
   const [vin, setVin] = useState('')
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<VehicleLookupResult | null>(null)
   const [message, setMessage] = useState('')
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
@@ -27,11 +45,12 @@ export default function PreveriVoziloPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ vin: normalized }),
       })
-      const data = await response.json().catch(() => ({}))
+      const data = await response.json().catch(() => ({})) as VehicleLookupResult & { error?: string }
       if (!response.ok) throw new Error(data.error || 'lookup_failed')
       setResult(data)
-    } catch (error: any) {
-      setMessage(error.message === 'rate_limited'
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : ''
+      setMessage(message === 'rate_limited'
         ? tx('Preveč preverjanj. Poskusi malo kasneje.', 'Too many checks. Try again later.')
         : tx('Preverjanje trenutno ni uspelo.', 'Lookup failed for now.'))
     } finally {

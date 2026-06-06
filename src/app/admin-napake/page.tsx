@@ -27,9 +27,38 @@ const statusReply: Record<string, { sl: string; en: string }> = {
   },
 }
 
+type RecentEvent = {
+  createdAt?: string
+  eventName?: string
+  pagePath?: string
+}
+
+type BugReportItem = {
+  id: string
+  status?: string
+  title?: string
+  email?: string | null
+  created_at: string
+  description?: string | null
+  steps?: string | null
+  expected?: string | null
+  actual?: string | null
+  area?: string | null
+  priority?: string | null
+  device_info?: string | null
+  app_version?: string | null
+  release_channel?: string | null
+  page_url?: string | null
+  metadata?: {
+    appVersion?: string
+    releaseChannel?: string
+    recentEvents?: RecentEvent[]
+  } | null
+}
+
 export default function AdminNapakePage() {
   const { language } = useLanguage()
-  const [items, setItems] = useState<any[]>([])
+  const [items, setItems] = useState<BugReportItem[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [filter, setFilter] = useState('all')
@@ -43,7 +72,7 @@ export default function AdminNapakePage() {
       setMessage(tx('Napake se še ne berejo. Zaženi SQL SUPABASE_MIGRACIJA_BUG_REPORTS.sql.', 'Bug reports are not available yet. Run SUPABASE_MIGRACIJA_BUG_REPORTS.sql.') + ` ${error.message}`)
       setItems([])
     } else {
-      setItems(data || [])
+      setItems((data || []) as BugReportItem[])
     }
     setLoading(false)
   }
@@ -139,13 +168,13 @@ export default function AdminNapakePage() {
                 <Info label={tx('Področje', 'Area')} value={`${item.area || '-'} / ${item.priority || '-'}`} />
                 <Info label={tx('Naprava', 'Device')} value={item.device_info} />
                 <Info label={tx('Verzija', 'Version')} value={`${item.app_version || item.metadata?.appVersion || '-'} / ${item.release_channel || item.metadata?.releaseChannel || '-'}`} />
-                <Info label={tx('Zadnji dogodki', 'Recent events')} value={(item.metadata?.recentEvents || []).map((event: any) => `${event.createdAt} ${event.eventName} ${event.pagePath || ''}`).join('\n')} />
+                <Info label={tx('Zadnji dogodki', 'Recent events')} value={(item.metadata?.recentEvents || []).map((event) => `${event.createdAt} ${event.eventName} ${event.pagePath || ''}`).join('\n')} />
               </div>
               {item.page_url && <p className="mt-3 break-all text-xs text-[#5a5a80]">{item.page_url}</p>}
                 </>
               )}
               <p className="mt-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
-                {statusReply[item.status]?.[language] || statusReply.new[language]}
+                {statusReply[item.status || 'new']?.[language] || statusReply.new[language]}
               </p>
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {statuses.map((option) => (
