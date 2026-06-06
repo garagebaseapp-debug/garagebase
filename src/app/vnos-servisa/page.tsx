@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { type ChangeEvent, useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { trackEvent } from '@/lib/analytics'
@@ -12,6 +12,45 @@ import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 
 const KM_ANOMALY_THRESHOLD = 2000
 
+type ServiceEntryCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | null
+  arhivirano?: boolean | null
+}
+
+type ServiceNameRow = {
+  servis?: string | null
+}
+
+type SpeechRecognitionResultEvent = {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+type SpeechRecognitionInstance = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
 export default function VnosServisa() {
   const [datum, setDatum] = useState(() => new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
@@ -19,7 +58,7 @@ export default function VnosServisa() {
   const [servis, setServis] = useState('')
   const [cena, setCena] = useState('')
   const [carId, setCarId] = useState('')
-  const [avti, setAvti] = useState<any[]>([])
+  const [avti, setAvti] = useState<ServiceEntryCar[]>([])
   const [zadnjiKm, setZadnjiKm] = useState(0)
   const [kmReady, setKmReady] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -47,7 +86,7 @@ export default function VnosServisa() {
 
   useEffect(() => {
     const init = async () => {
-      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      const cachedCars = ((readGarageCache()?.avti || []) as ServiceEntryCar[]).filter((car) => car?.arhivirano !== true)
       if (cachedCars.length > 0) setAvti(cachedCars)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -57,18 +96,18 @@ export default function VnosServisa() {
         .from('cars').select('id, znamka, model, km_trenutni, arhivirano')
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
-      let data: any[] = activeCarsResult.data || []
+      let data = (activeCarsResult.data || []) as ServiceEntryCar[]
       if (activeCarsResult.error || data.length === 0) {
         if (activeCarsResult.error) console.warn('[GarageBase service entry] active cars query failed', activeCarsResult.error)
         const fallback = await supabase.from('cars').select('id, znamka, model, km_trenutni, arhivirano').eq('user_id', user.id)
         if (fallback.error) console.warn('[GarageBase service entry] fallback cars query failed', fallback.error)
-        data = fallback.data || []
+        data = (fallback.data || []) as ServiceEntryCar[]
       }
-      data = (data || []).filter((car: any) => car?.arhivirano !== true)
+      data = (data || []).filter((car) => car?.arhivirano !== true)
       if (data && data.length > 0) {
         setAvti(data)
-        const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
-        await naloziServisHistory(data.map((a: any) => a.id))
+        const izbrani = carParam ? data.find((a) => a.id === carParam) : null
+        await naloziServisHistory(data.map((a) => a.id))
         if (izbrani) {
           setCarId(izbrani.id)
           setKmReady(false)
@@ -123,7 +162,7 @@ export default function VnosServisa() {
       .order('datum', { ascending: false })
       .limit(200)
     if (data) {
-      const unikatni = [...new Set(data.map((v: any) => v.servis).filter(Boolean))] as string[]
+      const unikatni = [...new Set(((data || []) as ServiceNameRow[]).map((v) => v.servis).filter(Boolean))] as string[]
       setServisHistory(unikatni)
     }
   }
@@ -131,7 +170,7 @@ export default function VnosServisa() {
   const menjavaAvta = async (noviId: string) => {
     setCarId(noviId)
     setKmReady(false)
-    const avto = avti.find((a: any) => a.id === noviId)
+    const avto = avti.find((a) => a.id === noviId)
     if (!avto) {
       setZadnjiKm(0)
       return
@@ -150,8 +189,9 @@ export default function VnosServisa() {
     }
   }
 
-  const dodajSliko = async (e: any) => {
-    const files = Array.from(e.target.files) as File[]
+  const dodajSliko = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
     if (slike.length + files.length > 3) { setMessage(tx('Največ 3 slike na servis!', 'Max 3 images per service entry!')); return }
     try {
       const compressed = await Promise.all(files.map((file) => compressImageFile(file, uploadImageProfiles.receipt)))
@@ -168,7 +208,7 @@ export default function VnosServisa() {
           })
         }
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(imageCompressionErrorText(error, language))
     }
   }
@@ -179,7 +219,7 @@ export default function VnosServisa() {
     setSlikePreview(noveSlike.map((f: File) => URL.createObjectURL(f)))
   }
 
-  const dodajStevec = async (e: any) => {
+  const dodajStevec = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     try {
@@ -194,7 +234,7 @@ export default function VnosServisa() {
           compressedBytes: result.compressedBytes,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(imageCompressionErrorText(error, language))
       return
     }
@@ -225,7 +265,8 @@ export default function VnosServisa() {
   }
 
   const glasovniVnos = (polje: string) => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const speechWindow = window as SpeechRecognitionWindow
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
     if (!SpeechRecognition) { setMessage(tx('Glasovni vnos ni podprt v tem brskalniku.', 'Voice input is not supported in this browser.')); return }
 
     const recognition = new SpeechRecognition()
@@ -234,7 +275,7 @@ export default function VnosServisa() {
     recognition.interimResults = false
     setPoslusam(polje)
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const tekst = event.results[0][0].transcript.toLowerCase().trim()
       if (polje === 'opis' || polje === 'servis') {
         if (polje === 'opis') setOpis(tekst)
@@ -426,7 +467,7 @@ export default function VnosServisa() {
             <select value={carId} onChange={e => menjavaAvta(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors">
               <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
-              {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
+              {avti.map((a) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
         )}
