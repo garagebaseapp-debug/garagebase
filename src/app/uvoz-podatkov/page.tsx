@@ -546,16 +546,13 @@ export default function UvozPodatkov() {
   const [lastImportCounts, setLastImportCounts] = useState<Record<ImportKind, number> | null>(null)
   const [lastImportBatchId, setLastImportBatchId] = useState('')
   const [undoLoading, setUndoLoading] = useState(false)
-  const [language, setLanguage] = useState<Language>('sl')
-  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
-  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
+  const [language] = useState<Language>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
+  const [valuta] = useState<GarageBaseCurrency>(() => getCurrencyFromSettings())
+  const [enotaRazdalje] = useState<DistanceUnit>(() => getDistanceUnitFromSettings())
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
-    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
-    setValuta(getCurrencyFromSettings())
-    setEnotaRazdalje(getDistanceUnitFromSettings())
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -598,7 +595,11 @@ export default function UvozPodatkov() {
   }, [drivvoSections, headerlessDrivvoFuel, isDrivvo, language, enotaRazdalje])
 
   useEffect(() => {
-    if (!isDrivvo && parsed.headers.length > 0) setMapping(autoMapping(parsed.headers))
+    if (!isDrivvo && parsed.headers.length > 0) {
+      queueMicrotask(() => {
+        setMapping(autoMapping(parsed.headers))
+      })
+    }
   }, [parsed.headers.join('|'), isDrivvo])
 
   const previewRows = useMemo<PreviewRow[]>(() => {
@@ -801,7 +802,7 @@ export default function UvozPodatkov() {
     }
   }
 
-  const SelectMap = ({ field, label }: { field: keyof Mapping, label: string }) => (
+  const selectMap = (field: keyof Mapping, label: string) => (
     <label className="block">
       <span className="text-[#5a5a80] text-xs uppercase tracking-wider mb-1 block">{label}</span>
       <select value={mapping[field]} onChange={e => setMapping({ ...mapping, [field]: e.target.value })}
@@ -895,15 +896,15 @@ export default function UvozPodatkov() {
           <div className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
             <p className="text-white font-bold mb-3">{tx('Povezi stolpce', 'Map columns')}</p>
             <div className="grid grid-cols-2 gap-3">
-              <SelectMap field="date" label={tx('Datum', 'Date')} />
-              <SelectMap field="km" label={tx('Kilometri', 'Mileage')} />
-              <SelectMap field="description" label={tx('Opis', 'Description')} />
-              <SelectMap field="amount" label={tx('Znesek', 'Amount')} />
-              {importType === 'fuel' && <SelectMap field="liters" label={tx('Litri', 'Liters')} />}
-              {importType === 'fuel' && <SelectMap field="pricePerLiter" label={tx('Cena/L', 'Price/L')} />}
-              <SelectMap field="station" label={importType === 'service' ? tx('Servis', 'Service shop') : tx('Postaja / lokacija', 'Station / location')} />
-              <SelectMap field="category" label={tx('Kategorija', 'Category')} />
-              {importType === 'fuel' && <SelectMap field="fuelType" label={tx('Tip goriva', 'Fuel type')} />}
+              {selectMap('date', tx('Datum', 'Date'))}
+              {selectMap('km', tx('Kilometri', 'Mileage'))}
+              {selectMap('description', tx('Opis', 'Description'))}
+              {selectMap('amount', tx('Znesek', 'Amount'))}
+              {importType === 'fuel' && selectMap('liters', tx('Litri', 'Liters'))}
+              {importType === 'fuel' && selectMap('pricePerLiter', tx('Cena/L', 'Price/L'))}
+              {selectMap('station', importType === 'service' ? tx('Servis', 'Service shop') : tx('Postaja / lokacija', 'Station / location'))}
+              {selectMap('category', tx('Kategorija', 'Category'))}
+              {importType === 'fuel' && selectMap('fuelType', tx('Tip goriva', 'Fuel type'))}
             </div>
           </div>
         )}
