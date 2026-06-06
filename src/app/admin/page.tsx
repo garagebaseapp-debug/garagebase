@@ -18,14 +18,134 @@ type AdminUser = {
   email: string
   created_at?: string
   last_sign_in_at?: string | null
-  plan?: any
+  plan?: AdminRecord | null
+}
+
+type AdminRecord = Record<string, unknown>
+type AdminStats = Record<string, unknown> & {
+  activeToday?: number
+  active7?: number
+  active30?: number
+  registeredUsers?: number
+  totalRevenue?: number
+  cars?: number
+  users?: number
+  avgCarsPerUser?: number
+  receiptRate?: number
+  fuel?: number
+  services?: number
+  expenses?: number
+  push?: number
+  transfers?: number
+  archivedCars?: number
+  receiptAttachments?: number
+  strongServices?: number
+  feedback?: number
+  newFeedback?: number
+  events?: number
+  errors?: number
+}
+type AdminEvent = AdminRecord & {
+  id?: string | null
+  user_id?: string | null
+  event_name?: string | null
+  page?: string | null
+  page_path?: string | null
+  platform?: string | null
+  created_at?: string | null
+  metadata?: AdminRecord | null
+}
+type AdminCar = AdminRecord & {
+  id?: string | null
+  user_id?: string | null
+  znamka?: string | null
+  model?: string | null
+  arhivirano?: boolean | null
+  tip_vozila?: string | null
+  created_at?: string | null
+}
+type AdminFeedback = AdminRecord & {
+  id?: string | null
+  user_id?: string | null
+  status?: string | null
+  created_at?: string | null
+  feature_description?: string | null
+  usefulness_reason?: string | null
+  usage_frequency?: string | null
+  user_type?: string | null
+  priority?: string | null
+  page_context?: string | null
+}
+type AdminError = AdminRecord & {
+  id?: string | null
+  status?: string | null
+  created_at?: string | null
+  name?: string | null
+  error_name?: string | null
+  message?: string | null
+  page?: string | null
+  page_path?: string | null
+  app_version?: string | null
+  release_channel?: string | null
+  device_info?: string | null
+  metadata?: AdminRecord | null
+}
+type AdminUserSummary = AdminRecord & {
+  userId?: string
+  label?: string
+  cars?: number
+  entries?: number
+  events?: number
+  errors?: number
+  lastSeen?: number
+}
+type SettingValue = { label: string; count: number; percent: number }
+type SettingStat = AdminRecord & {
+  key?: string
+  title?: string
+  total?: number
+  values: SettingValue[]
+}
+type AdminMetric = Record<string, string | number>
+type MoneyRow = AdminRecord & {
+  car_id?: string | null
+  cena_skupaj?: number | string | null
+  cena?: number | string | null
+  znesek?: number | string | null
+  receipt_url?: string | null
+  foto_url?: string | null
+}
+type AdminPlan = AdminRecord & {
+  email?: string | null
+  plan?: string | null
+  note?: string | null
+  source?: string | null
+  locked?: boolean | null
+  billing_status?: string | null
 }
 
 type AdminTab = 'overview' | 'analytics' | 'users' | 'inbox' | 'errors' | 'plans' | 'settings'
 
+type TesterSummary = Record<string, unknown> & {
+  sessions?: number
+  events30?: number
+  meaningfulEvents30?: number
+  totalActiveMinutes?: number
+  averageSessionMinutes?: number
+  longestSessionMinutes?: number
+  cars?: number
+  fuel?: number
+  services?: number
+  expenses?: number
+  reminders?: number
+  pushDevices?: number
+  errors?: number
+  events24?: number
+}
+
 type TesterActivity = {
   user: AdminUser
-  summary: Record<string, any>
+  summary: TesterSummary
   topEvents: Array<{ name: string; label: string; count: number }>
   topPages: Array<{ page: string; count: number }>
   platformStats: Array<{ key: string; label: string; count: number; users: number; percent: number }>
@@ -136,15 +256,18 @@ const eventName = (name: string) => {
   return names[name] || name
 }
 
-const platformFromEvent = (event: any) => {
+const platformFromEvent = (event: AdminEvent) => {
   const metadata = event?.metadata || {}
-  const stored = metadata.clientPlatform || metadata.platform || {}
+  const rawStored = metadata.clientPlatform || metadata.platform
+  const stored = typeof rawStored === 'object' && rawStored ? rawStored as AdminRecord : {}
+  const rawViewport = metadata.viewport
+  const viewport = typeof rawViewport === 'object' && rawViewport ? rawViewport as AdminRecord : {}
   if (stored.key) return {
-    key: stored.key,
-    label: stored.label || stored.key,
+    key: String(stored.key),
+    label: String(stored.label || stored.key),
   }
   const userAgent = String(metadata.userAgent || metadata.deviceInfo || '')
-  const width = Number(metadata.width || metadata.viewport?.width || 0)
+  const width = Number(metadata.width || viewport.width || 0)
   const standalone = metadata.standalone === true || stored.standalone === true || stored.display === 'standalone'
   const android = /Android/i.test(userAgent)
   const ios = /iPhone|iPad|iPod/i.test(userAgent)
@@ -158,8 +281,8 @@ const platformFromEvent = (event: any) => {
   return { key: 'unknown', label: 'Neznano' }
 }
 
-const aggregatePlatforms = (events: any[]) => {
-  const pageViews = events.filter((event: any) => event.event_name === 'page_view')
+const aggregatePlatforms = (events: AdminEvent[]) => {
+  const pageViews = events.filter((event) => event.event_name === 'page_view')
   const rows = pageViews.length > 0 ? pageViews : events
   const total = Math.max(1, rows.length)
   const counts = new Map<string, { key: string; label: string; count: number; users: Set<string> }>()
@@ -209,7 +332,7 @@ const settingTitle: Record<string, string> = {
   kmReminder: 'KM opomniki',
 }
 
-const valueLabel = (value: any) => {
+const valueLabel = (value: unknown) => {
   if (value === true) return 'Da'
   if (value === false) return 'Ne'
   if (value === 'temna') return 'Dark'
@@ -231,10 +354,13 @@ const numberValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+const errorText = (error: unknown) => error instanceof Error ? error.message : String((error as { message?: unknown } | null)?.message || '')
+const asAdminRecord = (value: unknown): AdminRecord | undefined => typeof value === 'object' && value ? value as AdminRecord : undefined
+
 const moneyText = (value: number) =>
   `${Math.round(value).toLocaleString('sl-SI')} €`
 
-const reminderChoice = (settings: any, prefix: 'opomnik' | 'opomnikKm') => {
+const reminderChoice = (settings: AdminRecord | null | undefined, prefix: 'opomnik' | 'opomnikKm') => {
   const red = settings?.[`${prefix}Rdeci`]
   const yellow = settings?.[`${prefix}Rumeni`]
   const green = settings?.[`${prefix}Zeleni`]
@@ -246,12 +372,13 @@ const reminderChoice = (settings: any, prefix: 'opomnik' | 'opomnikKm') => {
   return 'Izklopljeno'
 }
 
-const aggregateSetting = (events: any[], key: string, getter: (metadata: any) => any) => {
-  const latestByUser = new Map<string, any>()
+const aggregateSetting = (events: AdminEvent[], key: string, getter: (metadata: AdminRecord) => unknown): SettingStat => {
+  const latestByUser = new Map<string, AdminEvent>()
+  const timeOf = (value: string | null | undefined) => value ? new Date(value).getTime() : 0
   for (const event of events) {
     const userKey = event.user_id || event.id || `${event.created_at}-${Math.random()}`
     const current = latestByUser.get(userKey)
-    if (!current || new Date(event.created_at) > new Date(current.created_at)) latestByUser.set(userKey, event)
+    if (!current || timeOf(event.created_at) > timeOf(current.created_at)) latestByUser.set(userKey, event)
   }
   const counts = new Map<string, number>()
   for (const event of latestByUser.values()) {
@@ -270,7 +397,7 @@ const aggregateSetting = (events: any[], key: string, getter: (metadata: any) =>
   }
 }
 
-const topSuggestionTerms = (items: any[]) => {
+const topSuggestionTerms = (items: AdminRecord[]) => {
   const stop = new Set(['app', 'aplikacija', 'funkcija', 'garagebase', 'lahko', 'mogoce', 'prosim', 'dodaj', 'dodal', 'uporabno', 'zato', 'ker', 'and', 'the', 'for'])
   const counts = new Map<string, number>()
   for (const item of items) {
@@ -295,7 +422,7 @@ export default function AdminPage() {
   const [adminOpenedAt] = useState(() => Date.now())
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
-  const [stats, setStats] = useState<any>({
+  const [stats, setStats] = useState<AdminStats>({
     cars: 0,
     users: 0,
     fuel: 0,
@@ -319,15 +446,15 @@ export default function AdminPage() {
     eventsPerActiveUser: 0,
     receiptRate: 0,
   })
-  const [recentFeedback, setRecentFeedback] = useState<any[]>([])
-  const [recentCars, setRecentCars] = useState<any[]>([])
-  const [topEvents, setTopEvents] = useState<any[]>([])
-  const [topPages, setTopPages] = useState<any[]>([])
-  const [dailyActivity, setDailyActivity] = useState<any[]>([])
-  const [vehicleTypes, setVehicleTypes] = useState<any[]>([])
-  const [topFeedbackTerms, setTopFeedbackTerms] = useState<any[]>([])
-  const [recentErrors, setRecentErrors] = useState<any[]>([])
-  const [plans, setPlans] = useState<any[]>([])
+  const [recentFeedback, setRecentFeedback] = useState<AdminFeedback[]>([])
+  const [recentCars, setRecentCars] = useState<AdminCar[]>([])
+  const [topEvents, setTopEvents] = useState<Array<{ name: string; label: string; count: number; users: number }>>([])
+  const [topPages, setTopPages] = useState<Array<{ name: string; count: number; users: number }>>([])
+  const [dailyActivity, setDailyActivity] = useState<Array<{ day: string; count: number }>>([])
+  const [vehicleTypes, setVehicleTypes] = useState<Array<{ type: string; count: number }>>([])
+  const [topFeedbackTerms, setTopFeedbackTerms] = useState<Array<{ term: string; count: number }>>([])
+  const [recentErrors, setRecentErrors] = useState<AdminError[]>([])
+  const [plans, setPlans] = useState<AdminPlan[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
   const [userSearch, setUserSearch] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
@@ -340,18 +467,18 @@ export default function AdminPage() {
   const [planSaving, setPlanSaving] = useState(false)
   const [settingsRange, setSettingsRange] = useState<'24h' | '7d' | '30d' | 'all'>('30d')
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('overview')
-  const [settingsStats, setSettingsStats] = useState<any[]>([])
+  const [settingsStats, setSettingsStats] = useState<SettingStat[]>([])
   const [clearLoading, setClearLoading] = useState('')
-  const [funnelStats, setFunnelStats] = useState<any[]>([])
-  const [retentionStats, setRetentionStats] = useState<any[]>([])
-  const [userActivity, setUserActivity] = useState<any[]>([])
-  const [adminAlerts, setAdminAlerts] = useState<any[]>([])
-  const [planSimulation, setPlanSimulation] = useState<any[]>([])
-  const [recordMix, setRecordMix] = useState<any[]>([])
-  const [costMix, setCostMix] = useState<any[]>([])
-  const [conversionStats, setConversionStats] = useState<any[]>([])
-  const [platformStats, setPlatformStats] = useState<any[]>([])
-  const [errorStatusStats, setErrorStatusStats] = useState<any[]>([])
+  const [funnelStats, setFunnelStats] = useState<AdminMetric[]>([])
+  const [retentionStats, setRetentionStats] = useState<AdminMetric[]>([])
+  const [userActivity, setUserActivity] = useState<AdminUserSummary[]>([])
+  const [adminAlerts, setAdminAlerts] = useState<AdminMetric[]>([])
+  const [planSimulation, setPlanSimulation] = useState<AdminMetric[]>([])
+  const [recordMix, setRecordMix] = useState<AdminMetric[]>([])
+  const [costMix, setCostMix] = useState<AdminMetric[]>([])
+  const [conversionStats, setConversionStats] = useState<AdminMetric[]>([])
+  const [platformStats, setPlatformStats] = useState<AdminMetric[]>([])
+  const [errorStatusStats, setErrorStatusStats] = useState<AdminMetric[]>([])
   const [testerSearch, setTesterSearch] = useState('')
   const [testerCandidates, setTesterCandidates] = useState<AdminUser[]>([])
   const [testerSearchLoading, setTesterSearchLoading] = useState(false)
@@ -380,8 +507,8 @@ export default function AdminPage() {
 
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const adminUserById = useMemo(() => new Map(adminUsers.map((user) => [user.id, user])), [adminUsers])
-  const userDisplayName = (user: any) => adminUserById.get(user.userId)?.email || `U-${user.label}`
-  const minuteText = (value: any) => `${Number(value || 0)} ${tx('min', 'min')}`
+  const userDisplayName = (user: AdminUserSummary) => adminUserById.get(String(user.userId || ''))?.email || `U-${user.label}`
+  const minuteText = (value: unknown) => `${Number(value || 0)} ${tx('min', 'min')}`
   const toLocalDateInput = (value?: string | null) => {
     if (!value) return ''
     const date = new Date(value)
@@ -450,10 +577,10 @@ export default function AdminPage() {
     setRefreshingAdmin(false)
   }
 
-  const openUserActivity = (user: any) => {
-    const knownUser = adminUserById.get(user.userId)
+  const openUserActivity = (user: AdminUserSummary) => {
+    const knownUser = adminUserById.get(String(user.userId || ''))
     loadTesterActivity(knownUser || {
-      id: user.userId,
+      id: String(user.userId || ''),
       email: userDisplayName(user),
     })
     setActiveAdminTab('users')
@@ -529,53 +656,55 @@ export default function AdminPage() {
       if (serviceMoneyData.error) throw serviceMoneyData.error
       if (expenseMoneyData.error) throw expenseMoneyData.error
 
-      const cars = carsData.data || []
-      const events = eventsData.data || []
-      const feedbackItems = feedbackData.data || []
-      const fuelMoney = fuelMoneyData.data || []
-      const serviceMoney = serviceMoneyData.data || []
-      const expenseMoney = expenseMoneyData.data || []
-      const archivedCars = cars.filter((car: any) => car.arhivirano === true).length
-      const receiptAttachments = events.filter((event: any) => event.event_name === 'fuel_saved' || event.event_name === 'service_saved' || event.event_name === 'expense_saved')
-        .filter((event: any) => event.metadata?.hasReceipt === true).length
-      const strongServices = events.filter((event: any) => event.event_name === 'service_verification_set' && event.metadata?.verificationLevel === 'strong').length
-      const settingsEvents = (settingsData.data || []).filter((event: any) => event.event_name === 'settings_saved' || event.event_name === 'settings_snapshot')
-      const assistantUsers = new Set((settingsData.data || []).filter((event: any) => event.event_name === 'assistant_page_open').map((event: any) => event.user_id).filter(Boolean)).size
+      const cars = (carsData.data || []) as AdminCar[]
+      const events = (eventsData.data || []) as AdminEvent[]
+      const feedbackItems = (feedbackData.data || []) as AdminFeedback[]
+      const fuelMoney = (fuelMoneyData.data || []) as MoneyRow[]
+      const serviceMoney = (serviceMoneyData.data || []) as MoneyRow[]
+      const expenseMoney = (expenseMoneyData.data || []) as MoneyRow[]
+      const settingsRows = (settingsData.data || []) as AdminEvent[]
+      const errorRows = (errorsData.data || []) as AdminError[]
+      const archivedCars = cars.filter((car) => car.arhivirano === true).length
+      const receiptAttachments = events.filter((event) => event.event_name === 'fuel_saved' || event.event_name === 'service_saved' || event.event_name === 'expense_saved')
+        .filter((event) => event.metadata?.hasReceipt === true).length
+      const strongServices = events.filter((event) => event.event_name === 'service_verification_set' && event.metadata?.verificationLevel === 'strong').length
+      const settingsEvents = settingsRows.filter((event) => event.event_name === 'settings_saved' || event.event_name === 'settings_snapshot')
+      const assistantUsers = new Set(settingsRows.filter((event) => event.event_name === 'assistant_page_open').map((event) => event.user_id).filter(Boolean)).size
       const uniqueUsers = new Set([
-        ...cars.map((car: any) => car.user_id).filter(Boolean),
-        ...events.map((event: any) => event.user_id).filter(Boolean),
+        ...cars.map((car) => car.user_id).filter(Boolean),
+        ...events.map((event) => event.user_id).filter(Boolean),
       ])
-      const activeToday = new Set(events.filter((event: any) => new Date(event.created_at) >= todayStart).map((event: any) => event.user_id).filter(Boolean)).size
-      const active7 = new Set(events.filter((event: any) => event.created_at >= since7).map((event: any) => event.user_id).filter(Boolean)).size
-      const active30 = new Set(events.map((event: any) => event.user_id).filter(Boolean)).size
-      const newFeedbackItems = feedbackItems.filter((item: any) => item.status === 'new')
+      const activeToday = new Set(events.filter((event) => new Date(event.created_at || '').getTime() >= todayStart.getTime()).map((event) => event.user_id).filter(Boolean)).size
+      const active7 = new Set(events.filter((event) => String(event.created_at || '') >= since7).map((event) => event.user_id).filter(Boolean)).size
+      const active30 = new Set(events.map((event) => event.user_id).filter(Boolean)).size
+      const newFeedbackItems = feedbackItems.filter((item) => item.status === 'new')
       const newFeedback = newFeedbackItems.length
       const totalRevenue =
-        fuelMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0) +
-        serviceMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0) +
-        expenseMoney.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
+        fuelMoney.reduce((sum, row) => sum + numberValue(row.cena_skupaj), 0) +
+        serviceMoney.reduce((sum, row) => sum + numberValue(row.cena), 0) +
+        expenseMoney.reduce((sum, row) => sum + numberValue(row.znesek), 0)
       const receiptRows =
-        fuelMoney.filter((row: any) => row.receipt_url).length +
-        serviceMoney.filter((row: any) => row.foto_url).length +
-        expenseMoney.filter((row: any) => row.receipt_url).length
+        fuelMoney.filter((row) => row.receipt_url).length +
+        serviceMoney.filter((row) => row.foto_url).length +
+        expenseMoney.filter((row) => row.receipt_url).length
       const totalManualRows = Math.max(1, fuelMoney.length + serviceMoney.length + expenseMoney.length)
       const carOwner = new Map<string, string>(
         cars
-          .filter((car: any) => car.id && car.user_id)
-          .map((car: any) => [String(car.id), String(car.user_id)] as [string, string])
+          .filter((car) => car.id && car.user_id)
+          .map((car) => [String(car.id), String(car.user_id)] as [string, string])
       )
       const userCarCounts = new Map<string, number>()
       for (const car of cars) {
         if (!car.user_id) continue
         userCarCounts.set(car.user_id, (userCarCounts.get(car.user_id) || 0) + 1)
       }
-      const ownerFromRow = (row: any) => carOwner.get(row.car_id)
+      const ownerFromRow = (row: MoneyRow) => carOwner.get(String(row.car_id || ''))
       const fuelUsers = new Set(fuelMoney.map(ownerFromRow).filter(Boolean))
       const serviceUsers = new Set(serviceMoney.map(ownerFromRow).filter(Boolean))
       const expenseUsers = new Set(expenseMoney.map(ownerFromRow).filter(Boolean))
       const entryUsers = new Set([...fuelUsers, ...serviceUsers, ...expenseUsers])
-      const reportUsers = new Set(events.filter((event: any) => String(event.event_name).includes('report')).map((event: any) => event.user_id).filter(Boolean))
-      const qrUsers = new Set(events.filter((event: any) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).map((event: any) => event.user_id).filter(Boolean))
+      const reportUsers = new Set(events.filter((event) => String(event.event_name).includes('report')).map((event) => event.user_id).filter(Boolean))
+      const qrUsers = new Set(events.filter((event) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).map((event) => event.user_id).filter(Boolean))
       const baseUsersCount = Math.max(1, uniqueUsers.size)
       const funnel = [
         { label: tx('Znani uporabniki', 'Known users'), value: uniqueUsers.size, hint: tx('vozila ali dogodki', 'vehicles or events') },
@@ -589,7 +718,7 @@ export default function AdminPage() {
       const eventCountByUser = new Map<string, number>()
       for (const event of events) {
         if (!event.user_id) continue
-        const time = new Date(event.created_at).getTime()
+        const time = event.created_at ? new Date(event.created_at).getTime() : 0
         firstSeen.set(event.user_id, Math.min(firstSeen.get(event.user_id) || time, time))
         lastSeen.set(event.user_id, Math.max(lastSeen.get(event.user_id) || time, time))
         eventCountByUser.set(event.user_id, (eventCountByUser.get(event.user_id) || 0) + 1)
@@ -619,15 +748,18 @@ export default function AdminPage() {
         if (!owner) continue
         entriesByUser.set(owner, (entriesByUser.get(owner) || 0) + 1)
       }
-      const userRows = Array.from(uniqueUsers).map((userId: any) => ({
-        userId,
-        label: String(userId).slice(0, 8),
-        cars: userCarCounts.get(userId) || 0,
-        entries: entriesByUser.get(userId) || 0,
-        events: eventCountByUser.get(userId) || 0,
-        errors: errorsByUser.get(userId) || 0,
-        lastSeen: lastSeen.get(userId) || 0,
-      })).sort((a, b) => b.events - a.events).slice(0, 8)
+      const userRows = Array.from(uniqueUsers).map((rawUserId) => {
+        const userId = String(rawUserId)
+        return {
+          userId,
+          label: userId.slice(0, 8),
+          cars: userCarCounts.get(userId) || 0,
+          entries: entriesByUser.get(userId) || 0,
+          events: eventCountByUser.get(userId) || 0,
+          errors: errorsByUser.get(userId) || 0,
+          lastSeen: lastSeen.get(userId) || 0,
+        }
+      }).sort((a, b) => b.events - a.events).slice(0, 8)
       const planBuckets = [
         { label: 'Free', range: tx('0-1 vozilo', '0-1 vehicle'), count: 0, color: 'bg-[#3ecfcf]' },
         { label: 'Basic', range: tx('2-3 vozila', '2-3 vehicles'), count: 0, color: 'bg-[#6c63ff]' },
@@ -641,12 +773,12 @@ export default function AdminPage() {
         else planBuckets[3].count += 1
       }
       const maxPlanCount = Math.max(1, ...planBuckets.map((item) => item.count))
-      const newErrorItems = errorsData.error ? [] : (errorsData.data || []).filter((error: any) => error.status === 'new')
+      const newErrorItems = errorsData.error ? [] : errorRows.filter((error) => error.status === 'new')
       const newErrorsCount = newErrorItems.length
       const latestInboxTime = Math.max(
         0,
-        ...newFeedbackItems.map((item: any) => new Date(item.created_at).getTime()).filter(Number.isFinite),
-        ...newErrorItems.map((item: any) => new Date(item.created_at).getTime()).filter(Number.isFinite)
+        ...newFeedbackItems.map((item) => new Date(item.created_at || '').getTime()).filter(Number.isFinite),
+        ...newErrorItems.map((item) => new Date(item.created_at || '').getTime()).filter(Number.isFinite)
       )
       try {
         const seenAt = Number(localStorage.getItem('garagebase_admin_inbox_seen_at') || 0)
@@ -669,21 +801,21 @@ export default function AdminPage() {
         { label: tx('Servisi', 'Services'), value: serviceMoney.length, color: 'bg-[#3ecfcf]' },
         { label: tx('Stroski', 'Costs'), value: expenseMoney.length, color: 'bg-[#f59e0b]' },
       ].map((item) => ({ ...item, percent: Math.round((item.value / recordTotal) * 100) }))
-      const fuelCost = fuelMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena_skupaj), 0)
-      const serviceCost = serviceMoney.reduce((sum: number, row: any) => sum + numberValue(row.cena), 0)
-      const expenseCost = expenseMoney.reduce((sum: number, row: any) => sum + numberValue(row.znesek), 0)
+      const fuelCost = fuelMoney.reduce((sum, row) => sum + numberValue(row.cena_skupaj), 0)
+      const serviceCost = serviceMoney.reduce((sum, row) => sum + numberValue(row.cena), 0)
+      const expenseCost = expenseMoney.reduce((sum, row) => sum + numberValue(row.znesek), 0)
       const costTotal = Math.max(1, fuelCost + serviceCost + expenseCost)
       const costItems = [
         { label: tx('Gorivo', 'Fuel'), value: fuelCost, color: 'bg-[#6c63ff]' },
         { label: tx('Servisi', 'Services'), value: serviceCost, color: 'bg-[#3ecfcf]' },
         { label: tx('Stroski', 'Costs'), value: expenseCost, color: 'bg-[#f59e0b]' },
       ].map((item) => ({ ...item, percent: Math.round((item.value / costTotal) * 100) }))
-      const eventCount = (name: string) => events.filter((event: any) => event.event_name === name).length
-      const eventIncludesCount = (needle: string) => events.filter((event: any) => String(event.event_name).includes(needle)).length
+      const eventCount = (name: string) => events.filter((event) => event.event_name === name).length
+      const eventIncludesCount = (needle: string) => events.filter((event) => String(event.event_name).includes(needle)).length
       const ocrClicks = eventCount('receipt_scan_clicked')
       const ocrSuccess = eventCount('receipt_scan_success')
       const reportOpen = eventIncludesCount('report')
-      const qrTransfer = events.filter((event: any) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).length
+      const qrTransfer = events.filter((event) => String(event.event_name).includes('qr') || String(event.event_name).includes('transfer')).length
       const saveOpens = eventCount('fuel_add_open') + eventCount('service_add_open') + eventCount('expense_add_open')
       const saves = eventCount('fuel_saved') + eventCount('service_saved') + eventCount('expense_saved')
       const conversionItems = [
@@ -713,10 +845,11 @@ export default function AdminPage() {
       const pageCounts = new Map<string, { count: number; users: Set<string> }>()
       const dayCounts = new Map<string, { count: number; users: Set<string> }>()
       for (const event of events) {
-        const current = eventCounts.get(event.event_name) || { count: 0, users: new Set<string>() }
+        const eventKey = event.event_name || 'unknown'
+        const current = eventCounts.get(eventKey) || { count: 0, users: new Set<string>() }
         current.count += 1
         if (event.user_id) current.users.add(event.user_id)
-        eventCounts.set(event.event_name, current)
+        eventCounts.set(eventKey, current)
 
         const page = pageName(event.page_path)
         const pageCurrent = pageCounts.get(page) || { count: 0, users: new Set<string>() }
@@ -724,7 +857,7 @@ export default function AdminPage() {
         if (event.user_id) pageCurrent.users.add(event.user_id)
         pageCounts.set(page, pageCurrent)
 
-        const day = dayKey(event.created_at)
+        const day = dayKey(event.created_at || '')
         const dayCurrent = dayCounts.get(day) || { count: 0, users: new Set<string>() }
         dayCurrent.count += 1
         if (event.user_id) dayCurrent.users.add(event.user_id)
@@ -805,8 +938,8 @@ export default function AdminPage() {
         aggregateSetting(settingsEvents, 'mobileGridColumns', (m) => m.mobileGridColumns),
         aggregateSetting(settingsEvents, 'cardFontPercent', (m) => `${m.cardFontPercent || 100}%`),
         aggregateSetting(settingsEvents, 'currency', (m) => m.currency),
-        aggregateSetting(settingsEvents, 'dateReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnik')),
-        aggregateSetting(settingsEvents, 'kmReminder', (m) => reminderChoice(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings, 'opomnikKm')),
+        aggregateSetting(settingsEvents, 'dateReminder', (m) => reminderChoice(asAdminRecord(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings), 'opomnik')),
+        aggregateSetting(settingsEvents, 'kmReminder', (m) => reminderChoice(asAdminRecord(m.garageDisplay === 'grid' ? m.gridSettings : m.listSettings), 'opomnikKm')),
         aggregateSetting(settingsEvents, 'autocomplete', (m) => m.autocomplete),
         {
           key: 'assistantUsage',
@@ -816,11 +949,11 @@ export default function AdminPage() {
         },
       ])
       setPlans(plansData.data || [])
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(tx(
         'Admin statistika se ni dostopna. Zazeni posodobljen SQL SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql.',
         'Admin statistics are not available yet. Run the updated SUPABASE_MIGRACIJA_ADMIN_FEEDBACK.sql.'
-      ) + ` ${error.message || ''}`)
+      ) + ` ${errorText(error)}`)
     }
   }
 
@@ -844,10 +977,10 @@ export default function AdminPage() {
       setAdminUsers(result.users || [])
       if (Array.isArray(result.plans)) setPlans(result.plans.slice(0, 8))
       if (typeof result.totalUsers === 'number') {
-        setStats((prev: any) => ({ ...prev, registeredUsers: result.totalUsers }))
+        setStats((prev) => ({ ...prev, registeredUsers: result.totalUsers }))
       }
-    } catch (error: any) {
-      setMessage(tx('Uporabnikov ni bilo mogoce naloziti.', 'Could not load users.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Uporabnikov ni bilo mogoce naloziti.', 'Could not load users.') + ` ${errorText(error)}`)
     } finally {
       setUsersLoading(false)
     }
@@ -855,10 +988,10 @@ export default function AdminPage() {
 
   const selectAdminUser = (user: AdminUser) => {
     setPlanEmail(user.email)
-    setPlanName(user.plan?.plan || 'max')
-    setPlanNote(user.plan?.note || '')
-    setPlanSource(user.plan?.source || 'manual')
-    setBillingStatus(user.plan?.billing_status || 'free_open')
+    setPlanName(String(user.plan?.plan || 'max'))
+    setPlanNote(String(user.plan?.note || ''))
+    setPlanSource(String(user.plan?.source || 'manual'))
+    setBillingStatus(String(user.plan?.billing_status || 'free_open'))
     setPaidConfirm('')
   }
 
@@ -878,8 +1011,8 @@ export default function AdminPage() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.details || result.error || 'tester_search_failed')
       setTesterCandidates(result.users || [])
-    } catch (error: any) {
-      setMessage(tx('Testerjev ni bilo mogoce poiskati.', 'Could not search testers.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Testerjev ni bilo mogoce poiskati.', 'Could not search testers.') + ` ${errorText(error)}`)
     } finally {
       setTesterSearchLoading(false)
     }
@@ -927,8 +1060,8 @@ export default function AdminPage() {
           maxCars: Number(limits.maxCars || 0) || 0,
         })
       }
-    } catch (error: any) {
-      setMessage(tx('Aktivnosti testerja ni bilo mogoce naloziti.', 'Could not load tester activity.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Aktivnosti testerja ni bilo mogoce naloziti.', 'Could not load tester activity.') + ` ${errorText(error)}`)
     } finally {
       setTesterLoading(false)
     }
@@ -962,8 +1095,8 @@ export default function AdminPage() {
       if (!response.ok) throw new Error(result.details || result.error || 'controls_save_failed')
       setMessage(tx('Omejitve in paket so shranjeni.', 'Limits and package are saved.'))
       await loadAdminData()
-    } catch (error: any) {
-      setMessage(tx('Omejitev ni bilo mogoce shraniti.', 'Could not save limits.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Omejitev ni bilo mogoce shraniti.', 'Could not save limits.') + ` ${errorText(error)}`)
     } finally {
       setControlSaving(false)
     }
@@ -975,19 +1108,19 @@ export default function AdminPage() {
     { label: tx('Aktivni 30 dni', 'Active 30 days'), value: stats.active30 || 0, hint: tx('zadnji mesec', 'last month'), color: 'text-[#a09aff]' },
     { label: tx('Registrirani uporabniki', 'Registered users'), value: stats.registeredUsers || 0, hint: tx('vsi ustvarjeni računi', 'all created accounts'), color: 'text-[#6c63ff]' },
     { label: tx('Evidentirani stroški', 'Recorded costs'), value: moneyText(stats.totalRevenue || 0), hint: tx('gorivo + servisi + stroški', 'fuel + services + expenses'), color: 'text-[#f59e0b]' },
-    { label: tx('Vozila', 'Vehicles'), value: stats.cars, hint: tx('vsa vozila v sistemu', 'all vehicles in the system'), color: 'text-[#a09aff]' },
-    { label: tx('Znani uporabniki', 'Known users'), value: stats.users, hint: tx('iz zadnjih vozil', 'from recent vehicles'), color: 'text-[#3ecfcf]' },
+    { label: tx('Vozila', 'Vehicles'), value: stats.cars || 0, hint: tx('vsa vozila v sistemu', 'all vehicles in the system'), color: 'text-[#a09aff]' },
+    { label: tx('Znani uporabniki', 'Known users'), value: stats.users || 0, hint: tx('iz zadnjih vozil', 'from recent vehicles'), color: 'text-[#3ecfcf]' },
     { label: tx('Vozil/uporabnika', 'Vehicles/user'), value: (stats.avgCarsPerUser || 0).toFixed(1), hint: tx('povprečje za paketne limite', 'average for plan limits'), color: 'text-[#a09aff]' },
     { label: tx('Računi pri vnosih', 'Receipts on entries'), value: `${stats.receiptRate || 0}%`, hint: tx('delež vnosov z dokazilom', 'share with proof'), color: 'text-[#4ade80]' },
-    { label: tx('Tankanja', 'Fill-ups'), value: stats.fuel, hint: tx('vnosi goriva', 'fuel entries'), color: 'text-[#3ecfcf]' },
-    { label: tx('Servisi', 'Services'), value: stats.services, hint: tx('servisni vnosi', 'service entries'), color: 'text-[#f59e0b]' },
-    { label: tx('Stroski', 'Expenses'), value: stats.expenses, hint: tx('dodatni stroski', 'additional expenses'), color: 'text-[#a09aff]' },
-    { label: tx('Push naprave', 'Push devices'), value: stats.push, hint: tx('naročene naprave', 'subscribed devices'), color: 'text-[#4ade80]' },
-    { label: tx('QR prenosi', 'QR transfers'), value: stats.transfers, hint: tx('ustvarjene QR kode', 'created QR codes'), color: 'text-[#fca5a5]' },
+    { label: tx('Tankanja', 'Fill-ups'), value: stats.fuel || 0, hint: tx('vnosi goriva', 'fuel entries'), color: 'text-[#3ecfcf]' },
+    { label: tx('Servisi', 'Services'), value: stats.services || 0, hint: tx('servisni vnosi', 'service entries'), color: 'text-[#f59e0b]' },
+    { label: tx('Stroski', 'Expenses'), value: stats.expenses || 0, hint: tx('dodatni stroski', 'additional expenses'), color: 'text-[#a09aff]' },
+    { label: tx('Push naprave', 'Push devices'), value: stats.push || 0, hint: tx('naročene naprave', 'subscribed devices'), color: 'text-[#4ade80]' },
+    { label: tx('QR prenosi', 'QR transfers'), value: stats.transfers || 0, hint: tx('ustvarjene QR kode', 'created QR codes'), color: 'text-[#fca5a5]' },
     { label: tx('Arhiv', 'Archive'), value: stats.archivedCars || 0, hint: tx('arhivirana vozila', 'archived vehicles'), color: 'text-[#3ecfcf]' },
     { label: tx('Racuni/slike', 'Receipts/photos'), value: stats.receiptAttachments || 0, hint: tx('vnosi s prilogami', 'entries with attachments'), color: 'text-[#4ade80]' },
     { label: tx('Strong zapisi', 'Strong records'), value: stats.strongServices || 0, hint: tx('servisi z dokazili', 'services with proof'), color: 'text-[#16a34a]' },
-    { label: tx('Feedback', 'Feedback'), value: stats.feedback, hint: `${stats.newFeedback} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
+    { label: tx('Feedback', 'Feedback'), value: stats.feedback || 0, hint: `${stats.newFeedback || 0} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
     { label: tx('Dogodki', 'Events'), value: stats.events || 0, hint: tx('kliki in akcije', 'clicks and actions'), color: 'text-[#4ade80]' },
     { label: tx('Napake', 'Errors'), value: stats.errors || 0, hint: tx('nove napake', 'new errors'), color: 'text-[#fca5a5]' },
   ], [stats, language])
@@ -1030,8 +1163,8 @@ export default function AdminPage() {
       setPlanNote('')
       setPaidConfirm('')
       await Promise.all([loadAdminData(), loadAdminUsers()])
-    } catch (error: any) {
-      setMessage(tx('Paketa ni bilo mogoce shraniti.', 'Could not save the plan.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Paketa ni bilo mogoce shraniti.', 'Could not save the plan.') + ` ${errorText(error)}`)
     }
     setPlanSaving(false)
   }
@@ -1046,7 +1179,7 @@ export default function AdminPage() {
       return
     }
     setRecentErrors((prev) => prev.map((item) => item.id === id ? { ...item, status: 'resolved' } : item))
-    setStats((prev: any) => ({ ...prev, errors: Math.max(0, (prev.errors || 0) - 1) }))
+    setStats((prev) => ({ ...prev, errors: Math.max(0, numberValue(prev.errors) - 1) }))
   }
 
   const updateFeedbackStatus = async (id: string, status: string) => {
@@ -1059,7 +1192,7 @@ export default function AdminPage() {
       return
     }
     if (status !== 'new') {
-      setStats((prev: any) => ({ ...prev, newFeedback: Math.max(0, (prev.newFeedback || 0) - 1) }))
+      setStats((prev) => ({ ...prev, newFeedback: Math.max(0, numberValue(prev.newFeedback) - 1) }))
     }
   }
 
@@ -1099,8 +1232,8 @@ export default function AdminPage() {
       if (!response.ok) throw new Error(result.details || result.error || 'delete_failed')
       setMessage(tx('Zgodovina analitike je počiščena.', 'Analytics history has been cleared.'))
       await loadAdminData()
-    } catch (error: any) {
-      setMessage(tx('Zgodovine ni bilo mogoče počistiti.', 'Could not clear history.') + ` ${error.message || ''}`)
+    } catch (error: unknown) {
+      setMessage(tx('Zgodovine ni bilo mogoče počistiti.', 'Could not clear history.') + ` ${errorText(error)}`)
     }
     setClearLoading('')
   }
@@ -1171,9 +1304,9 @@ export default function AdminPage() {
             }`}
           >
             <span className="whitespace-nowrap">{item.label}</span>
-            {Boolean((item as any).badge) && (
+            {'badge' in item && Boolean(item.badge) && (
               <span className="ml-2 inline-flex min-w-6 items-center justify-center rounded-full bg-[#ef4444] px-2 py-0.5 text-[11px] font-black !text-white">
-                {(item as any).badge}
+                {item.badge}
               </span>
             )}
           </button>
@@ -1196,7 +1329,7 @@ export default function AdminPage() {
         </button>
       )}
 
-      {stats.errors > 0 && (
+      {(stats.errors || 0) > 0 && (
         <div className="mb-4 rounded-2xl border-2 border-[#ef4444] bg-[#ef44441f] p-4 text-sm font-bold text-[#fecaca] shadow-lg shadow-[#ef444422]">
           {tx(`Pozor: ${stats.errors} novih napak v aplikaciji.`, `Attention: ${stats.errors} new app errors.`)}
         </div>
@@ -1210,8 +1343,8 @@ export default function AdminPage() {
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-[#6c63ff]">{tx('Pregled', 'Overview')}</p>
                 <h2 className="mt-1 text-2xl font-black text-white">{tx('Stanje aplikacije', 'Application status')}</h2>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-black ${stats.errors > 0 ? 'bg-[#ef444422] text-[#fca5a5]' : 'bg-[#16a34a22] text-[#4ade80]'}`}>
-                {stats.errors > 0 ? tx('Preveri napake', 'Check errors') : tx('Stabilno', 'Stable')}
+              <span className={`rounded-full px-3 py-1 text-xs font-black ${(stats.errors || 0) > 0 ? 'bg-[#ef444422] text-[#fca5a5]' : 'bg-[#16a34a22] text-[#4ade80]'}`}>
+                {(stats.errors || 0) > 0 ? tx('Preveri napake', 'Check errors') : tx('Stabilno', 'Stable')}
               </span>
             </div>
             <div className="grid gap-3 md:grid-cols-4">
@@ -1256,7 +1389,7 @@ export default function AdminPage() {
                     </div>
                     <p className="mt-1 text-xs font-bold text-[#8a8aa8]">{item.count} {tx('ogledov', 'views')} · {item.users} {tx('uporabnikov', 'users')}</p>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#080810]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, numberValue(item.percent))}%` }} />
                     </div>
                   </div>
                 ))}
@@ -1313,13 +1446,14 @@ export default function AdminPage() {
                   {recentFeedback.filter((item) => item.status === 'new').length === 0 ? (
                     <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih predlogov.', 'No new suggestions.')}</p>
                   ) : recentFeedback.filter((item) => item.status === 'new').map((item, index) => {
-                    const isOpen = expandedFeedbackId === item.id
+                    const itemId = String(item.id || '')
+                    const isOpen = expandedFeedbackId === itemId
                     return (
-                    <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
+                    <div key={itemId} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#3ecfcf]">{tx(`Predlog ${index + 1}`, `Suggestion ${index + 1}`)}</p>
-                          <button onClick={() => setExpandedFeedbackId(isOpen ? null : item.id)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
+                          <button onClick={() => setExpandedFeedbackId(isOpen ? null : itemId)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
                             {item.feature_description}
                           </button>
                           <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
@@ -1340,13 +1474,13 @@ export default function AdminPage() {
                         </div>
                       )}
                       <p className="mt-3 rounded-xl border border-[#6c63ff44] bg-[#6c63ff14] p-3 text-xs font-semibold leading-relaxed text-[#a09aff]">
-                        {feedbackStatusReply[item.status]?.[language] || feedbackStatusReply.new[language]}
+                        {feedbackStatusReply[item.status || 'new']?.[language] || feedbackStatusReply.new[language]}
                       </p>
                       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <button onClick={() => updateFeedbackStatus(item.id, 'reviewing')} className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] px-2 py-2 text-xs font-black text-[#f59e0b]">{tx('V razmisleku', 'Under review')}</button>
-                        <button onClick={() => updateFeedbackStatus(item.id, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#6c63ff]">{tx('Planirano', 'Planned')}</button>
-                        <button onClick={() => updateFeedbackStatus(item.id, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#16a34a]">{tx('Rešeno', 'Done')}</button>
-                        <button onClick={() => updateFeedbackStatus(item.id, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#ef4444]">{tx('Zavrnjeno', 'Rejected')}</button>
+                        <button onClick={() => updateFeedbackStatus(itemId, 'reviewing')} className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] px-2 py-2 text-xs font-black text-[#f59e0b]">{tx('V razmisleku', 'Under review')}</button>
+                        <button onClick={() => updateFeedbackStatus(itemId, 'planned')} className="rounded-xl border border-[#6c63ff55] bg-[#6c63ff18] px-2 py-2 text-xs font-black text-[#6c63ff]">{tx('Planirano', 'Planned')}</button>
+                        <button onClick={() => updateFeedbackStatus(itemId, 'done')} className="rounded-xl border border-[#22c55e55] bg-[#22c55e18] px-2 py-2 text-xs font-black text-[#16a34a]">{tx('Rešeno', 'Done')}</button>
+                        <button onClick={() => updateFeedbackStatus(itemId, 'rejected')} className="rounded-xl border border-[#ef444455] bg-[#ef444418] px-2 py-2 text-xs font-black text-[#ef4444]">{tx('Zavrnjeno', 'Rejected')}</button>
                       </div>
                     </div>
                     )
@@ -1363,20 +1497,21 @@ export default function AdminPage() {
                   {recentErrors.filter((item) => (item.status || 'new') === 'new').length === 0 ? (
                     <p className="rounded-xl bg-[#13131f] p-4 text-sm font-semibold text-[#8a8aa8]">{tx('Ni novih napak.', 'No new errors.')}</p>
                   ) : recentErrors.filter((item) => (item.status || 'new') === 'new').map((item, index) => {
-                    const isOpen = expandedErrorId === item.id
+                    const itemId = String(item.id || '')
+                    const isOpen = expandedErrorId === itemId
                     return (
-                    <div key={item.id} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
+                    <div key={itemId} className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#ef4444]">{tx(`Napaka ${index + 1}`, `Error ${index + 1}`)}</p>
-                          <button onClick={() => setExpandedErrorId(isOpen ? null : item.id)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
+                          <button onClick={() => setExpandedErrorId(isOpen ? null : itemId)} className="mt-1 text-left text-sm font-black text-white underline-offset-4 hover:underline">
                             {item.name || item.message || 'Error'}
                           </button>
                           <p className="mt-1 text-[11px] font-semibold text-[#8a8aa8]">
                             {item.created_at ? new Date(item.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
                           </p>
                         </div>
-                        <button onClick={() => resolveError(item.id)} className="rounded-xl bg-[#22c55e] px-3 py-2 text-[11px] font-black !text-[#071112]">
+                        <button onClick={() => resolveError(itemId)} className="rounded-xl bg-[#22c55e] px-3 py-2 text-[11px] font-black !text-[#071112]">
                           {tx('Rešeno', 'Resolved')}
                         </button>
                       </div>
@@ -1528,7 +1663,7 @@ export default function AdminPage() {
                     { label: tx('Povprečna seja', 'Average session'), value: minuteText(testerActivity.summary.averageSessionMinutes) },
                     { label: tx('Najdaljša seja', 'Longest session'), value: minuteText(testerActivity.summary.longestSessionMinutes) },
                     { label: tx('Vozila', 'Vehicles'), value: testerActivity.summary.cars },
-                    { label: tx('Vnosi', 'Entries'), value: testerActivity.summary.fuel + testerActivity.summary.services + testerActivity.summary.expenses },
+                    { label: tx('Vnosi', 'Entries'), value: numberValue(testerActivity.summary.fuel) + numberValue(testerActivity.summary.services) + numberValue(testerActivity.summary.expenses) },
                     { label: tx('Opomniki', 'Reminders'), value: testerActivity.summary.reminders },
                     { label: tx('Push naprave', 'Push devices'), value: testerActivity.summary.pushDevices },
                     { label: tx('Napake', 'Errors'), value: testerActivity.summary.errors },
@@ -1558,7 +1693,7 @@ export default function AdminPage() {
                         </div>
                         <p className="mt-1 text-[11px] font-bold text-[#8a8aa8]">{item.count} {tx('ogledov', 'views')}</p>
                         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#080810]">
-                          <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                          <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.max(4, numberValue(item.percent))}%` }} />
                         </div>
                       </div>
                     ))}
@@ -1709,7 +1844,7 @@ export default function AdminPage() {
                         <div key={error.id} className="rounded-xl border border-[#ef444433] bg-[#ef444411] p-2">
                           <p className="text-xs font-black text-[#fca5a5]">{error.name}</p>
                           <p className="mt-1 line-clamp-2 text-[11px] text-[#fca5a5]">{error.message || '-'}</p>
-                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{error.page} - {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                          <p className="mt-1 text-[11px] text-[#8a8aa8]">{error.page || '-'} - {error.created_at ? new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}</p>
                         </div>
                       ))}
                     </div>
@@ -1745,7 +1880,7 @@ export default function AdminPage() {
                   <span className="text-xs font-bold text-[#8a8aa8]">{item.value} / {item.percent}%</span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
-                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, item.percent)}%` }} />
+                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, numberValue(item.percent))}%` }} />
                 </div>
               </div>
             ))}
@@ -1760,10 +1895,10 @@ export default function AdminPage() {
               <div key={item.label}>
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-xs font-black text-white">{item.label}</span>
-                  <span className="text-xs font-bold text-[#8a8aa8]">{moneyText(item.value)} / {item.percent}%</span>
+                  <span className="text-xs font-bold text-[#8a8aa8]">{moneyText(numberValue(item.value))} / {item.percent}%</span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
-                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, item.percent)}%` }} />
+                  <div className={`h-full rounded-full ${item.color}`} style={{ width: `${Math.max(4, numberValue(item.percent))}%` }} />
                 </div>
               </div>
             ))}
@@ -1782,7 +1917,7 @@ export default function AdminPage() {
                 </div>
                 <p className="mt-1 text-xs text-[#8a8aa8]">{item.detail}</p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, Math.max(3, item.value))}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, Math.max(3, numberValue(item.value)))}%` }} />
                 </div>
               </div>
             ))}
@@ -1853,7 +1988,7 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
-                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, item.percent)}%` }} />
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#6c63ff] to-[#3ecfcf]" style={{ width: `${Math.min(100, numberValue(item.percent))}%` }} />
                 </div>
               </div>
             ))}
@@ -1876,7 +2011,7 @@ export default function AdminPage() {
             <div className="flex h-full items-end gap-3">
               {retentionStats.map((item) => (
                 <div key={item.label} className="flex flex-1 flex-col items-center gap-2">
-                  <div className="w-full rounded-xl bg-[#6c63ff]" style={{ height: `${Math.max(8, item.percent)}%` }} />
+                  <div className="w-full rounded-xl bg-[#6c63ff]" style={{ height: `${Math.max(8, numberValue(item.percent))}%` }} />
                   <p className="text-[10px] font-bold text-[#8a8aa8]">{item.label}</p>
                 </div>
               ))}
@@ -1921,7 +2056,7 @@ export default function AdminPage() {
                   <span className="text-xs font-bold text-[#8a8aa8]">{plan.count} · {plan.range}</span>
                 </div>
                 <div className="h-3 overflow-hidden rounded-full bg-[#13131f]">
-                  <div className={`h-full rounded-full ${plan.color}`} style={{ width: `${Math.max(4, plan.percent)}%` }} />
+                  <div className={`h-full rounded-full ${plan.color}`} style={{ width: `${Math.max(4, numberValue(plan.percent))}%` }} />
                 </div>
               </div>
             ))}
@@ -2011,7 +2146,7 @@ export default function AdminPage() {
                 <div className="flex flex-col gap-3">
                   {item.values.length === 0 ? (
                     <p className="text-xs text-[#5a5a80]">{tx('Ni podatkov.', 'No data.')}</p>
-                  ) : item.values.map((value: any) => (
+                  ) : item.values.map((value) => (
                     <div key={value.label}>
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold text-white">{value.label}</span>
@@ -2075,7 +2210,7 @@ export default function AdminPage() {
                   <span className="text-xs font-black text-[#fca5a5]">{item.count} / {item.percent}%</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-[#0f0f1a]">
-                  <div className="h-full rounded-full bg-[#ef4444]" style={{ width: `${Math.max(4, item.percent)}%` }} />
+                  <div className="h-full rounded-full bg-[#ef4444]" style={{ width: `${Math.max(4, numberValue(item.percent))}%` }} />
                 </div>
               </div>
             ))}
@@ -2092,15 +2227,15 @@ export default function AdminPage() {
                   <span className="rounded-full bg-[#ef444422] px-2 py-1 text-[10px] font-bold text-[#fca5a5]">{error.status}</span>
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs text-[#fca5a5]">{error.message || '-'}</p>
-                <p className="mt-1 text-[11px] text-[#5a5a80]">{pageName(error.page_path)} · {new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                <p className="mt-1 text-[11px] text-[#5a5a80]">{pageName(error.page_path)} · {error.created_at ? new Date(error.created_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}</p>
                 <p className="mt-1 text-[11px] text-[#5a5a80]">
-                  v{error.app_version || error.metadata?.appVersion || '-'} · {error.release_channel || error.metadata?.releaseChannel || '-'}
+                  v{String(error.app_version || error.metadata?.appVersion || '-')} · {String(error.release_channel || error.metadata?.releaseChannel || '-')}
                 </p>
-                {(error.device_info || error.metadata?.userAgent) && (
-                  <p className="mt-1 line-clamp-1 text-[10px] text-[#5a5a80]">{error.device_info || error.metadata?.userAgent}</p>
+                {Boolean(error.device_info || error.metadata?.userAgent) && (
+                  <p className="mt-1 line-clamp-1 text-[10px] text-[#5a5a80]">{String(error.device_info || error.metadata?.userAgent)}</p>
                 )}
                 {error.status !== 'resolved' && (
-                  <button onClick={() => resolveError(error.id)}
+                  <button onClick={() => resolveError(String(error.id || ''))}
                     className="mt-3 rounded-lg border border-[#4ade8055] bg-[#4ade8018] px-3 py-2 text-xs font-bold text-[#4ade80]">
                     {tx('Oznaci kot reseno', 'Mark resolved')}
                   </button>
@@ -2186,12 +2321,12 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="truncate text-sm font-bold text-white">{user.email}</p>
                     <span className="shrink-0 rounded-full bg-[#3ecfcf22] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">
-                      {user.plan?.plan || 'max'}
+                      {String(user.plan?.plan || 'max')}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-[#5a5a80]">
                     {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI') : tx('Brez prijave', 'No sign-in')}
-                    {user.plan?.source ? ` · ${user.plan.source}` : ''}
+                    {user.plan?.source ? ` · ${String(user.plan.source)}` : ''}
                   </p>
                 </button>
               ))}
@@ -2271,7 +2406,7 @@ export default function AdminPage() {
                 <div className="flex items-start justify-between gap-3">
                   <p className="text-white text-sm font-semibold">{item.feature_description}</p>
                   <span className="shrink-0 rounded-full bg-[#6c63ff22] px-2 py-1 text-[10px] font-bold text-[#a09aff]">
-                    {statusLabel[item.status]?.[language] || item.status}
+                    {statusLabel[item.status || 'new']?.[language] || item.status || 'new'}
                   </span>
                 </div>
                 <p className="mt-1 line-clamp-2 text-xs text-[#5a5a80]">{item.usefulness_reason}</p>
