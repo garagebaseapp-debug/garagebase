@@ -95,8 +95,15 @@ export function AppLock() {
       return
     }
 
-    setMode(lockMode)
-    setLocked(true)
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setMode(lockMode)
+      setLocked(true)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   const unlockWithPattern = (nextPattern: number[]) => {

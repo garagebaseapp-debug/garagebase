@@ -458,10 +458,9 @@ export function saveStoredLanguage(language: Language) {
 }
 
 export function useLanguage() {
-  const [language, setLanguage] = useState<Language>('sl')
+  const [language, setLanguage] = useState<Language>(() => getStoredLanguage())
 
   useEffect(() => {
-    setLanguage(getStoredLanguage())
     const onChange = (event: Event) => {
       setLanguage((event as CustomEvent<Language>).detail || getStoredLanguage())
     }

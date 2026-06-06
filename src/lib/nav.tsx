@@ -203,15 +203,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
 
 export function HomeButton({ aktivna }: { aktivna?: string } = {}) {
   const pathname = usePathname()
-  const [resolvedActive, setResolvedActive] = useState(aktivna || 'domov')
-
-  useEffect(() => {
-    if (aktivna) {
-      setResolvedActive(aktivna)
-      return
-    }
-    setResolvedActive(activeKeyFromPath(pathname || '/domov'))
-  }, [aktivna, pathname])
+  const resolvedActive = aktivna || activeKeyFromPath(pathname || '/domov')
 
   return <BottomNav aktivna={resolvedActive} />
 }

@@ -58,7 +58,17 @@ export async function GET() {
     const schemaClient = createClient(supabaseUrl, schemaSupabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
-    const requiredTables = ['vehicle_mileage_events', 'tire_tread_measurements']
+    const requiredTables = [
+      'cars',
+      'reminders',
+      'fuel_logs',
+      'service_logs',
+      'expenses',
+      'tire_sets',
+      'tire_mounts',
+      'vehicle_mileage_events',
+      'tire_tread_measurements',
+    ]
     const requiredColumnChecks = [
       { table: 'reminders', columns: 'id,status,completed_at,completed_note' },
     ]
