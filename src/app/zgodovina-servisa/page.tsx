@@ -8,16 +8,50 @@ import { useLanguage } from '@/lib/i18n'
 
 const PAGE_SIZE = 50
 const serviceHistoryColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
-const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
+
+type ServiceHistoryCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+}
+
+type ServiceHistoryEntry = {
+  id: string
+  car_id: string
+  datum: string
+  km?: number | null
+  cena?: number | null
+  servis?: string | null
+  opis?: string | null
+  created_at: string
+  foto_url?: string | null
+  locked_at?: string | null
+  import_batch_id?: string | null
+  source_owner_label?: string | null
+  verification_level?: string | null
+}
+
+type ServiceEditData = {
+  datum?: string
+  opis?: string
+  servis?: string
+  cena?: string
+}
+
+type ServiceCostRow = {
+  cena?: number | null
+}
+
+const isLockedRecordError = (error: unknown) => String((error as { message?: string } | null)?.message || '').includes('manual_record_locked_after_24h')
 
 export default function ZgodovinaServisa() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-  const [vnosi, setVnosi] = useState<any[]>([])
-  const [avto, setAvto] = useState<any>(null)
+  const [vnosi, setVnosi] = useState<ServiceHistoryEntry[]>([])
+  const [avto, setAvto] = useState<ServiceHistoryCar | null>(null)
   const [loading, setLoading] = useState(true)
   const [uredi, setUredi] = useState<string | null>(null)
-  const [editData, setEditData] = useState<any>({})
+  const [editData, setEditData] = useState<ServiceEditData>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(() => Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -39,14 +73,14 @@ export default function ZgodovinaServisa() {
       setCarId(selectedCarId)
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
-      setAvto(avtoData)
+      setAvto(avtoData as ServiceHistoryCar)
       const [servisiRes, summaryRes] = await Promise.all([
         supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
         supabase.from('service_logs').select('cena').eq('car_id', selectedCarId),
       ])
-      setVnosi(servisiRes.data || [])
+      setVnosi((servisiRes.data || []) as ServiceHistoryEntry[])
       setTotalCount(servisiRes.count || servisiRes.data?.length || 0)
-      setTotalAmount((summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena || 0), 0))
+      setTotalAmount(((summaryRes.data || []) as ServiceCostRow[]).reduce((sum, row) => sum + (row.cena || 0), 0))
       setLoading(false)
     }
     init()
@@ -54,27 +88,28 @@ export default function ZgodovinaServisa() {
     return () => clearInterval(timer)
   }, [])
 
-  const casZaklepa = (vnos: any) => {
+  const casZaklepa = (vnos: ServiceHistoryEntry) => {
     if (vnos.locked_at) return new Date(vnos.locked_at).getTime()
     return new Date(vnos.created_at).getTime() + 24 * 60 * 60 * 1000
   }
 
-  const jeZaklenjen = (vnos: any) => cas >= casZaklepa(vnos)
-  const jeUvozen = (vnos: any) => Boolean(vnos.import_batch_id || vnos.source_owner_label || vnos.opis?.includes('[Prejsnji lastnik]'))
-  const editable = (vnos: any) => jeUvozen(vnos) || !jeZaklenjen(vnos)
+  const jeZaklenjen = (vnos: ServiceHistoryEntry) => cas >= casZaklepa(vnos)
+  const jeUvozen = (vnos: ServiceHistoryEntry) => Boolean(vnos.import_batch_id || vnos.source_owner_label || vnos.opis?.includes('[Prejsnji lastnik]'))
+  const editable = (vnos: ServiceHistoryEntry) => jeUvozen(vnos) || !jeZaklenjen(vnos)
 
   const refreshVnosi = async () => {
+    if (!avto) return
     const [servisiRes, summaryRes] = await Promise.all([
       supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', avto.id).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
       supabase.from('service_logs').select('cena').eq('car_id', avto.id),
     ])
-    const servisi = servisiRes.data || []
-    setVnosi(servisi || [])
+    const servisi = (servisiRes.data || []) as ServiceHistoryEntry[]
+    setVnosi(servisi)
     setTotalCount(servisiRes.count || servisi.length || 0)
-    setTotalAmount((summaryRes.data || []).reduce((sum: number, row: any) => sum + (row.cena || 0), 0))
+    setTotalAmount(((summaryRes.data || []) as ServiceCostRow[]).reduce((sum, row) => sum + (row.cena || 0), 0))
   }
 
-  const preostaliCas = (vnos: any) => {
+  const preostaliCas = (vnos: ServiceHistoryEntry) => {
     const konec = casZaklepa(vnos)
     const preostalo = konec - cas
     if (preostalo <= 0) return null
@@ -90,19 +125,20 @@ export default function ZgodovinaServisa() {
     const from = vnosi.length
     const to = from + PAGE_SIZE - 1
     const { data } = await supabase.from('service_logs').select(serviceHistoryColumns).eq('car_id', carId).order('datum', { ascending: false }).range(from, to)
-    setVnosi(prev => [...prev, ...(data || [])])
+    setVnosi(prev => [...prev, ...((data || []) as ServiceHistoryEntry[])])
     setLoadingMore(false)
   }
 
   const skupajEurov = totalAmount
   const znakValute = currencySymbol(valuta)
-  const trustBadge = (vnos: any) => {
+  const trustBadge = (vnos: ServiceHistoryEntry) => {
     if (vnos.verification_level === 'strong') return { label: 'Strong', cls: 'bg-[#16a34a22] border-[#16a34a55] text-[#4ade80]' }
     if (vnos.verification_level === 'photo') return { label: 'Photo', cls: 'bg-[#3ecfcf22] border-[#3ecfcf55] text-[#3ecfcf]' }
     return { label: 'Basic', cls: 'bg-[#6c63ff22] border-[#6c63ff55] text-[#a09aff]' }
   }
 
   const shraniUredi = async (id: string) => {
+    if (!avto) return
     const existing = vnosi.find(v => v.id === id)
     if (existing && !editable(existing)) return
     setSaving(true)
@@ -126,6 +162,7 @@ export default function ZgodovinaServisa() {
   }
 
   const izbrisiVnos = async (id: string) => {
+    if (!avto) return
     const vnos = vnosi.find(v => v.id === id)
     if (!vnos || !editable(vnos)) return
     const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
@@ -156,6 +193,7 @@ export default function ZgodovinaServisa() {
   }
 
   const izbrisiIzbrane = async () => {
+    if (!avto) return
     const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
     const ids = selectedImported.filter(id => importedIds.includes(id))
     if (ids.length === 0) return
