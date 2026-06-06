@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/server-admin'
 
+type AuthUser = {
+  id: string
+  email?: string | null
+  created_at?: string | null
+  last_sign_in_at?: string | null
+}
+
+type VisibleUser = {
+  id: string
+  email: string
+  created_at?: string | null
+  last_sign_in_at?: string | null
+  plan: UserPlan | null
+}
+
+type UserPlan = Record<string, unknown> & {
+  email?: string
+  plan?: string
+  source?: string
+  billing_status?: string
+  locked?: boolean
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (auth.error) return auth.error
@@ -19,7 +42,7 @@ export async function GET(request: NextRequest) {
   let totalUsers: number | null = null
   let countPage = 1
   const countPerPage = 1000
-  const searchUsers: any[] = []
+  const searchUsers: AuthUser[] = []
   if (search || includeTotal) {
     totalUsers = 0
     const maxPages = search ? 5 : 10
@@ -34,7 +57,7 @@ export async function GET(request: NextRequest) {
   }
 
   const visibleUsers = (search ? searchUsers : authData.users)
-    .map((user: any) => {
+    .map((user: AuthUser): VisibleUser => {
       const email = user.email?.toLowerCase() || ''
       return {
         id: user.id,
@@ -44,18 +67,18 @@ export async function GET(request: NextRequest) {
         plan: null,
       }
     })
-    .filter((user: any) => !search || user.email.startsWith(search))
+    .filter((user) => !search || user.email.startsWith(search))
     .slice(0, perPage)
 
-  const visibleEmails = visibleUsers.map((user: any) => user.email).filter(Boolean)
-  let userPlans: any[] = []
+  const visibleEmails = visibleUsers.map((user) => user.email).filter(Boolean)
+  let userPlans: UserPlan[] = []
   if (visibleEmails.length > 0) {
     const { data, error } = await admin
       .from('user_plans')
       .select('*')
       .in('email', visibleEmails)
     if (error) return NextResponse.json({ error: 'plans_failed', details: error.message }, { status: 500 })
-    userPlans = data || []
+    userPlans = (data || []) as UserPlan[]
   }
 
   const { data: recentPlans, error: recentPlansError } = await admin
@@ -65,8 +88,8 @@ export async function GET(request: NextRequest) {
     .limit(8)
   if (recentPlansError) return NextResponse.json({ error: 'plans_failed', details: recentPlansError.message }, { status: 500 })
 
-  const planByEmail = new Map(userPlans.map((plan: any) => [String(plan.email).toLowerCase(), plan]))
-  const users = visibleUsers.map((user: any) => ({
+  const planByEmail = new Map(userPlans.map((plan) => [String(plan.email).toLowerCase(), plan]))
+  const users = visibleUsers.map((user) => ({
     ...user,
     plan: planByEmail.get(user.email) || null,
   }))
