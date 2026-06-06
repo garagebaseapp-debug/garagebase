@@ -8,6 +8,44 @@ const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
 const pushConfigured = Boolean(vapidEmail && vapidPublicKey && vapidPrivateKey)
 
+type PushSubscriptionRow = {
+  subscription?: Parameters<typeof webpush.sendNotification>[0] & {
+    endpoint?: string
+  }
+}
+
+type ReminderRow = {
+  tip?: string
+  datum?: string
+  km_opomnik?: number | string | null
+  cars?: {
+    znamka?: string
+    model?: string
+    km_trenutni?: number | string | null
+  }
+}
+
+function uniqueSubscriptions<T extends PushSubscriptionRow>(subs: T[]) {
+  return Array.from(
+    new Map(subs.map((sub) => [sub.subscription?.endpoint, sub])).values()
+  )
+}
+
+function hasSubscription<T extends PushSubscriptionRow>(sub: T): sub is T & { subscription: NonNullable<T['subscription']> } {
+  return Boolean(sub.subscription)
+}
+
+function pushErrorInfo(error: unknown) {
+  const source = typeof error === 'object' && error ? error as Record<string, unknown> : {}
+  return {
+    message: error instanceof Error ? error.message : String(source.message || 'push_failed'),
+    body: String(source.body || ''),
+    details: source.details,
+    hint: source.hint,
+    code: source.code,
+  }
+}
+
 if (pushConfigured) {
   webpush.setVapidDetails(vapidEmail!, vapidPublicKey!, vapidPrivateKey!)
 }
@@ -59,9 +97,9 @@ export async function POST(req: NextRequest) {
     if (remindersError) throw remindersError
 
     const messages: string[] = []
-    for (const op of reminders || []) {
+    for (const op of (reminders || []) as unknown as ReminderRow[]) {
       const avtoNaziv = `${op.cars?.znamka || ''} ${op.cars?.model || ''}`.trim()
-      const naziv = tipNaziv[op.tip] || op.tip || 'Opomnik'
+      const naziv = tipNaziv[op.tip || ''] || op.tip || 'Opomnik'
 
       if (op.datum) {
         const dniDo = Math.ceil(
@@ -95,9 +133,7 @@ export async function POST(req: NextRequest) {
       }, { status: 422 })
     }
 
-    const uniqueSubs = Array.from(
-      new Map(subs.map((sub: any) => [sub.subscription?.endpoint, sub])).values()
-    ) as any[]
+    const uniqueSubs = uniqueSubscriptions((subs || []) as PushSubscriptionRow[]).filter(hasSubscription)
 
     let sent = 0
     const failed: string[] = []
@@ -112,8 +148,9 @@ export async function POST(req: NextRequest) {
           })
         )
         sent++
-      } catch (error: any) {
-        failed.push(error.body || error.message || 'neznana napaka')
+      } catch (error: unknown) {
+        const info = pushErrorInfo(error)
+        failed.push(info.body || info.message || 'neznana napaka')
       }
     }
 
@@ -125,13 +162,14 @@ export async function POST(req: NextRequest) {
       sent,
       failed,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const info = pushErrorInfo(error)
     console.error('Reminder test napaka:', error)
     return NextResponse.json({
-      error: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
+      error: info.message,
+      details: info.details,
+      hint: info.hint,
+      code: info.code,
     }, { status: 500 })
   }
 }

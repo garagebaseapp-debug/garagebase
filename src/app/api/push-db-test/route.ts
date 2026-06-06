@@ -8,6 +8,31 @@ const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
 const pushConfigured = Boolean(vapidEmail && vapidPublicKey && vapidPrivateKey)
 
+type PushSubscriptionRow = {
+  subscription?: Parameters<typeof webpush.sendNotification>[0] & {
+    endpoint?: string
+  }
+}
+
+function uniqueSubscriptions<T extends PushSubscriptionRow>(subs: T[]) {
+  return Array.from(
+    new Map(subs.map((sub) => [sub.subscription?.endpoint, sub])).values()
+  )
+}
+
+function hasSubscription<T extends PushSubscriptionRow>(sub: T): sub is T & { subscription: NonNullable<T['subscription']> } {
+  return Boolean(sub.subscription)
+}
+
+function pushErrorInfo(error: unknown) {
+  const source = typeof error === 'object' && error ? error as Record<string, unknown> : {}
+  return {
+    message: error instanceof Error ? error.message : String(source.message || 'push_failed'),
+    statusCode: Number(source.statusCode || 0),
+    body: String(source.body || ''),
+  }
+}
+
 if (pushConfigured) {
   webpush.setVapidDetails(vapidEmail!, vapidPublicKey!, vapidPrivateKey!)
 }
@@ -36,9 +61,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'V bazi ni shranjene push povezave za ta racun.' }, { status: 404 })
     }
 
-    const uniqueSubs = Array.from(
-      new Map(subs.map((sub: any) => [sub.subscription?.endpoint, sub])).values()
-    ) as any[]
+    const uniqueSubs = uniqueSubscriptions((subs || []) as PushSubscriptionRow[]).filter(hasSubscription)
 
     let sent = 0
     let expired = 0
@@ -55,9 +78,10 @@ export async function POST(req: NextRequest) {
           })
         )
         sent++
-      } catch (error: any) {
-        if (error.statusCode === 404 || error.statusCode === 410) expired++
-        failed.push(error.body || error.message || 'neznana napaka')
+      } catch (error: unknown) {
+        const info = pushErrorInfo(error)
+        if (info.statusCode === 404 || info.statusCode === 410) expired++
+        failed.push(info.body || info.message || 'neznana napaka')
       }
     }
 
@@ -70,12 +94,13 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(result)
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const info = pushErrorInfo(error)
     console.error('Push DB test napaka:', error)
     return NextResponse.json({
-      error: error.message,
-      statusCode: error.statusCode,
-      body: error.body,
-    }, { status: error.statusCode || 500 })
+      error: info.message,
+      statusCode: info.statusCode,
+      body: info.body,
+    }, { status: info.statusCode || 500 })
   }
 }
