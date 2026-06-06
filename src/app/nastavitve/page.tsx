@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useState, useEffect } from 'react'
+import { type User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { BottomNav } from '@/lib/nav'
 import { saveStoredLanguage, type Language } from '@/lib/i18n'
@@ -51,6 +52,46 @@ const defaultNotificationSettings = {
   sendTime: '08:00',
 }
 
+type GarageCardSettings = {
+  tablica: boolean
+  km: boolean
+  opomnik: boolean
+  letnik: boolean
+  gorivo: boolean
+  opomnikRdeci: boolean
+  opomnikRumeni: boolean
+  opomnikZeleni: boolean
+  opomnikKmRdeci: boolean
+  opomnikKmRumeni: boolean
+  opomnikKmZeleni: boolean
+}
+
+type StoredSettings = Partial<{
+  nacin: 'lite' | 'full'
+  prikaznoIme: string
+  displayName: string
+  jezik: Language
+  pisava: number | string
+  fontPresetVersion: number | string
+  prikazGaraze: string
+  desktopStolpci: number
+  mobileGridStolpci: number
+  garazaPisava: number | string
+  avtocomplete: boolean
+  enotaRazdalje: 'km' | 'mi'
+  valuta: 'EUR' | 'USD'
+  tema: string
+  notificationSettings: Partial<typeof defaultNotificationSettings>
+  gridNastavitve: Partial<GarageCardSettings>
+  listaNastavitve: Partial<GarageCardSettings>
+}>
+
+type SettingsSnapshot = StoredSettings & {
+  [key: string]: unknown
+}
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+
 const settingsViewIds = ['vse', 'profil', 'varnost', 'prenos', 'uporaba', 'prikaz', 'pomoc', 'aplikacija', 'brisanje']
 const settingsViewAliases: Record<string, string> = {
   videz: 'prikaz',
@@ -76,7 +117,7 @@ function settingsViewFromUrl() {
 }
 
 export default function Nastavitve() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [prikaznoIme, setPrikaznoIme] = useState('')
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
@@ -102,12 +143,12 @@ export default function Nastavitve() {
   const [appLockLoading, setAppLockLoading] = useState(false)
   const [appLockMessage, setAppLockMessage] = useState('')
   const [patternDraft, setPatternDraft] = useState<number[]>([])
-  const [gridNastavitve, setGridNastavitve] = useState({
+  const [gridNastavitve, setGridNastavitve] = useState<GarageCardSettings>({
     tablica: true, km: true, opomnik: true, letnik: false, gorivo: false,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
     opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
   })
-  const [listaNastavitve, setListaNastavitve] = useState({
+  const [listaNastavitve, setListaNastavitve] = useState<GarageCardSettings>({
     letnik: true, gorivo: true, km: true, opomnik: true, tablica: true,
     opomnikRdeci: true, opomnikRumeni: true, opomnikZeleni: false,
     opomnikKmRdeci: true, opomnikKmRumeni: true, opomnikKmZeleni: false
@@ -139,7 +180,7 @@ export default function Nastavitve() {
     { value: 600, title: tx('Extra velika', 'Extra extra large'), desc: tx('Največja pisava', 'Largest text') },
   ]
 
-  const normalizeFontPercent = (value: any, version: any = 1) => {
+  const normalizeFontPercent = (value: unknown, version: unknown = 1) => {
     const explicitNewScale = Number(version) >= 2
     const explicitExtraScale = Number(version) >= 3
     if (typeof value === 'number' && Number.isFinite(value)) {
@@ -166,7 +207,7 @@ export default function Nastavitve() {
       'extra-velika': 600,
       najvecja: 600,
     }
-    return legacy[value] || 140
+    return legacy[String(value)] || 140
   }
 
   const fontRootPx = (value: number) => {
@@ -178,7 +219,7 @@ export default function Nastavitve() {
     return 16
   }
 
-  const normalizeGarageFont = (value: any) => {
+  const normalizeGarageFont = (value: unknown) => {
     const next = Number(value)
     if (!Number.isFinite(next)) return 100
     if (next >= 160) return 110
@@ -214,7 +255,7 @@ export default function Nastavitve() {
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
   }
 
-  const applyFontSize = (value: any, version: any = 3) => {
+  const applyFontSize = (value: unknown, version: unknown = 3) => {
     const next = normalizeFontPercent(value, version)
     const rootPx = fontRootPx(next)
     requestAnimationFrame(() => {
@@ -230,7 +271,7 @@ export default function Nastavitve() {
     applyFontSize(next, 3)
   }
 
-  const trackSettingsSnapshot = (eventName: string, values: any = {}) => {
+  const trackSettingsSnapshot = (eventName: string, values: SettingsSnapshot = {}) => {
     trackEvent(eventName, {
       usageMode: values.nacin || nacin,
       language: values.jezik || jezik,
@@ -283,7 +324,7 @@ export default function Nastavitve() {
       if (!user) { window.location.href = '/'; return }
       setUser(user)
       const shranjeneNastavitve = localStorage.getItem('garagebase_nastavitve')
-      let loadedSettings: any = {}
+      let loadedSettings: SettingsSnapshot = {}
       if (shranjeneNastavitve) {
         const n = JSON.parse(shranjeneNastavitve)
         loadedSettings = n
@@ -430,9 +471,9 @@ export default function Nastavitve() {
 
       setMessage('Test poslan. Najprej mora priti lokalni test, nato server push.')
       setTimeout(() => setMessage(''), 3000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Test obvestila:', error)
-      setMessage(`Test obvestila ni uspel: ${error.message || 'neznana napaka'}`)
+      setMessage(`Test obvestila ni uspel: ${getErrorMessage(error) || 'neznana napaka'}`)
     }
     setTestLoading(false)
   }
@@ -472,9 +513,9 @@ export default function Nastavitve() {
 
       setMessage(`Test iz baze poslan (${result.sent || 0}/${result.found || result.sent || 0} naprav).`)
       setTimeout(() => setMessage(''), 6000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Test iz baze:', error)
-      setMessage(`Test iz baze ni uspel: ${error.message || 'neznana napaka'}`)
+      setMessage(`Test iz baze ni uspel: ${getErrorMessage(error) || 'neznana napaka'}`)
     }
     setDbTestLoading(false)
   }
@@ -503,9 +544,9 @@ export default function Nastavitve() {
 
       setMessage(`Test opomnikov poslan: ${result.redReminders} rdecih opomnikov, ${result.sent}/${result.devices} naprav.`)
       setTimeout(() => setMessage(''), 7000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Test opomnikov:', error)
-      setMessage(`Test opomnikov ni uspel: ${error.message || 'neznana napaka'}`)
+      setMessage(`Test opomnikov ni uspel: ${getErrorMessage(error) || 'neznana napaka'}`)
     }
     setReminderTestLoading(false)
   }
@@ -531,10 +572,10 @@ export default function Nastavitve() {
         setMessage('')
         setNotificationSaveState('idle')
       }, 3000)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Shranjevanje nastavitev obvestil:', error)
       setNotificationSaveState('error')
-      setMessage(`Nastavitev obvestil ni bilo mogoce shraniti: ${error.message || 'neznana napaka'}`)
+      setMessage(`Nastavitev obvestil ni bilo mogoce shraniti: ${getErrorMessage(error) || 'neznana napaka'}`)
       setTimeout(() => setNotificationSaveState('idle'), 4000)
     }
   }
@@ -789,8 +830,8 @@ export default function Nastavitve() {
       localStorage.clear()
       await supabase.auth.signOut()
       window.location.href = '/'
-    } catch (error: any) {
-      setMessage(`Računa ni bilo mogoče izbrisati: ${error.message || 'neznana napaka'}`)
+    } catch (error: unknown) {
+      setMessage(`Računa ni bilo mogoče izbrisati: ${getErrorMessage(error) || 'neznana napaka'}`)
       setDeleteLoading(false)
     }
   }
@@ -802,20 +843,23 @@ export default function Nastavitve() {
     green: 'bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.12)]',
   }
 
-  const opomnikFilter = (nastavitve: any, setNastavitve: any) => (
+  const opomnikFilter = (
+    nastavitve: GarageCardSettings,
+    setNastavitve: (updater: GarageCardSettings | ((prev: GarageCardSettings) => GarageCardSettings)) => void
+  ) => (
     <div className="mt-3 pt-3 border-t border-[#1e1e32] flex flex-col gap-3">
 
       {/* Datumski opomniki */}
       <div>
         <p className="text-[#5a5a80] text-xs mb-2">{jezik === 'en' ? 'Show date reminders:' : 'Prikaži datumske opomnike:'}</p>
         <div className="flex gap-2">
-          {[
+          {([
             { key: 'opomnikRdeci', tone: 'red', naziv: jezik === 'en' ? 'Urgent' : 'Nujni', opis: '<7 dni' },
             { key: 'opomnikRumeni', tone: 'yellow', naziv: jezik === 'en' ? 'Soon' : 'Kmalu', opis: '<30 dni' },
             { key: 'opomnikZeleni', tone: 'green', naziv: jezik === 'en' ? 'All' : 'Vsi', opis: '>30 dni' },
-          ].map((item) => (
+          ] as Array<{ key: keyof GarageCardSettings; tone: keyof typeof reminderTone; naziv: string; opis: string }>).map((item) => (
             <button key={item.key}
-              onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+              onClick={() => setNastavitve((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
               className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
                 nastavitve[item.key]
                   ? 'bg-[#6c63ff22] border-[#6c63ff66]'
@@ -835,13 +879,13 @@ export default function Nastavitve() {
       <div>
         <p className="text-[#5a5a80] text-xs mb-2">{jezik === 'en' ? 'Show mileage reminders:' : 'Prikaži km opomnike:'}</p>
         <div className="flex gap-2">
-          {[
+          {([
             { key: 'opomnikKmRdeci', tone: 'red', naziv: jezik === 'en' ? 'Urgent' : 'Nujni', opis: '<500 km' },
             { key: 'opomnikKmRumeni', tone: 'yellow', naziv: jezik === 'en' ? 'Soon' : 'Kmalu', opis: '<1500 km' },
             { key: 'opomnikKmZeleni', tone: 'green', naziv: jezik === 'en' ? 'All' : 'Vsi', opis: '>1500 km' },
-          ].map((item) => (
+          ] as Array<{ key: keyof GarageCardSettings; tone: keyof typeof reminderTone; naziv: string; opis: string }>).map((item) => (
             <button key={item.key}
-              onClick={() => setNastavitve((prev: any) => ({ ...prev, [item.key]: !prev[item.key] }))}
+              onClick={() => setNastavitve((prev) => ({ ...prev, [item.key]: !prev[item.key] }))}
               className={`flex-1 py-2 px-1 rounded-xl border text-center transition-all ${
                 nastavitve[item.key]
                   ? 'bg-[#6c63ff22] border-[#6c63ff66]'
@@ -1240,10 +1284,10 @@ export default function Nastavitve() {
           <div>
             <p className="mb-2 text-sm font-semibold text-white">{tx('Enota razdalje', 'Distance unit')}</p>
             <div className="grid grid-cols-2 gap-2">
-              {[
+              {([
                 { value: 'km', label: tx('Kilometri', 'Kilometers') },
                 { value: 'mi', label: tx('Milje', 'Miles') },
-              ].map((item) => (
+              ] as Array<{ value: 'km' | 'mi'; label: string }>).map((item) => (
                 <button key={item.value} type="button" onClick={() => setEnotaRazdalje(item.value as 'km' | 'mi')}
                   className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-all ${
                     enotaRazdalje === item.value ? 'border-[#3ecfcf66] bg-[#3ecfcf22] text-[#3ecfcf]' : 'border-[#1e1e32] bg-[#13131f] text-[#5a5a80]'
@@ -1426,20 +1470,20 @@ export default function Nastavitve() {
           <div className="mt-4 pt-4 border-t border-[#1e1e32]">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži v grid kockici</p>
             <div className="flex flex-col gap-3">
-              {[
+              {([
                 { key: 'tablica', naziv: 'Registrska tablica' },
                 { key: 'km', naziv: 'Kilometri' },
                 { key: 'opomnik', naziv: 'Opomniki na kartici' },
                 { key: 'letnik', naziv: 'Letnik' },
                 { key: 'gorivo', naziv: 'Tip goriva' },
-              ].map((item) => (
+              ] as Array<{ key: keyof GarageCardSettings; naziv: string }>).map((item) => (
                 <div key={item.key} className="flex justify-between items-center">
                   <p className="text-white text-sm">{item.naziv}</p>
                   <button
                     onClick={() => {
-                      setGridNastavitve((prev: any) => {
+                      setGridNastavitve((prev) => {
                         const nextValue = !prev[item.key]
-                        setListaNastavitve((listPrev: any) => ({ ...listPrev, [item.key]: nextValue }))
+                        setListaNastavitve((listPrev) => ({ ...listPrev, [item.key]: nextValue }))
                         return { ...prev, [item.key]: nextValue }
                       })
                     }}
@@ -1453,10 +1497,10 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
-            {gridNastavitve.opomnik && opomnikFilter(gridNastavitve, (updater: any) => {
-                setGridNastavitve((prev: any) => {
+            {gridNastavitve.opomnik && opomnikFilter(gridNastavitve, (updater) => {
+                setGridNastavitve((prev) => {
                   const next = typeof updater === 'function' ? updater(prev) : updater
-                  setListaNastavitve((listPrev: any) => ({ ...listPrev, ...next }))
+                  setListaNastavitve((listPrev) => ({ ...listPrev, ...next }))
                   return next
                 })
               })}
@@ -1468,20 +1512,20 @@ export default function Nastavitve() {
           <div className="mt-4 pt-4 border-t border-[#1e1e32]">
             <p className="text-[#5a5a80] text-xs uppercase tracking-wider mb-3">Prikaži na kartici</p>
             <div className="flex flex-col gap-3">
-              {[
+              {([
                 { key: 'letnik', naziv: 'Letnik' },
                 { key: 'gorivo', naziv: 'Gorivo' },
                 { key: 'km', naziv: 'Kilometri' },
                 { key: 'tablica', naziv: 'Registrska tablica' },
                 { key: 'opomnik', naziv: 'Opomniki na kartici' },
-              ].map((item) => (
+              ] as Array<{ key: keyof GarageCardSettings; naziv: string }>).map((item) => (
                 <div key={item.key} className="flex justify-between items-center">
                   <p className="text-white text-sm">{item.naziv}</p>
                   <button
                     onClick={() => {
-                      setListaNastavitve((prev: any) => {
+                      setListaNastavitve((prev) => {
                         const nextValue = !prev[item.key]
-                        setGridNastavitve((gridPrev: any) => ({ ...gridPrev, [item.key]: nextValue }))
+                        setGridNastavitve((gridPrev) => ({ ...gridPrev, [item.key]: nextValue }))
                         return { ...prev, [item.key]: nextValue }
                       })
                     }}
@@ -1495,10 +1539,10 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
-            {listaNastavitve.opomnik && opomnikFilter(listaNastavitve, (updater: any) => {
-                setListaNastavitve((prev: any) => {
+            {listaNastavitve.opomnik && opomnikFilter(listaNastavitve, (updater) => {
+                setListaNastavitve((prev) => {
                   const next = typeof updater === 'function' ? updater(prev) : updater
-                  setGridNastavitve((gridPrev: any) => ({ ...gridPrev, ...next }))
+                  setGridNastavitve((gridPrev) => ({ ...gridPrev, ...next }))
                   return next
                 })
               })}
