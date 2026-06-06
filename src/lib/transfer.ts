@@ -38,9 +38,20 @@ export function getTokenFromScanValue(value: string) {
   }
 }
 
-export function cleanTransferRows(rows: any[], carId: string, transferId?: string) {
+type TransferRow = Record<string, unknown> & {
+  id?: string
+  created_at?: string
+  updated_at?: string
+  car_id?: string
+  source_transfer_id?: string | null
+  source_entry_id?: string | null
+  source_owner_label?: string | null
+  verification_level?: string | null
+}
+
+export function cleanTransferRows(rows: TransferRow[], carId: string, transferId?: string) {
   return rows.map(({ id, created_at, updated_at, car_id, source_transfer_id, source_entry_id, source_owner_label, ...rest }) => {
-    const row: any = { ...rest, car_id: carId }
+    const row: TransferRow = { ...rest, car_id: carId }
     if (transferId || source_transfer_id || source_entry_id) {
       row.source_transfer_id = transferId || source_transfer_id || null
       row.source_entry_id = source_entry_id || id || null

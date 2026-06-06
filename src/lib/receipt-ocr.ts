@@ -134,10 +134,23 @@ export const isReceiptImageOcrSupported = () => {
 }
 
 export const readReceiptTextFromImage = async (file: File): Promise<string> => {
-  const win = window as any
+  type TextDetection = {
+    rawValue?: string
+    text?: string
+  }
+  type WindowWithTextDetector = Window & typeof globalThis & {
+    TextDetector?: new () => {
+      detect: (bitmap: ImageBitmap) => Promise<TextDetection[]>
+    }
+  }
+  type ErrorWithCode = Error & {
+    code?: string
+  }
+
+  const win = window as WindowWithTextDetector
   if (!win.TextDetector) {
-    const error = new Error('TEXT_DETECTOR_UNSUPPORTED')
-    ;(error as any).code = 'TEXT_DETECTOR_UNSUPPORTED'
+    const error: ErrorWithCode = new Error('TEXT_DETECTOR_UNSUPPORTED')
+    error.code = 'TEXT_DETECTOR_UNSUPPORTED'
     throw error
   }
   const bitmap = await createImageBitmap(file)
@@ -145,7 +158,7 @@ export const readReceiptTextFromImage = async (file: File): Promise<string> => {
   const detections = await detector.detect(bitmap)
   bitmap.close?.()
   return detections
-    .map((item: any) => item.rawValue || item.text || '')
+    .map((item) => item.rawValue || item.text || '')
     .filter(Boolean)
     .join('\n')
 }
