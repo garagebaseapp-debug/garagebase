@@ -66,7 +66,7 @@ export default function ZgodovinaGoriva() {
   const [uredi, setUredi] = useState<string | null>(null)
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
-  const [cas, setCas] = useState(Date.now())
+  const [cas, setCas] = useState(() => Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [selectedImported, setSelectedImported] = useState<string[]>([])
   const [bulkEditMode, setBulkEditMode] = useState(false)
@@ -186,7 +186,7 @@ export default function ZgodovinaGoriva() {
     const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
     const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
     setVnosi(gorivo)
-    localStorage.setItem(`garagebase_fuel_history_cache_${avto.id}`, JSON.stringify({ rows: gorivo, savedAt: Date.now() }))
+    localStorage.setItem(`garagebase_fuel_history_cache_${avto.id}`, JSON.stringify({ rows: gorivo, savedAt: cas }))
     saveFuelCostSummary(avto.id, summaryRows)
     setTotalCount(gorivoRes.count || gorivo.length || 0)
     setSummary({
@@ -227,7 +227,7 @@ export default function ZgodovinaGoriva() {
     return null
   }
 
-  const SummaryCard = ({ title, data, tone }: { title: string; data: { liters: number; amount: number; count: number }; tone: 'app' | 'import' | 'total' }) => {
+  const summaryCard = (title: string, data: { liters: number; amount: number; count: number }, tone: 'app' | 'import' | 'total') => {
     const styles = tone === 'total'
       ? 'border-[#3ecfcf55] bg-[#3ecfcf10]'
       : tone === 'import'
@@ -366,11 +366,11 @@ export default function ZgodovinaGoriva() {
 
       {vnosi.length > 0 && (
         <div className={`grid grid-cols-1 gap-3 mb-6 ${hasImportedSummary ? 'xl:grid-cols-3' : ''}`}>
-          <SummaryCard title={hasImportedSummary ? tx('GarageBase vnosi', 'GarageBase entries') : tx('Skupne vrednosti', 'Combined totals')} data={primarySummary} tone={hasImportedSummary ? 'app' : 'total'} />
+          {summaryCard(hasImportedSummary ? tx('GarageBase vnosi', 'GarageBase entries') : tx('Skupne vrednosti', 'Combined totals'), primarySummary, hasImportedSummary ? 'app' : 'total')}
           {hasImportedSummary && (
             <>
-              <SummaryCard title={tx('Uvozena zgodovina', 'Imported history')} data={summary.imported} tone="import" />
-              <SummaryCard title={tx('Skupne vrednosti', 'Combined totals')} data={summary.total} tone="total" />
+              {summaryCard(tx('Uvozena zgodovina', 'Imported history'), summary.imported, 'import')}
+              {summaryCard(tx('Skupne vrednosti', 'Combined totals'), summary.total, 'total')}
             </>
           )}
         </div>

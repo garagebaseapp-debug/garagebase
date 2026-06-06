@@ -175,7 +175,7 @@ export default function ScanPage() {
     return () => ustaviKamero()
   }, [])
 
-  const naloziToken = async (raw: string) => {
+  async function naloziToken(raw: string) {
     const token = getTokenFromScanValue(raw)
     if (!token) return
     setLoading(true)
@@ -244,7 +244,7 @@ export default function ScanPage() {
     }
   }
 
-  const ustaviKamero = () => {
+  function ustaviKamero() {
     streamRef.current?.getTracks().forEach(track => track.stop())
     streamRef.current = null
     setCameraOn(false)

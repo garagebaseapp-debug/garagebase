@@ -217,9 +217,11 @@ export default function Nastavitve() {
   const applyFontSize = (value: any, version: any = 3) => {
     const next = normalizeFontPercent(value, version)
     const rootPx = fontRootPx(next)
-    document.documentElement.style.fontSize = `${rootPx}px`
-    document.documentElement.style.setProperty('--gb-app-font-scale', '1')
-    document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16))
+    requestAnimationFrame(() => {
+      document.documentElement.style.fontSize = `${rootPx}px`
+      document.documentElement.style.setProperty('--gb-app-font-scale', '1')
+      document.documentElement.style.setProperty('--gb-text-font-scale', String(rootPx / 16))
+    })
   }
 
   const spremeniPisavo = (value: number) => {
@@ -580,7 +582,9 @@ export default function Nastavitve() {
 
   useEffect(() => {
     if (!settingsReady) return
-    setSettingsSaveState('saving')
+    queueMicrotask(() => {
+      setSettingsSaveState('saving')
+    })
     const timer = window.setTimeout(() => {
       shrani(false)
       window.setTimeout(() => setSettingsSaveState('idle'), 1800)
@@ -798,7 +802,7 @@ export default function Nastavitve() {
     green: 'bg-[#22c55e] shadow-[0_0_0_3px_rgba(34,197,94,0.12)]',
   }
 
-  const OpomnikFilter = ({ nastavitve, setNastavitve }: { nastavitve: any, setNastavitve: any }) => (
+  const opomnikFilter = (nastavitve: any, setNastavitve: any) => (
     <div className="mt-3 pt-3 border-t border-[#1e1e32] flex flex-col gap-3">
 
       {/* Datumski opomniki */}
@@ -1449,15 +1453,13 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
-            {gridNastavitve.opomnik && (
-              <OpomnikFilter nastavitve={gridNastavitve} setNastavitve={(updater: any) => {
+            {gridNastavitve.opomnik && opomnikFilter(gridNastavitve, (updater: any) => {
                 setGridNastavitve((prev: any) => {
                   const next = typeof updater === 'function' ? updater(prev) : updater
                   setListaNastavitve((listPrev: any) => ({ ...listPrev, ...next }))
                   return next
                 })
-              }} />
-            )}
+              })}
           </div>
         )}
 
@@ -1493,15 +1495,13 @@ export default function Nastavitve() {
                 </div>
               ))}
             </div>
-            {listaNastavitve.opomnik && (
-              <OpomnikFilter nastavitve={listaNastavitve} setNastavitve={(updater: any) => {
+            {listaNastavitve.opomnik && opomnikFilter(listaNastavitve, (updater: any) => {
                 setListaNastavitve((prev: any) => {
                   const next = typeof updater === 'function' ? updater(prev) : updater
                   setGridNastavitve((gridPrev: any) => ({ ...gridPrev, ...next }))
                   return next
                 })
-              }} />
-            )}
+              })}
           </div>
         )}
       </div>

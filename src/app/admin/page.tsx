@@ -292,6 +292,7 @@ const topSuggestionTerms = (items: any[]) => {
 export default function AdminPage() {
   const { language } = useLanguage()
   const [loading, setLoading] = useState(true)
+  const [adminOpenedAt] = useState(() => Date.now())
   const [isAdmin, setIsAdmin] = useState(false)
   const [message, setMessage] = useState('')
   const [stats, setStats] = useState<any>({
@@ -396,7 +397,7 @@ export default function AdminPage() {
     setActiveAdminTab(tab)
     if (tab === 'inbox') {
       try {
-        localStorage.setItem('garagebase_admin_inbox_seen_at', String(Date.now()))
+        localStorage.setItem('garagebase_admin_inbox_seen_at', String(adminOpenedAt))
         setAdminInboxNotice('')
       } catch {}
     }
@@ -431,7 +432,9 @@ export default function AdminPage() {
     if (activeAdminTab !== 'users') return
     const query = testerSearch.trim()
     if (query.length < 1) {
-      setTesterCandidates([])
+      queueMicrotask(() => {
+        setTesterCandidates([])
+      })
       return
     }
 
@@ -441,7 +444,7 @@ export default function AdminPage() {
     return () => window.clearTimeout(timer)
   }, [testerSearch, isAdmin, activeAdminTab])
 
-  const refreshAdminData = async () => {
+  async function refreshAdminData() {
     setRefreshingAdmin(true)
     await loadAdminData()
     setRefreshingAdmin(false)
@@ -462,7 +465,7 @@ export default function AdminPage() {
     return count || 0
   }
 
-  const loadAdminData = async () => {
+  async function loadAdminData() {
     setMessage('')
     try {
       const now = Date.now()
@@ -821,7 +824,7 @@ export default function AdminPage() {
     }
   }
 
-  const loadAdminUsers = async (search = userSearch) => {
+  async function loadAdminUsers(search = userSearch) {
     setUsersLoading(true)
     try {
       const { data: sessionData } = await supabase.auth.getSession()
@@ -859,7 +862,7 @@ export default function AdminPage() {
     setPaidConfirm('')
   }
 
-  const loadTesterCandidates = async (search = testerSearch) => {
+  async function loadTesterCandidates(search = testerSearch) {
     const query = search.trim()
     if (query.length < 2) return
     setTesterSearchLoading(true)
