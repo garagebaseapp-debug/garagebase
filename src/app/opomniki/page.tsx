@@ -5,10 +5,35 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 
+type ReminderCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | null
+}
+
+type Reminder = {
+  id: string
+  car_id?: string | null
+  tip: string
+  datum?: string | null
+  km_opomnik?: number | null
+  opozorilo_dni_prej?: number | null
+  status?: 'active' | 'completed' | 'archived' | string | null
+  completed_at?: string | null
+  completed_note?: string | null
+}
+
+type ReminderDisplay = Reminder & {
+  items?: Reminder[]
+}
+
+type ReminderLabels = Record<string, string>
+
 export default function Opomniki() {
   const { language } = useLanguage()
-  const [avto, setAvto] = useState<any>(null)
-  const [opomniki, setOpomniki] = useState<any[]>([])
+  const [avto, setAvto] = useState<ReminderCar | null>(null)
+  const [opomniki, setOpomniki] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [tip, setTip] = useState('registracija')
@@ -60,15 +85,15 @@ export default function Opomniki() {
       }
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
-      setAvto(avtoData)
+      setAvto(avtoData as ReminderCar)
       const { data: opData } = await supabase.from('reminders').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setOpomniki(opData || [])
+      setOpomniki((opData || []) as Reminder[])
       setLoading(false)
     }
     init()
   }, [])
 
-  const dniDo = (datum: string) => {
+  const dniDo = (datum: string | null | undefined) => {
     if (!datum) return null
     return Math.ceil((new Date(datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
   }
@@ -110,8 +135,8 @@ export default function Opomniki() {
     return { text: 'text-[#3ecfcf]', bg: 'bg-[#3ecfcf11]', border: 'border-[#3ecfcf33]' }
   }
 
-  const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
-  const tipNaziv: any = {
+  const tipIkona: ReminderLabels = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
+  const tipNaziv: ReminderLabels = {
     dokumenti: tx('Dokumenti vozila', 'Vehicle documents'),
     registracija: tx('Registracija', 'Registration'),
     vinjeta: tx('Vinjeta', 'Vignette'),
@@ -132,6 +157,7 @@ export default function Opomniki() {
   }
 
   const shrani = async () => {
+    if (!avto) { setMessage(tx('Vozilo se se nalaga.', 'Vehicle is still loading.')); return }
     if (!datum && !kmOpomnik) { setMessage(tx('Vnesi datum ali km!', 'Enter a date or mileage!')); return }
     if (tip === 'custom' && !tipCustom) { setMessage(tx('Vnesi naziv opomnika!', 'Enter reminder name!')); return }
     if (tip === 'dokumenti' && !datum) { setMessage(tx('Za dokumente vozila vnesi datum.', 'Enter a date for vehicle documents.')); return }
@@ -164,7 +190,7 @@ export default function Opomniki() {
     if (error) { setMessage(`${tx('Napaka:', 'Error:')} ${error.message}`) }
     else {
       const { data } = await supabase.from('reminders').select('*').eq('car_id', avto.id).order('datum', { ascending: true })
-      setOpomniki(data || [])
+      setOpomniki((data || []) as Reminder[])
       setShowForm(false)
       setDatum(''); setKmOpomnik(''); setTipCustom(''); setOpozoriloDniCustom(''); setPaketLetniDokumenti(false); setIzbraniDokumenti(['registracija', 'tehnicni', 'zavarovanje'])
       setTip('registracija'); setOpozoriloDni('30')
@@ -174,11 +200,13 @@ export default function Opomniki() {
   }
 
   const izbrisiOpomnik = async (id: string) => {
+    if (!avto) return
     await supabase.from('reminders').delete().eq('id', id).eq('car_id', avto.id)
     setOpomniki(opomniki.filter(o => o.id !== id))
   }
 
   const izbrisiOpomnike = async (ids: string[]) => {
+    if (!avto) return
     if (ids.length === 1) {
       await izbrisiOpomnik(ids[0])
       return
@@ -241,7 +269,7 @@ export default function Opomniki() {
 
   const formatIcsDate = (value: string) => value.replace(/-/g, '')
 
-  const prenesiKoledar = (op: any) => {
+  const prenesiKoledar = (op: ReminderDisplay) => {
     if (!op.datum) {
       setMessage(tx('Za koledar mora imeti opomnik datum.', 'A reminder must have a date to export it to calendar.'))
       return
@@ -251,12 +279,12 @@ export default function Opomniki() {
     const jePaket = opomnikiZaKoledar.length > 1
     const naziv = jePaket ? tipNaziv.dokumenti : (tipNaziv[op.tip] || op.tip)
     const dokumentiOpis = jePaket
-      ? `${tx('Dokumenti', 'Documents')}: ${opomnikiZaKoledar.map((item: any) => tipNaziv[item.tip] || item.tip).join(', ')}`
+      ? `${tx('Dokumenti', 'Documents')}: ${opomnikiZaKoledar.map((item) => tipNaziv[item.tip] || item.tip).join(', ')}`
       : ''
     const avtoNaziv = `${avto?.znamka || ''} ${avto?.model || ''}`.trim()
     const prioriteta = koledarPrioritete[op.id] || '5'
     const start = formatIcsDate(op.datum)
-    const uid = `garagebase-${jePaket ? opomnikiZaKoledar.map((item: any) => item.id).join('-') : op.id}@getgaragebase.com`
+    const uid = `garagebase-${jePaket ? opomnikiZaKoledar.map((item) => item.id).join('-') : op.id}@getgaragebase.com`
     const now = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
     const opis = [
       `${tx('Vozilo', 'Vehicle')}: ${avtoNaziv}`,
@@ -310,10 +338,10 @@ export default function Opomniki() {
   const kmOpomniki = activeOpomniki.filter((op) => op.km_opomnik)
   const datumskiOpomniki = activeOpomniki.filter((op) => op.datum)
   const uporabljeniOpomniki = new Set<string>()
-  const prikazOpomnikov: any[] = []
-  const prikazOpravljenihOpomnikov: any[] = []
-  const dokumentKljuči = new Map<string, any[]>()
-  const opravljeniDokumentKljuči = new Map<string, any[]>()
+  const prikazOpomnikov: ReminderDisplay[] = []
+  const prikazOpravljenihOpomnikov: ReminderDisplay[] = []
+  const dokumentKljuči = new Map<string, Reminder[]>()
+  const opravljeniDokumentKljuči = new Map<string, Reminder[]>()
 
   activeOpomniki.forEach((op) => {
     if (op.datum && dokumentTipi.includes(op.tip) && !op.km_opomnik) {
@@ -554,7 +582,7 @@ export default function Opomniki() {
                       <p className="text-white font-semibold">{tipNaziv[op.tip] || op.tip}</p>
                       {jePaket && (
                         <div className="mt-1 flex flex-wrap gap-1.5">
-                          {items.map((item: any) => (
+                          {items.map((item) => (
                             <span key={item.id} className="rounded-lg border border-[#3ecfcf44] bg-[#3ecfcf11] px-2 py-1 text-[10px] font-black text-[#3ecfcf]">
                               {tipNaziv[item.tip] || item.tip}
                             </span>
@@ -570,22 +598,22 @@ export default function Opomniki() {
                   <div className="flex flex-col gap-2">
                     {pogled === 'active' ? (
                       <>
-                        <button onClick={() => oznaciOpomnikeOpravljeno(items.map((item: any) => item.id))}
+                        <button onClick={() => oznaciOpomnikeOpravljeno(items.map((item) => item.id))}
                           className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff18] px-3 py-2 text-xs font-black text-[#8b5cf6] hover:bg-[#6c63ff2a] transition-colors">
                           {tx('Označi', 'Mark done')}
                         </button>
-                        <button onClick={() => izbrisiOpomnike(items.map((item: any) => item.id))}
+                        <button onClick={() => izbrisiOpomnike(items.map((item) => item.id))}
                           className="rounded-xl border border-[#ef444433] bg-[#ef444422] px-3 py-2 text-xs font-black text-[#ef4444] hover:bg-[#ef444444] transition-colors">
                           {tx('Izbriši', 'Delete')}
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => obnoviOpomnike(items.map((item: any) => item.id))}
+                        <button onClick={() => obnoviOpomnike(items.map((item) => item.id))}
                           className="rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-3 py-2 text-xs font-black text-[#c8c4ff] hover:bg-[#6c63ff33] transition-colors">
                           {tx('Obnovi', 'Restore')}
                         </button>
-                        <button onClick={() => arhivirajOpomnike(items.map((item: any) => item.id))}
+                        <button onClick={() => arhivirajOpomnike(items.map((item) => item.id))}
                           className="rounded-xl border border-[#5a5a8044] bg-[#13131f] px-3 py-2 text-xs font-black text-[#8a8aa8] hover:text-white transition-colors">
                           {tx('Arhiviraj', 'Archive')}
                         </button>
