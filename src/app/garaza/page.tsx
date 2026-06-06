@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, NavIcon } from '@/lib/nav'
@@ -9,13 +9,92 @@ import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 import { TireSeasonIcon } from '@/lib/tire-icon'
 
-const tipIkona: any = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
+type Vehicle = Record<string, unknown> & {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  barva?: string | null
+  tablica?: string | null
+  km_trenutni?: number | string | null
+  tip_vozila?: string | null
+  oblika?: string | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  arhivirano?: boolean | null
+  sort_order?: number | string | null
+  user_id?: string | null
+  history_exported_at?: string | null
+  archive_reminder_dismissed_until?: string | null
+}
+
+type Reminder = Record<string, unknown> & {
+  id?: string | null
+  car_id?: string | null
+  tip?: string | null
+  datum?: string | null
+  km_opomnik?: number | string | null
+  opozori_dni_prej?: number | string | null
+  status?: string | null
+}
+
+type LiteHistoryItem = {
+  id: string
+  kind: 'fuel' | 'service' | 'expense'
+  type: string
+  icon: string
+  date: string
+  title: string
+  meta: string
+  amount: string
+}
+
+type LiteSourceRow = Record<string, unknown> & {
+  id?: string | number | null
+  datum?: string | null
+  created_at?: string | null
+  km?: number | string | null
+  litri?: number | string | null
+  cena_skupaj?: number | string | null
+  cena?: number | string | null
+  znesek?: number | string | null
+  postaja?: string | null
+  opis?: string | null
+  servis?: string | null
+  kategorija?: string | null
+}
+
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>
+  userChoice?: Promise<{ outcome?: string }>
+}
+
+type GarageStyle = CSSProperties & Record<string, string | number>
+type ReminderBadge = Reminder & {
+  dni?: number
+  preostaloKm?: number
+  tip_prikaza: 'datum' | 'km'
+}
+type ReminderDisplaySettings = {
+  opomnikRdeci?: boolean
+  opomnikRumeni?: boolean
+  opomnikZeleni?: boolean
+  opomnikKmRdeci?: boolean
+  opomnikKmRumeni?: boolean
+  opomnikKmZeleni?: boolean
+}
+
+const tipIkona: Record<string, string> = { registracija: '📋', vinjeta: '🛣️', tehnicni: '🔍', servis: '🔧', zavarovanje: '🛡️', gume: '⚫' }
 
 export default function Garaza() {
   const router = useRouter()
-  const [avti, setAvti] = useState<any[]>([])
+  const [avti, setAvti] = useState<Vehicle[]>([])
   const [brokenImageUrls, setBrokenImageUrls] = useState<Record<string, boolean>>({})
-  const [opomniki, setOpomniki] = useState<{ [key: string]: any[] }>({})
+  const [opomniki, setOpomniki] = useState<Record<string, Reminder[]>>({})
   const [loading, setLoading] = useState(true)
   const [urejanje, setUrejanje] = useState(false)
   const [arhiv, setArhiv] = useState(false)
@@ -26,7 +105,7 @@ export default function Garaza() {
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
   const [renderNowMs] = useState(() => Date.now())
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>(() => {
     if (typeof window === 'undefined') return 'full'
     try {
@@ -45,7 +124,7 @@ export default function Garaza() {
   const [liteDetailOpen, setLiteDetailOpen] = useState(false)
   const [liteUrejanje, setLiteUrejanje] = useState(false)
   const [liteHistoryOpen, setLiteHistoryOpen] = useState(false)
-  const [liteHistory, setLiteHistory] = useState<any[]>([])
+  const [liteHistory, setLiteHistory] = useState<LiteHistoryItem[]>([])
   const [liteHistoryLoading, setLiteHistoryLoading] = useState(false)
   const [liteHistoryFilters, setLiteHistoryFilters] = useState({ fuel: true, service: true, expense: true })
   const [garazaPisava, setGarazaPisava] = useState(100)
@@ -62,15 +141,15 @@ export default function Garaza() {
   })
   const dragOver = useRef<number | null>(null)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-  const normalizeGarageFont = (value: any) => {
+  const normalizeGarageFont = (value: unknown) => {
     const next = Number(value)
     if (!Number.isFinite(next)) return 100
     if (next >= 160) return 110
     if (next >= 120) return 100
     return Math.min(115, Math.max(85, next))
   }
-  const imeVozila = (avto: any) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
-  const slikaVozila = (avto: any) => {
+  const imeVozila = (avto: Vehicle) => vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))
+  const slikaVozila = (avto: Vehicle) => {
     const rawUrl = avto?.slika_url || avto?.slika || ''
     if (!rawUrl) return ''
     const version = avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION
@@ -81,7 +160,7 @@ export default function Garaza() {
     if (!src) return
     setBrokenImageUrls(prev => prev[src] ? prev : { ...prev, [src]: true })
   }
-  const izbrisiSlikoVozila = async (avto: any) => {
+  const izbrisiSlikoVozila = async (avto: Vehicle) => {
     if (!avto?.id || !slikaVozila(avto)) return
     const ok = window.confirm(tx('Izbrišem sliko tega vozila?', 'Delete this vehicle photo?'))
     if (!ok) return
@@ -114,8 +193,9 @@ export default function Garaza() {
     localStorage.removeItem('garagebase_garaza_cache')
     setArchiveMessage(tx('Slika je izbrisana.', 'Photo deleted.'))
   }
-  const tipVozila = (avto: any) => String(avto?.tip_vozila || avto?.oblika || '').toLowerCase()
-  const metaVozila = (avto: any) => [
+  const tipVozila = (avto: Vehicle) => String(avto?.tip_vozila || avto?.oblika || '').toLowerCase()
+  const vehicleKm = (avto: Vehicle) => Number(avto.km_trenutni) || 0
+  const metaVozila = (avto: Vehicle) => [
     avto?.km_trenutni ? formatDistance(avto.km_trenutni, enotaRazdalje) : null,
     avto?.gorivo || null,
   ].filter(Boolean).join(' · ')
@@ -127,17 +207,17 @@ export default function Garaza() {
     }
   }
   const vinjetaOpomnik = (carId: string) => (opomniki[carId] || [])
-    .filter((op: any) => String(op.tip || '').toLowerCase().includes('vinjet'))
-    .sort((a: any, b: any) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())[0]
-  const vinjetaTekst = (avto: any) => {
+    .filter((op) => String(op.tip || '').toLowerCase().includes('vinjet'))
+    .sort((a, b) => new Date(a.datum || '9999-12-31').getTime() - new Date(b.datum || '9999-12-31').getTime())[0]
+  const vinjetaTekst = (avto: Vehicle) => {
     const op = vinjetaOpomnik(avto.id)
     if (!op?.datum) return ''
     return `${tx('Vinjeta do', 'Vignette until')} ${datumFormat(op.datum)}`
   }
-  const statusOpomnika = (avto: any) => {
+  const statusOpomnika = (avto: Vehicle) => {
     const ops = opomniki[avto.id] || []
     const kandidati = ops
-      .map((op: any) => ({
+      .map((op) => ({
         op,
         dni: op.datum ? Math.ceil((new Date(op.datum).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null,
         km: op.km_opomnik ? Number(op.km_opomnik) - Number(avto.km_trenutni || 0) : null,
@@ -162,7 +242,7 @@ export default function Garaza() {
     }
     return { text: naziv, tone: 'border-[#16a34a55] bg-[#16a34a11] text-[#16a34a]' }
   }
-  const kategorijaVozila = (avto: any) => {
+  const kategorijaVozila = (avto: Vehicle) => {
     const raw = tipVozila(avto)
     if (raw.includes('motor') || raw.includes('moto') || raw.includes('skuter')) return tx('Motorji', 'Motorcycles')
     if (raw.includes('kombi') || raw.includes('tovorn') || raw.includes('bus') || raw.includes('van')) return tx('Delovna vozila', 'Work vehicles')
@@ -187,25 +267,27 @@ export default function Garaza() {
     } catch {}
   }
 
-  const odpriVozilo = (avto: any) => {
+  const odpriVozilo = (avto: Vehicle) => {
     if (!avto?.id || urejanje) return
     router.push(nastavitveVozilMode ? `/nastavitve-avta?car=${avto.id}` : `/dashboard?car=${avto.id}`)
   }
 
-  const naloziOpomnike = async (cars: any[]) => {
-    const opomnikMap: { [key: string]: any[] } = {}
+  const naloziOpomnike = async (cars: Vehicle[]) => {
+    const opomnikMap: Record<string, Reminder[]> = {}
     for (const avto of cars) opomnikMap[avto.id] = []
     if (cars.length === 0) return opomnikMap
 
-    const ids = cars.map((avto: any) => avto.id).filter(Boolean)
+    const ids = cars.map((avto) => avto.id).filter(Boolean)
     const { data: opData } = await supabase
       .from('reminders').select('*').in('car_id', ids)
       .or('status.is.null,status.eq.active')
       .order('datum', { ascending: true })
 
     for (const op of opData || []) {
-      if (!opomnikMap[op.car_id]) opomnikMap[op.car_id] = []
-      opomnikMap[op.car_id].push(op)
+      const carId = String(op.car_id || '')
+      if (!carId) continue
+      if (!opomnikMap[carId]) opomnikMap[carId] = []
+      opomnikMap[carId].push(op as Reminder)
     }
     return opomnikMap
   }
@@ -234,15 +316,15 @@ export default function Garaza() {
         return
       }
 
-      let cars = data || []
+      let cars = (data || []) as Vehicle[]
       if (!arhiv && cars.length === 0) {
         const fallback = await supabase
           .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
-        cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        cars = ((fallback.data || []) as Vehicle[]).filter((car) => car?.arhivirano !== true)
       }
       setAvti(cars)
-      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
+      setLiteCarId(prev => cars.some((car) => car.id === prev) ? prev : cars[0]?.id || '')
       const opomnikMap = await naloziOpomnike(cars)
       setOpomniki(opomnikMap)
 
@@ -307,7 +389,7 @@ export default function Garaza() {
       const parsedCache = readGarageCache()
       if (parsedCache) {
         const cachedCars = Array.isArray(parsedCache.avti)
-          ? parsedCache.avti.filter((car: any) => car?.arhivirano !== true)
+          ? (parsedCache.avti as Vehicle[]).filter((car) => car?.arhivirano !== true)
           : []
         if (cachedCars.length > 0) {
           setAvti(cachedCars)
@@ -339,15 +421,15 @@ export default function Garaza() {
         .from('cars').select('*').eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
         .order('vrstni_red', { ascending: true })
-      let cars = data || []
+      let cars = (data || []) as Vehicle[]
       if (!data || cars.length === 0) {
         const { data: fallback } = await supabase
           .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
-        cars = (fallback || []).filter((car: any) => car?.arhivirano !== true)
+        cars = ((fallback || []) as Vehicle[]).filter((car) => car?.arhivirano !== true)
       }
       setAvti(cars)
-      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
+      setLiteCarId(prev => cars.some((car) => car.id === prev) ? prev : cars[0]?.id || '')
       setLoading(false)
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
         version: GARAGE_CACHE_VERSION,
@@ -369,17 +451,14 @@ export default function Garaza() {
     }
     init()
 
-    const handler = (e: any) => { e.preventDefault(); setInstallPrompt(e) }
+    const handler = (e: Event) => { e.preventDefault(); setInstallPrompt(e as InstallPromptEvent) }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
-  const liteAvto = avti.find((avto: any) => avto.id === liteCarId) || avti[0]
+  const liteAvto = avti.find((avto) => avto.id === liteCarId) || avti[0]
   const showLiteHome = nacin === 'lite' && !urejanje && !arhiv
-  const liteHistoryVisible = liteHistory.filter((item: any) => {
-    const key = item?.kind as keyof typeof liteHistoryFilters
-    return key ? liteHistoryFilters[key] === true : false
-  })
+  const liteHistoryVisible = liteHistory.filter((item) => liteHistoryFilters[item.kind] === true)
   const preklopiLiteHistoryFilter = (key: keyof typeof liteHistoryFilters) => {
     setLiteHistoryFilters(prev => ({ ...prev, [key]: !prev[key] }))
   }
@@ -399,15 +478,15 @@ export default function Garaza() {
         setArchiveMessage(error.message.includes('arhivirano') ? 'Za arhiv najprej zazeni SUPABASE_MIGRACIJA_ARHIV_VOZIL.sql.' : error.message)
         return
       }
-      let cars = data || []
+      let cars = (data || []) as Vehicle[]
       if (!arhiv && cars.length === 0) {
         const fallback = await supabase
           .from('cars').select('*').eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
-        cars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        cars = ((fallback.data || []) as Vehicle[]).filter((car) => car?.arhivirano !== true)
       }
       setAvti(cars)
-      setLiteCarId(prev => cars.some((car: any) => car.id === prev) ? prev : cars[0]?.id || '')
+      setLiteCarId(prev => cars.some((car) => car.id === prev) ? prev : cars[0]?.id || '')
       setLoading(false)
       const opomnikMap = await naloziOpomnike(cars)
       setOpomniki(opomnikMap)
@@ -454,7 +533,7 @@ export default function Garaza() {
         ])
 
         const rows = [
-          ...(fuelRes.data || []).map((row: any) => ({
+          ...((fuelRes.data || []) as LiteSourceRow[]).map((row) => ({
             id: `fuel-${row.id}`,
             kind: 'fuel',
             type: tx('Gorivo', 'Fuel'),
@@ -464,7 +543,7 @@ export default function Garaza() {
             meta: [row.km ? formatDistance(row.km, enotaRazdalje) : null, row.litri ? `${row.litri} L` : null].filter(Boolean).join(' · '),
             amount: row.cena_skupaj ? `${Number(row.cena_skupaj).toFixed(2)} €` : '',
           })),
-          ...(serviceRes.data || []).map((row: any) => ({
+          ...((serviceRes.data || []) as LiteSourceRow[]).map((row) => ({
             id: `service-${row.id}`,
             kind: 'service',
             type: tx('Servis', 'Service'),
@@ -474,7 +553,7 @@ export default function Garaza() {
             meta: row.km ? formatDistance(row.km, enotaRazdalje) : '',
             amount: row.cena ? `${Number(row.cena).toFixed(2)} €` : '',
           })),
-          ...(expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba').map((row: any) => ({
+          ...((expenseRes.data || []) as LiteSourceRow[]).filter((row) => row?.kategorija !== 'km_sprememba').map((row) => ({
             id: `expense-${row.id}`,
             kind: 'expense',
             type: tx('Strosek', 'Cost'),
@@ -485,8 +564,8 @@ export default function Garaza() {
             amount: row.znesek ? `${Number(row.znesek).toFixed(2)} €` : '',
           })),
         ]
-          .filter((row: any) => row.date)
-          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+          .filter((row): row is LiteHistoryItem => Boolean(row.date))
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 30)
 
         setLiteHistory(rows)
@@ -505,7 +584,7 @@ export default function Garaza() {
     if (!installPrompt) return
     installPrompt.prompt()
     const result = await installPrompt.userChoice
-    if (result.outcome === 'accepted') setInstallPrompt(null)
+    if (result?.outcome === 'accepted') setInstallPrompt(null)
   }
 
   const handleLogout = async () => {
@@ -554,7 +633,7 @@ export default function Garaza() {
     router.push('/dodaj-avto')
   }
 
-  const prodajniOpomnik = avti.find((avto: any) => {
+  const prodajniOpomnik = avti.find((avto) => {
     if (!avto.history_exported_at || avto.arhivirano) return false
     if (avto.archive_reminder_dismissed_until && new Date(avto.archive_reminder_dismissed_until).getTime() > renderNowMs) return false
     const dnevi = Math.floor((renderNowMs - new Date(avto.history_exported_at).getTime()) / (1000 * 60 * 60 * 24))
@@ -564,7 +643,7 @@ export default function Garaza() {
   const preskociArhivOpomnik = async (carId: string) => {
     const until = new Date()
     until.setDate(until.getDate() + 30)
-    const avto = avti.find((item: any) => item.id === carId)
+    const avto = avti.find((item) => item.id === carId)
     let query = supabase.from('cars').update({ archive_reminder_dismissed_until: until.toISOString() }).eq('id', carId)
     if (avto?.user_id) query = query.eq('user_id', avto.user_id)
     await query
@@ -600,7 +679,7 @@ export default function Garaza() {
     await shraniVrstniRed(avti)
   }
 
-  const shraniVrstniRed = async (cars: any[]) => {
+  const shraniVrstniRed = async (cars: Vehicle[]) => {
     for (let i = 0; i < cars.length; i++) {
       let query = supabase.from('cars').update({ vrstni_red: i }).eq('id', cars[i].id)
       if (cars[i].user_id) query = query.eq('user_id', cars[i].user_id)
@@ -678,56 +757,58 @@ export default function Garaza() {
     return { height: '34dvh', minHeight: '250px', maxHeight: '310px' }
   }
 
-  const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: any }) => {
+  const OpomnikiBadgi = ({ carId, avtoKm, max, nastavitve }: { carId: string, avtoKm: number, max: number, nastavitve: ReminderDisplaySettings }) => {
     const ops = opomniki[carId] || []
-    const badgi: any[] = []
+    const badgi: ReminderBadge[] = []
 
     // Datumski opomniki
     ops
-      .filter((op: any) => op.datum)
-      .map((op: any) => ({
+      .filter((op) => op.datum)
+      .map((op): ReminderBadge => ({
         ...op,
-        dni: Math.ceil((new Date(op.datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+        dni: Math.ceil((new Date(op.datum || '').getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
         tip_prikaza: 'datum'
       }))
-      .filter((op: any) => {
+      .filter((op) => {
         const redDays = String(op.tip || '').toLowerCase().includes('vinjet') ? 14 : 7
-        if (op.dni <= redDays) return nastavitve.opomnikRdeci !== false
-        if (op.dni <= 30) return nastavitve.opomnikRumeni !== false
+        const dni = op.dni || 0
+        if (dni <= redDays) return nastavitve.opomnikRdeci !== false
+        if (dni <= 30) return nastavitve.opomnikRumeni !== false
         return nastavitve.opomnikZeleni === true
       })
-      .forEach((op: any) => badgi.push(op))
+      .forEach((op) => badgi.push(op))
 
     // Km opomniki
     ops
-      .filter((op: any) => op.km_opomnik && avtoKm)
-      .map((op: any) => ({
+      .filter((op) => op.km_opomnik && avtoKm)
+      .map((op): ReminderBadge => ({
         ...op,
-        preostaloKm: op.km_opomnik - avtoKm,
+        preostaloKm: Number(op.km_opomnik) - avtoKm,
         tip_prikaza: 'km'
       }))
-      .filter((op: any) => {
-        if (op.preostaloKm <= 500) return nastavitve.opomnikKmRdeci !== false
-        if (op.preostaloKm <= 1500) return nastavitve.opomnikKmRumeni !== false
+      .filter((op) => {
+        const preostaloKm = op.preostaloKm || 0
+        if (preostaloKm <= 500) return nastavitve.opomnikKmRdeci !== false
+        if (preostaloKm <= 1500) return nastavitve.opomnikKmRumeni !== false
         return nastavitve.opomnikKmZeleni === true
       })
-      .forEach((op: any) => badgi.push(op))
+      .forEach((op) => badgi.push(op))
 
     if (badgi.length === 0) return null
 
     return (
       <>
-        {badgi.slice(0, max).map((op: any) => {
+        {badgi.slice(0, max).map((op) => {
           const isDatum = op.tip_prikaza === 'datum'
-          const vrednost = isDatum ? op.dni : op.preostaloKm
-          const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km', op.tip)
+          const vrednost = isDatum ? (op.dni || 0) : (op.preostaloKm || 0)
+          const barva = opomnikBarva(vrednost, isDatum ? 'dni' : 'km', op.tip || undefined)
           const tekst = isDatum
-            ? `${op.dni} d`
-            : `${op.preostaloKm <= 0 ? '+' + Math.abs(op.preostaloKm) : op.preostaloKm} ${enotaRazdalje}`
+            ? `${op.dni || 0} d`
+            : `${(op.preostaloKm || 0) <= 0 ? '+' + Math.abs(op.preostaloKm || 0) : op.preostaloKm || 0} ${enotaRazdalje}`
 
           return (
             <div key={`${isDatum ? 'd' : 'k'}-${op.id}`} className={`bg-white/75 border ${barva.border} rounded-lg px-2 py-1 flex items-center gap-1.5 shadow-sm max-w-full`}>
-              <span className="text-[clamp(calc(12px*var(--gb-card-font-scale,1)),calc((30px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(16px*var(--gb-card-font-scale,1)))] lg:text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip] || '🔔'}</span>
+              <span className="text-[clamp(calc(12px*var(--gb-card-font-scale,1)),calc((30px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(16px*var(--gb-card-font-scale,1)))] lg:text-[12px] leading-none flex-shrink-0">{tipIkona[op.tip || ''] || '🔔'}</span>
               <span className={`${barva.text} font-black text-[clamp(calc(12px*var(--gb-card-font-scale,1)),calc((30px/var(--gb-mobile-columns,3))*var(--gb-card-font-scale,1)),calc(16px*var(--gb-card-font-scale,1)))] lg:text-[12px] leading-none whitespace-nowrap`}>{tekst}</span>
             </div>
           )
@@ -765,7 +846,7 @@ export default function Garaza() {
     </div>
   )
 
-  const renderVehicleImage = (avto: any, index: number, className = 'h-full w-full object-contain object-center') => {
+  const renderVehicleImage = (avto: Vehicle, index: number, className = 'h-full w-full object-contain object-center') => {
     const imageSrc = slikaVozila(avto)
     return imageSrc ? (
       <>
@@ -803,7 +884,7 @@ export default function Garaza() {
     )
   }
 
-  const renderVinjetaLine = (avto: any) => {
+  const renderVinjetaLine = (avto: Vehicle) => {
     const text = vinjetaTekst(avto)
     if (!text) return null
     return (
@@ -878,7 +959,7 @@ export default function Garaza() {
                 <p className="truncate text-sm font-black text-white">{imeVozila(avto)}</p>
                 <p className="mt-1 truncate text-xs font-semibold text-[#8a8ab0]">{metaVozila(avto) || '-'}</p>
                 <div className="mt-2 flex min-h-[28px] flex-wrap gap-1">
-                  <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={1} nastavitve={listaNastavitve} />
+                  <OpomnikiBadgi carId={avto.id} avtoKm={vehicleKm(avto)} max={1} nastavitve={listaNastavitve} />
                 </div>
               </div>
             </button>
@@ -894,11 +975,11 @@ export default function Garaza() {
   }
 
   const renderCategorizedLayout = () => {
-    const sections: [string, any[]][] = Array.from(avti.reduce<Map<string, any[]>>((map, avto) => {
+    const sections: [string, Vehicle[]][] = Array.from(avti.reduce<Map<string, Vehicle[]>>((map, avto) => {
       const key = kategorijaVozila(avto)
       map.set(key, [...(map.get(key) || []), avto])
       return map
-    }, new Map<string, any[]>()))
+    }, new Map<string, Vehicle[]>()))
     return (
       <div className="flex-1 overflow-y-auto px-5 pb-6">
         <div className="space-y-6">
@@ -982,18 +1063,18 @@ export default function Garaza() {
   const desktopListMode = prikaz !== 'grid'
   const desktopLight = tema === 'svetla'
 
-  const DesktopReminderBadges = ({ car }: { car: any }) => (
+  const DesktopReminderBadges = ({ car }: { car: Vehicle }) => (
     <div className="flex min-h-[24px] flex-wrap items-center gap-1.5">
-      <OpomnikiBadgi carId={car.id} avtoKm={car.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
+      <OpomnikiBadgi carId={car.id} avtoKm={vehicleKm(car)} max={3} nastavitve={listaNastavitve} />
     </div>
   )
 
   const renderDesktopCategorized = () => {
-    const sections: [string, any[]][] = Array.from(desktopCars.reduce<Map<string, any[]>>((map, car) => {
+    const sections: [string, Vehicle[]][] = Array.from(desktopCars.reduce<Map<string, Vehicle[]>>((map, car) => {
       const key = kategorijaVozila(car)
       map.set(key, [...(map.get(key) || []), car])
       return map
-    }, new Map<string, any[]>()))
+    }, new Map<string, Vehicle[]>()))
     return (
       <div className="space-y-6">
         {sections.map(([title, cars]) => (
@@ -1199,7 +1280,7 @@ export default function Garaza() {
               </button>
             </div>
             <div className="grid gap-2">
-              {desktopCars.map((avto: any, index: number) => (
+              {desktopCars.map((avto, index) => (
                 <div key={avto.id} className={`flex items-center justify-between gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#e3e7f3] bg-[#f7f8fc]' : 'border-[#25253a] bg-[#11111c]'}`}>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-black">{index + 1}. {imeVozila(avto)}</p>
@@ -1453,7 +1534,7 @@ export default function Garaza() {
 
       {showLiteHome && (
         <div className={`flex-1 overflow-y-auto px-5 pb-4 ${desktopLight ? 'bg-[#f6f7fb]' : 'bg-[#080c12]'}`}>
-          <div className="space-y-5" style={{ '--gb-card-font-scale': garazaPisava / 100 } as any}>
+          <div className="space-y-5" style={{ '--gb-card-font-scale': garazaPisava / 100 } as GarageStyle}>
             <div className="flex items-center justify-between gap-3 pt-1">
               <div>
                 <p className={`text-[calc(26px*var(--gb-card-font-scale,1))] font-black leading-none ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>
@@ -1505,7 +1586,7 @@ export default function Garaza() {
             </button>
             {liteUrejanje ? (
             <div className="space-y-2">
-              {avti.map((avto: any, index: number) => (
+              {avti.map((avto, index) => (
                 <div key={avto.id} className={`grid grid-cols-[minmax(0,1fr)_88px] items-center gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#e2e7f2] bg-white text-[#101225]' : 'border-[#253142] bg-[#101720] text-white'}`}>
                   <div className="min-w-0">
                     <p className="truncate text-base font-black">{index + 1}. {imeVozila(avto)}</p>
@@ -1536,9 +1617,9 @@ export default function Garaza() {
             </div>
             ) : prikaz === 'grid' ? (
             <div className="grid grid-cols-2 gap-3">
-              {avti.map((avto: any, index: number) => {
+              {avti.map((avto, index) => {
                 const imageSrc = slikaVozila(avto)
-                const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
+                const priority = litePriorityStyle(barvaOpomnika(avto.id, vehicleKm(avto)))
                 return (
                   <button
                     key={avto.id}
@@ -1570,10 +1651,10 @@ export default function Garaza() {
             </div>
             ) : (
             <div className="space-y-3">
-              {avti.map((avto: any, index: number) => {
+              {avti.map((avto, index) => {
                 const selected = liteAvto?.id === avto.id
                 const imageSrc = slikaVozila(avto)
-                const priority = litePriorityStyle(barvaOpomnika(avto.id, avto.km_trenutni || 0))
+                const priority = litePriorityStyle(barvaOpomnika(avto.id, vehicleKm(avto)))
                 return (
                   <button
                     key={avto.id}
@@ -1691,11 +1772,11 @@ export default function Garaza() {
                 <div className={`rounded-[24px] border p-3 ${desktopLight ? 'border-[#e2e7f2] bg-white' : 'border-[#253142] bg-[#101720]'}`}>
                   <p className={`mb-3 px-1 text-sm font-black ${desktopLight ? 'text-[#101225]' : 'text-white'}`}>{tx('Zadnje aktivnosti', 'Latest activity')}</p>
                   <div className="mb-3 grid grid-cols-3 gap-2">
-                    {[
+                    {([
                       { key: 'fuel', label: tx('Gorivo', 'Fuel') },
                       { key: 'service', label: tx('Servis', 'Service') },
                       { key: 'expense', label: tx('Strosek', 'Cost') },
-                    ].map((filter: any) => (
+                    ] as Array<{ key: keyof typeof liteHistoryFilters; label: string }>).map((filter) => (
                       <button
                         key={filter.key}
                         type="button"
@@ -1712,7 +1793,7 @@ export default function Garaza() {
                     <p className={`px-1 py-4 text-sm font-semibold ${desktopLight ? 'text-[#596174]' : 'text-[#a8b0c0]'}`}>{tx('Ni zgodovine za to vozilo.', 'No history for this vehicle yet.')}</p>
                   ) : (
                     <div className="space-y-2">
-                      {liteHistoryVisible.map((item: any) => (
+                      {liteHistoryVisible.map((item) => (
                         <div key={item.id} className={`grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 ${desktopLight ? 'border-[#edf0f7] bg-[#f8f9fd]' : 'border-[#253142] bg-[#0c121a]'}`}>
                           <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#6c63ff18] text-sm font-black text-[#6c63ff]">{item.icon}</span>
                           <span className="min-w-0">
@@ -1769,9 +1850,9 @@ export default function Garaza() {
       ) : prikaz === 'grid' ? (
         <div className="flex-1 overflow-y-auto px-3 pt-2 lg:px-0 lg:overflow-visible">
           <div className="gb-car-grid grid gap-2 lg:gap-4"
-            style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci, '--gb-card-font-scale': garazaPisava / 100 } as any}>
+            style={{ '--gb-desktop-columns': desktopStolpci, '--gb-mobile-columns': mobileGridStolpci, '--gb-card-font-scale': garazaPisava / 100 } as GarageStyle}>
             {avti.map((avto, index) => {
-              const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
+              const barva = barvaOpomnika(avto.id, vehicleKm(avto))
               const imageSrc = slikaVozila(avto)
               return (
                 <div key={avto.id}
@@ -1801,7 +1882,7 @@ export default function Garaza() {
 
                   {gridNastavitve.opomnik && !urejanje && (
                     <div className="absolute top-1 right-1 flex flex-col gap-0.5 items-end">
-                      <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={gridNastavitve} />
+                      <OpomnikiBadgi carId={avto.id} avtoKm={vehicleKm(avto)} max={3} nastavitve={gridNastavitve} />
                     </div>
                   )}
 
@@ -1850,7 +1931,7 @@ export default function Garaza() {
       ) : (
         <div className="flex-1 overflow-y-auto lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-4 lg:overflow-visible lg:auto-rows-fr">
           {avti.map((avto, index) => {
-            const barva = barvaOpomnika(avto.id, avto.km_trenutni || 0)
+            const barva = barvaOpomnika(avto.id, vehicleKm(avto))
             const imageSrc = slikaVozila(avto)
             if (prikaz === 'veliko') return (
               <div key={avto.id}
@@ -1863,7 +1944,7 @@ export default function Garaza() {
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] ${barvaBorder(barva)} ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
-                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
+                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as GarageStyle}>
                 {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
                     loading={index < 6 ? 'eager' : 'lazy'} decoding="async" onError={() => oznaciPokvarjenoSliko(imageSrc)} className="absolute inset-0 w-full h-full object-contain object-center" />
@@ -1903,7 +1984,7 @@ export default function Garaza() {
 
                 {listaNastavitve.opomnik && !urejanje && (
                   <div className="absolute left-3 bottom-3 right-3 flex flex-wrap gap-1.5 content-end">
-                    <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={4} nastavitve={listaNastavitve} />
+                    <OpomnikiBadgi carId={avto.id} avtoKm={vehicleKm(avto)} max={4} nastavitve={listaNastavitve} />
                   </div>
                 )}
               </div>
@@ -1919,7 +2000,7 @@ export default function Garaza() {
                 className={`relative overflow-hidden transition-all lg:rounded-2xl lg:border lg:border-[#1e1e32] bg-[#0f0f1a] border-t border-[#1a1a28] flex ${
                   urejanje ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
                 } ${dragIndex === index ? 'opacity-50 scale-95' : 'opacity-100'}`}
-                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as any}>
+                style={{ ...karticaVisina(), '--gb-card-font-scale': garazaPisava / 100 } as GarageStyle}>
                 <div className={`${prikaz === 'malo' ? 'w-1/3' : 'w-1/2'} relative h-full flex-shrink-0 overflow-hidden`}>
                   {imageSrc ? (
                   <img src={imageSrc} alt={imeVozila(avto)}
@@ -1954,7 +2035,7 @@ export default function Garaza() {
                   <div className={`${prikaz === 'malo' ? 'flex-row items-end justify-between gap-2' : 'flex-col gap-2'} flex min-w-0`}>
                     <div className={`${prikaz === 'malo' ? 'min-h-0 flex-1' : 'min-h-[32px]'} flex flex-wrap gap-1.5 content-start overflow-hidden`}>
                       {listaNastavitve.opomnik && (
-                        <OpomnikiBadgi carId={avto.id} avtoKm={avto.km_trenutni || 0} max={3} nastavitve={listaNastavitve} />
+                        <OpomnikiBadgi carId={avto.id} avtoKm={vehicleKm(avto)} max={3} nastavitve={listaNastavitve} />
                       )}
                     </div>
                     {listaNastavitve.tablica && avto.tablica && (
