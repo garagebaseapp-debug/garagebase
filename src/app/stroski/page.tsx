@@ -16,7 +16,79 @@ const carCostColumns = 'id,user_id,znamka,model,km_trenutni,km_ob_vnosu,purchase
 const fuelCostColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
 const serviceCostColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,import_batch_id,source_owner_label'
 const expenseCostColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,receipt_url,import_batch_id,source_owner_label'
-const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
+
+type CostRow = Record<string, unknown> & {
+  id?: string | null
+  car_id?: string | null
+  datum?: string | null
+  created_at?: string | null
+  km?: number | string | null
+  litri?: number | string | null
+  cena?: number | string | null
+  cena_skupaj?: number | string | null
+  cena_na_liter?: number | string | null
+  znesek?: number | string | null
+  kategorija?: string | null
+  opis?: string | null
+  servis?: string | null
+  postaja?: string | null
+  receipt_url?: string | null
+  foto_url?: string | null
+  import_batch_id?: string | null
+  source_owner_label?: string | null
+}
+
+type CostCar = Record<string, unknown> & {
+  id: string
+  user_id?: string | null
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | string | null
+  km_ob_vnosu?: number | string | null
+  purchase_price?: number | string | null
+  purchase_date?: string | null
+  purchase_mileage?: number | string | null
+  down_payment?: number | string | null
+  finance_total_paid?: number | string | null
+  finance_overpayment?: number | string | null
+  monthly_payment?: number | string | null
+  resale_value?: number | string | null
+  include_vehicle_price_in_costs?: boolean | null
+}
+
+type CostStats = Record<string, unknown> & {
+  rows?: Record<string, unknown>
+  costs?: Record<string, unknown>
+  consumption?: Record<string, unknown>
+  liters?: number | string | null
+  fuelCost?: number | string | null
+  serviceCost?: number | string | null
+  expenseCost?: number | string | null
+  fuelRows?: number | string | null
+  serviceRows?: number | string | null
+  expenseRows?: number | string | null
+  serverStats?: CostStats | null
+}
+
+type OwnershipDraft = {
+  purchase_price: string
+  purchase_date: string
+  purchase_mileage: string
+  down_payment: string
+  finance_total_paid: string
+  finance_overpayment: string
+  resale_value: string
+}
+
+type LoadedRows = { gorivo: CostRow[]; servisi: CostRow[]; expenses: CostRow[]; ready: boolean }
+type SupabaseErrorLike = { message: string }
+type CostRowsResponse = { data: CostRow[] | null; error: SupabaseErrorLike | null; count: number | null }
+type CostCarResponse = { data: CostCar | null; error: SupabaseErrorLike | null }
+
+const asCostRowsResponse = (response: unknown): CostRowsResponse => response as CostRowsResponse
+const asCostCarResponse = (response: unknown): CostCarResponse => response as CostCarResponse
+
+const isLockedRecordError = (error: unknown) => String((error as { message?: string } | null)?.message || '').includes('manual_record_locked_after_24h')
 const ownershipSettingsKey = (carId: string) => `garagebase_vehicle_ownership_${carId}`
 const readStoredOwnershipSettings = (carId: string) => {
   try {
@@ -30,7 +102,7 @@ const writeStoredOwnershipSettings = (carId: string, data: Record<string, unknow
     localStorage.setItem(ownershipSettingsKey(carId), JSON.stringify(data))
   } catch {}
 }
-const ownershipDraftFrom = (data: any = {}) => ({
+const ownershipDraftFrom = (data: Partial<CostCar> = {}): OwnershipDraft => ({
   purchase_price: data.purchase_price?.toString?.() || '',
   purchase_date: data.purchase_date?.toString?.() || '',
   purchase_mileage: data.purchase_mileage?.toString?.() || data.km_ob_vnosu?.toString?.() || '',
@@ -57,7 +129,7 @@ const numericValue = (value: unknown) => {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-const statsHasData = (stats: any) => {
+const statsHasData = (stats: CostStats | null | undefined) => {
   if (!stats) return false
   const rowCount =
     numericValue(stats.rows?.fuel) +
@@ -70,7 +142,7 @@ const statsHasData = (stats: any) => {
   return rowCount > 0 || costTotal > 0
 }
 
-const statsHasRealValues = (stats: any) => {
+const statsHasRealValues = (stats: CostStats | null | undefined) => {
   if (!stats) return false
   const costTotal =
     numericValue(stats.costs?.fuel) +
@@ -83,41 +155,44 @@ const statsHasRealValues = (stats: any) => {
     numericValue(stats.consumption?.total) > 0
 }
 
-const firstUsableStats = (...sets: any[]) =>
+const firstUsableStats = (...sets: Array<CostStats | null | undefined>) =>
   sets.find((stats) => statsHasRealValues(stats)) ||
   sets.find((stats) => statsHasData(stats)) ||
   null
 
-const hasConsumptionValues = (consumption: any) =>
+const hasConsumptionValues = (consumption: Record<string, unknown> | null | undefined) =>
   numericValue(consumption?.garageBase) > 0 ||
   numericValue(consumption?.imported) > 0 ||
   numericValue(consumption?.total) > 0
 
-const apiDebugText = (payload: any) => {
+const apiDebugText = (payload: CostStats | null | undefined) => {
   const debug = payload?.debug
   if (!debug) return `api:${payload?.source || 'stats'}`
-  const selected = debug.selected
+  const debugData = debug as Record<string, unknown>
+  const selected = debugData.selected as Record<string, unknown> | undefined
   const selectedText = selected ? `${selected.fuel}/${selected.service}/${selected.expense}` : '?'
-  const statsRows = debug.statsRows ? `${debug.statsRows.fuel}/${debug.statsRows.service}/${debug.statsRows.expense}` : ''
+  const statsRowsData = debugData.statsRows as Record<string, unknown> | undefined
+  const statsRows = statsRowsData ? `${statsRowsData.fuel}/${statsRowsData.service}/${statsRowsData.expense}` : ''
   const statsText = statsRows ? ` stats:${statsRows}` : ''
-  const sumText = debug.statsTotal || debug.statsLiters
-    ? ` sum:${numericValue(debug.statsTotal).toFixed(0)}/${numericValue(debug.statsLiters).toFixed(0)}`
+  const sumText = debugData.statsTotal || debugData.statsLiters
+    ? ` sum:${numericValue(debugData.statsTotal).toFixed(0)}/${numericValue(debugData.statsLiters).toFixed(0)}`
     : ''
-  const sample = debug.sampleFuel
+  const sample = debugData.sampleFuel as Record<string, unknown> | undefined
   const sampleText = sample
     ? ` sample:${numericValue(sample.computedCost).toFixed(0)}/${numericValue(sample.computedLiters).toFixed(0)}`
     : ''
-  const consumption = debug.statsConsumption
+  const consumption = debugData.statsConsumption as Record<string, unknown> | undefined
   const consumptionText = consumption
     ? ` cons:${numericValue(consumption.total || consumption.garageBase || consumption.imported).toFixed(1)}`
     : ''
-  const otherRows = Array.isArray(debug.userCarsWithRows)
-    ? debug.userCarsWithRows.reduce((sum: number, car: any) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
+  const userCarsWithRows = debugData.userCarsWithRows
+  const otherRows = Array.isArray(userCarsWithRows)
+    ? (userCarsWithRows as Array<Record<string, unknown>>).reduce((sum, car) => sum + numericValue(car.fuel) + numericValue(car.service) + numericValue(car.expense), 0)
     : 0
   return `api:${payload?.source || selected?.label || 'stats'} sel:${selectedText}${statsText}${sumText}${sampleText}${consumptionText}${otherRows > 0 ? ` all:${otherRows}` : ''}`
 }
 
-const firstNumberValue = (row: any, keys: string[]) => {
+const firstNumberValue = (row: CostRow, keys: string[]) => {
   for (const key of keys) {
     const value = numericValue(row?.[key])
     if (value > 0) return value
@@ -125,13 +200,15 @@ const firstNumberValue = (row: any, keys: string[]) => {
   return 0
 }
 
-const fuelLitersValue = (row: any) =>
+const dateValueMs = (value: string | null | undefined) => value ? new Date(value).getTime() : 0
+
+const fuelLitersValue = (row: CostRow) =>
   firstNumberValue(row, ['litri', 'liters', 'litres', 'liter', 'volume', 'volumen', 'Volumen', 'kolicina', 'količina', 'quantity', 'qty'])
 
-const fuelPriceValue = (row: any) =>
+const fuelPriceValue = (row: CostRow) =>
   firstNumberValue(row, ['cena_na_liter', 'cenaNaLiter', 'price_per_liter', 'pricePerLiter', 'price/l', 'Cena / L', 'Cena/L'])
 
-const fuelCostValue = (row: any) => {
+const fuelCostValue = (row: CostRow) => {
   const direct = firstNumberValue(row, ['cena_skupaj', 'cenaSkupaj', 'skupaj', 'skupni_stroski', 'skupniStroski', 'Skupni stroški', 'total', 'Total', 'amount', 'znesek'])
   if (direct > 0) return direct
   const liters = fuelLitersValue(row)
@@ -205,21 +282,21 @@ const readVehicleStatsCache = (carId?: string) => {
   }
 }
 
-const buildRowStatsFromRows = (fuelRows: any[] = [], serviceRows: any[] = [], expenseRows: any[] = [], car?: any) => {
-  const filteredExpenses = expenseRows.filter((row: any) => row?.kategorija !== 'km_sprememba')
+const buildRowStatsFromRows = (fuelRows: CostRow[] = [], serviceRows: CostRow[] = [], expenseRows: CostRow[] = [], car?: CostCar | null) => {
+  const filteredExpenses = expenseRows.filter((row) => row?.kategorija !== 'km_sprememba')
   const fuelCost = fuelRows.reduce((sum, row) => sum + fuelCostValue(row), 0)
   const serviceCost = serviceRows.reduce((sum, row) => sum + numericValue(row?.cena), 0)
   const expenseCost = filteredExpenses.reduce((sum, row) => sum + numericValue(row?.znesek), 0)
   const totalCost = fuelCost + serviceCost + expenseCost
   const costRows = [
-    ...fuelRows.map((row) => ({ ...row, _tip: 'gorivo' })),
-    ...serviceRows.map((row) => ({ ...row, _tip: 'servis' })),
-    ...filteredExpenses.map((row) => ({ ...row, _tip: 'ostalo' })),
+    ...fuelRows.map((row) => ({ ...row, _tip: 'gorivo' as const })),
+    ...serviceRows.map((row) => ({ ...row, _tip: 'servis' as const })),
+    ...filteredExpenses.map((row) => ({ ...row, _tip: 'ostalo' as const })),
   ]
   const sourceSplit = splitRowsBySource(costRows)
   const imported = sourceSplit.imported.reduce((sum, row) => sum + costValueFor(row), 0)
   const garageBase = Math.max(0, totalCost - imported)
-  const drivenKm = costDistanceFromFuelRows(fuelRows, car)
+  const drivenKm = costDistanceFromFuelRows(fuelRows, car || undefined)
 
   return {
     rows: {
@@ -255,21 +332,24 @@ const emptyCostSummary = () => ({
   },
 })
 
-const normalizeCostSummary = (summary: any) => ({
-  fuel: numericValue(summary?.fuel),
-  service: numericValue(summary?.service),
-  expense: numericValue(summary?.expense),
-  total: numericValue(summary?.total),
-  imported: numericValue(summary?.imported),
-  garageBase: numericValue(summary?.garageBase),
-  rows: {
-    fuel: numericValue(summary?.rows?.fuel),
-    service: numericValue(summary?.rows?.service),
-    expense: numericValue(summary?.rows?.expense),
-  },
-})
+const normalizeCostSummary = (summary: CostStats | Record<string, unknown> | null | undefined) => {
+  const rows = summary?.rows as Record<string, unknown> | undefined
+  return {
+    fuel: numericValue(summary?.fuel),
+    service: numericValue(summary?.service),
+    expense: numericValue(summary?.expense),
+    total: numericValue(summary?.total),
+    imported: numericValue(summary?.imported),
+    garageBase: numericValue(summary?.garageBase),
+    rows: {
+      fuel: numericValue(rows?.fuel),
+      service: numericValue(rows?.service),
+      expense: numericValue(rows?.expense),
+    },
+  }
+}
 
-const mergeCostSummaries = (...summaries: any[]) => {
+const mergeCostSummaries = (...summaries: Array<CostStats | Record<string, unknown> | null | undefined>) => {
   const merged = emptyCostSummary()
   summaries.forEach((summary) => {
     if (!summary) return
@@ -312,7 +392,7 @@ const mergeCostSummaries = (...summaries: any[]) => {
   return merged
 }
 
-const costSummaryFromStats = (stats: any) => {
+const costSummaryFromStats = (stats: CostStats | null | undefined) => {
   const fuel = numericValue(stats?.costs?.fuel)
   const service = numericValue(stats?.costs?.service)
   const expense = numericValue(stats?.costs?.expense)
@@ -339,9 +419,9 @@ const costSummaryFromStats = (stats: any) => {
   }
 }
 
-const safeBuildCostSummary = (fuelRows: any[] = [], serviceRows: any[] = [], expenseRows: any[] = [], stats?: any) => {
+const safeBuildCostSummary = (fuelRows: CostRow[] = [], serviceRows: CostRow[] = [], expenseRows: CostRow[] = [], stats?: CostStats | null) => {
   try {
-    return buildSharedCostSummary(fuelRows, serviceRows, expenseRows, stats)
+    return buildSharedCostSummary(fuelRows, serviceRows, expenseRows, stats || undefined)
   } catch (error) {
     console.warn('[GarageBase costs] summary fallback used', error)
     const fallbackStats = statsHasData(stats) || statsHasRealValues(stats)
@@ -368,7 +448,7 @@ const safeBuildCostSummary = (fuelRows: any[] = [], serviceRows: any[] = [], exp
   }
 }
 
-const writeVehicleStatsCache = (carId: string, stats: any) => {
+const writeVehicleStatsCache = (carId: string, stats: CostStats) => {
   try {
     const existingRaw = localStorage.getItem(`garagebase_vehicle_stats_${carId}`)
     const existing = existingRaw ? JSON.parse(existingRaw) : null
@@ -406,7 +486,7 @@ const writeVehicleStatsCache = (carId: string, stats: any) => {
   }
 }
 
-const writeCostTotalsCache = (carId: string, stats: any) => {
+const writeCostTotalsCache = (carId: string, stats: CostStats) => {
   try {
     localStorage.setItem(`garagebase_cost_totals_${carId}`, JSON.stringify({
       fuelCost: numericValue(stats?.costs?.fuel),
@@ -431,9 +511,9 @@ export default function Stroski() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => (language === 'en' ? en : sl)
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
-  const [avto, setAvto] = useState<any>(null)
-  const [ownershipFallback, setOwnershipFallback] = useState<any>({})
-  const [ownershipDraft, setOwnershipDraft] = useState<any>({
+  const [avto, setAvto] = useState<CostCar | null>(null)
+  const [ownershipFallback, setOwnershipFallback] = useState<Partial<CostCar>>({})
+  const [ownershipDraft, setOwnershipDraft] = useState<OwnershipDraft>({
     purchase_price: '',
     purchase_date: '',
     purchase_mileage: '',
@@ -442,15 +522,15 @@ export default function Stroski() {
     finance_overpayment: '',
     resale_value: '',
   })
-  const [gorivo, setGorivo] = useState<any[]>([])
-  const [servisi, setServisi] = useState<any[]>([])
-  const [expenses, setExpenses] = useState<any[]>([])
+  const [gorivo, setGorivo] = useState<CostRow[]>([])
+  const [servisi, setServisi] = useState<CostRow[]>([])
+  const [expenses, setExpenses] = useState<CostRow[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'vse' | 'gorivo' | 'servis' | 'ostalo'>('vse')
   const [grafTip, setGrafTip] = useState<'stolpci' | 'crta' | 'kolac' | 'kategorije'>('stolpci')
   const [grafObdobje, setGrafObdobje] = useState<'6m' | '12m'>('6m')
   const [uredi, setUredi] = useState<string | null>(null)
-  const [editData, setEditData] = useState<any>({})
+  const [editData, setEditData] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -458,11 +538,11 @@ export default function Stroski() {
   const [includeVehiclePrice, setIncludeVehiclePrice] = useState(false)
   const [visibleCostCount, setVisibleCostCount] = useState(COST_LIST_SIZE)
   const [refreshing, setRefreshing] = useState(false)
-  const [serverStats, setServerStats] = useState<any>(null)
-  const [rowStats, setRowStats] = useState<any>(null)
-  const [displayStats, setDisplayStats] = useState<any>(null)
+  const [serverStats, setServerStats] = useState<CostStats | null>(null)
+  const [rowStats, setRowStats] = useState<CostStats | null>(null)
+  const [displayStats, setDisplayStats] = useState<CostStats | null>(null)
   const [debugSource, setDebugSource] = useState('')
-  const [loadedRows, setLoadedRows] = useState<{ gorivo: any[]; servisi: any[]; expenses: any[]; ready: boolean }>({
+  const [loadedRows, setLoadedRows] = useState<LoadedRows>({
     gorivo: [],
     servisi: [],
     expenses: [],
@@ -473,19 +553,19 @@ export default function Stroski() {
   const [rowCostSummary, setRowCostSummary] = useState(() => emptyCostSummary())
   const [committedSummary, setCommittedSummary] = useState(() => emptyCostSummary())
   const [costSnapshot, setCostSnapshot] = useState(() => ({
-    gorivo: [] as any[],
-    servisi: [] as any[],
-    expenses: [] as any[],
+    gorivo: [] as CostRow[],
+    servisi: [] as CostRow[],
+    expenses: [] as CostRow[],
     summary: emptyCostSummary(),
     debug: '',
     ready: false,
   }))
-  const latestRowsRef = useRef<{ gorivo: any[]; servisi: any[]; expenses: any[] }>({
+  const latestRowsRef = useRef<{ gorivo: CostRow[]; servisi: CostRow[]; expenses: CostRow[] }>({
     gorivo: [],
     servisi: [],
     expenses: [],
   })
-  const latestStatsRef = useRef<any>(null)
+  const latestStatsRef = useRef<CostStats | null>(null)
   const latestSummaryRef = useRef<ReturnType<typeof buildSharedCostSummary> | null>(null)
   const latestRowCostSummaryRef = useRef(emptyCostSummary())
   const committedSummaryRef = useRef(emptyCostSummary())
@@ -513,7 +593,7 @@ export default function Stroski() {
     writeStoredOwnershipSettings(activeCarId, payload)
     setOwnershipFallback(payload)
     setIncludeVehiclePrice(include)
-    setAvto((prev: any) => ({ ...(prev || {}), ...payload }))
+    setAvto((prev) => ({ ...(prev || { id: activeCarId }), ...payload }))
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
       const { error } = await supabase.from('cars').update(payload).eq('id', activeCarId).eq('user_id', user.id)
@@ -560,7 +640,7 @@ export default function Stroski() {
 
       const parsedGarage = readGarageCache()
       if (parsedGarage) {
-        const cachedCar = parsedGarage.avti?.find((a: any) => a.id === carId)
+        const cachedCar = (parsedGarage.avti as CostCar[] | undefined)?.find((a) => a.id === carId)
         if (cachedCar) {
           setAvto(cachedCar)
           const storedOwnership = readStoredOwnershipSettings(carId)
@@ -615,27 +695,27 @@ export default function Stroski() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) { window.location.href = '/'; return }
-        let [avtoRes, gorivoRes, servisRes, expensesRes]: any[] = await Promise.all([
+        let [avtoRes, gorivoRes, servisRes, expensesRes] = (await Promise.all([
           supabase.from('cars').select(carCostColumns).eq('id', carId).eq('user_id', user.id).maybeSingle(),
           supabase.from('fuel_logs').select(fuelCostColumns, { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
           supabase.from('service_logs').select(serviceCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
           supabase.from('expenses').select(expenseCostColumns, { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1),
-        ])
+        ])).map((response, index) => index === 0 ? asCostCarResponse(response) : asCostRowsResponse(response)) as [CostCarResponse, CostRowsResponse, CostRowsResponse, CostRowsResponse]
         if (avtoRes.error) {
           console.warn('[GarageBase costs] car cost columns failed, retrying full car row', avtoRes.error.message)
-          avtoRes = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
+          avtoRes = asCostCarResponse(await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle())
         }
         if (gorivoRes.error) {
           console.warn('[GarageBase costs] fuel full select failed, retrying minimal columns', gorivoRes.error.message)
-          gorivoRes = await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
+          gorivoRes = asCostRowsResponse(await supabase.from('fuel_logs').select('id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,import_batch_id,source_owner_label,polni_rezervar', { count: 'exact' }).eq('car_id', carId).order('km', { ascending: false }).range(0, COST_ROW_LIMIT - 1))
         }
         if (servisRes.error) {
           console.warn('[GarageBase costs] service full select failed, retrying minimal columns', servisRes.error.message)
-          servisRes = await supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
+          servisRes = asCostRowsResponse(await supabase.from('service_logs').select('id,car_id,datum,km,cena,servis,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1))
         }
         if (expensesRes.error) {
           console.warn('[GarageBase costs] expenses full select failed, retrying minimal columns', expensesRes.error.message)
-          expensesRes = await supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1)
+          expensesRes = asCostRowsResponse(await supabase.from('expenses').select('id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label', { count: 'exact' }).eq('car_id', carId).order('datum', { ascending: false }).range(0, COST_ROW_LIMIT - 1))
         }
         const dataError = gorivoRes.error || servisRes.error || expensesRes.error
         if (dataError) throw dataError
@@ -649,11 +729,11 @@ export default function Stroski() {
         setOwnershipDraft(ownershipDraftFrom({ ...storedOwnership, ...avtoRes.data }))
         setIncludeVehiclePrice(avtoRes.data.include_vehicle_price_in_costs === true || storedOwnership.include_vehicle_price_in_costs === true)
       } else {
-        setAvto((prev: any) => prev || { id: carId })
+        setAvto((prev) => prev || { id: carId })
       }
       let gorivoData = gorivoRes.data || []
       let servisData = servisRes.data || []
-      let expensesData = (expensesRes.data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      let expensesData = ((expensesRes.data || []) as CostRow[]).filter((e) => e.kategorija !== 'km_sprememba')
       let nextDebugSource = [
         `q:${gorivoRes.count ?? gorivoData.length}/${servisRes.count ?? servisData.length}/${expensesRes.count ?? expensesData.length}`,
         `loaded:${gorivoData.length}/${servisData.length}/${expensesData.length}`,
@@ -700,7 +780,7 @@ export default function Stroski() {
         debug: nextDebugSource,
         ready: true,
       })
-      let immediateStats: any = rowOnlyStats
+      let immediateStats: CostStats | null = rowOnlyStats
       let immediateSummary = initialSummary
       try {
         immediateStats = buildVehicleStats(gorivoData, servisData, expensesData, carForStats)
@@ -796,8 +876,9 @@ export default function Stroski() {
       } catch (error) {
         console.warn('[GarageBase costs] cache write skipped', error)
       }
-      writeVehicleStatsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
-      writeCostTotalsCache(carId, hasLocalRows && immediateStats ? immediateStats : statsForSummary)
+      const statsForCache = (hasLocalRows && immediateStats ? immediateStats : statsForSummary) || rowOnlyStats
+      writeVehicleStatsCache(carId, statsForCache)
+      writeCostTotalsCache(carId, statsForCache)
       } catch (error) {
         console.warn('[GarageBase costs] load failed', error)
         setDebugSource((prev) => `${prev || 'load'} | load-error`)
@@ -814,7 +895,8 @@ export default function Stroski() {
       setVisibleCostCount(COST_LIST_SIZE)
     })
   }, [filter])
-  const preostaliCas = (createdAt: string) => {
+  const preostaliCas = (createdAt: string | null | undefined) => {
+    if (!createdAt) return null
     const ustvarjen = new Date(createdAt).getTime()
     const konec = ustvarjen + 24 * 60 * 60 * 1000
     const preostalo = konec - cas
@@ -824,11 +906,14 @@ export default function Stroski() {
     const sekunde = Math.floor((preostalo % (1000 * 60)) / 1000)
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
+  const formatRowDate = (date: string | null | undefined) => date
+    ? new Date(date).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')
+    : tx('Brez datuma', 'No date')
 
   const currentCarId = activeCarId || avto?.id
   const renderCache = currentCarId ? readCostCache(currentCarId) : null
   const fuelHistoryRows = currentCarId ? readFuelHistoryCache(currentCarId) : []
-  const firstRows = (...sets: any[][]) => sets.find((set) => Array.isArray(set) && set.length > 0) || []
+  const firstRows = (...sets: CostRow[][]) => sets.find((set) => Array.isArray(set) && set.length > 0) || []
   const refRows = latestRowsRef.current
   const displayGorivo = firstRows(gorivo, loadedRows.gorivo, costSnapshot.gorivo, refRows.gorivo, renderCache?.gorivo || [], fuelHistoryRows)
   const displayServisi = firstRows(servisi, loadedRows.servisi, costSnapshot.servisi, refRows.servisi, renderCache?.servisi || [])
@@ -836,7 +921,7 @@ export default function Stroski() {
   const cachedVehicleStats = currentCarId ? readVehicleStatsCache(currentCarId) : null
   const hasRowCosts = displayGorivo.length > 0 || displayServisi.length > 0 || displayExpenses.length > 0
   const rowsDerivedStats = hasRowCosts
-    ? buildRowStatsFromRows(displayGorivo, displayServisi, displayExpenses, avto || {})
+    ? buildRowStatsFromRows(displayGorivo, displayServisi, displayExpenses, avto || undefined)
     : null
   const refStats = latestStatsRef.current
   const refSummary = latestSummaryRef.current
@@ -847,10 +932,10 @@ export default function Stroski() {
   const statsForDisplay = firstUsableStats(rowsDerivedStats, localStateStats, displayStateStats, refStatsForDisplay, serverStatsForDisplay, cachedVehicleStats)
 
   const allCostRows = [
-    ...displayGorivo.map(v => ({ ...v, _tip: 'gorivo' })),
-    ...displayServisi.map(v => ({ ...v, _tip: 'servis' })),
-    ...displayExpenses.map(v => ({ ...v, _tip: 'ostalo' })),
-  ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
+    ...displayGorivo.map(v => ({ ...v, _tip: 'gorivo' as const })),
+    ...displayServisi.map(v => ({ ...v, _tip: 'servis' as const })),
+    ...displayExpenses.map(v => ({ ...v, _tip: 'ostalo' as const })),
+  ].sort((a, b) => dateValueMs(b.datum) - dateValueMs(a.datum))
   const rowFuelTotal = displayGorivo.reduce((sum, row) => sum + fuelCostValue(row), 0)
   const rowServiceTotal = displayServisi.reduce((sum, row) => sum + numericValue(row?.cena), 0)
   const rowExpenseTotal = displayExpenses.reduce((sum, row) => sum + numericValue(row?.znesek), 0)
@@ -940,9 +1025,9 @@ export default function Stroski() {
       const kljuc = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       meseci.push({ kljuc, label: d.toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI', { month: 'short' }), gorivo: 0, servis: 0, ostalo: 0 })
     }
-    displayGorivo.forEach(v => { const value = fuelCostValue(v); if (!v.datum || !value) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.gorivo += value })
-    displayServisi.forEach(v => { if (!v.datum || !numericValue(v.cena)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.servis += numericValue(v.cena) })
-    displayExpenses.forEach(v => { if (!v.datum || !numericValue(v.znesek)) return; const m = meseci.find(m => m.kljuc === v.datum.substring(0, 7)); if (m) m.ostalo += numericValue(v.znesek) })
+    displayGorivo.forEach(v => { const datum = v.datum; const value = fuelCostValue(v); if (!datum || !value) return; const m = meseci.find(m => m.kljuc === datum.substring(0, 7)); if (m) m.gorivo += value })
+    displayServisi.forEach(v => { const datum = v.datum; const value = numericValue(v.cena); if (!datum || !value) return; const m = meseci.find(m => m.kljuc === datum.substring(0, 7)); if (m) m.servis += value })
+    displayExpenses.forEach(v => { const datum = v.datum; const value = numericValue(v.znesek); if (!datum || !value) return; const m = meseci.find(m => m.kljuc === datum.substring(0, 7)); if (m) m.ostalo += value })
     return meseci
   }
 
@@ -1165,6 +1250,10 @@ export default function Stroski() {
   }
 
   const shraniUrediGorivo = async (id: string) => {
+    if (!avto) {
+      window.alert(tx('Vozilo še ni naloženo. Poskusi znova čez trenutek.', 'The vehicle is not loaded yet. Try again in a moment.'))
+      return
+    }
     setSaving(true)
     const { error } = await supabase.from('fuel_logs').update({
       datum: editData.datum,
@@ -1181,8 +1270,8 @@ export default function Stroski() {
       return
     }
     const { data } = await supabase.from('fuel_logs').select(fuelCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
-    const nextGorivo = data || []
-    const nextStats = buildRowStatsFromRows(nextGorivo, displayServisi, displayExpenses, avto || {})
+    const nextGorivo = asCostRowsResponse({ data: data || [], error: null, count: null }).data || []
+    const nextStats = buildRowStatsFromRows(nextGorivo, displayServisi, displayExpenses, avto)
     const nextRowSummary = costSummaryFromStats(nextStats)
     const nextSummary = mergeCostSummaries(nextRowSummary, safeBuildCostSummary(nextGorivo, displayServisi, displayExpenses, nextStats))
     latestRowsRef.current = { gorivo: nextGorivo, servisi: displayServisi, expenses: displayExpenses }
@@ -1206,6 +1295,10 @@ export default function Stroski() {
   }
 
   const shraniUrediServis = async (id: string) => {
+    if (!avto) {
+      window.alert(tx('Vozilo še ni naloženo. Poskusi znova čez trenutek.', 'The vehicle is not loaded yet. Try again in a moment.'))
+      return
+    }
     setSaving(true)
     const { error } = await supabase.from('service_logs').update({
       datum: editData.datum,
@@ -1221,8 +1314,8 @@ export default function Stroski() {
       return
     }
     const { data } = await supabase.from('service_logs').select(serviceCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
-    const nextServisi = data || []
-    const nextStats = buildRowStatsFromRows(displayGorivo, nextServisi, displayExpenses, avto || {})
+    const nextServisi = asCostRowsResponse({ data: data || [], error: null, count: null }).data || []
+    const nextStats = buildRowStatsFromRows(displayGorivo, nextServisi, displayExpenses, avto)
     const nextRowSummary = costSummaryFromStats(nextStats)
     const nextSummary = mergeCostSummaries(nextRowSummary, safeBuildCostSummary(displayGorivo, nextServisi, displayExpenses, nextStats))
     latestRowsRef.current = { gorivo: displayGorivo, servisi: nextServisi, expenses: displayExpenses }
@@ -1246,6 +1339,10 @@ export default function Stroski() {
   }
 
   const shraniUrediExpense = async (id: string) => {
+    if (!avto) {
+      window.alert(tx('Vozilo še ni naloženo. Poskusi znova čez trenutek.', 'The vehicle is not loaded yet. Try again in a moment.'))
+      return
+    }
     setSaving(true)
     const { error } = await supabase.from('expenses').update({
       datum: editData.datum,
@@ -1260,8 +1357,8 @@ export default function Stroski() {
       return
     }
     const { data } = await supabase.from('expenses').select(expenseCostColumns).eq('car_id', avto.id).order('datum', { ascending: true })
-    const nextExpenses = (data || []).filter((e: any) => e.kategorija !== 'km_sprememba')
-    const nextStats = buildRowStatsFromRows(displayGorivo, displayServisi, nextExpenses, avto || {})
+    const nextExpenses = ((data || []) as CostRow[]).filter((e) => e.kategorija !== 'km_sprememba')
+    const nextStats = buildRowStatsFromRows(displayGorivo, displayServisi, nextExpenses, avto)
     const nextRowSummary = costSummaryFromStats(nextStats)
     const nextSummary = mergeCostSummaries(nextRowSummary, safeBuildCostSummary(displayGorivo, displayServisi, nextExpenses, nextStats))
     latestRowsRef.current = { gorivo: displayGorivo, servisi: displayServisi, expenses: nextExpenses }
@@ -1302,7 +1399,7 @@ export default function Stroski() {
   })
   const exportCsv = () => {
     const header = ['type', 'date', 'vehicle', 'description', 'mileage', 'amount', 'source']
-    const csvRows = exportRows.map((row: any) => {
+    const csvRows = exportRows.map((row) => {
       const type = row._tip === 'gorivo' ? tx('Gorivo', 'Fuel') : row._tip === 'servis' ? tx('Servis', 'Service') : tx('Ostalo', 'Other')
       const description = row._tip === 'gorivo'
         ? [row.litri ? `${row.litri} L` : '', row.postaja || ''].filter(Boolean).join(' - ')
@@ -1329,7 +1426,7 @@ export default function Stroski() {
   const exportPdf = () => {
     const win = window.open('', '_blank')
     if (!win) return
-    const rows = exportRows.slice(0, 120).map((row: any) => {
+    const rows = exportRows.slice(0, 120).map((row) => {
       const type = row._tip === 'gorivo' ? tx('Gorivo', 'Fuel') : row._tip === 'servis' ? tx('Servis', 'Service') : tx('Ostalo', 'Other')
       const amount = row._tip === 'gorivo' ? fuelCostValue(row) : row._tip === 'servis' ? numericValue(row.cena) : numericValue(row.znesek)
       const description = row.opis || row.servis || row.kategorija || row.postaja || ''
@@ -1482,7 +1579,7 @@ export default function Stroski() {
               {tx('Nakupna cena', 'Purchase price')}
               <input
                 value={ownershipDraft.purchase_price}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_price: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, purchase_price: e.target.value }))}
                 inputMode="decimal"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1491,7 +1588,7 @@ export default function Stroski() {
               {tx('Datum nakupa', 'Purchase date')}
               <input
                 value={ownershipDraft.purchase_date}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_date: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, purchase_date: e.target.value }))}
                 type="date"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1500,7 +1597,7 @@ export default function Stroski() {
               {tx('Km ob nakupu', 'Mileage at purchase')}
               <input
                 value={ownershipDraft.purchase_mileage}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, purchase_mileage: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, purchase_mileage: e.target.value }))}
                 inputMode="numeric"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1509,7 +1606,7 @@ export default function Stroski() {
               {tx('Polog', 'Down payment')}
               <input
                 value={ownershipDraft.down_payment}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, down_payment: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, down_payment: e.target.value }))}
                 inputMode="decimal"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1518,7 +1615,7 @@ export default function Stroski() {
               {tx('Kredit/lizing', 'Finance paid')}
               <input
                 value={ownershipDraft.finance_total_paid}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, finance_total_paid: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, finance_total_paid: e.target.value }))}
                 inputMode="decimal"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1527,7 +1624,7 @@ export default function Stroski() {
               {tx('Preplačilo', 'Overpayment')}
               <input
                 value={ownershipDraft.finance_overpayment}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, finance_overpayment: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, finance_overpayment: e.target.value }))}
                 inputMode="decimal"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1536,7 +1633,7 @@ export default function Stroski() {
               {tx('Prodajna vrednost', 'Resale value')}
               <input
                 value={ownershipDraft.resale_value}
-                onChange={(e) => setOwnershipDraft((prev: any) => ({ ...prev, resale_value: e.target.value }))}
+                onChange={(e) => setOwnershipDraft((prev) => ({ ...prev, resale_value: e.target.value }))}
                 inputMode="decimal"
                 className="mt-1 w-full rounded-xl border border-[#2a2a40] bg-[#0b1020] px-3 py-2 text-sm font-bold text-white outline-none focus:border-[#6c63ff]"
               />
@@ -1698,8 +1795,9 @@ export default function Stroski() {
           </div>
         ) : (
           vidniVnosi.map((v) => {
+            const entryId = v.id || ''
             const preostalo = preostaliCas(v.created_at)
-            const jeUredi = uredi === v.id
+            const jeUredi = Boolean(entryId) && uredi === entryId
 
             if (v._tip === 'gorivo') return (
               <div key={`g-${v.id}`} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-xl p-4">
@@ -1707,14 +1805,14 @@ export default function Stroski() {
                   <div className="flex items-center gap-3">
                     <span className="text-lg">⛽</span>
                     <div>
-                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                      <p className="text-white text-sm font-semibold">{formatRowDate(v.datum)}</p>
                       <p className="text-[#5a5a80] text-xs">{v.litri} L · {formatDistance(v.km, enotaRazdalje)}{v.postaja ? ` · ${v.postaja}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     <p className="text-[#3ecfcf] font-semibold">{formatMoney(fuelCostValue(v), valuta)}</p>
-                    {preostalo && !jeUredi && (
-                      <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, litri: v.litri?.toString(), cena_na_liter: v.cena_na_liter?.toString(), postaja: v.postaja || '' }) }}
+                    {entryId && preostalo && !jeUredi && (
+                      <button onClick={() => { setUredi(entryId); setEditData({ datum: v.datum || '', litri: v.litri?.toString() || '', cena_na_liter: v.cena_na_liter?.toString() || '', postaja: v.postaja || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
                         {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
@@ -1724,7 +1822,7 @@ export default function Stroski() {
                 {!jeUredi && v.receipt_url && (
                   <button
                     type="button"
-                    onClick={() => window.open(v.receipt_url, '_blank')}
+                    onClick={() => window.open(String(v.receipt_url), '_blank')}
                     className="mt-3 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
                   >
                     {tx('Odpri račun', 'Open receipt')}
@@ -1752,7 +1850,7 @@ export default function Stroski() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
-                      <button onClick={() => shraniUrediGorivo(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
+                      <button onClick={() => shraniUrediGorivo(entryId)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}
@@ -1765,14 +1863,14 @@ export default function Stroski() {
                   <div className="flex items-center gap-3">
                     <span className="text-lg">🔧</span>
                     <div>
-                      <p className="text-white text-sm font-semibold">{new Date(v.datum).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI')}</p>
+                      <p className="text-white text-sm font-semibold">{formatRowDate(v.datum)}</p>
                       <p className="text-[#5a5a80] text-xs">{v.opis?.replace(/\s*\[Naknadno.*?\]/, '').substring(0, 35)}{v.servis ? ` · ${v.servis}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#f59e0b] font-semibold">{formatMoney(v.cena, valuta)}</p>
-                    {preostalo && !jeUredi && (
-                      <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis?.replace(/\s*\[Naknadno.*?\]/, '') || '', servis: v.servis || '', cena: v.cena?.toString() || '' }) }}
+                    <p className="text-[#f59e0b] font-semibold">{formatMoney(numericValue(v.cena), valuta)}</p>
+                    {entryId && preostalo && !jeUredi && (
+                      <button onClick={() => { setUredi(entryId); setEditData({ datum: v.datum || '', opis: v.opis?.replace(/\s*\[Naknadno.*?\]/, '') || '', servis: v.servis || '', cena: v.cena?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
                         {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
@@ -1810,28 +1908,29 @@ export default function Stroski() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
-                      <button onClick={() => shraniUrediServis(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
+                      <button onClick={() => shraniUrediServis(entryId)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}
               </div>
             )
 
+            const category = v.kategorija || tx('Ostalo', 'Other')
             return (
               <div key={`e-${v.id}`} className="bg-[#0f0f1a] border border-[#1e1e32] rounded-xl p-4">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <span className="text-lg">{kategorijaIkona[v.kategorija] || '💰'}</span>
+                    <span className="text-lg">{kategorijaIkona[category] || '💰'}</span>
                     <div>
-                      <p className="text-white text-sm font-semibold capitalize">{v.kategorija}</p>
-                      <p className="text-[#5a5a80] text-xs">{new Date(v.datum).toLocaleDateString('sl-SI')}</p>
+                      <p className="text-white text-sm font-semibold capitalize">{category}</p>
+                      <p className="text-[#5a5a80] text-xs">{formatRowDate(v.datum)}</p>
                       {v.opis && <p className="text-[#5a5a80] text-xs mt-0.5">{v.opis}</p>}
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="text-[#a09aff] font-semibold">{formatMoney(v.znesek, valuta)}</p>
-                    {preostalo && !jeUredi && (
-                      <button onClick={() => { setUredi(v.id); setEditData({ datum: v.datum, opis: v.opis || '', znesek: v.znesek?.toString() || '' }) }}
+                    <p className="text-[#a09aff] font-semibold">{formatMoney(numericValue(v.znesek), valuta)}</p>
+                    {entryId && preostalo && !jeUredi && (
+                      <button onClick={() => { setUredi(entryId); setEditData({ datum: v.datum || '', opis: v.opis || '', znesek: v.znesek?.toString() || '' }) }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-[10px] font-semibold px-2 py-1 rounded-lg">
                         {tx('Uredi', 'Edit')} · {preostalo}
                       </button>
@@ -1841,7 +1940,7 @@ export default function Stroski() {
                 {!jeUredi && v.receipt_url && (
                   <button
                     type="button"
-                    onClick={() => window.open(v.receipt_url, '_blank')}
+                    onClick={() => window.open(String(v.receipt_url), '_blank')}
                     className="mt-3 w-full rounded-xl border border-[#a09aff55] bg-[#6c63ff18] px-3 py-2 text-sm font-semibold text-[#a09aff]"
                   >
                     {tx('Odpri račun', 'Open receipt')}
@@ -1862,7 +1961,7 @@ export default function Stroski() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => setUredi(null)} className="py-2 rounded-xl border border-[#1e1e32] text-[#5a5a80] text-sm">{tx('Prekliči', 'Cancel')}</button>
-                      <button onClick={() => shraniUrediExpense(v.id)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
+                      <button onClick={() => shraniUrediExpense(entryId)} disabled={saving} className="py-2 rounded-xl bg-[#f59e0b] text-black font-semibold text-sm disabled:opacity-50">{saving ? tx('Shranjujem...', 'Saving...') : tx('Shrani', 'Save')}</button>
                     </div>
                   </div>
                 )}
