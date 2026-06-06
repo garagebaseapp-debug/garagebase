@@ -20,6 +20,37 @@ type NotificationState = Record<string, {
   lastDailySlot?: string
 }>
 
+type SupabaseService = NonNullable<ReturnType<typeof getSupabase>>
+
+type PushSubscriptionPayload = Parameters<typeof webpush.sendNotification>[0] & {
+  endpoint?: string
+}
+
+type PushSubscriptionRow = {
+  user_id: string
+  subscription?: PushSubscriptionPayload
+  notification_settings?: Partial<NotificationSettings>
+  notification_state?: NotificationState
+}
+
+type ReminderCar = {
+  znamka?: string
+  model?: string
+  user_id?: string
+  km_trenutni?: number | string | null
+}
+
+type ReminderRow = {
+  id: string
+  car_id?: string
+  tip?: string
+  datum?: string
+  km_opomnik?: number | string | null
+  opozorilo_dni_prej?: number | string | null
+  cars?: ReminderCar
+  documentItems?: ReminderRow[]
+}
+
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const getSupabase = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -103,7 +134,8 @@ function shouldRunForSendTime(sendTime: string) {
   return currentTotal >= wantedTotal && currentTotal < wantedTotal + 20
 }
 
-async function sendPush(subscription: any, title: string, body: string) {
+async function sendPush(subscription: PushSubscriptionPayload | undefined, title: string, body: string) {
+  if (!subscription) throw new Error('push_subscription_missing')
   await Promise.race([
     webpush.sendNotification(
       subscription,
@@ -119,7 +151,7 @@ async function sendPush(subscription: any, title: string, body: string) {
   ])
 }
 
-async function recordPushSuccess(supabase: any, userId: string, endpoint?: string) {
+async function recordPushSuccess(supabase: SupabaseService, userId: string, endpoint?: string) {
   if (!endpoint) return
   try {
     await supabase
@@ -138,9 +170,24 @@ async function recordPushSuccess(supabase: any, userId: string, endpoint?: strin
   }
 }
 
-async function recordPushFailure(supabase: any, userId: string, endpoint: string | undefined, error: any) {
+function errorStatusCode(error: unknown) {
+  return Number(typeof error === 'object' && error && 'statusCode' in error ? error.statusCode : 0)
+}
+
+function errorMessage(error: unknown, fallback = 'push_send_failed') {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error) {
+    const body = 'body' in error ? error.body : null
+    if (body) return String(body)
+    const message = 'message' in error ? error.message : null
+    if (message) return String(message)
+  }
+  return fallback
+}
+
+async function recordPushFailure(supabase: SupabaseService, userId: string, endpoint: string | undefined, error: unknown) {
   if (!endpoint) return
-  const statusCode = Number(error?.statusCode || 0)
+  const statusCode = errorStatusCode(error)
   if (statusCode === 404 || statusCode === 410) {
     await supabase
       .from('push_subscriptions')
@@ -155,7 +202,7 @@ async function recordPushFailure(supabase: any, userId: string, endpoint: string
       .from('push_subscriptions')
       .update({
         last_error_at: new Date().toISOString(),
-        last_error: String(error?.body || error?.message || 'push_send_failed').slice(0, 500),
+        last_error: errorMessage(error).slice(0, 500),
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', userId)
@@ -165,7 +212,7 @@ async function recordPushFailure(supabase: any, userId: string, endpoint: string
   }
 }
 
-function uniqueSubscriptions(subs: any[]) {
+function uniqueSubscriptions<T extends PushSubscriptionRow>(subs: T[]) {
   return Array.from(
     new Map(subs.map((sub) => [sub.subscription?.endpoint, sub])).values()
   )
@@ -186,8 +233,8 @@ function buildSummary(items: string[]) {
   return `${shown.join(' | ')}${extra > 0 ? ` | +${extra} dodatnih` : ''}`
 }
 
-async function loadDueSubscriptions(supabase: any) {
-  const dueSubs: any[] = []
+async function loadDueSubscriptions(supabase: SupabaseService) {
+  const dueSubs: PushSubscriptionRow[] = []
   let preskocenoCas = 0
   let preskocenoIzklopljeno = 0
   let from = 0
@@ -202,7 +249,7 @@ async function loadDueSubscriptions(supabase: any) {
 
     if (error) throw error
 
-    const page = data || []
+    const page = (data || []) as PushSubscriptionRow[]
     for (const sub of uniqueSubscriptions(page)) {
       const settings: NotificationSettings = {
         ...defaultNotificationSettings,
@@ -296,7 +343,7 @@ export async function GET(req: Request) {
       })
     }
 
-    const opomniki: any[] = []
+    const opomniki: ReminderRow[] = []
     for (const userIdBatch of chunkArray(dueUserIds, 200)) {
       const { data: reminderBatch, error: remindersError } = await supabase
         .from('reminders')
@@ -305,10 +352,10 @@ export async function GET(req: Request) {
         .or('status.is.null,status.eq.active')
 
       if (remindersError) throw remindersError
-      opomniki.push(...(reminderBatch || []))
+      opomniki.push(...((reminderBatch || []) as unknown as ReminderRow[]))
     }
 
-    const userReminders = new Map<string, any[]>()
+    const userReminders = new Map<string, ReminderRow[]>()
     for (const op of opomniki) {
       const userId = op.cars?.user_id
       if (!userId) continue
@@ -330,7 +377,7 @@ export async function GET(req: Request) {
       })
     }
 
-    const subsByUser = new Map<string, any[]>()
+    const subsByUser = new Map<string, PushSubscriptionRow[]>()
     for (const sub of dueSubs) {
       subsByUser.set(sub.user_id, [...(subsByUser.get(sub.user_id) || []), sub])
     }
@@ -352,14 +399,14 @@ export async function GET(req: Request) {
 
         const documentTypes = ['registracija', 'tehnicni', 'zavarovanje', 'vinjeta']
         const usedDocumentReminderIds = new Set<string>()
-        const documentGroups = new Map<string, any[]>()
+        const documentGroups = new Map<string, ReminderRow[]>()
         for (const op of reminders) {
-          if (op.datum && !op.km_opomnik && documentTypes.includes(op.tip)) {
+          if (op.datum && !op.km_opomnik && documentTypes.includes(op.tip || '')) {
             const key = `${op.car_id || op.cars?.user_id || userId}|${op.datum}|${op.opozorilo_dni_prej || 30}`
             documentGroups.set(key, [...(documentGroups.get(key) || []), op])
           }
         }
-        const remindersForChecks: any[] = []
+        const remindersForChecks: ReminderRow[] = []
         for (const items of documentGroups.values()) {
           if (items.length < 2) continue
           items.forEach((item) => usedDocumentReminderIds.add(item.id))
@@ -379,8 +426,8 @@ export async function GET(req: Request) {
           const avtoNaziv = `${op.cars?.znamka || ''} ${op.cars?.model || ''}`.trim()
           const documentItems = Array.isArray(op.documentItems) ? op.documentItems : []
           const naziv = documentItems.length > 1
-            ? `Dokumenti (${documentItems.map((item: any) => tipNaziv[item.tip] || item.tip).join(', ')})`
-            : tipNaziv[op.tip] || op.tip || 'Opomnik'
+            ? `Dokumenti (${documentItems.map((item) => tipNaziv[item.tip || ''] || item.tip).join(', ')})`
+            : tipNaziv[op.tip || ''] || op.tip || 'Opomnik'
 
           const checks: Array<{
             key: string
@@ -489,7 +536,7 @@ export async function GET(req: Request) {
       napakePosiljanja,
       timezone: 'Europe/Ljubljana',
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: errorMessage(error, 'cron_failed') }, { status: 500 })
   }
 }
