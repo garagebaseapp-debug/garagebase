@@ -16,9 +16,45 @@ import {
 const PAGE_SIZE = 50
 const fuelHistoryColumns = 'id,car_id,datum,km,litri,cena_na_liter,cena_skupaj,postaja,created_at,receipt_url,import_batch_id,source_owner_label,polni_rezervar,verification_level'
 const fuelSummaryColumns = 'litri,cena_skupaj,cena_na_liter,created_at,import_batch_id,source_owner_label,postaja'
-const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
 
-const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+type FuelHistoryCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | null
+}
+
+type FuelHistoryRow = Record<string, unknown> & {
+  id: string
+  car_id: string
+  datum?: string | null
+  km?: number | string | null
+  litri?: number | string | null
+  cena_na_liter?: number | string | null
+  cena_skupaj?: number | string | null
+  tip_goriva?: string | null
+  postaja?: string | null
+  created_at: string
+  receipt_url?: string | null
+  import_batch_id?: string | null
+  source_owner_label?: string | null
+  polni_rezervar?: boolean | string | null
+  verification_level?: string | null
+}
+
+type FuelEditData = {
+  datum?: string
+  km?: string
+  litri?: string
+  cena_na_liter?: string
+  cena_skupaj?: string
+  postaja?: string
+  polni_rezervar?: boolean
+}
+
+const isLockedRecordError = (error: unknown) => String((error as { message?: string } | null)?.message || '').includes('manual_record_locked_after_24h')
+
+const importBuckets = (rows: FuelHistoryRow[]) => rows.reduce((buckets: Record<string, number>, row) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
   if (key) buckets[key] = (buckets[key] || 0) + 1
   return buckets
@@ -30,20 +66,20 @@ const importInfoFromLabel = (label?: string | null) => {
   return { source, stamp }
 }
 
-const isImportedFuelRow = (row: any, buckets?: Record<string, number>) => {
+const isImportedFuelRow = (row: FuelHistoryRow, buckets?: Record<string, number>) => {
   return Boolean(importInfoFromLabel(row?.source_owner_label) || isImportedHistoryRow(row, buckets))
 }
 
-const fuelSummaryFor = (rows: any[]) => ({
+const fuelSummaryFor = (rows: FuelHistoryRow[]) => ({
   liters: rows.reduce((sum, row) => sum + fuelLitersValue(row), 0),
   amount: rows.reduce((sum, row) => sum + fuelCostValue(row), 0),
   count: rows.length,
 })
 
-const saveFuelCostSummary = (carId: string, rows: any[]) => {
+const saveFuelCostSummary = (carId: string, rows: FuelHistoryRow[]) => {
   const buckets = importBuckets(rows)
-  const importedRows = rows.filter((row: any) => isImportedFuelRow(row, buckets))
-  const garageBaseRows = rows.filter((row: any) => !isImportedFuelRow(row, buckets))
+  const importedRows = rows.filter((row) => isImportedFuelRow(row, buckets))
+  const garageBaseRows = rows.filter((row) => !isImportedFuelRow(row, buckets))
   const garageBase = fuelSummaryFor(garageBaseRows)
   const imported = fuelSummaryFor(importedRows)
   const total = fuelSummaryFor(rows)
@@ -60,11 +96,11 @@ const saveFuelCostSummary = (carId: string, rows: any[]) => {
 export default function ZgodovinaGoriva() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-  const [vnosi, setVnosi] = useState<any[]>([])
-  const [avto, setAvto] = useState<any>(null)
+  const [vnosi, setVnosi] = useState<FuelHistoryRow[]>([])
+  const [avto, setAvto] = useState<FuelHistoryCar | null>(null)
   const [loading, setLoading] = useState(true)
   const [uredi, setUredi] = useState<string | null>(null)
-  const [editData, setEditData] = useState<any>({})
+  const [editData, setEditData] = useState<FuelEditData>({})
   const [saving, setSaving] = useState(false)
   const [cas, setCas] = useState(() => Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
@@ -91,24 +127,24 @@ export default function ZgodovinaGoriva() {
       setCarId(selectedCarId)
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', selectedCarId).eq('user_id', user.id).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
-      setAvto(avtoData)
+      setAvto(avtoData as FuelHistoryCar)
       const [gorivoRes, summaryRes, maxKmRes] = await Promise.all([
         supabase.from('fuel_logs').select(fuelHistoryColumns, { count: 'exact' }).eq('car_id', selectedCarId).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
         supabase.from('fuel_logs').select(fuelSummaryColumns).eq('car_id', selectedCarId),
         supabase.from('fuel_logs').select('km').eq('car_id', selectedCarId).order('km', { ascending: false }).limit(1),
       ])
-      const gorivo = gorivoRes.data || []
+      const gorivo = (gorivoRes.data || []) as FuelHistoryRow[]
       const fuelRows = sortRowsByMileageAndDate(gorivo || [])
       const maxFuelKm = numberValue(maxKmRes.data?.[0]?.km)
       if (avtoData?.id && maxFuelKm > (avtoData.km_trenutni || 0)) {
         await supabase.from('cars').update({ km_trenutni: maxFuelKm }).eq('id', avtoData.id).eq('user_id', user.id)
-        setAvto({ ...avtoData, km_trenutni: maxFuelKm })
+        setAvto({ ...(avtoData as FuelHistoryCar), km_trenutni: maxFuelKm })
       }
       setTotalCount(gorivoRes.count || fuelRows.length)
-      const summaryRows = (summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : fuelRows) || []
+      const summaryRows = ((summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : fuelRows) || []) as FuelHistoryRow[]
       const buckets = importBuckets(summaryRows)
-      const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
-      const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
+      const importedRows = summaryRows.filter((row) => isImportedFuelRow(row, buckets))
+      const garageBaseRows = summaryRows.filter((row) => !isImportedFuelRow(row, buckets))
       setSummary({
         garageBase: fuelSummaryFor(garageBaseRows),
         imported: fuelSummaryFor(importedRows),
@@ -137,7 +173,7 @@ export default function ZgodovinaGoriva() {
     return `${ure}:${String(minute).padStart(2, '0')}:${String(sekunde).padStart(2, '0')}`
   }
 
-  const izracunajPorabo = (rows: any[], index: number) => {
+  const izracunajPorabo = (rows: FuelHistoryRow[], index: number) => {
     const trenutni = rows[index]
     const prejsnji = rows[index + 1]
     if (!prejsnji) return null
@@ -158,11 +194,11 @@ export default function ZgodovinaGoriva() {
     }
   }
 
-  const jeNepopolnUvoz = (vnos: any) => !vnos.import_batch_id && !vnos.source_owner_label && fuelLitersValue(vnos) === 0 && fuelCostValue(vnos) === 0
+  const jeNepopolnUvoz = (vnos: FuelHistoryRow) => !vnos.import_batch_id && !vnos.source_owner_label && fuelLitersValue(vnos) === 0 && fuelCostValue(vnos) === 0
   const displayedImportBuckets = importBuckets(vnosi)
-  const jeUvozen = (vnos: any) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
-  const jeDelnoTankanje = (vnos: any) => vnos?.polni_rezervar === false || String(vnos?.polni_rezervar).toLowerCase() === 'false'
-  const editable = (vnos: any) => Boolean(preostaliCas(vnos.created_at))
+  const jeUvozen = (vnos: FuelHistoryRow) => Boolean(isImportedFuelRow(vnos, displayedImportBuckets) || jeNepopolnUvoz(vnos))
+  const jeDelnoTankanje = (vnos: FuelHistoryRow) => vnos?.polni_rezervar === false || String(vnos?.polni_rezervar).toLowerCase() === 'false'
+  const editable = (vnos: FuelHistoryRow) => Boolean(preostaliCas(vnos.created_at))
   const filteredVnosi = vnosi.filter((vnos) => {
     const imported = jeUvozen(vnos)
     return imported ? sourceFilter.imported : sourceFilter.garageBase
@@ -176,15 +212,16 @@ export default function ZgodovinaGoriva() {
   }
 
   const refreshVnosi = async () => {
+    if (!avto) return
     const [gorivoRes, summaryRes] = await Promise.all([
       supabase.from('fuel_logs').select(fuelHistoryColumns, { count: 'exact' }).eq('car_id', avto.id).order('km', { ascending: false }).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
       supabase.from('fuel_logs').select(fuelSummaryColumns).eq('car_id', avto.id),
     ])
-    const gorivo = sortRowsByMileageAndDate(gorivoRes.data || [])
-    const summaryRows = (summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : gorivo) || []
+    const gorivo = sortRowsByMileageAndDate((gorivoRes.data || []) as FuelHistoryRow[])
+    const summaryRows = ((summaryRes.data && summaryRes.data.length > 0 ? summaryRes.data : gorivo) || []) as FuelHistoryRow[]
     const buckets = importBuckets(summaryRows)
-    const importedRows = summaryRows.filter((row: any) => isImportedFuelRow(row, buckets))
-    const garageBaseRows = summaryRows.filter((row: any) => !isImportedFuelRow(row, buckets))
+    const importedRows = summaryRows.filter((row) => isImportedFuelRow(row, buckets))
+    const garageBaseRows = summaryRows.filter((row) => !isImportedFuelRow(row, buckets))
     setVnosi(gorivo)
     localStorage.setItem(`garagebase_fuel_history_cache_${avto.id}`, JSON.stringify({ rows: gorivo, savedAt: cas }))
     saveFuelCostSummary(avto.id, summaryRows)
@@ -202,11 +239,11 @@ export default function ZgodovinaGoriva() {
     const from = vnosi.length
     const to = from + PAGE_SIZE - 1
     const { data } = await supabase.from('fuel_logs').select(fuelHistoryColumns).eq('car_id', carId).order('km', { ascending: false }).order('datum', { ascending: false }).range(from, to)
-    setVnosi(prev => sortRowsByMileageAndDate([...prev, ...(data || [])]))
+    setVnosi(prev => sortRowsByMileageAndDate([...prev, ...((data || []) as FuelHistoryRow[])]))
     setLoadingMore(false)
   }
 
-  const izracunajPrikazPorabe = (rows: any[], index: number) => {
+  const izracunajPrikazPorabe = (rows: FuelHistoryRow[], index: number) => {
     if (jeDelnoTankanje(rows[index])) return null
     if (!rows.some(jeDelnoTankanje)) return izracunajPorabo(rows, index)
 
@@ -220,7 +257,7 @@ export default function ZgodovinaGoriva() {
 
   const znakValute = currencySymbol(valuta)
 
-  const tipGorivaIkona = (tip: string) => {
+  const tipGorivaIkona = (tip?: string | null) => {
     if (tip === '95') return { label: '95', bg: 'bg-[#16a34a]', text: 'text-white' }
     if (tip === '100') return { label: '100', bg: 'bg-[#2563eb]', text: 'text-white' }
     if (tip === 'diesel') return { label: 'D', bg: 'bg-[#333333]', text: 'text-[#aaaaaa]' }
@@ -256,6 +293,7 @@ export default function ZgodovinaGoriva() {
   }
 
   const shraniUredi = async (id: string) => {
+    if (!avto) return
     setSaving(true)
     const litri = numberValue(editData.litri)
     const cenaNaLiter = numberValue(editData.cena_na_liter)
@@ -281,6 +319,7 @@ export default function ZgodovinaGoriva() {
   }
 
   const izbrisiVnos = async (id: string) => {
+    if (!avto) return
     const vnos = vnosi.find(v => v.id === id)
     if (!vnos || !editable(vnos)) return
     const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
@@ -311,6 +350,7 @@ export default function ZgodovinaGoriva() {
   }
 
   const izbrisiIzbrane = async () => {
+    if (!avto) return
     const importedIds = vnosi.filter(jeUvozen).map(vnos => vnos.id)
     const ids = selectedImported.filter(id => importedIds.includes(id))
     if (ids.length === 0) return
@@ -498,7 +538,7 @@ export default function ZgodovinaGoriva() {
                     )}
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-white font-semibold">{new Date(vnos.datum).toLocaleDateString('sl-SI')}</p>
+                      <p className="text-white font-semibold">{new Date(vnos.datum || vnos.created_at || Date.now()).toLocaleDateString('sl-SI')}</p>
                         {isPartialFillUp && (
                           <span className="rounded-full border border-[#94a3b866] bg-[#94a3b81a] px-2 py-0.5 text-[10px] font-black uppercase text-[#64748b]">
                             ◐ {tx('Delno', 'Partial')}
@@ -515,9 +555,9 @@ export default function ZgodovinaGoriva() {
                       <button onClick={() => {
                         setUredi(vnos.id)
                         setEditData({
-                          datum: vnos.datum,
-                          litri: vnos.litri?.toString(),
-                          cena_na_liter: vnos.cena_na_liter?.toString(),
+                          datum: vnos.datum || '',
+                          litri: vnos.litri?.toString() || '',
+                          cena_na_liter: vnos.cena_na_liter?.toString() || '',
                           postaja: vnos.postaja || '',
                         })
                       }}
@@ -600,7 +640,7 @@ export default function ZgodovinaGoriva() {
                 {!jeUredi && vnos.receipt_url && (
                   <button
                     type="button"
-                    onClick={() => window.open(vnos.receipt_url, '_blank')}
+                    onClick={() => window.open(String(vnos.receipt_url), '_blank')}
                     className="mt-2 w-full rounded-xl border border-[#3ecfcf55] bg-[#3ecfcf18] px-3 py-2 text-sm font-semibold text-[#3ecfcf]"
                   >
                     {tx('Odpri racun', 'Open receipt')}
