@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
@@ -30,6 +30,71 @@ type TireDashboardSummary = {
   label: string
   drivenKm: number
   daysToSeasonEnd: number | null
+}
+
+type DashboardCar = Record<string, unknown> & {
+  id: string
+  user_id?: string | null
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  barva?: string | null
+  tablica?: string | null
+  km_trenutni?: number | null
+  km_ob_vnosu?: number | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  arhivirano?: boolean | null
+  vrstni_red?: number | null
+  tip_vozila?: string | null
+}
+
+type DashboardReminder = Record<string, unknown> & {
+  id: string
+  car_id: string
+  tip?: string | null
+  datum?: string | null
+  km_opomnik?: number | null
+  created_at?: string | null
+  status?: string | null
+  completed_at?: string | null
+  completed_note?: string | null
+}
+
+type DashboardRow = Record<string, unknown> & {
+  id?: string | null
+  car_id?: string | null
+  datum?: string | null
+  created_at?: string | null
+  km?: number | string | null
+  litri?: number | string | null
+  cena?: number | string | null
+  cena_skupaj?: number | string | null
+  cena_na_liter?: number | string | null
+  znesek?: number | string | null
+  opis?: string | null
+  postaja?: string | null
+  kategorija?: string | null
+  import_batch_id?: string | null
+  source_owner_label?: string | null
+}
+
+type DashboardCostCache = {
+  gorivo: DashboardRow[]
+  servisi: DashboardRow[]
+  expenses: DashboardRow[]
+}
+
+type TireRow = Record<string, unknown> & {
+  id?: string
+  status?: string | null
+  season?: string | null
+  name?: string | null
+  brand?: string | null
 }
 
 const emptyConsumption: ConsumptionBreakdown = { garageBase: null, imported: null, total: null }
@@ -80,11 +145,11 @@ const normalizeTireStatus = (status: string) => {
   return status || 'mounted'
 }
 
-const fuelCostValue = (row: any) => {
+const fuelCostValue = (row: DashboardRow) => {
   return sharedFuelCostValue(row)
 }
 
-const isImportedDashboardRow = (row: any) => {
+const isImportedDashboardRow = (row: DashboardRow) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
   return Boolean(
     row?.import_batch_id ||
@@ -93,16 +158,16 @@ const isImportedDashboardRow = (row: any) => {
   )
 }
 
-const importBuckets = (rows: any[]) => rows.reduce((buckets: Record<string, number>, row: any) => {
+const importBuckets = (rows: DashboardRow[]) => rows.reduce((buckets: Record<string, number>, row) => {
   const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
   if (key) buckets[key] = (buckets[key] || 0) + 1
   return buckets
 }, {})
 
-const splitRowsBySource = (rows: any[]) => {
+const splitRowsBySource = (rows: DashboardRow[]) => {
   const buckets = importBuckets(rows)
-  const imported: any[] = []
-  const garageBase: any[] = []
+  const imported: DashboardRow[] = []
+  const garageBase: DashboardRow[] = []
   rows.forEach((row) => {
     const key = row?.created_at ? String(row.created_at).slice(0, 16) : ''
     const looksLikeBulkImport = key && (buckets[key] || 0) >= 3
@@ -112,7 +177,7 @@ const splitRowsBySource = (rows: any[]) => {
   return { imported, garageBase }
 }
 
-const importedConsumptionValue = (row: any) => {
+const importedConsumptionValue = (row: DashboardRow) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
   const match = rawText.match(/(?:Poraba|Consumption|Efficiency)\s*:\s*([0-9]+(?:[,.][0-9]+)?)/i)
   if (!match) return null
@@ -120,13 +185,13 @@ const importedConsumptionValue = (row: any) => {
   return Number.isFinite(parsed) && parsed > 0 && parsed < 100 ? parsed : null
 }
 
-const averageKnownConsumption = (rows: any[]) => {
+const averageKnownConsumption = (rows: DashboardRow[]) => {
   const values = rows.map(importedConsumptionValue).filter((value): value is number => value !== null)
   if (values.length === 0) return null
   return values.reduce((sum, value) => sum + value, 0) / values.length
 }
 
-const consumptionSegment = (rows: any[]) => {
+const consumptionSegment = (rows: DashboardRow[]) => {
   const sorted = rows
     .filter((row) => numberValue(row.km) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => numberValue(a.km) - numberValue(b.km))
@@ -222,16 +287,16 @@ const readVehicleStatsCache = (carId: string) => {
 export default function Dashboard() {
   const router = useRouter()
   const activeLoadRef = useRef('')
-  const [avti, setAvti] = useState<any[]>([])
-  const [aktivniAvto, setAktivniAvto] = useState<any>(null)
-  const [opomniki, setOpomniki] = useState<any[]>([])
+  const [avti, setAvti] = useState<DashboardCar[]>([])
+  const [aktivniAvto, setAktivniAvto] = useState<DashboardCar | null>(null)
+  const [opomniki, setOpomniki] = useState<DashboardReminder[]>([])
   const [poraba, setPoraba] = useState<ConsumptionBreakdown>(emptyConsumption)
   const [stroski, setStroski] = useState<CostBreakdown>(emptyCosts)
   const [loading, setLoading] = useState(true)
   const [nacin, setNacin] = useState<'lite' | 'full'>('full')
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [jezik, setJezik] = useState<Language>('sl')
-  const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, any[]>>({})
+  const [liteOpomnikiPoAvtu, setLiteOpomnikiPoAvtu] = useState<Record<string, DashboardReminder[]>>({})
   const [tireSummary, setTireSummary] = useState<TireDashboardSummary | null>(null)
   const [imageMessage, setImageMessage] = useState('')
   const [imageBusy, setImageBusy] = useState(false)
@@ -244,23 +309,23 @@ export default function Dashboard() {
     note: '',
   })
   const tx = (sl: string, en: string) => (jezik === 'en' ? en : sl)
-  const activeReminderRows = (rows: any[] = []) => rows.filter((op) => (op?.status || 'active') === 'active')
+  const activeReminderRows = (rows: DashboardReminder[] = []) => rows.filter((op) => (op?.status || 'active') === 'active')
   const datumLocale = jezik === 'en' ? 'en-US' : 'sl-SI'
   const znakValute = currencySymbol(valuta)
-  const slikaVozila = (avto: any) => {
+  const slikaVozila = (avto: DashboardCar | null | undefined) => {
     const rawUrl = avto?.slika_url || avto?.slika || ''
     if (!rawUrl) return ''
     return imageUrlWithVersion(rawUrl, avto?.slika_updated_at || avto?.updated_at || avto?.created_at || GARAGE_CACHE_VERSION)
   }
   const imageError = (error: unknown) => imageCompressionErrorText(error, jezik)
   const updateActiveCarImage = (url: string | null, updatedAt = new Date().toISOString()) => {
-    setAktivniAvto((prev: any) => prev ? { ...prev, slika_url: url, slika: null, slika_updated_at: updatedAt } : prev)
+    setAktivniAvto((prev) => prev ? { ...prev, slika_url: url, slika: null, slika_updated_at: updatedAt } : prev)
     setAvti((prev) => prev.map((item) => item.id === aktivniAvto?.id ? { ...item, slika_url: url, slika: null, slika_updated_at: updatedAt } : item))
     if (aktivniAvto?.id) clearVehicleDataCaches(aktivniAvto.id)
     try { localStorage.removeItem('garagebase_garaza_cache') } catch {}
   }
   const updateActiveCarMileage = (nextKm: number) => {
-    setAktivniAvto((prev: any) => prev ? { ...prev, km_trenutni: nextKm } : prev)
+    setAktivniAvto((prev) => prev ? { ...prev, km_trenutni: nextKm } : prev)
     setAvti((prev) => prev.map((item) => item.id === aktivniAvto?.id ? { ...item, km_trenutni: nextKm } : item))
     if (aktivniAvto?.id) clearVehicleDataCaches(aktivniAvto.id)
     try { localStorage.removeItem('garagebase_garaza_cache') } catch {}
@@ -336,7 +401,7 @@ export default function Dashboard() {
     setMileageForm({ event_date: new Date().toISOString().split('T')[0], km: '', note: '' })
     setMileageSaving(false)
   }
-  const uploadVehicleImage = async (event: any) => {
+  const uploadVehicleImage = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file || !aktivniAvto?.id) return
@@ -481,7 +546,7 @@ export default function Dashboard() {
       const parsedCache = readGarageCache()
       if (parsedCache && !carIdFromUrl) {
         const cachedCars = Array.isArray(parsedCache.avti)
-          ? parsedCache.avti.filter((car: any) => car?.arhivirano !== true)
+          ? (parsedCache.avti as DashboardCar[]).filter((car) => car?.arhivirano !== true)
           : []
         if (cachedCars.length > 0) {
           setAvti(cachedCars)
@@ -492,14 +557,14 @@ export default function Dashboard() {
 
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.replace('/'); return }
-      let selectedCar: any = null
+      let selectedCar: DashboardCar | null = null
       if (carIdFromUrl) {
         const { data } = await supabase
           .from('cars').select('*')
           .eq('user_id', user.id)
           .eq('id', carIdFromUrl)
           .maybeSingle()
-        selectedCar = data || null
+        selectedCar = (data as DashboardCar | null) || null
       }
       const archiveMode = Boolean(selectedCar?.arhivirano)
       let { data: avtiData, error: avtiError } = await supabase
@@ -512,8 +577,8 @@ export default function Dashboard() {
           .order('vrstni_red', { ascending: true })
         avtiData = fallback.data || []
       }
-      let cars = (avtiData || []).filter((car: any) => Boolean(car?.arhivirano) === archiveMode || car.id === selectedCar?.id)
-      if (selectedCar && !cars.some((car: any) => car.id === selectedCar.id)) {
+      let cars = ((avtiData || []) as DashboardCar[]).filter((car) => Boolean(car?.arhivirano) === archiveMode || car.id === selectedCar?.id)
+      if (selectedCar && !cars.some((car) => car.id === selectedCar.id)) {
         cars = [selectedCar, ...cars]
       }
       setAvti(cars)
@@ -525,11 +590,11 @@ export default function Dashboard() {
       }
       if (cars.length > 0) {
         const izbrani = carIdFromUrl
-          ? cars.find((a: any) => a.id === carIdFromUrl) || selectedCar || cars[0]
+          ? cars.find((a) => a.id === carIdFromUrl) || selectedCar || cars[0]
           : cars[0]
         setAktivniAvto(izbrani)
         setLoading(false)
-        if (jeLite) await naloziLitePodatke(cars.map((a: any) => a.id), izbrani.id)
+        if (jeLite) await naloziLitePodatke(cars.map((a) => a.id), izbrani.id)
         await naloziPodatke(izbrani.id, izbrani.km_trenutni || 0, izbrani.km_ob_vnosu || 0)
       }
       setLoading(false)
@@ -540,7 +605,7 @@ export default function Dashboard() {
   async function naloziLitePodatke(carIds: string[] | string, activeCarId?: string) {
     const ids = Array.isArray(carIds) ? carIds : [carIds]
     const selectedId = activeCarId || ids[0]
-    const cachedGrouped: Record<string, any[]> = {}
+    const cachedGrouped: Record<string, DashboardReminder[]> = {}
 
     ids.forEach((id) => {
       const cached = localStorage.getItem(`garagebase_dashboard_cache_${id}`)
@@ -564,14 +629,14 @@ export default function Dashboard() {
       .or('status.is.null,status.eq.active')
       .order('datum', { ascending: true })
 
-    const grouped: Record<string, any[]> = {}
-    ;(data || []).forEach((op: any) => {
+    const grouped: Record<string, DashboardReminder[]> = {}
+    ;((data || []) as DashboardReminder[]).forEach((op) => {
       if (!op.car_id) return
       if (!grouped[op.car_id]) grouped[op.car_id] = []
       grouped[op.car_id].push(op)
     })
 
-    const completeGrouped: Record<string, any[]> = {}
+    const completeGrouped: Record<string, DashboardReminder[]> = {}
     ids.forEach((id) => {
       const opData = grouped[id] || []
       completeGrouped[id] = opData
@@ -691,9 +756,9 @@ export default function Dashboard() {
       console.warn('[GarageBase dashboard] statistics fetch failed', fuelRes.error?.message, serviceRes.error?.message, expenseRes.error?.message)
     }
 
-    let fuelRows = fuelRes.data || []
-    let serviceRows = serviceRes.data || []
-    let expenseRows = expenseRes.data || []
+    let fuelRows = (fuelRes.data || []) as DashboardRow[]
+    let serviceRows = (serviceRes.data || []) as DashboardRow[]
+    let expenseRows = (expenseRes.data || []) as DashboardRow[]
     if (fuelRows.length === 0 && serviceRows.length === 0 && expenseRows.length === 0) {
       try {
         const cached = readCostCache(carId)
@@ -774,7 +839,8 @@ export default function Dashboard() {
       return
     }
 
-    const tire = tireRows.find((item: any) => normalizeTireStatus(item.status) === 'mounted') || tireRows[0]
+    const typedTireRows = (tireRows || []) as TireRow[]
+    const tire = typedTireRows.find((item) => normalizeTireStatus(String(item.status || '')) === 'mounted') || typedTireRows[0]
     let drivenKm = Math.max(0, Number(currentKm || 0) - Number(tire.installed_km || 0)) + numberValue(tire.total_km)
     const { data: mountRows } = await supabase
       .from('tire_mounts')
@@ -782,7 +848,7 @@ export default function Dashboard() {
       .eq('tire_set_id', tire.id)
 
     if (mountRows?.length) {
-      drivenKm = mountRows.reduce((sum: number, mount: any) => {
+      drivenKm = ((mountRows || []) as Array<{ mounted_km?: number | string | null; removed_km?: number | string | null }>).reduce((sum, mount) => {
         const start = numberValue(mount.mounted_km)
         const end = mount.removed_km === null || mount.removed_km === undefined ? Number(currentKm || 0) : numberValue(mount.removed_km)
         return sum + Math.max(0, end - start)
@@ -844,7 +910,7 @@ export default function Dashboard() {
       supabase.from('reminders').select(dashboardReminderColumns).eq('car_id', carId).or('status.is.null,status.eq.active').order('datum', { ascending: true }),
     ])
 
-    const opData = opRes.data || []
+    const opData = (opRes.data || []) as DashboardReminder[]
     if (!shouldApply()) return
     setOpomniki(opData)
     await naloziGumeZaDashboard(carId, avtoKmStart)
@@ -855,7 +921,7 @@ export default function Dashboard() {
     const nextStroski = stats.stroski
     localStorage.setItem(`garagebase_dashboard_cache_${carId}`, JSON.stringify({ opomniki: opData, poraba: nextPoraba, stroski: nextStroski, savedAt: Date.now() }))
   }
-  const oznaciOpomnikOpravljeno = async (op: any) => {
+  const oznaciOpomnikOpravljeno = async (op: DashboardReminder) => {
     if (!op?.id || !aktivniAvto?.id) return
     const completedAt = new Date().toISOString().split('T')[0]
     const { error } = await supabase
@@ -878,7 +944,7 @@ export default function Dashboard() {
       localStorage.setItem(`garagebase_dashboard_cache_${aktivniAvto.id}`, JSON.stringify({ ...parsed, opomniki: nextOpomniki, savedAt: Date.now() }))
     } catch {}
   }
-  const preklopAvto = async (avto: any) => {
+  const preklopAvto = async (avto: DashboardCar) => {
     if (!avto?.id) return
     if (avto.id === aktivniAvto?.id) return
     setAktivniAvto(avto)
@@ -887,11 +953,11 @@ export default function Dashboard() {
     setStroski({ garageBase: 0, imported: 0, total: 0, naKm: null })
     setTireSummary(null)
     router.push(`/dashboard?car=${encodeURIComponent(avto.id)}`)
-    if (nacin === 'lite') await naloziLitePodatke(avti.map((a: any) => a.id), avto.id)
+    if (nacin === 'lite') await naloziLitePodatke(avti.map((a) => a.id), avto.id)
     await naloziPodatke(avto.id, avto.km_trenutni || 0, avto.km_ob_vnosu || 0)
   }
 
-  const dniDo = (datum: string) => {
+  const dniDo = (datum?: string | null) => {
     if (!datum) return null
     return Math.ceil((new Date(datum).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
   }
@@ -957,7 +1023,7 @@ export default function Dashboard() {
     drugo: tx('Drugo', 'Other'),
   }
   const liteTipNaziv = (tip?: string) => tipNaziv[tip || ''] || tip || tx('Opomnik', 'Reminder')
-  const statusZaOpomnik = (op: any, avto: any): LiteStatus => {
+  const statusZaOpomnik = (op: DashboardReminder, avto: DashboardCar): LiteStatus => {
     const dni = dniDo(op.datum)
     const km = op.km_opomnik && avto?.km_trenutni ? op.km_opomnik - avto.km_trenutni : null
     if ((dni !== null && dni <= 7) || (km !== null && km <= 500)) return 'red'
@@ -965,10 +1031,10 @@ export default function Dashboard() {
     if (dni !== null || km !== null) return 'green'
     return 'grey'
   }
-  const statusZaAvto = (avto: any): LiteStatus => {
+  const statusZaAvto = (avto: DashboardCar): LiteStatus => {
     const list = liteOpomnikiPoAvtu[avto.id] || []
     if (list.length === 0) return 'grey'
-    return list.reduce((worst: LiteStatus, op: any) => {
+    return list.reduce((worst: LiteStatus, op) => {
       const next = statusZaOpomnik(op, avto)
       return liteStatusRank[next] > liteStatusRank[worst] ? next : worst
     }, 'green')
@@ -1144,16 +1210,16 @@ export default function Dashboard() {
             <p className="rounded-xl border border-[#303040] bg-[#141421] p-4 text-sm font-bold text-[#a0a0b8]">{tx('To vozilo še nima opomnikov.', 'This vehicle has no reminders yet.')}</p>
           ) : (
             <div className="space-y-2">
-              {prikazOpomnikov.map((op: any) => {
+              {prikazOpomnikov.map((op) => {
                 const status = statusZaOpomnik(op, aktivniAvto)
                 const dni = dniDo(op.datum)
                 const km = op.km_opomnik && aktivniAvto?.km_trenutni ? op.km_opomnik - aktivniAvto.km_trenutni : null
                 const vrednost = dni !== null ? `${dni} d` : km !== null ? `${km} km` : '-'
                 return (
                   <div key={op.id} className={`flex items-center gap-3 rounded-xl border p-3 ${liteStatusStyle[status].border} ${liteStatusStyle[status].bg}`}>
-                    <span className={`min-w-11 rounded-lg border px-2 py-1 text-center text-[10px] font-black ${liteStatusStyle[status].border} ${liteStatusStyle[status].text}`}>{tipBadge[op.tip] || 'REM'}</span>
+                    <span className={`min-w-11 rounded-lg border px-2 py-1 text-center text-[10px] font-black ${liteStatusStyle[status].border} ${liteStatusStyle[status].text}`}>{tipBadge[String(op.tip || '')] || 'REM'}</span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-black text-white">{liteTipNaziv(op.tip)}</p>
+                      <p className="truncate text-sm font-black text-white">{liteTipNaziv(String(op.tip || ''))}</p>
                       <p className="truncate text-xs text-[#8a8aa6]">{op.datum ? new Date(op.datum).toLocaleDateString(datumLocale) : tx('KM opomnik', 'Mileage reminder')}</p>
                     </div>
                     <span className={`text-sm font-black ${liteStatusStyle[status].text}`}>{vrednost}</span>
@@ -1617,8 +1683,8 @@ export default function Dashboard() {
                         <div key={op.id} className={`${b.bg} border ${b.border} rounded-xl p-3.5`}>
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                              <span className="text-xl">{tipIkona[op.tip] || '🔔'}</span>
-                              <p className="text-white text-sm font-semibold">{tipNaziv[op.tip] || op.tip}</p>
+                              <span className="text-xl">{tipIkona[String(op.tip || '')] || '🔔'}</span>
+                              <p className="text-white text-sm font-semibold">{tipNaziv[String(op.tip || '')] || op.tip}</p>
                             </div>
                             <button
                               type="button"
