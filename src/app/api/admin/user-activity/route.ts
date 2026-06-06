@@ -21,7 +21,51 @@ const sinceIso = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1
 const SESSION_GAP_MS = 30 * 60 * 1000
 const SINGLE_EVENT_SESSION_MS = 60 * 1000
 
-const countQuery = async (query: any) => {
+type CountQuery = PromiseLike<{ count: number | null; error: { message?: string } | null }>
+type CarScopedCountQuery = CountQuery & {
+  in: (column: string, values: string[]) => CarScopedCountQuery
+  neq: (column: string, value: string) => CarScopedCountQuery
+}
+type CountTable = {
+  select: (columns: string, options?: { count?: 'exact'; head?: boolean }) => CarScopedCountQuery
+}
+
+type AppEvent = {
+  id?: string
+  event_name: string
+  page_path?: string | null
+  created_at: string
+  metadata?: unknown
+  user_id?: string | null
+}
+
+type AppErrorRow = {
+  id?: string
+  error_name?: string
+  page_path?: string | null
+  message?: string | null
+  status?: number | string | null
+  created_at?: string
+  app_version?: string | null
+  release_channel?: string | null
+}
+
+type CarRow = {
+  id?: string
+  created_at?: string
+}
+
+type AdminAuthUser = {
+  id?: string
+  email?: string | null
+  created_at?: string | null
+  last_sign_in_at?: string | null
+}
+
+const objectValue = (value: unknown): Record<string, unknown> =>
+  typeof value === 'object' && value !== null ? value as Record<string, unknown> : {}
+
+const countQuery = async (query: CountQuery) => {
   const { count, error } = await query
   if (error) throw error
   return count || 0
@@ -71,7 +115,7 @@ const pageLabel = (path?: string | null) => {
   return labels[clean] || clean
 }
 
-const sessionStats = (events: any[]) => {
+const sessionStats = (events: AppEvent[]) => {
   const sorted = [...events]
     .map((event) => ({ ...event, time: new Date(event.created_at).getTime() }))
     .filter((event) => Number.isFinite(event.time))
@@ -117,15 +161,17 @@ const sessionStats = (events: any[]) => {
   }
 }
 
-const platformFromEvent = (event: any) => {
-  const metadata = event?.metadata || {}
-  const stored = metadata.clientPlatform || metadata.platform || {}
-  if (stored.key) return {
-    key: stored.key,
-    label: stored.label || stored.key,
+const platformFromEvent = (event: AppEvent) => {
+  const metadata = objectValue(event.metadata)
+  const stored = objectValue(metadata.clientPlatform || metadata.platform)
+  const storedKey = typeof stored.key === 'string' ? stored.key : ''
+  if (storedKey) return {
+    key: storedKey,
+    label: typeof stored.label === 'string' ? stored.label : storedKey,
   }
   const userAgent = String(metadata.userAgent || metadata.deviceInfo || '')
-  const width = Number(metadata.width || metadata.viewport?.width || 0)
+  const viewport = objectValue(metadata.viewport)
+  const width = Number(metadata.width || viewport.width || 0)
   const standalone = metadata.standalone === true || stored.standalone === true || stored.display === 'standalone'
   const android = /Android/i.test(userAgent)
   const ios = /iPhone|iPad|iPod/i.test(userAgent)
@@ -139,7 +185,7 @@ const platformFromEvent = (event: any) => {
   return { key: 'unknown', label: 'Unknown' }
 }
 
-const platformStats = (events: any[]) => {
+const platformStats = (events: AppEvent[]) => {
   const source = events.filter((event) => event.event_name === 'page_view')
   const rows = source.length > 0 ? source : events
   const total = Math.max(1, rows.length)
@@ -165,11 +211,14 @@ export async function GET(request: NextRequest) {
   const email = (request.nextUrl.searchParams.get('email') || '').trim().toLowerCase()
   if (!userId && !email) return NextResponse.json({ error: 'missing_user' }, { status: 400 })
 
-  let targetUser: any = null
+  let targetUser: AdminAuthUser | null = null
   if (userId) {
-    const getter = (admin.auth.admin as any).getUserById
+    const adminAuth = admin.auth.admin as typeof admin.auth.admin & {
+      getUserById?: (id: string) => Promise<{ data?: { user?: AdminAuthUser | null }; error?: { message?: string } | null }>
+    }
+    const getter = adminAuth.getUserById
     if (typeof getter === 'function') {
-      const { data, error } = await getter.call(admin.auth.admin, userId)
+      const { data, error } = await getter.call(adminAuth, userId)
       if (!error) targetUser = data?.user || null
     }
   }
@@ -177,7 +226,7 @@ export async function GET(request: NextRequest) {
   if (!targetUser && email) {
     const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     if (error) return NextResponse.json({ error: 'auth_users_failed', details: error.message }, { status: 500 })
-    targetUser = data.users.find((item: any) => String(item.email || '').toLowerCase() === email) || null
+    targetUser = (data.users as AdminAuthUser[]).find((item) => String(item.email || '').toLowerCase() === email) || null
   }
 
   const targetUserId = targetUser?.id || userId
@@ -194,9 +243,11 @@ export async function GET(request: NextRequest) {
     .eq('user_id', targetUserId)
   if (carsError) return NextResponse.json({ error: 'cars_failed', details: carsError.message }, { status: 500 })
 
-  const carIds = (cars || []).map((car: any) => car.id).filter(Boolean)
-  const carFilter = (query: any) => carIds.length > 0 ? query.in('car_id', carIds) : null
-  const maybeCount = async (query: any) => query ? countQuery(query) : 0
+  const carIds = ((cars || []) as CarRow[]).map((car) => car.id).filter((id): id is string => Boolean(id))
+  const adminForCounts = admin as unknown as { from: (table: string) => CountTable }
+  const countFrom = (table: string) => adminForCounts.from(table)
+  const carFilter = (query: CarScopedCountQuery) => carIds.length > 0 ? query.in('car_id', carIds) : null
+  const maybeCount = async (query: CountQuery | null) => query ? countQuery(query) : 0
 
   const [
     fuelCount,
@@ -213,10 +264,10 @@ export async function GET(request: NextRequest) {
     eventsData,
     errorsData,
   ] = await Promise.all([
-    maybeCount(carFilter(admin.from('fuel_logs').select('id', { count: 'exact', head: true }))),
-    maybeCount(carFilter(admin.from('service_logs').select('id', { count: 'exact', head: true }))),
-    maybeCount(carFilter(admin.from('expenses').select('id', { count: 'exact', head: true }).neq('kategorija', 'km_sprememba'))),
-    maybeCount(carFilter(admin.from('reminders').select('id', { count: 'exact', head: true }))),
+    maybeCount(carFilter(countFrom('fuel_logs').select('id', { count: 'exact', head: true }))),
+    maybeCount(carFilter(countFrom('service_logs').select('id', { count: 'exact', head: true }))),
+    maybeCount(carFilter(countFrom('expenses').select('id', { count: 'exact', head: true }).neq('kategorija', 'km_sprememba'))),
+    maybeCount(carFilter(countFrom('reminders').select('id', { count: 'exact', head: true }))),
     countQuery(admin.from('app_events').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId)),
     countQuery(admin.from('app_events').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId).gte('created_at', since30)),
     countQuery(admin.from('app_events').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId).gte('created_at', since7)),
@@ -245,10 +296,10 @@ export async function GET(request: NextRequest) {
   if (eventsData.error) return NextResponse.json({ error: 'events_failed', details: eventsData.error.message }, { status: 500 })
   if (errorsData.error) return NextResponse.json({ error: 'errors_failed', details: errorsData.error.message }, { status: 500 })
 
-  const events = eventsData.data || []
-  const allEvents = allEventsData.data || []
+  const events = (eventsData.data || []) as AppEvent[]
+  const allEvents = (allEventsData.data || []) as AppEvent[]
   const sessions = sessionStats(allEvents)
-  const meaningfulEvents = events.filter((event: any) => activityEventNames.has(event.event_name)).length
+  const meaningfulEvents = events.filter((event) => activityEventNames.has(event.event_name)).length
   const firstEvent = events.length > 0 ? events[events.length - 1] : null
   const lastEvent = events[0] || null
   const eventCounts = new Map<string, number>()
@@ -318,7 +369,7 @@ export async function GET(request: NextRequest) {
     daily: Array.from(dayCounts.entries())
       .map(([day, count]) => ({ day, count }))
       .sort((a, b) => a.day.localeCompare(b.day)),
-    recentEvents: events.slice(0, 30).map((event: any) => ({
+    recentEvents: events.slice(0, 30).map((event) => ({
       id: event.id,
       name: event.event_name,
       label: eventLabel(event.event_name),
@@ -327,7 +378,7 @@ export async function GET(request: NextRequest) {
       created_at: event.created_at,
     })),
     platformStats: platformStats(events),
-    recentErrors: (errorsData.data || []).map((error: any) => ({
+    recentErrors: ((errorsData.data || []) as AppErrorRow[]).map((error) => ({
       id: error.id,
       name: error.error_name,
       page: pageLabel(error.page_path),
