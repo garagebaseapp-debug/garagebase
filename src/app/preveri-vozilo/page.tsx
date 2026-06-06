@@ -1,20 +1,16 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { getStoredLanguage } from '@/lib/i18n'
 
 export default function PreveriVoziloPage() {
-  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [language] = useState<'sl' | 'en'>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
   const [vin, setVin] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<any>(null)
   const [message, setMessage] = useState('')
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-
-  useEffect(() => {
-    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
-  }, [])
 
   const checkVehicle = async () => {
     const normalized = vin.toUpperCase().replace(/[^A-Z0-9]/g, '')

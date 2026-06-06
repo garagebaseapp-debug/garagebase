@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { getStoredLanguage, type Language } from '@/lib/i18n'
@@ -17,6 +17,16 @@ const defaultSettings: BackupSettings = {
   frequency: 'monthly',
 }
 
+function readBackupSettings(): BackupSettings {
+  if (typeof window === 'undefined') return defaultSettings
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+    return { ...defaultSettings, ...stored }
+  } catch {
+    return defaultSettings
+  }
+}
+
 const frequencies = [
   { value: 'off', sl: 'Izklopljeno', en: 'Off' },
   { value: 'weekly', sl: 'Vsak teden', en: 'Weekly' },
@@ -25,28 +35,18 @@ const frequencies = [
 ] as const
 
 export default function BackupPage() {
-  const [language, setLanguage] = useState<Language>('sl')
-  const [settings, setSettings] = useState<BackupSettings>(defaultSettings)
+  const [language] = useState<Language>(() => getStoredLanguage())
+  const [settings, setSettings] = useState<BackupSettings>(() => readBackupSettings())
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [summary, setSummary] = useState<{ cars: number; rows: number } | null>(null)
 
-  const tx = (sl: string, en: string) => language === 'en' ? en : sl
-
-  useEffect(() => {
-    setLanguage(getStoredLanguage())
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-      setSettings({ ...defaultSettings, ...stored })
-    } catch {
-      setSettings(defaultSettings)
-    }
-  }, [])
+  const tx = useCallback((sl: string, en: string) => language === 'en' ? en : sl, [language])
 
   const lastBackupText = useMemo(() => {
     if (!settings.lastBackupAt) return tx('Backup še ni bil narejen.', 'No backup has been created yet.')
     return new Date(settings.lastBackupAt).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI')
-  }, [settings.lastBackupAt, language])
+  }, [settings.lastBackupAt, language, tx])
 
   const saveSettings = (next: BackupSettings) => {
     setSettings(next)

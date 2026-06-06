@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { getStoredLanguage } from '@/lib/i18n'
@@ -25,7 +25,7 @@ export default function DodajAvto() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [korak, setKorak] = useState(1)
-  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [language] = useState<'sl' | 'en'>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
   const [registryEnabled, setRegistryEnabled] = useState(false)
   const [registryUnderstand, setRegistryUnderstand] = useState(false)
   const [registrySkipConfirmed, setRegistrySkipConfirmed] = useState(false)
@@ -37,10 +37,6 @@ export default function DodajAvto() {
     showDocuments: false,
   })
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
-
-  useEffect(() => {
-    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
-  }, [])
 
   const tipiVozil = [
     { vrednost: 'avto', ikona: '🚗', naziv: 'Avto' },

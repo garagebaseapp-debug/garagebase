@@ -50,7 +50,7 @@ const clearLoginRateLimit = (email: string) => {
 }
 
 export default function LoginPage() {
-  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [language] = useState<'sl' | 'en'>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -58,7 +58,7 @@ export default function LoginPage() {
   const [message, setMessage] = useState('')
   const [isRegister, setIsRegister] = useState(false)
   const [resetMode, setResetMode] = useState(false)
-  const [biometricReady, setBiometricReady] = useState(false)
+  const [biometricReady] = useState(() => hasAppLockCredential())
   const [acceptedLegal, setAcceptedLegal] = useState(false)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const cleanEmail = () => email.trim().toLowerCase()
@@ -92,13 +92,13 @@ export default function LoginPage() {
   }
 
   useEffect(() => {
-    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
     document.body.classList.add('landing')
-    setBiometricReady(hasAppLockCredential())
     const url = new URL(window.location.href)
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
     if (url.searchParams.get('type') === 'recovery' || hash.get('type') === 'recovery') {
-      setResetMode(true)
+      queueMicrotask(() => {
+        setResetMode(true)
+      })
       setMessage('Vpiši novo geslo in ga shrani.')
     }
     return () => document.body.classList.remove('landing')
