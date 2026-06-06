@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { type ChangeEvent, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
@@ -12,6 +12,42 @@ import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
+type ExpenseCarOption = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  arhivirano?: boolean | null
+}
+
+type SpeechRecognitionResultEvent = {
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+type SpeechRecognitionInstance = {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+
 export default function VnosStroska() {
   const router = useRouter()
   const [datum, setDatum] = useState(() => new Date().toISOString().split('T')[0])
@@ -20,7 +56,7 @@ export default function VnosStroska() {
   const [opis, setOpis] = useState('')
   const [znesek, setZnesek] = useState('')
   const [carId, setCarId] = useState('')
-  const [avti, setAvti] = useState<any[]>([])
+  const [avti, setAvti] = useState<ExpenseCarOption[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [poslusam, setPoslusam] = useState<string | null>(null)
@@ -47,7 +83,7 @@ export default function VnosStroska() {
 
   useEffect(() => {
     const init = async () => {
-      const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
+      const cachedCars = ((readGarageCache()?.avti || []) as ExpenseCarOption[]).filter((car) => car?.arhivirano !== true)
       if (cachedCars.length > 0) setAvti(cachedCars)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }
@@ -59,17 +95,17 @@ export default function VnosStroska() {
         .from('cars').select('id, znamka, model, arhivirano')
         .eq('user_id', user.id)
         .or('arhivirano.is.null,arhivirano.eq.false')
-      let data: any[] = activeCarsResult.data || []
+      let data = (activeCarsResult.data || []) as ExpenseCarOption[]
       if (activeCarsResult.error || data.length === 0) {
         if (activeCarsResult.error) console.warn('[GarageBase expense] active cars query failed', activeCarsResult.error)
         const fallback = await supabase.from('cars').select('id, znamka, model, arhivirano').eq('user_id', user.id)
         if (fallback.error) console.warn('[GarageBase expense] fallback cars query failed', fallback.error)
-        data = fallback.data || []
+        data = (fallback.data || []) as ExpenseCarOption[]
       }
-      data = (data || []).filter((car: any) => car?.arhivirano !== true)
+      data = (data || []).filter((car) => car?.arhivirano !== true)
       if (data && data.length > 0) {
         setAvti(data)
-        const izbrani = carParam ? data.find((a: any) => a.id === carParam) : null
+        const izbrani = carParam ? data.find((a) => a.id === carParam) : null
         if (izbrani) {
           setCarId(izbrani.id)
           trackEvent('expense_add_open', { carId: izbrani.id })
@@ -107,7 +143,8 @@ export default function VnosStroska() {
   }
 
   const glasovniVnos = (polje: string) => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const speechWindow = window as SpeechRecognitionWindow
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
     if (!SpeechRecognition) { setMessage(tx('Glasovni vnos ni podprt v tem brskalniku.', 'Voice input is not supported in this browser.')); return }
 
     const recognition = new SpeechRecognition()
@@ -116,7 +153,7 @@ export default function VnosStroska() {
     recognition.interimResults = false
     setPoslusam(polje)
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const tekst = event.results[0][0].transcript.toLowerCase().trim()
       if (polje === 'opis') {
         setOpis(tekst)
@@ -144,7 +181,7 @@ export default function VnosStroska() {
     </button>
   )
 
-  const dodajRacun = async (e: any) => {
+  const dodajRacun = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setMessage('')
@@ -159,7 +196,7 @@ export default function VnosStroska() {
           compressedBytes: result.compressedBytes,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(imageCompressionErrorText(error, jeEn ? 'en' : 'sl'))
       return
     }
@@ -201,9 +238,10 @@ export default function VnosStroska() {
       setOcrText(text)
       uporabiPrebranTekst(text)
       trackEvent('receipt_scan_success', { carId, type: 'expense', textLength: text.length })
-    } catch (error: any) {
-      trackEvent('receipt_scan_failed', { carId, type: 'expense', message: error.message })
-      setOcrMessage(`${error.message} ${jeEn ? 'You can paste the receipt text below and click "Use text".' : 'Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".'}`)
+    } catch (error: unknown) {
+      const message = getErrorMessage(error)
+      trackEvent('receipt_scan_failed', { carId, type: 'expense', message })
+      setOcrMessage(`${message} ${jeEn ? 'You can paste the receipt text below and click "Use text".' : 'Lahko prilepiš tekst računa spodaj in klikneš "Uporabi tekst".'}`)
     } finally {
       setOcrLoading(false)
     }
@@ -231,8 +269,8 @@ export default function VnosStroska() {
     let receiptUrl: string | null = null
     try {
       receiptUrl = await naloziRacun()
-    } catch (error: any) {
-      setMessage('Napaka pri nalaganju slike racuna: ' + error.message)
+    } catch (error: unknown) {
+      setMessage('Napaka pri nalaganju slike racuna: ' + getErrorMessage(error))
       setLoading(false)
       return
     }
@@ -298,7 +336,7 @@ export default function VnosStroska() {
             <select value={carId} onChange={e => setCarId(e.target.value)}
               className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors">
               <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
-              {avti.map((a: any) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
+              {avti.map((a) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
           </div>
         )}
