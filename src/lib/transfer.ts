@@ -38,7 +38,7 @@ export function getTokenFromScanValue(value: string) {
   }
 }
 
-type TransferRow = Record<string, unknown> & {
+export type TransferRow = Record<string, unknown> & {
   id?: string
   created_at?: string
   updated_at?: string

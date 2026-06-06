@@ -12,12 +12,48 @@ import {
   scanUrl,
   transferExpiresAt,
   transferExpiryOptions,
+  type TransferRow,
   type TransferExpiryDays,
   type TransferMode,
 } from '@/lib/transfer'
 
+type TransferCar = {
+  id: string
+  prenos_soglasje?: boolean | null
+  tip_vozila?: string | null
+  oblika?: string | null
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  barva?: string | null
+  tablica?: string | null
+  vin?: string | null
+  km_trenutni?: number | string | null
+  km_ob_vnosu?: number | string | null
+  kubikaza?: number | string | null
+  kw?: number | string | null
+  menjalnik?: string | null
+  pogon?: string | null
+  st_lastnikov?: number | string | null
+  lastnik_mesto?: string | null
+  lastnik_starost?: string | null
+}
+
+type TransferPayload = {
+  type?: string
+  consent?: boolean
+  service_logs?: TransferRow[]
+  fuel_logs?: TransferRow[]
+  expenses?: TransferRow[]
+}
+
+type ExpenseLike = TransferRow & {
+  kategorija?: string | null
+}
+
 export default function PrenosZgodovine() {
-  const [avto, setAvto] = useState<any>(null)
+  const [avto, setAvto] = useState<TransferCar | null>(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [mode, setMode] = useState<TransferMode>('verify')
@@ -39,54 +75,56 @@ export default function PrenosZgodovine() {
       if (!carId) { window.location.href = '/garaza'; return }
       const { data } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
       if (!data) { window.location.href = '/garaza'; return }
-      setAvto(data)
+      setAvto(data as TransferCar)
       setLoading(false)
     }
     init()
   }, [])
 
   const pripraviPayload = async (izbranMode: TransferMode) => {
+    if (!avto?.id) throw new Error('missing_car')
+    const selectedCar = avto
     const [servisi, gorivo, stroski] = await Promise.all([
-      supabase.from('service_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
-      supabase.from('fuel_logs').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
-      supabase.from('expenses').select('*').eq('car_id', avto.id).order('datum', { ascending: true }),
+      supabase.from('service_logs').select('*').eq('car_id', selectedCar.id).order('datum', { ascending: true }),
+      supabase.from('fuel_logs').select('*').eq('car_id', selectedCar.id).order('datum', { ascending: true }),
+      supabase.from('expenses').select('*').eq('car_id', selectedCar.id).order('datum', { ascending: true }),
     ])
 
     const summary = {
-      znamka: avto.znamka,
-      model: avto.model,
-      letnik: avto.letnik,
-      gorivo: avto.gorivo,
-      vin_masked: maskVin(avto.vin),
-      km_trenutni: avto.km_trenutni,
-      st_lastnikov: avto.st_lastnikov,
-      lastnik_mesto: avto.lastnik_mesto,
-      lastnik_starost: avto.lastnik_starost,
+      znamka: selectedCar.znamka,
+      model: selectedCar.model,
+      letnik: selectedCar.letnik,
+      gorivo: selectedCar.gorivo,
+      vin_masked: maskVin(selectedCar.vin),
+      km_trenutni: selectedCar.km_trenutni,
+      st_lastnikov: selectedCar.st_lastnikov,
+      lastnik_mesto: selectedCar.lastnik_mesto,
+      lastnik_starost: selectedCar.lastnik_starost,
       servisi: servisi.data?.length || 0,
       tankanja: gorivo.data?.length || 0,
-      stroski: (stroski.data || []).filter((e: any) => e.kategorija !== 'km_sprememba').length,
+      stroski: ((stroski.data || []) as ExpenseLike[]).filter((e) => e.kategorija !== 'km_sprememba').length,
     }
 
 
     const carFull = {
-      tip_vozila: avto.tip_vozila,
-      oblika: avto.oblika,
-      znamka: avto.znamka,
-      model: avto.model,
-      letnik: avto.letnik,
-      gorivo: avto.gorivo,
-      barva: avto.barva,
-      tablica: avto.tablica,
-      vin: avto.vin,
-      km_trenutni: avto.km_trenutni,
-      km_ob_vnosu: avto.km_ob_vnosu,
-      kubikaza: avto.kubikaza,
-      kw: avto.kw,
-      menjalnik: avto.menjalnik,
-      pogon: avto.pogon,
-      st_lastnikov: avto.st_lastnikov,
-      lastnik_mesto: avto.lastnik_mesto,
-      lastnik_starost: avto.lastnik_starost,
+      tip_vozila: selectedCar.tip_vozila,
+      oblika: selectedCar.oblika,
+      znamka: selectedCar.znamka,
+      model: selectedCar.model,
+      letnik: selectedCar.letnik,
+      gorivo: selectedCar.gorivo,
+      barva: selectedCar.barva,
+      tablica: selectedCar.tablica,
+      vin: selectedCar.vin,
+      km_trenutni: selectedCar.km_trenutni,
+      km_ob_vnosu: selectedCar.km_ob_vnosu,
+      kubikaza: selectedCar.kubikaza,
+      kw: selectedCar.kw,
+      menjalnik: selectedCar.menjalnik,
+      pogon: selectedCar.pogon,
+      st_lastnikov: selectedCar.st_lastnikov,
+      lastnik_mesto: selectedCar.lastnik_mesto,
+      lastnik_starost: selectedCar.lastnik_starost,
     }
     if (izbranMode === 'verify') {
       return {
@@ -106,7 +144,7 @@ export default function PrenosZgodovine() {
       car: summary,
       service_logs: servisi.data || [],
       fuel_logs: gorivo.data || [],
-      expenses: (stroski.data || []).filter((e: any) => e.kategorija !== 'km_sprememba'),
+      expenses: ((stroski.data || []) as ExpenseLike[]).filter((e) => e.kategorija !== 'km_sprememba'),
     }
   }
 
@@ -177,23 +215,23 @@ export default function PrenosZgodovine() {
   const uvoziStaroKodo = async () => {
     try {
       if (!avto?.id) return
-      const payload = JSON.parse(decodeURIComponent(escape(atob(importCode.trim()))))
+      const payload = JSON.parse(decodeURIComponent(escape(atob(importCode.trim())))) as TransferPayload
       if (payload.type !== 'garagebase-transfer-v1' || !payload.consent) {
         setMessage('Koda ni veljavna ali nima soglasja za prenos.')
         return
       }
 
-      const serviceRows = cleanTransferRows(payload.service_logs || [], avto.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
-      const fuelRows = cleanTransferRows(payload.fuel_logs || [], avto.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
-      const expenseRows = cleanTransferRows(payload.expenses || [], avto.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+      const serviceRows = cleanTransferRows(payload.service_logs || [], avto.id).map((row) => ({ ...row, opis: `[Prejsnji lastnik] ${String(row.opis || '')}`.trim() }))
+      const fuelRows = cleanTransferRows(payload.fuel_logs || [], avto.id).map((row) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${String(row.postaja)}` : '[Prejsnji lastnik]' }))
+      const expenseRows = cleanTransferRows(payload.expenses || [], avto.id).map((row) => ({ ...row, opis: `[Prejsnji lastnik] ${String(row.opis || '')}`.trim() }))
       if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
       if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
       if (expenseRows.length) await supabase.from('expenses').insert(expenseRows)
 
       setMessage(`Uvoz končan: ${serviceRows.length} servisov, ${fuelRows.length} tankanj, ${expenseRows.length} stroškov.`)
       setImportCode('')
-    } catch (error: any) {
-      setMessage('Uvoz ni uspel: ' + error.message)
+    } catch (error: unknown) {
+      setMessage('Uvoz ni uspel: ' + (error instanceof Error ? error.message : 'neznana napaka'))
     }
   }
 
