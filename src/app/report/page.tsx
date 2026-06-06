@@ -95,17 +95,93 @@ gOpisH: { width: '32%', fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#6c63
   footerText: { fontSize: 8, color: '#aaaaaa' },
 })
 
-const maskVin = (vin?: string) => {
+const maskVin = (vin?: string | null) => {
   if (!vin) return ''
   if (vin.length <= 8) return vin.substring(0, 3) + '****'
   return vin.substring(0, 6) + '****' + vin.substring(vin.length - 4)
 }
 
-const maskPlate = (plate?: string) => {
+const maskPlate = (plate?: string | null) => {
   if (!plate) return ''
   const clean = plate.toUpperCase()
   if (clean.length <= 4) return clean.substring(0, 1) + '***'
   return clean.substring(0, 2) + ' *** ' + clean.substring(clean.length - 2)
+}
+
+type ReportCar = Record<string, unknown> & {
+  id: string
+  user_id?: string | null
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  vin?: string | null
+  tablica?: string | null
+  km_trenutni?: number | string | null
+  km_ob_vnosu?: number | string | null
+  slika_url?: string | null
+  tip_vozila?: string | null
+  oblika?: string | null
+  barva?: string | null
+  kubikaza?: number | string | null
+  kw?: number | string | null
+  menjalnik?: string | null
+  pogon?: string | null
+  st_lastnikov?: number | string | null
+  lastnik_mesto?: string | null
+  lastnik_starost?: number | string | null
+  homologacija_stevilka?: string | null
+  homologacija_opis?: string | null
+  homologacija_url?: string | null
+  prenos_opomba?: string | null
+}
+
+type ReportRow = Record<string, unknown> & {
+  id?: string | null
+  datum?: string | null
+  km?: number | string | null
+  cena?: number | string | null
+  cena_skupaj?: number | string | null
+  cena_na_liter?: number | string | null
+  znesek?: number | string | null
+  litri?: number | string | null
+  opis?: string | null
+  servis?: string | null
+  postaja?: string | null
+  kategorija?: string | null
+  tip_goriva?: string | null
+  foto_url?: string | null
+  receipt_url?: string | null
+  import_batch_id?: string | null
+  source_owner_label?: string | null
+  source_entry_id?: string | null
+  verification_level?: string | null
+}
+
+type ReportPrivacy = {
+  showPlate: boolean
+  maskPlate: boolean
+  showVin: boolean
+  maskVin: boolean
+  showKm: boolean
+  showFuel: boolean
+  showYear: boolean
+  showOwnerCity: boolean
+  showOwnerAge: boolean
+}
+
+type ReportPdfProps = {
+  avto: ReportCar
+  servisi: ReportRow[]
+  gorivo: ReportRow[]
+  expenses: ReportRow[]
+  verifyQr: string
+  importQr: string
+  includeVehicleImage: boolean
+  language?: Language
+  privacy?: Partial<ReportPrivacy>
+  currency?: GarageBaseCurrency
+  distanceUnit?: DistanceUnit
 }
 
 const pdfCopy = {
@@ -227,7 +303,7 @@ const pdfCopy = {
   },
 } as const
 
-const sortReportRows = (rows: any[] = []) =>
+const sortReportRows = (rows: ReportRow[] = []) =>
   sortRowsByMileageAndDate(rows)
 
 const cleanReportText = (value?: string | null) =>
@@ -236,45 +312,56 @@ const cleanReportText = (value?: string | null) =>
     .replace(/\s+/g, ' ')
     .trim()
 
-const isImportedReportRow = (row: any) => {
+const isImportedReportRow = (row: ReportRow) => {
   const rawText = `${row?.opis || ''} ${row?.postaja || ''} ${row?.kategorija || ''}`
   return Boolean(row?.import_batch_id || row?.source_owner_label || /\[(?:Drivvo|CSV|Naknadno|Prejsnji lastnik|Previous owner|IMPORTED HISTORY)/i.test(rawText))
 }
 
-const reportRowAmount = (row: any) => {
+const reportRowAmount = (row: ReportRow) => {
   if (row?.litri !== undefined || row?.cena_na_liter !== undefined) return fuelCostValue(row)
   return Number(row?.cena_skupaj ?? row?.cena ?? row?.znesek ?? 0) || 0
 }
 
-const costBreakdown = (...groups: any[][]) => {
+const costBreakdown = (...groups: ReportRow[][]) => {
   const rows = groups.flat()
   const garageBase = rows.filter((row) => !isImportedReportRow(row)).reduce((sum, row) => sum + reportRowAmount(row), 0)
   const imported = rows.filter(isImportedReportRow).reduce((sum, row) => sum + reportRowAmount(row), 0)
   return { garageBase, imported, total: garageBase + imported }
 }
 
-const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: any) => {
+const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includeVehicleImage, language = 'sl', privacy = {}, currency = 'EUR', distanceUnit = 'km' }: ReportPdfProps) => {
   const copy = pdfCopy[language as Language] || pdfCopy.sl
   const sortedServisi = sortReportRows(servisi)
   const sortedGorivo = sortReportRows(gorivo)
   const sortedExpenses = sortReportRows(expenses)
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
-  const money = (value?: number | null) => typeof value === 'number' ? `${value.toFixed(2)} ${currencySymbol(currency)}` : '-'
+  const money = (value?: number | string | null) => {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) ? `${numeric.toFixed(2)} ${currencySymbol(currency)}` : '-'
+  }
+  const dateText = (value?: string | null) => {
+    if (!value) return '-'
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString(locale)
+  }
   const unitLabel = distanceUnitLabel(distanceUnit as DistanceUnit)
-  const distance = (value?: number | null) => typeof value === 'number' ? `${value.toLocaleString(locale)} ${unitLabel}` : '-'
-  const skupajGorivo = sortedGorivo.reduce((s: number, v: any) => s + (v.cena_skupaj || 0), 0)
-  const skupajServis = sortedServisi.reduce((s: number, v: any) => s + (v.cena || 0), 0)
-  const skupajExpenses = sortedExpenses.reduce((s: number, v: any) => s + (v.znesek || 0), 0)
+  const distance = (value?: number | string | null) => {
+    const numeric = Number(value)
+    return Number.isFinite(numeric) && numeric > 0 ? `${numeric.toLocaleString(locale)} ${unitLabel}` : '-'
+  }
+  const skupajGorivo = sortedGorivo.reduce((s, v) => s + Number(v.cena_skupaj || 0), 0)
+  const skupajServis = sortedServisi.reduce((s, v) => s + Number(v.cena || 0), 0)
+  const skupajExpenses = sortedExpenses.reduce((s, v) => s + Number(v.znesek || 0), 0)
   const skupajVse = skupajGorivo + skupajServis + skupajExpenses
   const costParts = costBreakdown(sortedServisi, sortedGorivo, sortedExpenses)
   const fuelParts = costBreakdown(sortedGorivo)
   const serviceParts = costBreakdown(sortedServisi)
   const expenseParts = costBreakdown(sortedExpenses)
-  const skupajLitrov = sortedGorivo.reduce((s: number, v: any) => s + (v.litri || 0), 0)
+  const skupajLitrov = sortedGorivo.reduce((s, v) => s + Number(v.litri || 0), 0)
   const danes = new Date().toLocaleDateString(locale)
-  const imaPrivonke = sortedServisi.some((s: any) => s.foto_url) || sortedGorivo.some((g: any) => g.receipt_url) || sortedExpenses.some((e: any) => e.receipt_url)
+  const imaPrivonke = sortedServisi.some((s) => s.foto_url) || sortedGorivo.some((g) => g.receipt_url) || sortedExpenses.some((e) => e.receipt_url)
   const imaPrenesene = [...sortedServisi, ...sortedGorivo, ...sortedExpenses].some(isImportedReportRow)
-  const historyDivider = (rows: any[], row: any, index: number) => {
+  const historyDivider = (rows: ReportRow[], row: ReportRow, index: number) => {
     const imported = isImportedReportRow(row)
     if (index > 0 && isImportedReportRow(rows[index - 1]) === imported) return null
     return (
@@ -283,7 +370,7 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
       </View>
     )
   }
-  const trustLabel = (row: any) => {
+  const trustLabel = (row: ReportRow) => {
     if (row.verification_level === 'strong') return copy.trustStrong
     if (row.verification_level === 'photo') return copy.trustPhoto
     return copy.trustBasic
@@ -443,11 +530,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.sRacunH}>{copy.receipt}</Text>
               <Text style={styles.sTrustH}>{copy.trust}</Text>
             </View>
-            {sortedServisi.map((s: any, i: number) => (
+            {sortedServisi.map((s, i) => (
               <View key={s.id || `service-${i}`}>
                 {historyDivider(sortedServisi, s, i)}
                 <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                  <Text style={styles.sDate}>{new Date(s.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.sDate}>{dateText(s.datum)}</Text>
                   <Text style={styles.sKm}>{distance(s.km)}</Text>
                   <Text style={styles.sOpis}>{cleanReportText(s.opis).substring(0, 55)}{cleanReportText(s.servis) ? ` (${cleanReportText(s.servis)})` : ''}</Text>
                   <Text style={styles.sCena}>{money(s.cena)}</Text>
@@ -479,11 +566,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.gRacunH}>{copy.receipt}</Text>
               <Text style={styles.gTrustH}>{copy.trust}</Text>
             </View>
-            {sortedGorivo.map((g: any, i: number) => (
+            {sortedGorivo.map((g, i) => (
               <View key={g.id || `fuel-${i}`}>
                 {historyDivider(sortedGorivo, g, i)}
                 <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                  <Text style={styles.gDate}>{new Date(g.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.gDate}>{dateText(g.datum)}</Text>
                   <Text style={styles.gKm}>{distance(g.km)}</Text>
                   <Text style={g.tip_goriva === '95' ? styles.gTip95 : g.tip_goriva === '100' ? styles.gTip100 : styles.gTipD}>
   {g.tip_goriva === '95' ? '95' : g.tip_goriva === '100' ? '100' : g.tip_goriva === 'diesel' ? 'D' : '-'}
@@ -512,11 +599,11 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
               <Text style={styles.eRacunH}>{copy.receipt}</Text>
               <Text style={styles.eTrustH}>{copy.trust}</Text>
             </View>
-            {sortedExpenses.map((e: any, i: number) => (
+            {sortedExpenses.map((e, i) => (
               <View key={e.id || `expense-${i}`}>
                 {historyDivider(sortedExpenses, e, i)}
                 <View style={i % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                  <Text style={styles.eDate}>{new Date(e.datum).toLocaleDateString(locale)}</Text>
+                  <Text style={styles.eDate}>{dateText(e.datum)}</Text>
                   <Text style={styles.eKat}>{cleanReportText(e.kategorija) || '-'}</Text>
                   <Text style={styles.eOpis}>{cleanReportText(e.opis) || '-'}</Text>
                   <Text style={styles.eCena}>{money(e.znesek)}</Text>
@@ -541,10 +628,10 @@ const ReportPDF = ({ avto, servisi, gorivo, expenses, verifyQr, importQr, includ
 }
 
 export default function Report() {
-  const [avto, setAvto] = useState<any>(null)
-  const [servisi, setServisi] = useState<any[]>([])
-  const [gorivo, setGorivo] = useState<any[]>([])
-  const [expenses, setExpenses] = useState<any[]>([])
+  const [avto, setAvto] = useState<ReportCar | null>(null)
+  const [servisi, setServisi] = useState<ReportRow[]>([])
+  const [gorivo, setGorivo] = useState<ReportRow[]>([])
+  const [expenses, setExpenses] = useState<ReportRow[]>([])
   const [loading, setLoading] = useState(true)
   const [ready, setReady] = useState(false)
   const [verifyQr, setVerifyQr] = useState('')
@@ -574,7 +661,7 @@ export default function Report() {
   })
 
 
-  const pripraviQrKode = async (carId: string, userId: string, avtoData: any, servisData: any[], gorivoData: any[], filteredExpenses: any[], reportLanguage: Language) => {
+  const pripraviQrKode = async (carId: string, userId: string, avtoData: ReportCar, servisData: ReportRow[], gorivoData: ReportRow[], filteredExpenses: ReportRow[], reportLanguage: Language) => {
     const signature = JSON.stringify({
       carId,
       includeVerifyQr,
@@ -583,9 +670,9 @@ export default function Report() {
       includeReceiptImages,
       reportLanguage,
       privacy,
-      services: servisData.map((row: any) => row.id || `${row.datum}-${row.km}`).join('|'),
-      fuel: gorivoData.map((row: any) => row.id || `${row.datum}-${row.km}`).join('|'),
-      expenses: filteredExpenses.map((row: any) => row.id || `${row.datum}-${row.znesek}`).join('|'),
+      services: servisData.map((row) => row.id || `${row.datum}-${row.km}`).join('|'),
+      fuel: gorivoData.map((row) => row.id || `${row.datum}-${row.km}`).join('|'),
+      expenses: filteredExpenses.map((row) => row.id || `${row.datum}-${row.znesek}`).join('|'),
     })
     if (qrSignatureRef.current === signature && (verifyQr || !includeVerifyQr) && (importQr || !includeImportQr)) return
     qrSignatureRef.current = signature
@@ -632,10 +719,10 @@ export default function Report() {
       homologacija_url: avtoData?.homologacija_url,
       slika_url: includeVehicleImage ? avtoData?.slika_url : null,
     }
-    const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url, ...row }: any) => row)
-    const gorivoForTransfer = includeReceiptImages ? (gorivoData || []) : (gorivoData || []).map(({ receipt_url, ...row }: any) => row)
-    const expensesForTransfer = includeReceiptImages ? (filteredExpenses || []) : (filteredExpenses || []).map(({ receipt_url, ...row }: any) => row)
-    const withSourceIds = (rows: any[]) => rows.map((row: any) => ({
+    const servisForTransfer = includeReceiptImages ? (servisData || []) : (servisData || []).map(({ foto_url: _foto_url, ...row }) => row)
+    const gorivoForTransfer = includeReceiptImages ? (gorivoData || []) : (gorivoData || []).map(({ receipt_url: _receipt_url, ...row }) => row)
+    const expensesForTransfer = includeReceiptImages ? (filteredExpenses || []) : (filteredExpenses || []).map(({ receipt_url: _receipt_url, ...row }) => row)
+    const withSourceIds = (rows: ReportRow[]) => rows.map((row) => ({
       ...row,
       source_entry_id: row.source_entry_id || row.id,
       verification_level: row.verification_level || 'basic',
@@ -689,24 +776,24 @@ export default function Report() {
 
       const { data: avtoData } = await supabase.from('cars').select('*').eq('id', carId).maybeSingle()
       if (!avtoData) { window.location.href = '/garaza'; return }
-      setAvto(avtoData)
+      setAvto(avtoData as ReportCar)
       const { data: servisData } = await supabase.from('service_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setServisi(servisData || [])
+      setServisi((servisData || []) as ReportRow[])
       const { data: gorivoData } = await supabase.from('fuel_logs').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      setGorivo(gorivoData || [])
+      setGorivo((gorivoData || []) as ReportRow[])
       const { data: expensesData } = await supabase.from('expenses').select('*').eq('car_id', carId).order('datum', { ascending: true })
-      const filteredExpenses = (expensesData || []).filter((e: any) => e.kategorija !== 'km_sprememba')
+      const filteredExpenses = ((expensesData || []) as ReportRow[]).filter((e) => e.kategorija !== 'km_sprememba')
       setExpenses(filteredExpenses)
-      setSelectedExpenseCategories(prev => prev.length > 0 ? prev : [...new Set(filteredExpenses.map((e: any) => e.kategorija || 'ostalo'))] as string[])
+      setSelectedExpenseCategories(prev => prev.length > 0 ? prev : [...new Set(filteredExpenses.map((e) => e.kategorija || 'ostalo'))] as string[])
 
       try {
         await pripraviQrKode(
           carId,
           user.id,
-          avtoData,
-          includeServices ? (servisData || []) : [],
-          includeFuel ? (gorivoData || []) : [],
-          includeExpenses ? filteredExpenses.filter((e: any) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo')) : [],
+          avtoData as ReportCar,
+          includeServices ? ((servisData || []) as ReportRow[]) : [],
+          includeFuel ? ((gorivoData || []) as ReportRow[]) : [],
+          includeExpenses ? filteredExpenses.filter((e) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo')) : [],
           currentLanguage
         )
       } catch {
@@ -726,15 +813,15 @@ export default function Report() {
     </div>
   )
 
-  const expenseCategories = [...new Set(expenses.map((e: any) => e.kategorija || 'ostalo'))] as string[]
+  const expenseCategories = [...new Set(expenses.map((e) => e.kategorija || 'ostalo'))] as string[]
   const expensesForReport = includeExpenses
-    ? expenses.filter((e: any) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo'))
+    ? expenses.filter((e) => selectedExpenseCategories.length === 0 || selectedExpenseCategories.includes(e.kategorija || 'ostalo'))
     : []
   const servisiForReport = includeServices ? servisi : []
   const gorivoForReport = includeFuel ? gorivo : []
-  const totalForReport = servisiForReport.reduce((s, v) => s + (v.cena || 0), 0) +
-    gorivoForReport.reduce((s, v) => s + (v.cena_skupaj || 0), 0) +
-    expensesForReport.reduce((s, v) => s + (v.znesek || 0), 0)
+  const totalForReport = servisiForReport.reduce((s, v) => s + Number(v.cena || 0), 0) +
+    gorivoForReport.reduce((s, v) => s + Number(v.cena_skupaj || 0), 0) +
+    expensesForReport.reduce((s, v) => s + Number(v.znesek || 0), 0)
   const reportCostParts = costBreakdown(servisiForReport, gorivoForReport, expensesForReport)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const sortedServisi = sortReportRows(servisi)
@@ -886,7 +973,7 @@ export default function Report() {
         </p>
       </div>
 
-      {ready && (
+      {ready && avto && (
         <PDFDownloadLink
           document={<ReportPDF avto={avto} servisi={servisiForReport} gorivo={gorivoForReport} expenses={expensesForReport} verifyQr={verifyQr} importQr={importQr} includeVehicleImage={includeVehicleImage} language={language} privacy={privacy} currency={valuta} distanceUnit={enotaRazdalje} />}
           fileName={`GarageBase_${avto?.znamka}_${avto?.model}_${new Date().toISOString().split('T')[0]}.pdf`}>
