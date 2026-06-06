@@ -11,6 +11,15 @@ type BackupSettings = {
   lastDismissedAt?: string
 }
 
+type BackupRow = Record<string, unknown> & {
+  id?: string
+}
+
+type BackupQueryResult = {
+  data?: BackupRow[] | null
+  error?: { message?: string } | null
+}
+
 const STORAGE_KEY = 'garagebase_backup_settings'
 
 const defaultSettings: BackupSettings = {
@@ -54,7 +63,7 @@ export default function BackupPage() {
     setMessage(tx('Nastavitev opomnika je shranjena.', 'Backup reminder setting saved.'))
   }
 
-  const safeQuery = async (label: string, query: PromiseLike<any>) => {
+  const safeQuery = async (label: string, query: PromiseLike<BackupQueryResult>) => {
     const result = await query
     if (result.error) {
       console.warn(`[GarageBase backup] ${label} skipped`, result.error)
@@ -73,7 +82,7 @@ export default function BackupPage() {
       const user = userData.user
 
       const cars = await safeQuery('cars', supabase.from('cars').select('*').eq('user_id', user.id).order('created_at', { ascending: true }))
-      const carIds = cars.map((car: any) => car.id).filter(Boolean)
+      const carIds = cars.map((car) => car.id).filter((id): id is string => Boolean(id))
 
       const [fuelLogs, serviceLogs, expenses, reminders, transfers, tireSets, tireMounts, mileageEvents] = carIds.length ? await Promise.all([
         safeQuery('fuel_logs', supabase.from('fuel_logs').select('*').in('car_id', carIds).order('datum', { ascending: true })),
@@ -131,8 +140,8 @@ export default function BackupPage() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       setSummary({ cars: cars.length, rows: fuelLogs.length + serviceLogs.length + expenses.length + reminders.length + tireSets.length + tireMounts.length + mileageEvents.length })
       setMessage(tx('Varnostna kopija je prenesena.', 'Backup downloaded.'))
-    } catch (error: any) {
-      setMessage(error.message || tx('Backup ni uspel.', 'Backup failed.'))
+    } catch (error: unknown) {
+      setMessage(error instanceof Error ? error.message : tx('Backup ni uspel.', 'Backup failed.'))
     }
     setLoading(false)
   }
