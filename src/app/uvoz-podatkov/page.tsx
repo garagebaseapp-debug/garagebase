@@ -53,6 +53,28 @@ type ParsedSection = {
   records: Record<string, string>[]
 }
 
+type ImportCar = {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  km_trenutni?: number | string | null
+}
+
+type ImportInsertRow = Record<string, unknown> & {
+  datum?: string | null
+  km?: number | string | null
+  cena_skupaj?: number | string | null
+  cena?: number | string | null
+  znesek?: number | string | null
+  postaja?: string | null
+  servis?: string | null
+  opis?: string | null
+  kategorija?: string | null
+}
+
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback
+
 const emptyMapping: Mapping = {
   date: '',
   km: '',
@@ -536,7 +558,7 @@ const sectionToRows = (section: ParsedSection, importType: ImportType, language:
 }
 
 export default function UvozPodatkov() {
-  const [cars, setCars] = useState<any[]>([])
+  const [cars, setCars] = useState<ImportCar[]>([])
   const [carId, setCarId] = useState('')
   const [csv, setCsv] = useState(sampleCsv)
   const [importType, setImportType] = useState<ImportType>('fuel')
@@ -563,8 +585,9 @@ export default function UvozPodatkov() {
         .select('id,znamka,model,km_trenutni')
         .eq('user_id', user.id)
         .order('created_at', { ascending: true })
-      setCars(data || [])
-      const selected = data?.find((car: any) => car.id === carParam) || data?.[0]
+      const nextCars = (data || []) as ImportCar[]
+      setCars(nextCars)
+      const selected = nextCars.find((car) => car.id === carParam) || nextCars[0]
       if (selected?.id) setCarId(selected.id)
       trackEvent('external_import_open')
     }
@@ -661,10 +684,10 @@ export default function UvozPodatkov() {
       const lockedAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       const importSource = isDrivvo ? 'Drivvo' : 'CSV'
       const importedLabel = (source?: string) => `${source || importSource} import | ${importStamp}`
-      const duplicateKey = (row: any) =>
+      const duplicateKey = (row: ImportInsertRow) =>
         [row.datum, row.km || '', row.cena_skupaj || row.cena || row.znesek || '', row.postaja || row.servis || row.opis || row.kategorija || ''].join('|').toLowerCase()
       let skipped = 0
-      const filterUniqueRows = <T extends Record<string, any>>(rows: T[], existingKeys: Set<string>) => {
+      const filterUniqueRows = <T extends ImportInsertRow>(rows: T[], existingKeys: Set<string>) => {
         const importKeys = new Set<string>()
         return rows.filter(row => {
           const key = duplicateKey(row)
@@ -759,9 +782,9 @@ export default function UvozPodatkov() {
         `Uvozeno ${inserted} zapisov: gorivo ${insertedByType.fuel}, servisi ${insertedByType.service}, stroski ${insertedByType.expense}. Preskoceno podvojenih: ${skipped}.`,
         `Imported ${inserted} records: fuel ${insertedByType.fuel}, services ${insertedByType.service}, costs ${insertedByType.expense}. Skipped duplicates: ${skipped}.`
       ))
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLastImportCounts(null)
-      setMessage(tx('Uvoz ni uspel: ', 'Import failed: ') + (error.message || tx('neznana napaka', 'unknown error')))
+      setMessage(tx('Uvoz ni uspel: ', 'Import failed: ') + errorMessage(error, tx('neznana napaka', 'unknown error')))
     } finally {
       setLoading(false)
     }
@@ -792,11 +815,11 @@ export default function UvozPodatkov() {
       setLastImportCounts(null)
       setLastImportBatchId('')
       setMessage(tx('Zadnji uvoz je razveljavljen.', 'The last import has been undone.'))
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(tx(
         'Razveljavitev ni uspela. Preveri, da je zagnana migracija za import_batch_id.',
         'Undo failed. Check that the import_batch_id migration has been run.'
-      ) + ` ${error.message || ''}`)
+      ) + ` ${errorMessage(error, '')}`)
     } finally {
       setUndoLoading(false)
     }
