@@ -1,23 +1,87 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, HomeButton } from '@/lib/nav'
 import { cleanTransferRows, formatTransferDate, getTokenFromScanValue, isTransferExpired } from '@/lib/transfer'
 import { trackEvent } from '@/lib/analytics'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 
-const fmtDate = (value?: string) => {
+const fmtDate = (value?: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('sl-SI')
 }
 
-const fmtKm = (value?: number) => typeof value === 'number' ? `${value.toLocaleString('sl-SI')} km` : '-'
-const stripPrevious = (value?: string) => String(value || '-').replace('[Prejsnji lastnik]', '').trim() || '-'
+const fmtKm = (value?: number | null) => typeof value === 'number' ? `${value.toLocaleString('sl-SI')} km` : '-'
+const stripPrevious = (value?: string | null) => String(value || '-').replace('[Prejsnji lastnik]', '').trim() || '-'
 
-function StatBox({ label, value }: { label: string, value: any }) {
+type TransferCar = Record<string, unknown> & {
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  km_trenutni?: number | null
+  vin_masked?: string | null
+  slika_url?: string | null
+  tablica?: string | null
+  st_lastnikov?: number | string | null
+  lastnik_mesto?: string | null
+  lastnik_starost?: number | string | null
+}
+
+type TransferRow = Record<string, unknown> & {
+  id?: string
+  datum?: string | null
+  km?: number | null
+  cena?: number | null
+  cena_skupaj?: number | null
+  znesek?: number | null
+  opis?: string | null
+  servis?: string | null
+  foto_url?: string | null
+  litri?: number | null
+  tip_goriva?: string | null
+  postaja?: string | null
+  kategorija?: string | null
+}
+
+type TransferPayload = {
+  car?: TransferCar
+  car_full?: TransferCar
+  currency?: string | null
+  service_logs?: TransferRow[]
+  fuel_logs?: TransferRow[]
+  expenses?: TransferRow[]
+}
+
+type VehicleTransfer = {
+  id: string
+  token?: string | null
+  mode?: string | null
+  payload?: TransferPayload | null
+  expires_at?: string | null
+  revoked_at?: string | null
+}
+
+type BarcodeDetectorResult = {
+  rawValue?: string
+}
+
+type BarcodeDetectorInstance = {
+  detect: (source: HTMLVideoElement) => Promise<BarcodeDetectorResult[]>
+}
+
+type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance
+
+type BarcodeDetectorWindow = Window & {
+  BarcodeDetector?: BarcodeDetectorConstructor
+}
+
+const getErrorMessage = (error: unknown) => error instanceof Error ? error.message : String(error)
+
+function StatBox({ label, value }: { label: string, value: ReactNode }) {
   return (
     <div className="bg-[#13131f] rounded-xl p-3 border border-[#1e1e32]">
       <p className="text-[#7b7ba6] text-[11px] uppercase tracking-wide">{label}</p>
@@ -26,7 +90,7 @@ function StatBox({ label, value }: { label: string, value: any }) {
   )
 }
 
-function Section({ title, children }: { title: string, children: React.ReactNode }) {
+function Section({ title, children }: { title: string, children: ReactNode }) {
   return (
     <section className="border-t border-[#1e1e32] pt-4 mt-4">
       <h2 className="text-[#a09aff] text-sm font-bold uppercase tracking-wide mb-3">{title}</h2>
@@ -39,16 +103,16 @@ function EmptyRows({ text }: { text: string }) {
   return <p className="text-[#7b7ba6] text-sm bg-[#13131f] rounded-xl p-4 border border-[#1e1e32]">{text}</p>
 }
 
-function DigitalReport({ payload, valuta }: { payload: any, valuta: GarageBaseCurrency }) {
+function DigitalReport({ payload, valuta }: { payload: TransferPayload, valuta: GarageBaseCurrency }) {
   const car = payload?.car || {}
   const carFull = payload?.car_full || {}
   const reportCurrency: GarageBaseCurrency = payload?.currency === 'USD' ? 'USD' : valuta
   const servisi = payload?.service_logs || []
   const gorivo = payload?.fuel_logs || []
   const expenses = payload?.expenses || []
-  const skupajServis = servisi.reduce((sum: number, row: any) => sum + (row.cena || 0), 0)
-  const skupajGorivo = gorivo.reduce((sum: number, row: any) => sum + (row.cena_skupaj || 0), 0)
-  const skupajStroski = expenses.reduce((sum: number, row: any) => sum + (row.znesek || 0), 0)
+  const skupajServis = servisi.reduce((sum, row) => sum + (row.cena || 0), 0)
+  const skupajGorivo = gorivo.reduce((sum, row) => sum + (row.cena_skupaj || 0), 0)
+  const skupajStroski = expenses.reduce((sum, row) => sum + (row.znesek || 0), 0)
   const skupajVse = skupajServis + skupajGorivo + skupajStroski
 
   return (
@@ -97,7 +161,7 @@ function DigitalReport({ payload, valuta }: { payload: any, valuta: GarageBaseCu
       <Section title="Servisna knjiga">
         {servisi.length === 0 ? <EmptyRows text="Ni vnesenih servisov." /> : (
           <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
-            {servisi.map((row: any, index: number) => (
+            {servisi.map((row, index) => (
               <div key={row.id || index} className="grid grid-cols-[82px_86px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
                 <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
                 <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
@@ -114,7 +178,7 @@ function DigitalReport({ payload, valuta }: { payload: any, valuta: GarageBaseCu
       <Section title="Evidenca goriva">
         {gorivo.length === 0 ? <EmptyRows text="Ni vnesenih tankanj." /> : (
           <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
-            {gorivo.map((row: any, index: number) => (
+            {gorivo.map((row, index) => (
               <div key={row.id || index} className="grid grid-cols-[82px_86px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
                 <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
                 <div className="text-[#a09aff] text-xs font-semibold">{fmtKm(row.km)}</div>
@@ -131,7 +195,7 @@ function DigitalReport({ payload, valuta }: { payload: any, valuta: GarageBaseCu
       <Section title="Dodatni stroski">
         {expenses.length === 0 ? <EmptyRows text="Ni dodatnih stroskov." /> : (
           <div className="overflow-hidden rounded-xl border border-[#1e1e32]">
-            {expenses.map((row: any, index: number) => (
+            {expenses.map((row, index) => (
               <div key={row.id || index} className="grid grid-cols-[82px_100px_1fr] gap-2 bg-[#13131f] border-b border-[#1e1e32] last:border-b-0 p-3">
                 <div className="text-[#7b7ba6] text-xs">{fmtDate(row.datum)}</div>
                 <div className="text-[#a09aff] text-xs font-semibold">{row.kategorija || '-'}</div>
@@ -152,8 +216,8 @@ export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [tokenInput, setTokenInput] = useState('')
-  const [transfer, setTransfer] = useState<any>(null)
-  const [payload, setPayload] = useState<any>(null)
+  const [transfer, setTransfer] = useState<VehicleTransfer | null>(null)
+  const [payload, setPayload] = useState<TransferPayload | null>(null)
   const [message, setMessage] = useState('')
   const [cameraOn, setCameraOn] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -190,23 +254,24 @@ export default function ScanPage() {
       return
     }
 
-    if ((data as any).revoked_at) {
+    const transferData = data as VehicleTransfer
+    if (transferData.revoked_at) {
       setMessage('Ta QR koda je bila preklicana in ni vec veljavna.')
       setLoading(false)
       return
     }
 
-    if (isTransferExpired((data as any).expires_at)) {
+    if (isTransferExpired(transferData.expires_at)) {
       setMessage('Ta QR koda je potekla. Lastnik mora ustvariti novo QR kodo.')
       setLoading(false)
       return
     }
 
-    setTransfer(data)
-    setPayload(data.payload)
+    setTransfer(transferData)
+    setPayload(transferData.payload || null)
     setTokenInput(token)
-    if ((data as any).expires_at) {
-      setMessage(`QR koda je veljavna do ${formatTransferDate((data as any).expires_at)}.`)
+    if (transferData.expires_at) {
+      setMessage(`QR koda je veljavna do ${formatTransferDate(transferData.expires_at)}.`)
     }
     setLoading(false)
   }
@@ -214,7 +279,7 @@ export default function ScanPage() {
   const zacniKamero = async () => {
     try {
       setMessage('')
-      const Detector = (window as any).BarcodeDetector
+      const Detector = (window as BarcodeDetectorWindow).BarcodeDetector
       if (!Detector) {
         setMessage('Ta brskalnik ne podpira direktnega skeniranja. Prilepi link ali token iz QR kode.')
         return
@@ -239,8 +304,8 @@ export default function ScanPage() {
           await naloziToken(codes[0].rawValue)
         }
       }, 700)
-    } catch (error: any) {
-      setMessage('Kamere ni bilo mozno odpreti: ' + error.message)
+    } catch (error: unknown) {
+      setMessage('Kamere ni bilo mozno odpreti: ' + getErrorMessage(error))
     }
   }
 
@@ -319,9 +384,9 @@ export default function ScanPage() {
       return
     }
 
-    const serviceRows = cleanTransferRows(payload.service_logs || [], newCar.id, transfer.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
-    const fuelRows = cleanTransferRows(payload.fuel_logs || [], newCar.id, transfer.id).map((row: any) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
-    const expenseRows = cleanTransferRows(payload.expenses || [], newCar.id, transfer.id).map((row: any) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+    const serviceRows = cleanTransferRows(payload.service_logs || [], newCar.id, transfer.id).map((row: TransferRow) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
+    const fuelRows = cleanTransferRows(payload.fuel_logs || [], newCar.id, transfer.id).map((row: TransferRow) => ({ ...row, postaja: row.postaja ? `[Prejsnji lastnik] ${row.postaja}` : '[Prejsnji lastnik]' }))
+    const expenseRows = cleanTransferRows(payload.expenses || [], newCar.id, transfer.id).map((row: TransferRow) => ({ ...row, opis: `[Prejsnji lastnik] ${row.opis || ''}`.trim() }))
 
     if (serviceRows.length) await supabase.from('service_logs').insert(serviceRows)
     if (fuelRows.length) await supabase.from('fuel_logs').insert(fuelRows)
