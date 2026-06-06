@@ -537,7 +537,7 @@ export default function Dashboard() {
     init()
   }, [])
 
-  const naloziLitePodatke = async (carIds: string[] | string, activeCarId?: string) => {
+  async function naloziLitePodatke(carIds: string[] | string, activeCarId?: string) {
     const ids = Array.isArray(carIds) ? carIds : [carIds]
     const selectedId = activeCarId || ids[0]
     const cachedGrouped: Record<string, any[]> = {}
@@ -799,7 +799,7 @@ export default function Dashboard() {
     try { localStorage.setItem(`garagebase_dashboard_tires_${carId}`, JSON.stringify(next)) } catch {}
   }
 
-  const naloziPodatke = async (carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) => {
+  async function naloziPodatke(carId: string, avtoKmStart: number = 0, kmObVnosu: number = 0) {
     activeLoadRef.current = carId
     const shouldApply = () => activeLoadRef.current === carId
     const cached = localStorage.getItem(`garagebase_dashboard_cache_${carId}`)
@@ -1019,7 +1019,7 @@ export default function Dashboard() {
     if (km < 0) return tx(`+${Math.abs(km).toLocaleString()} km čez`, `+${Math.abs(km).toLocaleString()} km over`)
     return tx(`${km.toLocaleString()} km še`, `${km.toLocaleString()} km left`)
   }
-  const ServisStatusCard = ({ compact = false }: { compact?: boolean }) => (
+  const servisStatusCard = (compact = false) => (
     <div className={`${servisStatusTone.bg} border ${servisStatusTone.border} rounded-2xl p-4 shadow-[0_14px_32px_rgba(0,0,0,0.18)]`}>
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -1113,7 +1113,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mb-4">
-          <ServisStatusCard compact />
+          {servisStatusCard(true)}
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
@@ -1390,7 +1390,7 @@ export default function Dashboard() {
                       )}
                     </button>
                   </div>
-                  <ServisStatusCard />
+                  {servisStatusCard()}
                   <div className="grid grid-cols-4 gap-3 mt-auto">
                     <button onClick={() => router.push('/gorivo?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#3ecfcf] hover:text-[#3ecfcf] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">⛽</span>{tx('Gorivo', 'Fuel')}</button>
                     <button onClick={() => router.push('/servis?car=' + aktivniAvto.id)} className="bg-[#13131f] border border-[#1e1e32] text-[#5a5a80] py-4 rounded-xl hover:border-[#f59e0b] hover:text-[#f59e0b] transition-all flex items-center justify-center gap-3 font-semibold"><span className="text-xl">🔧</span>{tx('Servis', 'Service')}</button>
@@ -1531,7 +1531,7 @@ export default function Dashboard() {
                 </button>
 
                 <div className="mx-5 mb-4">
-                  <ServisStatusCard compact />
+                  {servisStatusCard(true)}
                 </div>
 
                 <button
