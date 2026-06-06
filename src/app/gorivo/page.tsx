@@ -53,6 +53,28 @@ type ConsumptionSegmentValue = {
   liters: number
 }
 
+type FuelCar = Record<string, unknown> & {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  arhivirano?: boolean | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  rezervar_litri?: number | string | null
+  tank_capacity_liters?: number | string | null
+}
+
+type FuelRow = Record<string, unknown> & {
+  id?: string | null
+  car_id?: string | null
+  datum?: string | null
+  created_at?: string | null
+  polni_rezervar?: boolean | string | null
+}
+
 const combineConsumptionSegmentDetails = (segments: ConsumptionSegmentValue[]): ConsumptionSegmentValue => {
   const measured = segments.filter((segment) => segment.distance > 0 && segment.liters > 0)
   const distance = measured.reduce((sum, segment) => sum + segment.distance, 0)
@@ -85,11 +107,11 @@ const monthStarts = () => {
   return Array.from({ length: 6 }, (_, index) => new Date(now.getFullYear(), now.getMonth() - (5 - index), 1))
 }
 
-const moneySum = (rows: any[]) => rows.reduce((sum, row) => sum + fuelCostValue(row), 0)
-const literSum = (rows: any[]) => rows.reduce((sum, row) => sum + fuelLitersValue(row), 0)
-const averageLiters = (rows: any[]) => rows.length > 0 ? literSum(rows) / rows.length : 0
+const moneySum = (rows: FuelRow[]) => rows.reduce((sum, row) => sum + fuelCostValue(row), 0)
+const literSum = (rows: FuelRow[]) => rows.reduce((sum, row) => sum + fuelLitersValue(row), 0)
+const averageLiters = (rows: FuelRow[]) => rows.length > 0 ? literSum(rows) / rows.length : 0
 
-const isPartialFill = (row: any) =>
+const isPartialFill = (row: FuelRow) =>
   row?.polni_rezervar === false || String(row?.polni_rezervar).toLowerCase() === 'false'
 
 function Icon({ type, className = 'h-6 w-6' }: { type: MetricCardProps['icon'] | 'car' | 'plus', className?: string }) {
@@ -261,8 +283,8 @@ export default function GorivoPage() {
     importShort: tx('uvoz', 'import'),
   }
   const [loading, setLoading] = useState(true)
-  const [cars, setCars] = useState<any[]>([])
-  const [fuelRows, setFuelRows] = useState<any[]>([])
+  const [cars, setCars] = useState<FuelCar[]>([])
+  const [fuelRows, setFuelRows] = useState<FuelRow[]>([])
   const [currency, setCurrency] = useState<GarageBaseCurrency>('EUR')
   const [distanceUnit, setDistanceUnit] = useState<DistanceUnit>('km')
 
@@ -285,7 +307,7 @@ export default function GorivoPage() {
         .order('vrstni_red', { ascending: true })
 
       if (carsRes.error) console.warn('[GarageBase fuel] active cars query failed', carsRes.error)
-      let nextCars = carsRes.data || []
+      let nextCars = (carsRes.data || []) as FuelCar[]
       if (carsRes.error || nextCars.length === 0) {
         const fallback = await supabase
           .from('cars')
@@ -293,12 +315,12 @@ export default function GorivoPage() {
           .eq('user_id', user.id)
           .order('vrstni_red', { ascending: true })
         if (fallback.error) console.warn('[GarageBase fuel] fallback cars query failed', fallback.error)
-        nextCars = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        nextCars = ((fallback.data || []) as FuelCar[]).filter((car) => car?.arhivirano !== true)
       }
 
       const carParam = new URLSearchParams(window.location.search).get('car')
       if (carParam) {
-        const selectedCar = nextCars.find((car: any) => car?.id === carParam)
+        const selectedCar = nextCars.find((car) => car?.id === carParam)
         if (selectedCar) {
           nextCars = [selectedCar]
         } else {
@@ -314,7 +336,7 @@ export default function GorivoPage() {
       }
 
       setCars(nextCars)
-      const carIds = nextCars.map((car: any) => car.id).filter(Boolean)
+      const carIds = nextCars.map((car) => car.id).filter(Boolean)
       if (carIds.length === 0) {
         setFuelRows([])
         setLoading(false)
@@ -329,14 +351,14 @@ export default function GorivoPage() {
         .limit(1200)
 
       if (error) console.warn('[GarageBase fuel] fuel logs query failed', error)
-      setFuelRows(data || [])
+      setFuelRows((data || []) as FuelRow[])
       setLoading(false)
     }
     load()
   }, [])
 
   const carById = useMemo(() => {
-    const map: Record<string, any> = {}
+    const map: Record<string, FuelCar> = {}
     cars.forEach((car) => { if (car?.id) map[car.id] = car })
     return map
   }, [cars])
@@ -344,10 +366,10 @@ export default function GorivoPage() {
   const buckets = useMemo(() => importBuckets(fuelRows), [fuelRows])
   const importedRows = useMemo(() => fuelRows.filter((row) => isImportedHistoryRow(row, buckets)), [fuelRows, buckets])
   const garageBaseRows = useMemo(() => fuelRows.filter((row) => !isImportedHistoryRow(row, buckets)), [fuelRows, buckets])
-  const consumptionSegmentsForRows = (rows: any[]) => {
+  const consumptionSegmentsForRows = (rows: FuelRow[]) => {
     if (cars.length === 1) return [consumptionSegment(rows, cars[0])]
 
-    const byCar = new Map<string, any[]>()
+    const byCar = new Map<string, FuelRow[]>()
     rows.forEach((row) => {
       const carId = row?.car_id
       if (!carId) return
@@ -378,7 +400,7 @@ export default function GorivoPage() {
   const tankCapacityLiters = cars.length === 1
     ? numberValue(cars[0]?.rezervar_litri ?? cars[0]?.tank_capacity_liters)
     : 0
-  const rangeFor = (rows: any[], average: number | null) => {
+  const rangeFor = (rows: FuelRow[], average: number | null) => {
     if (average && tankCapacityLiters > 0) return (tankCapacityLiters / average) * 100
     const avgLiters = averageLiters(rows)
     return average && avgLiters > 0 ? (avgLiters / average) * 100 : null
@@ -391,7 +413,7 @@ export default function GorivoPage() {
       monthMap.set(monthKey(month.toISOString()), { gbDistance: 0, gbLiters: 0, importDistance: 0, importLiters: 0 })
     })
 
-    const byCar = new Map<string, any[]>()
+    const byCar = new Map<string, FuelRow[]>()
     fuelRows.forEach((row) => {
       if (!row?.car_id) return
       const list = byCar.get(row.car_id) || []
@@ -442,7 +464,7 @@ export default function GorivoPage() {
     })
   }, [fuelRows, buckets, locale])
 
-  const carImage = (car: any) => {
+  const carImage = (car: FuelCar | undefined) => {
     const raw = car?.slika_url || car?.slika || ''
     if (!raw) return ''
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at)
@@ -573,11 +595,12 @@ export default function GorivoPage() {
                 {recentRows.length === 0 ? (
                   <div className="p-6 text-sm font-semibold text-[#8a8aa8]">{tx('Ni vnosov goriva.', 'No fuel entries yet.')}</div>
                 ) : recentRows.map((row, index) => {
-                  const car = carById[row.car_id]
+                  const rowCarId = row.car_id || ''
+                  const car = carById[rowCarId]
                   const imported = isImportedHistoryRow(row, buckets)
                   const image = carImage(car)
                   return (
-                    <button key={row.id || `${row.car_id}-${index}`} onClick={() => window.location.href = `/zgodovina-goriva?car=${row.car_id}`} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
+                    <button key={row.id || `${rowCarId}-${index}`} onClick={() => window.location.href = `/zgodovina-goriva?car=${rowCarId}`} className={`flex w-full items-center gap-3 p-3 text-left ${index > 0 ? 'border-t border-[#1e1e32]' : ''}`}>
                       <div className="h-14 w-16 flex-shrink-0 overflow-hidden rounded-2xl bg-[#13131f]">
                         {image ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="flex h-full w-full items-center justify-center text-[#6c63ff]"><Icon type="car" /></div>}
                       </div>
@@ -587,7 +610,7 @@ export default function GorivoPage() {
                           {imported && <span className="rounded-lg border border-[#16a34a55] bg-[#16a34a18] px-2 py-1 text-[10px] font-black text-[#15803d]">{tx('Uvoz', 'Import')}</span>}
                         </div>
                         <p className="mt-1 truncate text-sm text-[#8a8aa8]">
-                          {new Date(row.datum || row.created_at).toLocaleDateString(locale)} - {fuelLitersValue(row).toFixed(1)} L
+                          {new Date(row.datum || row.created_at || Date.now()).toLocaleDateString(locale)} - {fuelLitersValue(row).toFixed(1)} L
                           {fuelPriceValue(row) > 0 ? ` - ${fuelPriceValue(row).toFixed(3)} /L` : ''}
                         </p>
                       </div>
