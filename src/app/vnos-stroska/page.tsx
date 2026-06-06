@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
@@ -14,7 +14,7 @@ import { checkCurrentUserAdmin } from '@/lib/admin-access'
 
 export default function VnosStroska() {
   const router = useRouter()
-  const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
+  const [datum, setDatum] = useState(() => new Date().toISOString().split('T')[0])
   const [kategorija, setKategorija] = useState('registracija')
   const [kategorijaCustom, setKategorijaCustom] = useState('')
   const [opis, setOpis] = useState('')
@@ -30,7 +30,7 @@ export default function VnosStroska() {
   const [ocrMessage, setOcrMessage] = useState('')
   const [ocrLoading, setOcrLoading] = useState(false)
   const [ocrAllowed, setOcrAllowed] = useState(false)
-  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const [valuta] = useState<GarageBaseCurrency>(() => getCurrencyFromSettings())
   const jeEn = typeof window !== 'undefined' && getStoredLanguage() === 'en'
   const tx = (sl: string, en: string) => jeEn ? en : sl
 
@@ -46,7 +46,6 @@ export default function VnosStroska() {
   ]
 
   useEffect(() => {
-    setValuta(getCurrencyFromSettings())
     const init = async () => {
       const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
       if (cachedCars.length > 0) setAvti(cachedCars)
@@ -87,7 +86,7 @@ export default function VnosStroska() {
     const direktno = parseFloat(tekst.replace(',', '.').replace(/\s/g, ''))
     if (!isNaN(direktno)) return direktno
 
-    let rezultat = tekst
+    const rezultat = tekst
       .replace(/(\d+)\s*tisoč\s*(\d+)/gi, (_, a, b) => String(parseInt(a) * 1000 + parseInt(b)))
       .replace(/(\d+)\s*tisoč/gi, (_, a) => String(parseInt(a) * 1000))
       .replace(/tisoč/gi, '1000')
@@ -134,7 +133,7 @@ export default function VnosStroska() {
     recognition.start()
   }
 
-  const MicButton = ({ polje }: { polje: string }) => (
+  const micButton = (polje: string) => (
     <button type="button" onClick={() => glasovniVnos(polje)}
       className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
         poslusam === polje
@@ -345,7 +344,7 @@ export default function VnosStroska() {
             <input type="number" step="0.01" value={znesek} onChange={e => setZnesek(e.target.value)}
               placeholder="npr. 150"
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors" />
-            <MicButton polje="znesek" />
+            {micButton('znesek')}
           </div>
         </div>
 
@@ -356,7 +355,7 @@ export default function VnosStroska() {
               placeholder="npr. Letna registracija 2026..."
               rows={2}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors resize-none" />
-            <MicButton polje="opis" />
+            {micButton('opis')}
           </div>
         </div>
 

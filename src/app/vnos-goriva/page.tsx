@@ -167,7 +167,7 @@ export default function VnosGoriva() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const naloziZadnjiKm = async (id: string, kmAvta: number) => {
+  async function naloziZadnjiKm(id: string, kmAvta: number) {
     const [{ data: servisData }, { data: gorivoData }] = await Promise.all([
       supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
       supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
@@ -185,7 +185,7 @@ export default function VnosGoriva() {
     return Math.max(avtoData?.km_trenutni || 0, servisData?.[0]?.km || 0, gorivoData?.[0]?.km || 0)
   }
 
-  const naloziPostaje = async (carIds: string[]) => {
+  async function naloziPostaje(carIds: string[]) {
     if (carIds.length === 0) return
     const { data } = await supabase
       .from('fuel_logs')
@@ -264,7 +264,7 @@ export default function VnosGoriva() {
     recognition.start()
   }
 
-  const MicButton = ({ polje }: { polje: string }) => (
+  const micButton = (polje: string) => (
     <button
       type="button"
       onClick={() => glasovniVnos(polje)}
@@ -683,7 +683,7 @@ export default function VnosGoriva() {
                 km && parseInt(km) < zadnjiKm ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#3ecfcf]'
               }`}
             />
-            <MicButton polje="km" />
+            {micButton('km')}
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 rounded-lg border border-[#f59e0b66] bg-[#f59e0b14] p-2">
@@ -703,7 +703,7 @@ export default function VnosGoriva() {
               placeholder={tx('npr. 52.4', 'e.g. 52.4')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors"
             />
-            <MicButton polje="litri" />
+            {micButton('litri')}
           </div>
         </div>
 
@@ -753,7 +753,7 @@ export default function VnosGoriva() {
               placeholder={tx('npr. 1.489', 'e.g. 1.489')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors"
             />
-            <MicButton polje="cena" />
+            {micButton('cena')}
           </div>
         </div>
 
@@ -775,7 +775,7 @@ export default function VnosGoriva() {
               placeholder={tx('npr. OMV Ljubljana', 'e.g. OMV Ljubljana')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#3ecfcf] transition-colors"
             />
-            <MicButton polje="postaja" />
+            {micButton('postaja')}
           </div>
           {showSuggestions && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a2e] border border-[#2a2a40] rounded-xl overflow-hidden z-10">

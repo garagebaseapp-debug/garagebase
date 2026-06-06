@@ -13,7 +13,7 @@ import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 const KM_ANOMALY_THRESHOLD = 2000
 
 export default function VnosServisa() {
-  const [datum, setDatum] = useState(new Date().toISOString().split('T')[0])
+  const [datum, setDatum] = useState(() => new Date().toISOString().split('T')[0])
   const [km, setKm] = useState('')
   const [opis, setOpis] = useState('')
   const [servis, setServis] = useState('')
@@ -35,9 +35,9 @@ export default function VnosServisa() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const [intervalKm, setIntervalKm] = useState('')
   const [intervalDni, setIntervalDni] = useState('')
-  const [language, setLanguage] = useState<Language>('sl')
-  const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
-  const [enotaRazdalje, setEnotaRazdalje] = useState<DistanceUnit>('km')
+  const [language] = useState<Language>(() => getStoredLanguage())
+  const [valuta] = useState<GarageBaseCurrency>(() => getCurrencyFromSettings())
+  const [enotaRazdalje] = useState<DistanceUnit>(() => getDistanceUnitFromSettings())
   const servisRef = useRef<HTMLDivElement>(null)
 
   const danes = new Date().toISOString().split('T')[0]
@@ -46,9 +46,6 @@ export default function VnosServisa() {
   const tx = (sl: string, en: string) => jeEn ? en : sl
 
   useEffect(() => {
-    setLanguage(getStoredLanguage())
-    setValuta(getCurrencyFromSettings())
-    setEnotaRazdalje(getDistanceUnitFromSettings())
     const init = async () => {
       const cachedCars = readGarageCache()?.avti?.filter((car: any) => car?.arhivirano !== true) || []
       if (cachedCars.length > 0) setAvti(cachedCars)
@@ -96,7 +93,7 @@ export default function VnosServisa() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const naloziZadnjiKm = async (id: string, kmAvta: number) => {
+  async function naloziZadnjiKm(id: string, kmAvta: number) {
     const [{ data: servisData }, { data: gorivoData }] = await Promise.all([
       supabase.from('service_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
       supabase.from('fuel_logs').select('km').eq('car_id', id).order('km', { ascending: false }).limit(1),
@@ -116,7 +113,7 @@ export default function VnosServisa() {
     return Math.max(avtoData?.km_trenutni || 0, servisData?.[0]?.km || 0, gorivoData?.[0]?.km || 0)
   }
 
-  const naloziServisHistory = async (carIds: string[]) => {
+  async function naloziServisHistory(carIds: string[]) {
     if (carIds.length === 0) return
     const { data } = await supabase
       .from('service_logs')
@@ -207,7 +204,7 @@ export default function VnosServisa() {
     const direktno = parseFloat(tekst.replace(',', '.').replace(/\s/g, ''))
     if (!isNaN(direktno)) return direktno
 
-    let rezultat = tekst
+    const rezultat = tekst
       .replace(/(\d+)\s*tisoč\s*(\d+)/gi, (_, a, b) => String(parseInt(a) * 1000 + parseInt(b)))
       .replace(/(\d+)\s*tisoč/gi, (_, a) => String(parseInt(a) * 1000))
       .replace(/tisoč/gi, '1000')
@@ -259,7 +256,7 @@ export default function VnosServisa() {
     recognition.start()
   }
 
-  const MicButton = ({ polje }: { polje: string }) => (
+  const micButton = (polje: string) => (
     <button type="button" onClick={() => glasovniVnos(polje)}
       className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
         poslusam === polje
@@ -453,7 +450,7 @@ export default function VnosServisa() {
             <input type="number" value={km} onChange={e => setKm(e.target.value)}
               placeholder={carId ? (kmReady ? `${tx('najmanj', 'at least')} ${formatDistance(zadnjiKm, enotaRazdalje)}` : tx('nalagam zadnje km...', 'loading latest mileage...')) : tx('najprej izberi vozilo', 'choose a vehicle first')}
               className={`flex-1 bg-[#13131f] border rounded-xl px-4 py-3 text-white text-sm outline-none transition-colors ${km && parseInt(km) < zadnjiKm ? 'border-[#f59e0b]' : 'border-[#1e1e32] focus:border-[#f59e0b]'}`} />
-            <MicButton polje="km" />
+            {micButton('km')}
           </div>
           {km && parseInt(km) < zadnjiKm && (
             <div className="mt-2 rounded-lg border border-[#f59e0b66] bg-[#f59e0b14] p-2">
@@ -500,7 +497,7 @@ export default function VnosServisa() {
             <textarea value={opis} onChange={e => setOpis(e.target.value)}
               placeholder={tx('npr. Menjava olja + filter', 'e.g. Oil and filter change')} rows={3}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors resize-none" />
-            <MicButton polje="opis" />
+            {micButton('opis')}
           </div>
         </div>
 
@@ -518,7 +515,7 @@ export default function VnosServisa() {
               }}
               placeholder={tx('npr. Volvo Center Ljubljana', 'e.g. Volvo Center Ljubljana')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
-            <MicButton polje="servis" />
+            {micButton('servis')}
           </div>
           {showSuggestions && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-[#1a1a2e] border border-[#2a2a40] rounded-xl overflow-hidden z-10">
@@ -537,7 +534,7 @@ export default function VnosServisa() {
           <div className="flex gap-2">
             <input type="number" step="0.01" value={cena} onChange={e => setCena(e.target.value)} placeholder={tx('npr. 320', 'e.g. 320')}
               className="flex-1 bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
-            <MicButton polje="cena" />
+            {micButton('cena')}
           </div>
         </div>
 
