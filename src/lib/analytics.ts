@@ -5,6 +5,23 @@ const RELEASE_CHANNEL = process.env.NEXT_PUBLIC_RELEASE_CHANNEL || 'local'
 const RECENT_EVENTS_KEY = 'garagebase_recent_events'
 let cachedAnalyticsUser: { id: string; email: string | null } | null | undefined
 
+type AnalyticsMetadata = Record<string, unknown>
+
+type StoredSettings = {
+  nacin?: unknown
+  jezik?: unknown
+  tema?: unknown
+  pisava?: unknown
+  prikazGaraze?: unknown
+  desktopStolpci?: unknown
+  mobileGridStolpci?: unknown
+  valuta?: unknown
+}
+
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean
+}
+
 async function getAnalyticsUser() {
   if (cachedAnalyticsUser !== undefined) return cachedAnalyticsUser
   try {
@@ -20,9 +37,9 @@ async function getAnalyticsUser() {
 
 function getClientContext() {
   if (typeof window === 'undefined') return {}
-  let storedSettings: any = null
+  let storedSettings: StoredSettings | null = null
   try {
-    storedSettings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || 'null')
+    storedSettings = JSON.parse(localStorage.getItem('garagebase_nastavitve') || 'null') as StoredSettings | null
   } catch {
     storedSettings = null
   }
@@ -62,7 +79,7 @@ function getClientPlatform() {
   const userAgent = navigator.userAgent || ''
   const isAndroid = /Android/i.test(userAgent)
   const isIos = /iPhone|iPad|iPod/i.test(userAgent)
-  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as NavigatorWithStandalone).standalone === true
   const isDesktopWidth = window.innerWidth >= 1024
   const os = isAndroid ? 'android' : isIos ? 'ios' : isDesktopWidth ? 'desktop' : 'mobile'
   const key = standalone
@@ -88,7 +105,7 @@ function getClientPlatform() {
   }
 }
 
-function rememberEvent(eventName: string, metadata: Record<string, any>) {
+function rememberEvent(eventName: string, metadata: AnalyticsMetadata) {
   if (typeof window === 'undefined') return
   try {
     const current = JSON.parse(localStorage.getItem(RECENT_EVENTS_KEY) || '[]')
@@ -116,7 +133,7 @@ function getRecentEvents() {
   }
 }
 
-export async function trackEvent(eventName: string, metadata: Record<string, any> = {}) {
+export async function trackEvent(eventName: string, metadata: AnalyticsMetadata = {}) {
   try {
     rememberEvent(eventName, metadata)
     const user = await getAnalyticsUser()
@@ -143,7 +160,7 @@ export async function trackEvent(eventName: string, metadata: Record<string, any
   }
 }
 
-export async function trackError(errorName: string, metadata: Record<string, any> = {}) {
+export async function trackError(errorName: string, metadata: AnalyticsMetadata = {}) {
   try {
     const user = await getAnalyticsUser()
     const pagePath = typeof window !== 'undefined'
