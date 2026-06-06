@@ -62,8 +62,8 @@ export default function LoginPage() {
   const [acceptedLegal, setAcceptedLegal] = useState(false)
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const cleanEmail = () => email.trim().toLowerCase()
-  const authErrorText = (error: any) => {
-    const text = String(error?.message || '')
+  const authErrorText = (error: unknown) => {
+    const text = String(typeof error === 'object' && error && 'message' in error ? error.message : '')
     const lower = text.toLowerCase()
     if (lower.includes('invalid login credentials')) return tx('Email ali geslo ni pravilno.', 'Email or password is not correct.')
     if (lower.includes('email not confirmed')) return tx('Najprej potrdi registracijo prek povezave v emailu.', 'Confirm your registration using the link in your email first.')

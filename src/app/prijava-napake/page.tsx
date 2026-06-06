@@ -23,9 +23,14 @@ const priorities = [
   { value: 'high', sl: 'Ne morem nadaljevati', en: 'Blocking' },
 ]
 
+type BugReportUser = {
+  id: string
+  email?: string | null
+}
+
 export default function PrijavaNapakePage() {
   const { language } = useLanguage()
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<BugReportUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -54,6 +59,7 @@ export default function PrijavaNapakePage() {
   }, [])
 
   const submit = async () => {
+    if (!user) return
     setMessage('')
     if (!title.trim() || !description.trim()) {
       setMessage(tx('Vnesi kratek naslov in opis napake.', 'Enter a short title and bug description.'))

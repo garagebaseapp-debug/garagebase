@@ -175,7 +175,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
     <>
       <DesktopNav aktivna={aktivna} />
       <div className="gb-mobile-nav fixed bottom-0 left-0 right-0 z-50 flex w-full max-w-none justify-between border-t border-[#27273a] bg-[#0a0a12]/96 px-2 pb-2 pt-3 shadow-[0_-16px_34px_rgba(0,0,0,0.28)] backdrop-blur-xl">
-        {mobileLinks.map((item: any) => {
+        {mobileLinks.map((item) => {
           const isActive = aktivna === item.key
           return (
             <button
@@ -191,7 +191,7 @@ export function BottomNav({ aktivna }: { aktivna?: string }) {
                 <NavIcon type={item.icon} className="h-10 w-10" />
               </span>
               <span className={`text-[13.5px] font-black leading-none ${isActive ? 'text-[#8f86ff]' : 'text-[#b8bed0]'}`}>
-                {item.label || t(item.labelKey)}
+                {t(item.labelKey)}
               </span>
             </button>
           )
