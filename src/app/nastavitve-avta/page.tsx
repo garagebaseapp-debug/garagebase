@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
@@ -21,8 +21,86 @@ const writeStoredOwnershipSettings = (carId: string, data: Record<string, unknow
   } catch {}
 }
 
+type VehicleSettingsCar = Record<string, unknown> & {
+  id: string
+  user_id: string
+  tip_vozila?: string | null
+  oblika?: string | null
+  znamka?: string | null
+  model?: string | null
+  letnik?: number | string | null
+  gorivo?: string | null
+  rezervar_litri?: number | string | null
+  tank_capacity_liters?: number | string | null
+  barva?: string | null
+  tablica?: string | null
+  vin?: string | null
+  kubikaza?: number | string | null
+  kw?: number | string | null
+  menjalnik?: string | null
+  pogon?: string | null
+  st_lastnikov?: number | string | null
+  lastnik_mesto?: string | null
+  lastnik_starost?: number | string | null
+  purchase_price?: number | string | null
+  purchase_date?: string | null
+  purchase_mileage?: number | string | null
+  km_ob_vnosu?: number | string | null
+  down_payment?: number | string | null
+  finance_total_paid?: number | string | null
+  finance_overpayment?: number | string | null
+  monthly_payment?: number | string | null
+  resale_value?: number | string | null
+  include_vehicle_price_in_costs?: boolean | null
+  prenos_soglasje?: boolean | null
+  prenos_opomba?: string | null
+  homologacija_stevilka?: string | null
+  homologacija_opis?: string | null
+  homologacija_url?: string | null
+  slika_url?: string | null
+  arhivirano?: boolean | null
+  archived_at?: string | null
+}
+
+type VehicleUpdatePayload = {
+  tip_vozila: string
+  oblika: string | null
+  znamka: string
+  model: string
+  letnik: number | null
+  gorivo: string
+  barva: string | null
+  rezervar_litri?: number | null
+  tablica: string | null
+  vin: string | null
+  kubikaza: number | null
+  kw: number | null
+  menjalnik: string | null
+  pogon: string | null
+  st_lastnikov: number | null
+  lastnik_mesto: string | null
+  lastnik_starost: number | null
+  purchase_price?: number | null
+  purchase_date?: string | null
+  purchase_mileage?: number | null
+  down_payment?: number | null
+  finance_total_paid?: number | null
+  finance_overpayment?: number | null
+  monthly_payment?: number | null
+  resale_value?: number | null
+  include_vehicle_price_in_costs?: boolean
+  prenos_soglasje: boolean
+  prenos_opomba: string | null
+  homologacija_stevilka: string | null
+  homologacija_opis: string | null
+  homologacija_url: string | null
+}
+
+const errorMessage = (error: unknown) =>
+  String(typeof error === 'object' && error && 'message' in error ? error.message : '')
+
 export default function NastavitveAvta() {
-  const [avto, setAvto] = useState<any>(null)
+  const [avto, setAvto] = useState<VehicleSettingsCar | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -96,17 +174,17 @@ export default function NastavitveAvta() {
   const lockedRecordMessage = () => getStoredLanguage() === 'en'
     ? 'Some vehicle records are older than 24 hours and are protected from changes. If something is wrong, contact support.'
     : 'Nekateri zapisi vozila so starejši od 24 ur in so zaščiteni pred spremembami. Če je prišlo do napake, kontaktiraj podporo.'
-  const isLockedRecordError = (error: any) => String(error?.message || '').includes('manual_record_locked_after_24h')
+  const isLockedRecordError = (error: unknown) => errorMessage(error).includes('manual_record_locked_after_24h')
   const decimalValue = (value: string) => {
     const parsed = Number(String(value || '').replace(',', '.'))
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null
   }
-  const isMissingReservoirColumn = (error: any) => {
-    const message = String(error?.message || '')
+  const isMissingReservoirColumn = (error: unknown) => {
+    const message = errorMessage(error)
     return message.includes('rezervar_litri') || message.includes('tank_capacity')
   }
-  const isMissingOwnershipColumn = (error: any) => {
-    const message = String(error?.message || '')
+  const isMissingOwnershipColumn = (error: unknown) => {
+    const message = errorMessage(error)
     return ['purchase_price', 'purchase_date', 'purchase_mileage', 'down_payment', 'finance_total_paid', 'finance_overpayment', 'monthly_payment', 'resale_value', 'include_vehicle_price_in_costs']
       .some((column) => message.includes(column))
   }
@@ -174,7 +252,7 @@ export default function NastavitveAvta() {
       const { data } = await supabase.from('cars').select('*').eq('id', carId).eq('user_id', user.id).maybeSingle()
       if (!data) { window.location.href = '/garaza'; return }
       if (data) {
-        setAvto(data)
+        setAvto(data as VehicleSettingsCar)
         // Če tip ni standardni, je custom
         if (data.tip_vozila && !standardniTipi.includes(data.tip_vozila)) {
           setTipVozila('drugo')
@@ -241,16 +319,16 @@ export default function NastavitveAvta() {
     init()
   }, [])
 
-  const naloziSliko = async (e: any) => {
-    const file = e.target.files[0]
-    if (!file) return
+  const naloziSliko = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !avto?.id) return
     setUploadingSlika(true)
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setUploadingSlika(false); return }
     let preparedFile = file
     try {
       preparedFile = (await compressImageFile(file, uploadImageProfiles.vehicle)).file
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMessage(imageError(error))
       setUploadingSlika(false)
       return
@@ -270,8 +348,8 @@ export default function NastavitveAvta() {
     setUploadingSlika(false)
   }
 
-  const naloziHomologacijo = async (e: any) => {
-    const file = e.target.files[0]
+  const naloziHomologacijo = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
     if (!file || !avto?.id) return
     setUploadingHomologacija(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -280,7 +358,7 @@ export default function NastavitveAvta() {
     if (file.type.startsWith('image/')) {
       try {
         preparedFile = (await compressImageFile(file, uploadImageProfiles.document)).file
-      } catch (error: any) {
+      } catch (error: unknown) {
         setMessage(imageError(error))
         setUploadingHomologacija(false)
         return
@@ -303,6 +381,7 @@ export default function NastavitveAvta() {
   }
 
   const shrani = async () => {
+    if (!avto?.id) return
     if (tipVozila === 'drugo' && !tipVozilaCustom) { setMessage('Vnesi tip vozila!'); return }
     setSaving(true)
     setMessage('')
@@ -319,7 +398,7 @@ export default function NastavitveAvta() {
       include_vehicle_price_in_costs: includeVehiclePriceInCosts,
     }
     if (avto?.id) writeStoredOwnershipSettings(avto.id, ownershipPayload)
-    const payload: any = {
+    const payload: VehicleUpdatePayload = {
       tip_vozila: finalniTip,
       oblika: oblika || null,
       znamka, model,
