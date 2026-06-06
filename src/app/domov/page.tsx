@@ -36,6 +36,62 @@ type ReminderItem = {
   image?: string
 }
 
+type HomeCar = Record<string, unknown> & {
+  id: string
+  znamka?: string | null
+  model?: string | null
+  slika_url?: string | null
+  slika?: string | null
+  slika_updated_at?: string | null
+  updated_at?: string | null
+  created_at?: string | null
+  km_trenutni?: number | null
+  arhivirano?: boolean | null
+}
+
+type HomeReminderRow = {
+  id: string
+  car_id: string
+  tip?: string | null
+  datum?: string | null
+  km_opomnik?: number | null
+  created_at?: string | null
+}
+
+type HomeFuelRow = Record<string, unknown> & {
+  id: string
+  car_id: string
+  datum?: string | null
+  created_at?: string | null
+  litri?: number | string | null
+}
+
+type HomeServiceRow = {
+  id: string
+  car_id: string
+  datum?: string | null
+  created_at?: string | null
+  opis?: string | null
+  servis?: string | null
+  cena?: number | string | null
+  km?: number | string | null
+}
+
+type HomeExpenseRow = Record<string, unknown> & {
+  id: string
+  car_id: string
+  datum?: string | null
+  created_at?: string | null
+  znesek?: number | string | null
+  opis?: string | null
+  kategorija?: string | null
+}
+
+type HomeDatedRow = {
+  datum?: string | null
+  created_at?: string | null
+}
+
 const cardTone = {
   blue: {
     iconBg: 'bg-[#2563eb18]',
@@ -153,7 +209,7 @@ export default function DomovPage() {
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const locale = language === 'en' ? 'en-US' : 'sl-SI'
   const [loading, setLoading] = useState(true)
-  const [cars, setCars] = useState<any[]>([])
+  const [cars, setCars] = useState<HomeCar[]>([])
   const [reminders, setReminders] = useState<ReminderItem[]>([])
   const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([])
   const [theme, setTheme] = useState<'temna' | 'svetla'>('temna')
@@ -169,7 +225,7 @@ export default function DomovPage() {
   const favoriteCar = cars[0]
   const favoriteCarName = favoriteCar ? vehicleDisplayName(favoriteCar, tx('Vozilo', 'Vehicle')) : ''
 
-  const carImage = (car: any) => {
+  const carImage = (car: HomeCar | undefined) => {
     const raw = car?.slika_url || car?.slika || ''
     if (!raw) return ''
     return imageUrlWithVersion(raw, car?.slika_updated_at || car?.updated_at || car?.created_at || GARAGE_CACHE_VERSION)
@@ -220,7 +276,7 @@ export default function DomovPage() {
     }
 
   const carNameById = useMemo(() => {
-    const map: Record<string, any> = {}
+    const map: Record<string, HomeCar> = {}
     cars.forEach((car) => { if (car?.id) map[car.id] = car })
     return map
   }, [cars])
@@ -315,7 +371,7 @@ export default function DomovPage() {
 
       const cached = readGarageCache()
       if (cached?.avti?.length) {
-        const cachedCars = cached.avti.filter((car: any) => car?.arhivirano !== true)
+        const cachedCars = (cached.avti as HomeCar[]).filter((car) => car?.arhivirano !== true)
         setCars(cachedCars)
         setLoading(false)
       }
@@ -353,10 +409,10 @@ export default function DomovPage() {
         if (fallback.error) {
           console.warn('[GarageBase home] optimized cars select failed', carsError?.message || fallback.error.message)
         }
-        carsData = (fallback.data || []).filter((car: any) => car?.arhivirano !== true)
+        carsData = ((fallback.data || []) as HomeCar[]).filter((car) => car?.arhivirano !== true)
       }
 
-      const loadedCars = carsData || []
+      const loadedCars = (carsData || []) as HomeCar[]
       setCars(loadedCars)
       localStorage.setItem('garagebase_garaza_cache', JSON.stringify({
         version: GARAGE_CACHE_VERSION,
@@ -365,9 +421,9 @@ export default function DomovPage() {
         savedAt: Date.now(),
       }))
 
-      const ids = loadedCars.map((car: any) => car.id).filter(Boolean)
-      const carMap: Record<string, any> = {}
-      loadedCars.forEach((car: any) => { carMap[car.id] = car })
+      const ids = loadedCars.map((car) => car.id).filter(Boolean)
+      const carMap: Record<string, HomeCar> = {}
+      loadedCars.forEach((car) => { carMap[car.id] = car })
 
       if (ids.length === 0) {
         setReminders([])
@@ -386,15 +442,18 @@ export default function DomovPage() {
       const startOfMonth = new Date()
       startOfMonth.setDate(1)
       startOfMonth.setHours(0, 0, 0, 0)
-      const inCurrentMonth = (row: any) => new Date(row.datum || row.created_at || 0).getTime() >= startOfMonth.getTime()
+      const fuelRows = (fuelRes.data || []) as HomeFuelRow[]
+      const serviceRows = (serviceRes.data || []) as HomeServiceRow[]
+      const expenseRows = (expenseRes.data || []) as HomeExpenseRow[]
+      const inCurrentMonth = (row: HomeDatedRow) => new Date(row.datum || row.created_at || 0).getTime() >= startOfMonth.getTime()
       const currentMonthCost = [
-        ...(fuelRes.data || []).filter(inCurrentMonth).map((row: any) => fuelCostValue(row)),
-        ...(serviceRes.data || []).filter(inCurrentMonth).map((row: any) => Number(row.cena || 0)),
-        ...(expenseRes.data || []).filter((row: any) => row.kategorija !== 'km_sprememba' && inCurrentMonth(row)).map((row: any) => Number(row.znesek || 0)),
+        ...fuelRows.filter(inCurrentMonth).map((row) => fuelCostValue(row)),
+        ...serviceRows.filter(inCurrentMonth).map((row) => Number(row.cena || 0)),
+        ...expenseRows.filter((row) => row.kategorija !== 'km_sprememba' && inCurrentMonth(row)).map((row) => Number(row.znesek || 0)),
       ].reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0)
       setMonthlyCost(currentMonthCost)
 
-      const nextReminders = (remindersRes.data || []).map((reminder: any): ReminderItem => {
+      const nextReminders = ((remindersRes.data || []) as HomeReminderRow[]).map((reminder): ReminderItem => {
         const car = carMap[reminder.car_id]
         const days = daysTo(reminder.datum)
         const kmLeft = reminder.km_opomnik && car?.km_trenutni ? reminder.km_opomnik - car.km_trenutni : null
@@ -419,7 +478,7 @@ export default function DomovPage() {
         }
       }).sort((a, b) => a.sortValue - b.sortValue)
 
-      const fuelEvents = (fuelRes.data || []).map((row: any): RecentEvent => {
+      const fuelEvents = fuelRows.map((row): RecentEvent => {
         const car = carMap[row.car_id]
         return {
           id: `fuel-${row.id}`,
@@ -435,7 +494,7 @@ export default function DomovPage() {
         }
       })
 
-      const serviceEvents = (serviceRes.data || []).map((row: any): RecentEvent => {
+      const serviceEvents = serviceRows.map((row): RecentEvent => {
         const car = carMap[row.car_id]
         return {
           id: `service-${row.id}`,
@@ -451,14 +510,14 @@ export default function DomovPage() {
         }
       })
 
-      const expenseEvents = (expenseRes.data || []).filter((row: any) => row.kategorija !== 'km_sprememba').map((row: any): RecentEvent => {
+      const expenseEvents = expenseRows.filter((row) => row.kategorija !== 'km_sprememba').map((row): RecentEvent => {
         const car = carMap[row.car_id]
         return {
           id: `expense-${row.id}`,
           carId: row.car_id,
           carName: vehicleDisplayName(car, tx('Vozilo', 'Vehicle')),
           title: row.opis || row.kategorija || tx('Strošek', 'Expense'),
-          subtitle: `${vehicleDisplayName(car, tx('Vozilo', 'Vehicle'))} - ${formatMoney(row.znesek || fuelCostValue(row), selectedCurrency)}`,
+          subtitle: `${vehicleDisplayName(car, tx('Vozilo', 'Vehicle'))} - ${formatMoney(Number(row.znesek || fuelCostValue(row)), selectedCurrency)}`,
           dateText: asDateText(row.datum, locale),
           href: `/stroski?car=${row.car_id}`,
           tone: 'cost',
