@@ -35,6 +35,7 @@ declare
     'archived_cars',
     'tire_sets',
     'tire_mounts',
+    'tire_tread_measurements',
     'vehicle_mileage_events'
   ];
 begin

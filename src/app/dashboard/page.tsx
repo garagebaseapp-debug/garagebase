@@ -1412,7 +1412,9 @@ export default function Dashboard() {
                       <img src={slikaVozila(aktivniAvto)} alt={vehicleDisplayName(aktivniAvto, tx('Vozilo', 'Vehicle'))}
                         loading="eager" decoding="async" className="h-full w-full object-contain object-center" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1630] to-[#080810] text-5xl">đźš—</div>
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1a1630] to-[#080810] px-4 text-center text-sm font-black uppercase tracking-[0.24em] text-[#8a8aa8]">
+                        {tx('Vozilo', 'Vehicle')}
+                      </div>
                     )}
                     <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-2">
                       <label className="gb-vehicle-photo-change cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#101425]/92 px-3 py-2 text-[11px] font-black text-white shadow-lg">

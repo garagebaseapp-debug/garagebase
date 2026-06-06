@@ -11,6 +11,9 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    ".claude/**",
+    ".codex-remote-attachments/**",
+    "tmp/**",
     "next-env.d.ts",
   ]),
 ]);

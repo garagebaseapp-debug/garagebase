@@ -25,9 +25,10 @@ export async function GET() {
   let database: { status: CheckStatus; message?: string; responseMs?: number } = {
     status: hasSupabaseEnv ? 'configured' : 'missing_env',
   }
-  let schema: { status: SchemaStatus; missingTables: string[]; message?: string; responseMs?: number } = {
+  let schema: { status: SchemaStatus; missingTables: string[]; missingColumns: string[]; message?: string; responseMs?: number } = {
     status: hasSupabaseEnv ? 'configured' : 'missing_env',
     missingTables: [],
+    missingColumns: [],
   }
 
   if (supabaseUrl && supabaseAnonKey) {
@@ -57,8 +58,12 @@ export async function GET() {
     const schemaClient = createClient(supabaseUrl, schemaSupabaseKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     })
-    const requiredTables = ['vehicle_mileage_events']
+    const requiredTables = ['vehicle_mileage_events', 'tire_tread_measurements']
+    const requiredColumnChecks = [
+      { table: 'reminders', columns: 'id,status,completed_at,completed_note' },
+    ]
     const missingTables: string[] = []
+    const missingColumns: string[] = []
     let schemaMessage: string | undefined
 
     for (const table of requiredTables) {
@@ -73,9 +78,25 @@ export async function GET() {
       }
     }
 
+    if (!schemaMessage) {
+      for (const check of requiredColumnChecks) {
+        const { error } = await schemaClient.from(check.table).select(check.columns, { head: true }).limit(1)
+        if (error) {
+          const message = error.message || ''
+          if (error.code === 'PGRST204' || message.includes('column') || message.includes(check.columns)) {
+            missingColumns.push(`${check.table}.${check.columns}`)
+          } else {
+            schemaMessage = message
+            break
+          }
+        }
+      }
+    }
+
     schema = {
-      status: schemaMessage ? 'error' : missingTables.length ? 'missing_table' : 'ok',
+      status: schemaMessage ? 'error' : missingTables.length || missingColumns.length ? 'missing_table' : 'ok',
       missingTables,
+      missingColumns,
       message: schemaMessage,
       responseMs: Date.now() - startedAt,
     }
