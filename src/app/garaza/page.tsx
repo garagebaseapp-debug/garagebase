@@ -24,6 +24,7 @@ export default function Garaza() {
   const [limitAnchor, setLimitAnchor] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [renderNowMs] = useState(() => Date.now())
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [installPrompt, setInstallPrompt] = useState<any>(null)
   const [nacin, setNacin] = useState<'lite' | 'full'>(() => {
@@ -555,8 +556,8 @@ export default function Garaza() {
 
   const prodajniOpomnik = avti.find((avto: any) => {
     if (!avto.history_exported_at || avto.arhivirano) return false
-    if (avto.archive_reminder_dismissed_until && new Date(avto.archive_reminder_dismissed_until) > new Date()) return false
-    const dnevi = Math.floor((Date.now() - new Date(avto.history_exported_at).getTime()) / (1000 * 60 * 60 * 24))
+    if (avto.archive_reminder_dismissed_until && new Date(avto.archive_reminder_dismissed_until).getTime() > renderNowMs) return false
+    const dnevi = Math.floor((renderNowMs - new Date(avto.history_exported_at).getTime()) / (1000 * 60 * 60 * 24))
     return dnevi >= 30
   })
 
@@ -744,7 +745,7 @@ export default function Garaza() {
     { key: 'status', label: tx('Status', 'Status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
   ]
 
-  const GarageLayoutPicker = () => (
+  const garageLayoutPicker = (
     <div className="mt-3 grid grid-cols-3 gap-2">
       {layoutChoices.map((item) => (
         <button
@@ -1395,7 +1396,7 @@ export default function Garaza() {
           Arhiv
         </button>
         </div>
-        {!arhiv && avti.length > 0 && !showLiteHome && <GarageLayoutPicker />}
+        {!arhiv && avti.length > 0 && !showLiteHome && garageLayoutPicker}
       </div>
       )}
 
