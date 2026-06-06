@@ -68,6 +68,23 @@ const defaultSeasonSettings: TireSeasonSettings = {
   warnDaysBefore: '7',
 }
 
+function readSeasonSettings(): TireSeasonSettings {
+  if (typeof window === 'undefined') return defaultSeasonSettings
+  try {
+    const raw = localStorage.getItem(TIRE_SEASON_SETTINGS_KEY)
+    const parsed = raw ? JSON.parse(raw) : null
+    if (!parsed) return defaultSeasonSettings
+    return {
+      countryLabel: String(parsed.countryLabel || defaultSeasonSettings.countryLabel),
+      winterStart: normalizeMonthDay(parsed.winterStart) || defaultSeasonSettings.winterStart,
+      winterEnd: normalizeMonthDay(parsed.winterEnd) || defaultSeasonSettings.winterEnd,
+      warnDaysBefore: String(numberOrNull(parsed.warnDaysBefore) ?? 7),
+    }
+  } catch {
+    return defaultSeasonSettings
+  }
+}
+
 const todayIso = () => new Date().toISOString().split('T')[0]
 const numberOrNull = (value: string) => {
   const next = Number(value)
@@ -152,7 +169,7 @@ export default function GumePage() {
   const [mountForm, setMountForm] = useState({ mountedAt: todayIso(), mountedKm: '', position: 'all' })
   const [measuringTireId, setMeasuringTireId] = useState('')
   const [treadForm, setTreadForm] = useState({ measuredAt: todayIso(), km: '', tread: '', front: '', rear: '', note: '' })
-  const [seasonSettings, setSeasonSettings] = useState<TireSeasonSettings>(defaultSeasonSettings)
+  const [seasonSettings, setSeasonSettings] = useState<TireSeasonSettings>(() => readSeasonSettings())
   const [form, setForm] = useState({
     season: 'summer',
     tireScope: 'full_set',
@@ -270,7 +287,7 @@ export default function GumePage() {
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      window.location.href = '/'
+      window.location.assign('/')
       return
     }
     const params = new URLSearchParams(window.location.search)
@@ -343,27 +360,19 @@ export default function GumePage() {
   }
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(TIRE_SEASON_SETTINGS_KEY)
-      const parsed = raw ? JSON.parse(raw) : null
-      if (parsed) {
-        setSeasonSettings({
-          countryLabel: String(parsed.countryLabel || defaultSeasonSettings.countryLabel),
-          winterStart: normalizeMonthDay(parsed.winterStart) || defaultSeasonSettings.winterStart,
-          winterEnd: normalizeMonthDay(parsed.winterEnd) || defaultSeasonSettings.winterEnd,
-          warnDaysBefore: String(numberOrNull(parsed.warnDaysBefore) ?? 7),
-        })
-      }
-    } catch {}
-    loadData()
+    queueMicrotask(() => {
+      void loadData()
+    })
   }, [])
 
   useEffect(() => {
-    setForm((prev) => ({
-      ...prev,
-      remindDaysBefore: seasonSettings.warnDaysBefore,
-    }))
-  }, [calculatedReminderDate, seasonSettings.warnDaysBefore])
+    queueMicrotask(() => {
+      setForm((prev) => ({
+        ...prev,
+        remindDaysBefore: seasonSettings.warnDaysBefore,
+      }))
+    })
+  }, [seasonSettings.warnDaysBefore])
 
   const updateForm = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
   const updateSeasonSettings = (key: keyof TireSeasonSettings, value: string) => {
@@ -452,7 +461,7 @@ export default function GumePage() {
     setMessage('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      window.location.href = '/'
+      window.location.assign('/')
       return
     }
     const installedKm = numberOrNull(form.installedKm) ?? currentKm
@@ -486,10 +495,25 @@ export default function GumePage() {
       .select('id')
       .single()
     if (insertResult.error && isMissingTireSchemaPart(insertResult.error)) {
-      const legacyPayload = { ...tirePayload, status: 'active' }
-      delete legacyPayload.tire_scope
-      delete legacyPayload.last_mounted_at
-      delete legacyPayload.last_mounted_km
+      const legacyPayload = {
+        user_id: tirePayload.user_id,
+        car_id: tirePayload.car_id,
+        season: tirePayload.season,
+        brand: tirePayload.brand,
+        model: tirePayload.model,
+        size: tirePayload.size,
+        dot: tirePayload.dot,
+        tread_depth_mm: tirePayload.tread_depth_mm,
+        purchase_date: tirePayload.purchase_date,
+        installed_at: tirePayload.installed_at,
+        installed_km: tirePayload.installed_km,
+        removed_at: tirePayload.removed_at,
+        removed_km: tirePayload.removed_km,
+        next_change_date: tirePayload.next_change_date,
+        remind_days_before: tirePayload.remind_days_before,
+        notes: tirePayload.notes,
+        status: 'active',
+      }
       insertResult = await supabase
         .from('tire_sets')
         .insert(legacyPayload)
