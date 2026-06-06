@@ -19,7 +19,7 @@ export default function ZgodovinaServisa() {
   const [uredi, setUredi] = useState<string | null>(null)
   const [editData, setEditData] = useState<any>({})
   const [saving, setSaving] = useState(false)
-  const [cas, setCas] = useState(Date.now())
+  const [cas, setCas] = useState(() => Date.now())
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
   const [selectedImported, setSelectedImported] = useState<string[]>([])
   const [bulkEditMode, setBulkEditMode] = useState(false)

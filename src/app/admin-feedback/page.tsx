@@ -65,24 +65,7 @@ export default function AdminFeedbackPage() {
     filter === 'all' ? items : items.filter((item) => item.status === filter)
   ), [items, filter])
 
-  useEffect(() => {
-    const init = async () => {
-      const adminCheck = await checkCurrentUserAdmin()
-      if (!adminCheck.user) {
-        window.location.href = '/'
-        return
-      }
-      if (!adminCheck.isAdmin) {
-        setMessage(tx('Ta racun nima admin dostopa.', 'This account does not have admin access.'))
-        setLoading(false)
-        return
-      }
-      await loadFeedback()
-    }
-    init()
-  }, [])
-
-  const loadFeedback = async () => {
+  async function loadFeedback() {
     setLoading(true)
     setMessage('')
     const { data, error } = await supabase
@@ -101,6 +84,23 @@ export default function AdminFeedbackPage() {
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    const init = async () => {
+      const adminCheck = await checkCurrentUserAdmin()
+      if (!adminCheck.user) {
+        window.location.href = '/'
+        return
+      }
+      if (!adminCheck.isAdmin) {
+        setMessage(tx('Ta racun nima admin dostopa.', 'This account does not have admin access.'))
+        setLoading(false)
+        return
+      }
+      await loadFeedback()
+    }
+    init()
+  }, [])
 
   const updateStatus = async (id: string, status: string) => {
     const previous = items

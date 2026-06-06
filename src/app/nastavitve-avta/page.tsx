@@ -60,7 +60,7 @@ export default function NastavitveAvta() {
   const [homologacijaOpis, setHomologacijaOpis] = useState('')
   const [homologacijaUrl, setHomologacijaUrl] = useState('')
   const [uploadingHomologacija, setUploadingHomologacija] = useState(false)
-  const [language, setLanguage] = useState<'sl' | 'en'>('sl')
+  const [language] = useState<'sl' | 'en'>(() => getStoredLanguage() === 'en' ? 'en' : 'sl')
   const [registryEnabled, setRegistryEnabled] = useState(false)
   const [registryUnderstand, setRegistryUnderstand] = useState(false)
   const [registrySkipConfirmed, setRegistrySkipConfirmed] = useState(false)
@@ -165,7 +165,6 @@ export default function NastavitveAvta() {
   }
 
   useEffect(() => {
-    setLanguage(getStoredLanguage() === 'en' ? 'en' : 'sl')
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { window.location.href = '/'; return }

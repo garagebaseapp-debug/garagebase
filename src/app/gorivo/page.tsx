@@ -359,9 +359,9 @@ export default function GorivoPage() {
     return Array.from(byCar.entries()).map(([carId, carRows]) => consumptionSegment(carRows, carById[carId]))
   }
 
-  const now = new Date()
-  const yearStart = new Date(now.getFullYear(), 0, 1).getTime()
-  const lastMonthStart = Date.now() - 30 * 24 * 60 * 60 * 1000
+  const [renderNow] = useState(() => new Date())
+  const yearStart = new Date(renderNow.getFullYear(), 0, 1).getTime()
+  const lastMonthStart = renderNow.getTime() - 30 * 24 * 60 * 60 * 1000
   const yearRows = fuelRows.filter((row) => toDateValue(row.datum || row.created_at) >= yearStart)
   const lastMonthRows = fuelRows.filter((row) => toDateValue(row.datum || row.created_at) >= lastMonthStart)
   const yearImportedRows = yearRows.filter((row) => isImportedHistoryRow(row, buckets))

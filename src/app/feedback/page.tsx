@@ -84,7 +84,7 @@ export default function FeedbackPage() {
     init()
   }, [])
 
-  const loadMyFeedback = async (userId: string) => {
+  async function loadMyFeedback(userId: string) {
     const { data } = await supabase
       .from('feedback')
       .select('id, feature_description, status, created_at')

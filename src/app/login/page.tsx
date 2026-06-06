@@ -99,7 +99,9 @@ export default function LoginPage() {
       queueMicrotask(() => {
         setResetMode(true)
       })
+      queueMicrotask(() => {
       setMessage('Vpiši novo geslo in ga shrani.')
+      })
     }
     return () => document.body.classList.remove('landing')
   }, [])
