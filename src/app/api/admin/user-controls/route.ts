@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { requireAdmin } from '@/lib/server-admin'
 
 const validStatuses = new Set(['normal', 'tester', 'watch', 'limited', 'blocked'])
 const validPlans = new Set(['free', 'pro', 'max', 'business'])
 
-const sanitizeLimits = (value: any) => {
-  const raw = value && typeof value === 'object' ? value : {}
+const sanitizeLimits = (value: unknown) => {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
     readOnly: Boolean(raw.readOnly),
     blockReports: Boolean(raw.blockReports),
@@ -16,9 +17,9 @@ const sanitizeLimits = (value: any) => {
   }
 }
 
-const findUser = async (admin: any, userId: string, email: string) => {
+const findUser = async (admin: SupabaseClient, userId: string, email: string): Promise<User | null> => {
   if (userId) {
-    const getter = (admin.auth.admin as any).getUserById
+    const getter = (admin.auth.admin as { getUserById?: (id: string) => Promise<{ data: { user: User | null }; error: unknown }> }).getUserById
     if (typeof getter === 'function') {
       const { data, error } = await getter.call(admin.auth.admin, userId)
       if (!error && data?.user) return data.user
@@ -27,7 +28,7 @@ const findUser = async (admin: any, userId: string, email: string) => {
   if (!email) return null
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
   if (error) throw error
-  return data.users.find((user: any) => String(user.email || '').toLowerCase() === email) || null
+  return data.users.find((user: User) => String(user.email || '').toLowerCase() === email) || null
 }
 
 export async function GET(request: NextRequest) {
@@ -69,7 +70,7 @@ export async function PATCH(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (auth.error) return auth.error
   const { admin, user: adminUser } = auth
-  const body = await request.json().catch(() => ({}))
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>
 
   const email = String(body.email || '').trim().toLowerCase()
   const userId = String(body.userId || '').trim()

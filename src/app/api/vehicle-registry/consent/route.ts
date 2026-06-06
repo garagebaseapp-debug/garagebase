@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRequestUser } from '@/lib/server-admin'
 import {
   defaultRegistryVisibility,
@@ -18,10 +19,11 @@ const adminClient = () => {
   return createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } })
 }
 
-const missingTable = (error: any) =>
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error || '')
+const missingTable = (error: { code?: string; message?: string }) =>
   error?.code === '42P01' || String(error?.message || '').toLowerCase().includes('vehicle_public_registry')
 
-async function ownedCar(admin: any, carId: string, userId: string) {
+async function ownedCar(admin: SupabaseClient, carId: string, userId: string) {
   const { data, error } = await admin
     .from('cars')
     .select('id,user_id,vin,znamka,model,letnik,gorivo,tablica,km_trenutni')
@@ -72,8 +74,8 @@ export async function GET(request: NextRequest) {
         consent_version: vehicleRegistryConsentVersion,
       },
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: 'registry_failed', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: 'registry_failed', details: errorMessage(error) }, { status: 500 })
   }
 }
 
@@ -83,7 +85,7 @@ export async function PATCH(request: NextRequest) {
   const admin = adminClient()
   if (!admin) return NextResponse.json({ error: 'missing_server_config' }, { status: 500 })
 
-  const body = await request.json().catch(() => ({}))
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>
   const carId = String(body.carId || '').trim()
   const enabled = Boolean(body.enabled)
   const understood = Boolean(body.understood)
@@ -137,7 +139,7 @@ export async function PATCH(request: NextRequest) {
     })
 
     return NextResponse.json({ ok: true, consent: payload })
-  } catch (error: any) {
-    return NextResponse.json({ error: 'registry_save_failed', details: error.message }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json({ error: 'registry_save_failed', details: errorMessage(error) }, { status: 500 })
   }
 }

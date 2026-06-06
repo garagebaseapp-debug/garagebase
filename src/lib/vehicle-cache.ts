@@ -21,7 +21,7 @@ export const readGarageCache = () => {
     const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
     const activeMode = parsed?.arhiv === false
     const cars = Array.isArray(parsed?.avti) ? parsed.avti : []
-    const hasArchivedCars = cars.some((car: any) => car?.arhivirano === true)
+    const hasArchivedCars = cars.some((car: { arhivirano?: boolean }) => car?.arhivirano === true)
 
     if (parsed?.version !== GARAGE_CACHE_VERSION || !activeMode || !fresh || hasArchivedCars) {
       clearGarageCache()

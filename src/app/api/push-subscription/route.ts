@@ -88,13 +88,14 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Shranjevanje push subscription:', error)
+    const fields = error && typeof error === 'object' ? error as Record<string, unknown> : {}
     return NextResponse.json({
-      error: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code,
+      error: error instanceof Error ? error.message : 'push_subscription_failed',
+      details: fields.details,
+      hint: fields.hint,
+      code: fields.code,
     }, { status: 500 })
   }
 }

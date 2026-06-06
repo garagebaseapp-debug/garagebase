@@ -33,8 +33,8 @@ export function vinHash(value: string) {
   return createHash('sha256').update(`${salt}:${normalized}`).digest('hex')
 }
 
-export function sanitizeRegistryVisibility(value: any): VehicleRegistryVisibility {
-  const raw = value && typeof value === 'object' ? value : {}
+export function sanitizeRegistryVisibility(value: unknown): VehicleRegistryVisibility {
+  const raw = value && typeof value === 'object' ? value as Partial<Record<keyof VehicleRegistryVisibility, unknown>> : {}
   return {
     showPlate: Boolean(raw.showPlate),
     showMileage: raw.showMileage !== false,

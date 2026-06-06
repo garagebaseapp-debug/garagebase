@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { User } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -18,7 +18,7 @@ const fallbackAllows = (email: string) => allowFallbackAdmins && fallbackAdminsF
 
 type AdminErrorResult = { error: NextResponse; user?: never; email?: never; admin?: never }
 type RequestUserResult = AdminErrorResult | { error?: undefined; user: User; email: string }
-type RequireAdminResult = AdminErrorResult | { error?: undefined; admin: any; user: User; email: string }
+type RequireAdminResult = AdminErrorResult | { error?: undefined; admin: SupabaseClient; user: User; email: string }
 
 export async function getRequestUser(request: NextRequest): Promise<RequestUserResult> {
   if (!supabaseUrl || !anonKey) {

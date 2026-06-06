@@ -7,7 +7,7 @@ type Controls = {
   status?: string
   blocked_until?: string | null
   reason?: string | null
-  feature_limits?: Record<string, any>
+  feature_limits?: Record<string, unknown>
 }
 
 function language() {
@@ -35,7 +35,7 @@ function activeBlock(controls: Controls) {
   return new Date(controls.blocked_until).getTime() > Date.now()
 }
 
-function limitedPath(pathname: string, limits: Record<string, any>) {
+function limitedPath(pathname: string, limits: Record<string, unknown>) {
   if (limits.readOnly && (
     pathname.startsWith('/vnos-') ||
     pathname === '/dodaj-avto' ||

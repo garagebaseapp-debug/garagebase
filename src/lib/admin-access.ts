@@ -1,10 +1,11 @@
 'use client'
 
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 type AdminCheckResult = {
   isAdmin: boolean
-  user: any
+  user: User | null
 }
 
 let adminCheckCache: { userId: string; result: AdminCheckResult; savedAt: number } | null = null

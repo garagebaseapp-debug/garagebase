@@ -14,6 +14,9 @@ if (pushConfigured) {
 
 const pushApiSecret = process.env.PUSH_API_SECRET || process.env.CRON_SECRET
 
+const errorField = (error: unknown, field: string) =>
+  error && typeof error === 'object' && field in error ? (error as Record<string, unknown>)[field] : undefined
+
 const isAuthorized = async (req: NextRequest) => {
   const authHeader = req.headers.get('authorization') || ''
   const secretHeader = req.headers.get('x-garagebase-secret') || ''
@@ -50,12 +53,13 @@ export async function POST(req: NextRequest) {
     )
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Push napaka:', error)
+    const statusCode = Number(errorField(error, 'statusCode')) || 500
     return NextResponse.json({
-      error: error.message,
-      statusCode: error.statusCode,
-      body: error.body,
-    }, { status: error.statusCode || 500 })
+      error: error instanceof Error ? error.message : 'push_failed',
+      statusCode,
+      body: errorField(error, 'body'),
+    }, { status: statusCode })
   }
 }

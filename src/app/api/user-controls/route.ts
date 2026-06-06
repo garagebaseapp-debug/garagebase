@@ -12,7 +12,7 @@ const defaultControls = {
   feature_limits: {},
 }
 
-const missingTable = (error: any) =>
+const missingTable = (error: { code?: string; message?: string }) =>
   error?.code === '42P01' || String(error?.message || '').toLowerCase().includes('user_admin_controls')
 
 export async function GET(request: NextRequest) {
