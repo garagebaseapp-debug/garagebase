@@ -11,13 +11,36 @@ const serviceColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,import_ba
 const expenseColumns = 'id,car_id,datum,znesek,kategorija,opis,created_at,import_batch_id,source_owner_label'
 const carStatsColumns = 'id,user_id,km_trenutni,km_ob_vnosu,purchase_price,purchase_mileage,down_payment,finance_total_paid,finance_overpayment,resale_value'
 
-const rowCounts = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) => ({
+type DbRow = Record<string, unknown> & {
+  id?: string
+  car_id?: string
+  kategorija?: string
+  znamka?: string
+  model?: string
+}
+
+type RowSet = {
+  label: string
+  error: string | null
+  fuelRows: DbRow[]
+  serviceRows: DbRow[]
+  expenseRows: DbRow[]
+}
+
+type VehicleStatsResponse = {
+  ok: true
+  source: string
+  stats: ReturnType<typeof buildVehicleStats>
+  debug?: Record<string, unknown>
+}
+
+const rowCounts = (rowSet: Pick<RowSet, 'fuelRows' | 'serviceRows' | 'expenseRows'>) => ({
   fuel: rowSet.fuelRows.length,
   service: rowSet.serviceRows.length,
   expense: rowSet.expenseRows.length,
 })
 
-const hasRows = (rowSet: { fuelRows: any[]; serviceRows: any[]; expenseRows: any[] }) =>
+const hasRows = (rowSet: Pick<RowSet, 'fuelRows' | 'serviceRows' | 'expenseRows'>) =>
   rowSet.fuelRows.length > 0 || rowSet.serviceRows.length > 0 || rowSet.expenseRows.length > 0
 
 export async function GET(req: NextRequest) {
@@ -56,7 +79,9 @@ export async function GET(req: NextRequest) {
 
   if (canUseServiceRole) carQuery.eq('user_id', userData.user.id)
 
-  let { data: car, error: carError }: any = await carQuery.maybeSingle()
+  const carResult = await carQuery.maybeSingle()
+  let car = carResult.data as DbRow | null
+  let carError = carResult.error
   if (carError) {
     const fallbackCarQuery = dataClient
       .from('cars')
@@ -77,7 +102,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'car_not_found' }, { status: 404 })
   }
 
-  const fetchRows = async (client: any, label: string) => {
+  const fetchRows = async (client: typeof userClient, label: string): Promise<RowSet> => {
     const [fuelRes, serviceRes, expenseRes] = await Promise.all([
       client.from('fuel_logs').select(fuelColumns).eq('car_id', carId).order('km', { ascending: true }),
       client.from('service_logs').select(serviceColumns).eq('car_id', carId),
@@ -87,9 +112,9 @@ export async function GET(req: NextRequest) {
     return {
       label,
       error: fuelRes.error?.message || serviceRes.error?.message || expenseRes.error?.message || null,
-      fuelRows: fuelRes.data || [],
-      serviceRows: serviceRes.data || [],
-      expenseRows: (expenseRes.data || []).filter((row: any) => row?.kategorija !== 'km_sprememba'),
+      fuelRows: (fuelRes.data || []) as DbRow[],
+      serviceRows: (serviceRes.data || []) as DbRow[],
+      expenseRows: ((expenseRes.data || []) as DbRow[]).filter((row) => row?.kategorija !== 'km_sprememba'),
     }
   }
 
@@ -116,7 +141,9 @@ export async function GET(req: NextRequest) {
       .select('id,znamka,model')
       .eq('user_id', userData.user.id)
 
-    const carIds = (carsForUser || []).map((userCar: any) => userCar.id).filter(Boolean)
+    const carRows = (carsForUser || []) as DbRow[]
+    const carsWithIds = carRows.filter((userCar): userCar is DbRow & { id: string } => Boolean(userCar.id))
+    const carIds = carsWithIds.map((userCar) => userCar.id)
     if (carIds.length > 0) {
       const [allFuelRes, allServiceRes, allExpenseRes] = await Promise.all([
         dataClient.from('fuel_logs').select('id,car_id').in('car_id', carIds),
@@ -124,23 +151,27 @@ export async function GET(req: NextRequest) {
         dataClient.from('expenses').select('id,car_id,kategorija').in('car_id', carIds),
       ])
 
-      userCarCounts = (carsForUser || []).map((userCar: any) => {
-        const expenses = (allExpenseRes.data || []).filter((row: any) => row.car_id === userCar.id && row.kategorija !== 'km_sprememba')
+      const allFuelRows = (allFuelRes.data || []) as DbRow[]
+      const allServiceRows = (allServiceRes.data || []) as DbRow[]
+      const allExpenseRows = (allExpenseRes.data || []) as DbRow[]
+
+      userCarCounts = carsWithIds.map((userCar) => {
+        const expenses = allExpenseRows.filter((row) => row.car_id === userCar.id && row.kategorija !== 'km_sprememba')
         return {
           id: userCar.id,
           name: [userCar.znamka, userCar.model].filter(Boolean).join(' '),
-          fuel: (allFuelRes.data || []).filter((row: any) => row.car_id === userCar.id).length,
-          service: (allServiceRes.data || []).filter((row: any) => row.car_id === userCar.id).length,
+          fuel: allFuelRows.filter((row) => row.car_id === userCar.id).length,
+          service: allServiceRows.filter((row) => row.car_id === userCar.id).length,
           expense: expenses.length,
         }
-      }).filter((count: any) => count.fuel > 0 || count.service > 0 || count.expense > 0)
+      }).filter((count) => count.fuel > 0 || count.service > 0 || count.expense > 0)
     }
   }
 
   const stats = buildVehicleStats(selectedRows.fuelRows, selectedRows.serviceRows, selectedRows.expenseRows, car)
   const sampleFuel = selectedRows.fuelRows[0] || null
 
-  const body: any = {
+  const body: VehicleStatsResponse = {
     ok: true,
     source: selectedRows.label,
     stats,
