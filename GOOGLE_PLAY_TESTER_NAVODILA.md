@@ -45,7 +45,7 @@ Hvala za pomoc.
 
 Kopiraj tabelo in jo dopolni za dejanski test.
 
-| Tester | Google email | Naprava | Android | Opt-in potrjen | App namescen | Feedback |
+| Tester | Google email | Naprava / Device | Android | Opt-in potrjen / Opt-in confirmed | App namescen / App installed | Feedback |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 |  |  |  |  |  |  |
 | 2 |  |  |  |  |  |  |
