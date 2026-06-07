@@ -42,6 +42,7 @@ type AdminStats = Record<string, unknown> & {
   strongServices?: number
   feedback?: number
   newFeedback?: number
+  bugReports?: number
   events?: number
   errors?: number
 }
@@ -435,6 +436,7 @@ export default function AdminPage() {
     strongServices: 0,
     feedback: 0,
     newFeedback: 0,
+    bugReports: 0,
     events: 0,
     activeToday: 0,
     active7: 0,
@@ -592,6 +594,12 @@ export default function AdminPage() {
     return count || 0
   }
 
+  const countOptionalTable = async (table: string) => {
+    const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true })
+    if (error) return 0
+    return count || 0
+  }
+
   async function loadAdminData() {
     setMessage('')
     try {
@@ -617,6 +625,7 @@ export default function AdminPage() {
         pushCount,
         transfersCount,
         feedbackCount,
+        bugReportsCount,
         eventsCount,
         carsData,
         feedbackData,
@@ -635,6 +644,7 @@ export default function AdminPage() {
         countTable('push_subscriptions'),
         countTable('vehicle_transfers'),
         countTable('feedback'),
+        countOptionalTable('bug_reports'),
         countTable('app_events'),
         supabase.from('cars').select('id,user_id,znamka,model,tip_vozila,arhivirano,created_at').order('created_at', { ascending: false }).limit(ADMIN_ACTIVITY_LIMIT),
         supabase.from('feedback').select('*').order('created_at', { ascending: false }).limit(200),
@@ -898,6 +908,7 @@ export default function AdminPage() {
         receiptAttachments,
         strongServices,
         feedback: feedbackCount,
+        bugReports: bugReportsCount,
         events: eventsCount,
         newFeedback,
         activeToday,
@@ -1536,11 +1547,19 @@ export default function AdminPage() {
           <>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-[#ef4444]">{tx('Napake', 'Errors')}</p>
             <h2 className="mt-1 text-2xl font-black text-white">{tx('Sistemske napake in prijave', 'System errors and reports')}</h2>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              <button onClick={() => window.location.href = '/admin-napake'} className="rounded-2xl border border-[#ef444455] bg-[#ef444418] p-4 text-left text-[#fca5a5]">
-                <p className="text-sm font-black">{tx('Odpri napake', 'Open errors')}</p>
-                <p className="mt-2 text-3xl font-black">{stats.errors || 0}</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <button onClick={() => window.location.href = '/admin-napake'} className="rounded-2xl border border-[#f59e0b55] bg-[#f59e0b18] p-4 text-left text-[#fbbf24] transition hover:border-[#f59e0b]">
+                <p className="text-xs font-black uppercase tracking-[0.18em]">{tx('Prijave uporabnikov', 'User reports')}</p>
+                <p className="mt-2 text-3xl font-black">{stats.bugReports || 0}</p>
+                <p className="mt-1 text-sm font-bold text-[#fed7aa]">{tx('Ročno poslane napake uporabnikov.', 'Manually submitted user bug reports.')}</p>
               </button>
+              <button onClick={() => document.getElementById('admin-errors')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="rounded-2xl border border-[#ef444455] bg-[#ef444418] p-4 text-left text-[#fca5a5] transition hover:border-[#ef4444]">
+                <p className="text-xs font-black uppercase tracking-[0.18em]">{tx('Sistemske napake', 'System errors')}</p>
+                <p className="mt-2 text-3xl font-black">{stats.errors || 0}</p>
+                <p className="mt-1 text-sm font-bold text-[#fecaca]">{tx('Samodejno ujete napake iz aplikacije.', 'Automatically captured app errors.')}</p>
+              </button>
+            </div>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
               {errorStatusStats.slice(0, 2).map((item) => (
                 <div key={item.label} className="rounded-2xl border border-[#1e1e32] bg-[#13131f] p-4">
                   <p className="text-sm font-black text-white">{item.label}</p>
