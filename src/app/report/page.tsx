@@ -834,7 +834,7 @@ export default function Report() {
       <div className="flex items-center gap-3 mb-6">
         <BackButton />
         <div>
-          <h1 className="text-xl font-bold text-white">📄 {tx('PDF Report', 'PDF Report')}</h1>
+          <h1 className="text-xl font-bold text-white">📄 {tx('PDF poročilo', 'PDF report')}</h1>
           {avto && <p className="text-[#5a5a80] text-xs">{vehicleDisplayName(avto, tx('Vozilo', 'Vehicle'))}</p>}
         </div>
       </div>

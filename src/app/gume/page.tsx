@@ -851,7 +851,7 @@ export default function GumePage() {
                     </div>
                   </div>
                   <label className="text-sm font-black">{tx('Znamka', 'Brand')}<input value={form.brand} onChange={(e) => updateForm('brand', e.target.value)} className={inputClass} /></label>
-                  <label className="text-sm font-black">{tx('Model', 'Model')}<input value={form.model} onChange={(e) => updateForm('model', e.target.value)} className={inputClass} /></label>
+                  <label className="text-sm font-black">{tx('Model gume', 'Tire model')}<input value={form.model} onChange={(e) => updateForm('model', e.target.value)} className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Dimenzija', 'Size')}<input value={form.size} onChange={(e) => updateForm('size', e.target.value)} placeholder="205/55 R16" className={inputClass} /></label>
                   <label className="text-sm font-black">DOT<input value={form.dot} onChange={(e) => updateForm('dot', e.target.value)} placeholder="DOT 2424" className={inputClass} /></label>
                   <label className="text-sm font-black">{tx('Profil mm', 'Tread mm')}<input value={form.treadDepth} onChange={(e) => updateForm('treadDepth', e.target.value)} inputMode="decimal" className={inputClass} /></label>

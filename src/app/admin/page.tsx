@@ -508,7 +508,7 @@ export default function AdminPage() {
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
   const adminUserById = useMemo(() => new Map(adminUsers.map((user) => [user.id, user])), [adminUsers])
   const userDisplayName = (user: AdminUserSummary) => adminUserById.get(String(user.userId || ''))?.email || `U-${user.label}`
-  const minuteText = (value: unknown) => `${Number(value || 0)} ${tx('min', 'min')}`
+  const minuteText = (value: unknown) => `${Number(value || 0)} ${tx('min', 'minutes')}`
   const toLocalDateInput = (value?: string | null) => {
     if (!value) return ''
     const date = new Date(value)
@@ -1120,7 +1120,7 @@ export default function AdminPage() {
     { label: tx('Arhiv', 'Archive'), value: stats.archivedCars || 0, hint: tx('arhivirana vozila', 'archived vehicles'), color: 'text-[#3ecfcf]' },
     { label: tx('Racuni/slike', 'Receipts/photos'), value: stats.receiptAttachments || 0, hint: tx('vnosi s prilogami', 'entries with attachments'), color: 'text-[#4ade80]' },
     { label: tx('Strong zapisi', 'Strong records'), value: stats.strongServices || 0, hint: tx('servisi z dokazili', 'services with proof'), color: 'text-[#16a34a]' },
-    { label: tx('Feedback', 'Feedback'), value: stats.feedback || 0, hint: `${stats.newFeedback || 0} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
+    { label: tx('Predlogi', 'Feedback items'), value: stats.feedback || 0, hint: `${stats.newFeedback || 0} ${tx('novih', 'new')}`, color: 'text-[#f59e0b]' },
     { label: tx('Dogodki', 'Events'), value: stats.events || 0, hint: tx('kliki in akcije', 'clicks and actions'), color: 'text-[#4ade80]' },
     { label: tx('Napake', 'Errors'), value: stats.errors || 0, hint: tx('nove napake', 'new errors'), color: 'text-[#fca5a5]' },
   ], [stats, language])
@@ -1720,7 +1720,7 @@ export default function AdminPage() {
                       <select value={controlStatus} onChange={(e) => setControlStatus(e.target.value)}
                         className="mt-1 w-full rounded-xl border border-[#2a2a44] bg-[#0f0f1a] px-3 py-2 text-sm text-white outline-none focus:border-[#6c63ff]">
                         <option value="normal">{tx('Normalno', 'Normal')}</option>
-                        <option value="tester">{tx('Tester', 'Tester')}</option>
+                        <option value="tester">{tx('Tester', 'Test user')}</option>
                         <option value="watch">{tx('Spremljaj', 'Watch')}</option>
                         <option value="limited">{tx('Omejeno', 'Limited')}</option>
                         <option value="blocked">{tx('Blokirano', 'Blocked')}</option>

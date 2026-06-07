@@ -823,7 +823,7 @@ export default function Garaza() {
     { key: 'veliko', label: 'L', desc: tx('Velik prikaz', 'Large view') },
     { key: 'grid', label: '⊞ Grid', desc: tx('Kompaktno', 'Compact') },
     { key: 'kategorije', label: tx('Kategorije', 'Categories'), desc: tx('Po tipu vozila', 'By vehicle type') },
-    { key: 'status', label: tx('Status', 'Status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
+    { key: 'status', label: tx('Status opomnikov', 'Reminder status'), desc: tx('Opomniki v fokusu', 'Reminder focus') },
   ]
 
   const garageLayoutPicker = (
@@ -1225,7 +1225,7 @@ export default function Garaza() {
                 { key: 'veliko', label: 'L', title: tx('Velik prikaz', 'Large view') },
                 { key: 'grid', label: 'G', title: tx('Grid prikaz', 'Grid view') },
                 { key: 'kategorije', label: 'K', title: tx('Kategorije', 'Categories') },
-                { key: 'status', label: 'ST', title: tx('Status', 'Status') },
+                { key: 'status', label: 'ST', title: tx('Status opomnikov', 'Reminder status') },
               ].map((item) => (
                 <button
                   key={item.key}
