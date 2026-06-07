@@ -11,6 +11,7 @@ import { getStoredLanguage } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
+import { TireSeasonIcon } from '@/lib/tire-icon'
 
 type ExpenseCarOption = {
   id: string
@@ -74,7 +75,7 @@ export default function VnosStroska() {
     { vrednost: 'registracija', ikona: '📋', naziv: 'Registracija' },
     { vrednost: 'vinjeta', ikona: '🛣️', naziv: 'Vinjeta' },
     { vrednost: 'zavarovanje', ikona: '🛡️', naziv: 'Zavarovanje' },
-    { vrednost: 'gume', ikona: '⚫', naziv: 'Gume' },
+    { vrednost: 'gume', ikona: <TireSeasonIcon season="summer" className="h-7 w-7" />, naziv: 'Gume' },
     { vrednost: 'tehnicni', ikona: '🔍', naziv: 'Tehnični pregled' },
     { vrednost: 'izredno', ikona: '🔨', naziv: 'Izredno popravilo' },
     { vrednost: 'lizing', ikona: '🏦', naziv: 'Lizing' },
@@ -353,7 +354,7 @@ export default function VnosStroska() {
                     ? 'bg-[#3ecfcf22] border-[#3ecfcf66] text-[#3ecfcf]'
                     : 'bg-[#13131f] border-[#1e1e32] text-[#5a5a80] hover:border-[#3ecfcf33]'
                 }`}>
-                <span className="text-xl">{kat.ikona}</span>
+                <span className="flex h-7 items-center justify-center text-xl">{kat.ikona}</span>
                 <span className="text-[9px] uppercase tracking-wider text-center leading-tight">{kat.naziv}</span>
               </button>
             ))}
