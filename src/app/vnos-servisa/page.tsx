@@ -320,13 +320,14 @@ export default function VnosServisa() {
     const datumNaslednji = intervalDni ? datumPlusDni(datum, parseInt(intervalDni)) : null
     if (!kmNaslednji && !datumNaslednji) return
 
-    await supabase.from('reminders').insert({
+    const { error } = await supabase.from('reminders').insert({
       car_id: carId,
       tip: 'servis',
       datum: datumNaslednji,
       km_opomnik: kmNaslednji,
       opozorilo_dni_prej: 30,
     })
+    if (error) throw error
   }
   const shrani = async () => {
     if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
@@ -378,15 +379,16 @@ export default function VnosServisa() {
       return
     }
 
+    const opozorila: string[] = []
     const { error: carUpdateError } = await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId).eq('user_id', user.id)
-    if (carUpdateError) {
-      setMessage(tx('Servis je shranjen, kilometrov vozila pa ni bilo mogoče posodobiti: ', 'Service was saved, but vehicle mileage could not be updated: ') + carUpdateError.message)
-      setLoading(false)
-      return
-    }
+    if (carUpdateError) opozorila.push(tx('trenutni km vozila niso bili posodobljeni', 'vehicle current mileage was not updated'))
     clearVehicleDataCaches(carId)
     trackEvent('service_saved', { carId, hasReceipt: slike.length > 0 })
-    await ustvariServisniOpomnik(vneseniKm)
+    try {
+      await ustvariServisniOpomnik(vneseniKm)
+    } catch {
+      opozorila.push(tx('servisni opomnik ni bil ustvarjen', 'service reminder was not created'))
+    }
 
     if (slike.length > 0) {
       setUploadProgress(true)
@@ -399,10 +401,13 @@ export default function VnosServisa() {
         if (!uploadError) {
           const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
           slikeUrls.push(urlData.publicUrl)
+        } else {
+          opozorila.push(tx('ena slika racuna ni bila nalozena', 'one receipt photo was not uploaded'))
         }
       }
       if (slikeUrls.length > 0) {
-        await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', servisData.id).eq('car_id', carId)
+        const { error: photoUpdateError } = await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', servisData.id).eq('car_id', carId)
+        if (photoUpdateError) opozorila.push(tx('slike racuna niso bile povezane s servisom', 'receipt photos were not linked to the service'))
       }
       setUploadProgress(false)
     }
@@ -417,20 +422,26 @@ export default function VnosServisa() {
       if (!uploadError) {
         const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
         odometerUrl = urlData.publicUrl
+      } else {
+        opozorila.push(tx('slika stevca ni bila nalozena', 'odometer photo was not uploaded'))
       }
       setUploadProgress(false)
     }
 
     const verificationLevel = odometerUrl && slike.length > 0 ? 'strong' : odometerUrl ? 'photo' : 'basic'
     const zaklepPo24h = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    await supabase.from('service_logs').update({
+    const { error: verificationError } = await supabase.from('service_logs').update({
       odometer_photo_url: odometerUrl,
       verified_document_url: slike.length > 0 ? 'service_receipt_attached' : null,
       verification_level: verificationLevel,
       locked_at: zaklepPo24h,
     }).eq('id', servisData.id).eq('car_id', carId)
+    if (verificationError) opozorila.push(tx('potrditev servisa ni bila posodobljena', 'service verification was not updated'))
     trackEvent('service_verification_set', { carId, verificationLevel, hasOdometerPhoto: !!odometerUrl, hasReceipt: slike.length > 0 })
 
+    setMessage(opozorila.length > 0
+      ? `${tx('Servis je shranjen, vendar:', 'Service is saved, but:')} ${opozorila.join(', ')}.`
+      : tx('✅ Servis uspešno shranjen!', '✅ Service saved successfully!'))
     setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1500)
     setLoading(false)
   }
