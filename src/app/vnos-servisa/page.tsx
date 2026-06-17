@@ -9,6 +9,7 @@ import { getStoredLanguage, type Language } from '@/lib/i18n'
 import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
+import { parseDecimalInput } from '@/lib/vehicle-costs'
 
 const KM_ANOMALY_THRESHOLD = 2000
 
@@ -369,7 +370,7 @@ export default function VnosServisa() {
         ? `${opis} [${tx('Naknadno vneseno', 'Entered later')}: ${danes}${jeKmNaknaden ? `, ${tx('km nižji od zadnjega stanja', 'mileage below latest state')}` : ''}]`
         : opis,
       servis: servis || null,
-      cena: cena ? parseFloat(cena) : null,
+      cena: parseDecimalInput(cena),
     }).select().single()
 
     if (error) { setMessage(tx('Napaka: ', 'Error: ') + error.message); setLoading(false); return }

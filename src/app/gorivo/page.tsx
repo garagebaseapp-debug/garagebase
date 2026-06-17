@@ -11,6 +11,7 @@ import { vehicleDisplayName } from '@/lib/vehicle-display'
 import {
   combineConsumptionSegments,
   consumptionSegment,
+  consumptionSegmentsBySource,
   fuelCostValue,
   fuelLitersValue,
   fuelPriceValue,
@@ -380,6 +381,24 @@ export default function GorivoPage() {
 
     return Array.from(byCar.entries()).map(([carId, carRows]) => consumptionSegment(carRows, carById[carId]))
   }
+  const consumptionSourceSegmentsForRows = (rows: FuelRow[]) => {
+    if (cars.length === 1) return consumptionSegmentsBySource(rows)
+
+    const byCar = new Map<string, FuelRow[]>()
+    rows.forEach((row) => {
+      const carId = row?.car_id
+      if (!carId) return
+      const list = byCar.get(carId) || []
+      list.push(row)
+      byCar.set(carId, list)
+    })
+
+    const perCar = Array.from(byCar.values()).map(consumptionSegmentsBySource)
+    return {
+      garageBase: combineConsumptionSegmentDetails(perCar.map((segment) => segment.garageBase)),
+      imported: combineConsumptionSegmentDetails(perCar.map((segment) => segment.imported)),
+    }
+  }
 
   const [renderNow] = useState(() => new Date())
   const yearStart = new Date(renderNow.getFullYear(), 0, 1).getTime()
@@ -393,9 +412,14 @@ export default function GorivoPage() {
 
   const garageConsumptionSegments = consumptionSegmentsForRows(garageBaseRows)
   const importedConsumptionSegments = consumptionSegmentsForRows(importedRows)
-  const garageConsumption = combineConsumptionSegmentDetails(garageConsumptionSegments)
-  const importedConsumption = combineConsumptionSegmentDetails(importedConsumptionSegments)
-  const totalConsumption = combineConsumptionSegments([...garageConsumptionSegments, ...importedConsumptionSegments])
+  const sourceConsumption = consumptionSourceSegmentsForRows(fuelRows)
+  const garageConsumption = sourceConsumption.garageBase.distance > 0
+    ? sourceConsumption.garageBase
+    : combineConsumptionSegmentDetails(garageConsumptionSegments)
+  const importedConsumption = sourceConsumption.imported.distance > 0
+    ? sourceConsumption.imported
+    : combineConsumptionSegmentDetails(importedConsumptionSegments)
+  const totalConsumption = combineConsumptionSegments([garageConsumption, importedConsumption])
   const hasImportedConsumption = importedConsumption.average !== null && importedRows.length > 0
   const tankCapacityLiters = cars.length === 1
     ? numberValue(cars[0]?.rezervar_litri ?? cars[0]?.tank_capacity_liters)

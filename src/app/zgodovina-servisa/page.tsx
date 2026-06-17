@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, currencySymbol, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
 import { useLanguage } from '@/lib/i18n'
+import { parseDecimalInput } from '@/lib/vehicle-costs'
 
 const PAGE_SIZE = 50
 const serviceHistoryColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
@@ -162,7 +163,7 @@ export default function ZgodovinaServisa() {
       datum: editData.datum,
       opis: editData.opis,
       servis: editData.servis || null,
-      cena: editData.cena ? parseFloat(editData.cena) : null,
+      cena: parseDecimalInput(editData.cena),
       edited_at: new Date().toISOString(),
     }).eq('id', id).eq('car_id', avto.id)
     if (error) {
@@ -372,6 +373,12 @@ export default function ZgodovinaServisa() {
                       }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-sm font-bold px-3 py-2 rounded-xl">
                         ✏️ Uredi · {preostalo}
+                      </button>
+                    )}
+                    {editable(vnos) && !jeUredi && (
+                      <button onClick={() => izbrisiVnos(vnos.id)} disabled={saving}
+                        className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2 text-sm font-bold text-[#fca5a5] disabled:opacity-50">
+                        {tx('Izbrisi', 'Delete')}
                       </button>
                     )}
                     {isLocked && !isImported && (
