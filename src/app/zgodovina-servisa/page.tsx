@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/i18n'
 
 const PAGE_SIZE = 50
 const serviceHistoryColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url,locked_at,import_batch_id,source_owner_label,verification_level'
+const serviceHistoryFallbackColumns = 'id,car_id,datum,km,cena,servis,opis,created_at,foto_url'
 
 type ServiceHistoryCar = {
   id: string
@@ -44,6 +45,21 @@ type ServiceCostRow = {
 
 const isLockedRecordError = (error: unknown) => String((error as { message?: string } | null)?.message || '').includes('manual_record_locked_after_24h')
 
+const serviceHistoryQuery = async (selectedCarId: string, from: number, to: number) => {
+  const query = (columns: string) => supabase
+    .from('service_logs')
+    .select(columns, { count: 'exact' })
+    .eq('car_id', selectedCarId)
+    .order('datum', { ascending: false })
+    .range(from, to)
+
+  const result = await query(serviceHistoryColumns)
+  if (!result.error) return result
+
+  console.warn('[GarageBase service history] full service query failed, using fallback columns', result.error)
+  return query(serviceHistoryFallbackColumns) as unknown as typeof result
+}
+
 export default function ZgodovinaServisa() {
   const { language } = useLanguage()
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
@@ -75,10 +91,10 @@ export default function ZgodovinaServisa() {
       if (!avtoData) { window.location.href = '/garaza'; return }
       setAvto(avtoData as ServiceHistoryCar)
       const [servisiRes, summaryRes] = await Promise.all([
-        supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', selectedCarId).order('datum', { ascending: false }).range(0, PAGE_SIZE - 1),
+        serviceHistoryQuery(selectedCarId, 0, PAGE_SIZE - 1),
         supabase.from('service_logs').select('cena').eq('car_id', selectedCarId),
       ])
-      setVnosi((servisiRes.data || []) as ServiceHistoryEntry[])
+      setVnosi((servisiRes.data || []) as unknown as ServiceHistoryEntry[])
       setTotalCount(servisiRes.count || servisiRes.data?.length || 0)
       setTotalAmount(((summaryRes.data || []) as ServiceCostRow[]).reduce((sum, row) => sum + (row.cena || 0), 0))
       setLoading(false)
@@ -100,10 +116,10 @@ export default function ZgodovinaServisa() {
   const refreshVnosi = async () => {
     if (!avto) return
     const [servisiRes, summaryRes] = await Promise.all([
-      supabase.from('service_logs').select(serviceHistoryColumns, { count: 'exact' }).eq('car_id', avto.id).order('datum', { ascending: false }).range(0, Math.max(vnosi.length, PAGE_SIZE) - 1),
+      serviceHistoryQuery(avto.id, 0, Math.max(vnosi.length, PAGE_SIZE) - 1),
       supabase.from('service_logs').select('cena').eq('car_id', avto.id),
     ])
-    const servisi = (servisiRes.data || []) as ServiceHistoryEntry[]
+    const servisi = (servisiRes.data || []) as unknown as ServiceHistoryEntry[]
     setVnosi(servisi)
     setTotalCount(servisiRes.count || servisi.length || 0)
     setTotalAmount(((summaryRes.data || []) as ServiceCostRow[]).reduce((sum, row) => sum + (row.cena || 0), 0))
@@ -124,8 +140,8 @@ export default function ZgodovinaServisa() {
     setLoadingMore(true)
     const from = vnosi.length
     const to = from + PAGE_SIZE - 1
-    const { data } = await supabase.from('service_logs').select(serviceHistoryColumns).eq('car_id', carId).order('datum', { ascending: false }).range(from, to)
-    setVnosi(prev => [...prev, ...((data || []) as ServiceHistoryEntry[])])
+    const { data } = await serviceHistoryQuery(carId, from, to)
+    setVnosi(prev => [...prev, ...((data || []) as unknown as ServiceHistoryEntry[])])
     setLoadingMore(false)
   }
 
