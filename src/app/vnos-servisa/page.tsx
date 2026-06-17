@@ -643,7 +643,7 @@ export default function VnosServisa() {
             <div>
               <p className="text-white text-sm font-bold">{tx('Preveri kilometre in podatke pred shranjevanjem', 'Check mileage and details before saving')}</p>
               <p className="mt-1 text-[#f8c873] text-xs leading-relaxed">
-                {tx('Servisni zapis lahko popravis samo prvih 24 ur. Po tem se Basic, Photo verified in Strong verified zapis zaklene, zato se enkrat preveri datum, kilometre, opis dela, racun in sliko stevca.', 'A service record can only be edited for the first 24 hours. After that, Basic, Photo verified and Strong verified records are locked, so check the date, mileage, work description, receipt and odometer photo once more.')}
+                {tx('Servisni zapis lahko urejas samo prvih 24 ur. Po tem se urejanje zaklene zaradi sledljivosti, napacen servisni zapis pa lahko se vedno izbrises.', 'A service record can only be edited for the first 24 hours. After that, editing is locked for traceability, but a wrong service record can still be deleted.')}
               </p>
             </div>
           </div>

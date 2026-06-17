@@ -181,8 +181,8 @@ export default function ZgodovinaServisa() {
   const izbrisiVnos = async (id: string) => {
     if (!avto) return
     const vnos = vnosi.find(v => v.id === id)
-    if (!vnos || !editable(vnos)) return
-    const ok = window.confirm(tx('Izbrisem ta zapis? Tega ni mogoce razveljaviti.', 'Delete this record? This cannot be undone.'))
+    if (!vnos) return
+    const ok = window.confirm(tx('Izbrisem ta servisni zapis? Tega ni mogoce razveljaviti.', 'Delete this service record? This cannot be undone.'))
     if (!ok) return
     setSaving(true)
     const { error } = await supabase.from('service_logs').delete().eq('id', id).eq('car_id', avto.id)
@@ -375,7 +375,7 @@ export default function ZgodovinaServisa() {
                         ✏️ Uredi · {preostalo}
                       </button>
                     )}
-                    {editable(vnos) && !jeUredi && (
+                    {!jeUredi && (
                       <button onClick={() => izbrisiVnos(vnos.id)} disabled={saving}
                         className="rounded-xl border border-[#ef444466] bg-[#ef444418] px-3 py-2 text-sm font-bold text-[#fca5a5] disabled:opacity-50">
                         {tx('Izbrisi', 'Delete')}
