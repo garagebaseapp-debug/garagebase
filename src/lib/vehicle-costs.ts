@@ -326,6 +326,7 @@ export const combineConsumptionSegments = (segments: Array<{ average: number | n
 
 export const consumptionSegmentsBySource = (rows: CostLikeRow[]) => {
   const buckets = importBuckets(rows)
+  const sourceFor = (row: CostLikeRow) => isImportedHistoryRow(row, buckets) ? 'imported' : 'garageBase'
   const sorted = rows
     .filter((row) => rowMileageValue(row) > 0 && fuelLitersValue(row) > 0)
     .sort((a, b) => {
@@ -338,7 +339,7 @@ export const consumptionSegmentsBySource = (rows: CostLikeRow[]) => {
   const imported = { average: null as number | null, distance: 0, liters: 0 }
   const addSegment = (row: CostLikeRow, distance: number, liters: number) => {
     if (distance <= 0 || liters <= 0) return
-    const target = isImportedHistoryRow(row, buckets) ? imported : garageBase
+    const target = sourceFor(row) === 'imported' ? imported : garageBase
     target.distance += distance
     target.liters += liters
   }
@@ -352,12 +353,17 @@ export const consumptionSegmentsBySource = (rows: CostLikeRow[]) => {
     for (let full = 1; full < fullIndices.length; full++) {
       const from = fullIndices[full - 1]
       const to = fullIndices[full]
+      const source = sourceFor(sorted[to])
+      if (sourceFor(sorted[from]) !== source) continue
+      const segmentRows = sorted.slice(from + 1, to + 1)
+      if (segmentRows.some((row) => sourceFor(row) !== source)) continue
       const distance = rowMileageValue(sorted[to]) - rowMileageValue(sorted[from])
-      const liters = sorted.slice(from + 1, to + 1).reduce((sum, row) => sum + fuelLitersValue(row), 0)
+      const liters = segmentRows.reduce((sum, row) => sum + fuelLitersValue(row), 0)
       addSegment(sorted[to], distance, liters)
     }
   } else {
     for (let index = 1; index < sorted.length; index++) {
+      if (sourceFor(sorted[index - 1]) !== sourceFor(sorted[index])) continue
       addSegment(sorted[index], rowMileageValue(sorted[index]) - rowMileageValue(sorted[index - 1]), fuelLitersValue(sorted[index]))
     }
   }

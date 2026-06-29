@@ -458,12 +458,14 @@ export default function GorivoPage() {
         const row = sorted[index]
         if (isPartialFill(row)) continue
         const prev = sorted[index - 1]
+        const rowIsImported = isImportedHistoryRow(row, buckets)
+        if (isImportedHistoryRow(prev, buckets) !== rowIsImported) continue
         const distance = rowMileageValue(row) - rowMileageValue(prev)
         const liters = fuelLitersValue(row)
         const key = monthKey(row.datum || row.created_at)
         const point = monthMap.get(key)
         if (!point || distance <= 0 || liters <= 0) continue
-        if (isImportedHistoryRow(row, buckets)) {
+        if (rowIsImported) {
           point.importDistance += distance
           point.importLiters += liters
         } else {
