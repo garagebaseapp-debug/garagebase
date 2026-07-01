@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { type ChangeEvent, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BottomNav, BackButton } from '@/lib/nav'
 import { getStoredLanguage } from '@/lib/i18n'
+import { compressImageFile, imageCompressionErrorText, uploadImageProfiles } from '@/lib/image-compress'
 
 type CarInsertPayload = {
   user_id: string
@@ -56,6 +57,8 @@ export default function DodajAvto() {
     showCostSummary: false,
     showDocuments: false,
   })
+  const [vehicleImage, setVehicleImage] = useState<File | null>(null)
+  const [vehicleImagePreview, setVehicleImagePreview] = useState('')
   const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   const tipiVozil = [
@@ -89,6 +92,24 @@ export default function DodajAvto() {
   const hasLookupVin = () => normalizedVin().length >= 6
   const setRegistryOption = (key: keyof typeof registryVisibility, value: boolean) => {
     setRegistryVisibility((current) => ({ ...current, [key]: value }))
+  }
+  const imageError = (error: unknown) => imageCompressionErrorText(error, language)
+
+  const izberiSliko = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const result = await compressImageFile(file, uploadImageProfiles.vehicle)
+      setVehicleImage(result.file)
+      if (vehicleImagePreview) URL.revokeObjectURL(vehicleImagePreview)
+      setVehicleImagePreview(URL.createObjectURL(result.file))
+      setMessage('')
+    } catch (error) {
+      setVehicleImage(null)
+      if (vehicleImagePreview) URL.revokeObjectURL(vehicleImagePreview)
+      setVehicleImagePreview('')
+      setMessage(imageError(error))
+    }
   }
 
   const shrani = async () => {
@@ -189,6 +210,23 @@ export default function DodajAvto() {
     }
     if (error) setMessage(tx('Napaka: ', 'Error: ') + error.message)
     else {
+      if (insertResult.data?.id && vehicleImage) {
+        const fileExt = vehicleImage.name.split('.').pop() || 'jpg'
+        const fileName = `${user.id}/${insertResult.data.id}-${Date.now()}.${fileExt}`
+        const { error: uploadError } = await supabase.storage.from('car-images').upload(fileName, vehicleImage, { cacheControl: '31536000', upsert: false })
+        if (uploadError) {
+          setMessage(tx('Vozilo je shranjeno, slike pa ni bilo mogoče naložiti: ', 'Vehicle saved, but the photo could not be uploaded: ') + uploadError.message)
+          setLoading(false)
+          return
+        }
+        const { data: urlData } = supabase.storage.from('car-images').getPublicUrl(fileName)
+        const { error: imageSaveError } = await supabase.from('cars').update({ slika_url: urlData.publicUrl }).eq('id', insertResult.data.id).eq('user_id', user.id)
+        if (imageSaveError) {
+          setMessage(tx('Vozilo je shranjeno, slike pa ni bilo mogoče povezati z vozilom: ', 'Vehicle saved, but the photo could not be linked to it: ') + imageSaveError.message)
+          setLoading(false)
+          return
+        }
+      }
       if (registryEnabled && insertResult.data?.id) {
         const { data: sessionData } = await supabase.auth.getSession()
         const token = sessionData.session?.access_token
@@ -234,6 +272,14 @@ export default function DodajAvto() {
       setMessage(tx('Znamka in model sta nujna podatka.', 'Make and model are required.'))
       return
     }
+    if (korak === 2 && registryEnabled && !hasLookupVin()) {
+      setMessage(tx('Za preverjanje vozila najprej vnesi VIN/številko šasije.', 'Enter the VIN/chassis number before enabling vehicle lookup.'))
+      return
+    }
+    if (korak === 2 && registryEnabled && !registryUnderstand) {
+      setMessage(tx('Najprej obkljukaj, da razumeš preverjanje vozila.', 'First check that you understand vehicle lookup.'))
+      return
+    }
     setMessage('')
     setKorak(Math.min(3, korak + 1))
   }
@@ -251,15 +297,13 @@ export default function DodajAvto() {
         </div>
       </div>
 
-      <div className="mb-5 grid grid-cols-3 gap-2">
-        {[tx('Tip', 'Type'), tx('Osnovno', 'Basic'), tx('Dodatno', 'Extra')].map((label, index) => (
-          <button key={label} type="button" onClick={() => setKorak(index + 1)}
-            className={`rounded-xl border py-2 text-xs font-bold ${
-              korak === index + 1 ? 'border-[#6c63ff66] bg-[#6c63ff22] text-[#a09aff]' : 'border-[#1e1e32] bg-[#0f0f1a] text-[#5a5a80]'
-            }`}>
-            {label}
-          </button>
-        ))}
+      <div className="mb-5 rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-3">
+        <div className="h-2 overflow-hidden rounded-full bg-[#1e1e32]">
+          <div className="h-full rounded-full bg-[#6c63ff] transition-all" style={{ width: `${(korak / 3) * 100}%` }} />
+        </div>
+        <p className="mt-2 text-center text-xs font-bold text-[#8a8aa8]">
+          {tx('Nadaljuj z gumbom spodaj. Obvezna polja so označena z *.', 'Continue with the button below. Required fields are marked with *.')}
+        </p>
       </div>
 
       <div className="mb-5 rounded-2xl border border-[#3ecfcf44] bg-[#3ecfcf11] p-4">
@@ -436,9 +480,9 @@ export default function DodajAvto() {
                     </label>
                   ))}
                 </div>
-                <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#0f766e66] bg-[#ccfbf1] p-3 text-xs font-bold leading-relaxed text-[#0f172a] dark:border-[#3ecfcf55] dark:bg-[#3ecfcf12] dark:text-[#d8ffff]">
+                <label className="mt-3 flex items-start gap-3 rounded-xl border border-[#7c3aed66] bg-[#ede9fe] p-3 text-xs font-bold leading-relaxed text-[#2e1065] dark:border-[#a78bfa66] dark:bg-[#25185a] dark:text-white">
                   <input type="checkbox" checked={registryUnderstand} onChange={(e) => setRegistryUnderstand(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 accent-[#3ecfcf]" />
+                    className="mt-0.5 h-4 w-4 accent-[#6c63ff]" />
                   <span>{tx('Razumem, da bo vozilo mogoče preveriti po VIN/šasiji in da lahko to kadarkoli izklopim.', 'I understand that this vehicle can be checked by VIN/chassis number and that I can disable this at any time.')}</span>
                 </label>
               </div>
@@ -449,6 +493,27 @@ export default function DodajAvto() {
         {/* Napredne nastavitve */}
         <div className={`${korak === 3 ? '' : 'hidden'} bg-[#0f0f1a] border border-[#1e1e32] rounded-2xl p-5 flex flex-col gap-4`}>
           <h2 className="text-white font-semibold">Napredni podatki <span className="text-[#5a5a80] text-xs font-normal">(po želji)</span></h2>
+
+          <div className="rounded-2xl border border-[#6c63ff44] bg-[#6c63ff10] p-4">
+            <label className="text-[#c8c4ff] text-xs uppercase tracking-wider mb-2 block">{tx('Fotografija vozila', 'Vehicle photo')}</label>
+            <div className="flex items-center gap-4">
+              <div className="h-20 w-28 overflow-hidden rounded-xl border border-[#1e1e32] bg-[#13131f]">
+                {vehicleImagePreview ? (
+                  <img src={vehicleImagePreview} alt={tx('Izbrana slika vozila', 'Selected vehicle photo')} className="h-full w-full object-contain" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-2xl">📷</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-white">{tx('Dodaj sliko vozila', 'Add vehicle photo')}</p>
+                <p className="mt-1 text-xs leading-relaxed text-[#8a8aa8]">{tx('Opcijsko, ampak priporočeno za lepši prikaz v garaži.', 'Optional, but recommended for a better garage view.')}</p>
+                <label className="mt-3 inline-flex cursor-pointer rounded-xl border border-[#6c63ff66] bg-[#6c63ff22] px-4 py-2 text-xs font-black text-[#c8c4ff]">
+                  {vehicleImage ? tx('Zamenjaj sliko', 'Change photo') : tx('Naloži sliko', 'Upload photo')}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={izberiSliko} className="hidden" />
+                </label>
+              </div>
+            </div>
+          </div>
 
           {oblikeAvta[tipVozila] && (
             <div>
