@@ -599,26 +599,22 @@ export default function DomovPage() {
                   type="button"
                   onClick={preklopiTemo}
                   aria-label={isLightTheme ? tx('Preklopi na temni način', 'Switch to dark mode') : tx('Preklopi na svetli način', 'Switch to light mode')}
-                  className={`flex h-10 w-[72px] shrink-0 items-center overflow-hidden rounded-full border p-1 shadow-lg transition-colors xl:h-12 xl:w-[82px] ${
-                    isLightTheme ? 'border-white/80 bg-white/88 shadow-[#101225]/10' : 'border-white/15 bg-white/14 shadow-black/20'
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-lg transition-colors xl:h-12 xl:w-12 ${
+                    isLightTheme
+                      ? 'border-[#fde68a] bg-[#facc15] text-[#422006] shadow-[#facc15]/28'
+                      : 'border-[#8b7cf6]/55 bg-[#25185a] text-[#d8d4ff] shadow-black/20'
                   }`}
                 >
-                  <span className={`flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-transform xl:h-10 xl:w-10 ${
-                    isLightTheme
-                      ? 'translate-x-[32px] bg-[#6c63ff] text-white xl:translate-x-[34px]'
-                      : 'translate-x-0 bg-white text-[#101225]'
-                  }`}>
-                    {isLightTheme ? (
-                      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 xl:h-5 xl:w-5">
-                        <circle cx="12" cy="12" r="4.2" fill="currentColor" />
-                        <path d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                      </svg>
-                    ) : (
-                      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 xl:h-5 xl:w-5">
-                        <path d="M20 14.6A7.6 7.6 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z" fill="currentColor" />
-                      </svg>
-                    )}
-                  </span>
+                  {isLightTheme ? (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 xl:h-6 xl:w-6">
+                      <circle cx="12" cy="12" r="4.2" fill="currentColor" />
+                      <path d="M12 2.5v3M12 18.5v3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M2.5 12h3M18.5 12h3M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 xl:h-6 xl:w-6">
+                      <path d="M20 14.6A7.6 7.6 0 0 1 9.4 4a8.2 8.2 0 1 0 10.6 10.6Z" fill="currentColor" />
+                    </svg>
+                  )}
                 </button>
                 <button onClick={() => router.push(reminders[0]?.carId ? `/opomniki?car=${reminders[0].carId}` : favoriteCar?.id ? `/opomniki?car=${favoriteCar.id}` : '/opomniki')} className={`flex h-10 w-10 items-center justify-center rounded-full shadow-lg shadow-black/10 xl:h-12 xl:w-12 ${isLightTheme ? 'bg-white/88 text-[#101225]' : 'bg-white/14 text-white'}`}>
                   <Icon type="bell" className="h-5 w-5 xl:h-6 xl:w-6" />
