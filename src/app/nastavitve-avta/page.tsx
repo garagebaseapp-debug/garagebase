@@ -507,21 +507,27 @@ export default function NastavitveAvta() {
       return
     }
 
-    const deleteSteps = [
-      () => supabase.from('fuel_logs').delete().eq('car_id', avto.id),
-      () => supabase.from('service_logs').delete().eq('car_id', avto.id),
-      () => supabase.from('expenses').delete().eq('car_id', avto.id),
-      () => supabase.from('reminders').delete().eq('car_id', avto.id),
-      () => supabase.from('cars').delete().eq('id', avto.id).eq('user_id', user.id),
-    ]
+    const { data: sessionData } = await supabase.auth.getSession()
+    const token = sessionData.session?.access_token
+    if (!token) {
+      setMessage(tx('Prijava ni veljavna. Prijavi se znova.', 'Session is not valid. Sign in again.'))
+      setSaving(false)
+      return
+    }
 
-    for (const step of deleteSteps) {
-      const { error } = await step()
-      if (error) {
-        setMessage(isLockedRecordError(error) ? lockedRecordMessage() : `Napaka pri brisanju vozila: ${error.message}`)
-        setSaving(false)
-        return
-      }
+    const response = await fetch('/api/delete-vehicle', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ carId: avto.id }),
+    })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) {
+      setMessage(tx('Napaka pri brisanju vozila: ', 'Vehicle delete failed: ') + (result.details?.join?.(', ') || result.error || response.statusText))
+      setSaving(false)
+      return
     }
 
     clearVehicleDataCaches(avto.id)
