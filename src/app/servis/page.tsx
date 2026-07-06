@@ -229,7 +229,7 @@ export default function ServisPage() {
   const latestService = services[0]
   const latestCar = latestService?.car_id ? carById[latestService.car_id] : null
   const firstCarId = latestService?.car_id || cars[0]?.id
-  const addServiceHref = cars.length > 0 ? '/vnos-servisa' : '/dodaj-avto'
+  const addServiceHref = cars.length > 0 ? `/vnos-servisa?car=${firstCarId || cars[0]?.id}` : '/dodaj-avto'
   const recentServices = services.slice(0, 5)
   const hasImported = importedServices.length > 0
 

@@ -25,6 +25,16 @@ type ServiceNameRow = {
   servis?: string | null
 }
 
+type ServiceEditRow = {
+  id: string
+  car_id: string
+  datum: string
+  km?: number | null
+  opis?: string | null
+  servis?: string | null
+  cena?: number | string | null
+}
+
 type SpeechRecognitionResultEvent = {
   results: {
     [index: number]: {
@@ -75,6 +85,7 @@ export default function VnosServisa() {
   const [poslusam, setPoslusam] = useState<string | null>(null)
   const [intervalKm, setIntervalKm] = useState('')
   const [intervalDni, setIntervalDni] = useState('')
+  const [editId, setEditId] = useState('')
   const [language] = useState<Language>(() => getStoredLanguage())
   const [valuta] = useState<GarageBaseCurrency>(() => getCurrencyFromSettings())
   const [enotaRazdalje] = useState<DistanceUnit>(() => getDistanceUnitFromSettings())
@@ -93,6 +104,8 @@ export default function VnosServisa() {
       if (!user) { window.location.href = '/'; return }
       const params = new URLSearchParams(window.location.search)
       const carParam = params.get('car')
+      const editParam = params.get('edit') || ''
+      if (editParam) setEditId(editParam)
       const activeCarsResult = await supabase
         .from('cars').select('id, znamka, model, km_trenutni, arhivirano')
         .eq('user_id', user.id)
@@ -120,6 +133,7 @@ export default function VnosServisa() {
           setZadnjiKm(0)
           trackEvent('service_add_open', { carId: null })
         }
+        if (editParam) await naloziUrediServis(editParam, carParam || '')
       }
     }
     init()
@@ -142,6 +156,29 @@ export default function VnosServisa() {
     const maxGorivo = gorivoData?.[0]?.km || 0
     setZadnjiKm(Math.max(kmAvta, maxServis, maxGorivo))
     setKmReady(true)
+  }
+
+  async function naloziUrediServis(id: string, expectedCarId: string) {
+    const { data, error } = await supabase
+      .from('service_logs')
+      .select('id,car_id,datum,km,opis,servis,cena')
+      .eq('id', id)
+      .maybeSingle()
+    if (error || !data) {
+      setMessage(tx('Servisnega vnosa ni bilo mogoče naložiti za urejanje.', 'The service entry could not be loaded for editing.'))
+      return
+    }
+    const row = data as ServiceEditRow
+    if (expectedCarId && row.car_id !== expectedCarId) {
+      setMessage(tx('Servisni vnos ne pripada izbranemu vozilu.', 'The service entry does not belong to the selected vehicle.'))
+      return
+    }
+    setCarId(row.car_id)
+    setDatum(row.datum || new Date().toISOString().split('T')[0])
+    setKm(row.km ? String(row.km) : '')
+    setOpis(String(row.opis || '').replace(/\s*\[Naknadno vneseno:.*?\]/, '').replace(/\s*\[Entered later:.*?\]/, ''))
+    setServis(row.servis || '')
+    setCena(row.cena !== null && row.cena !== undefined ? String(row.cena) : '')
   }
 
   const sveziMinimalniKm = async (id: string) => {
@@ -330,6 +367,58 @@ export default function VnosServisa() {
     })
     if (error) throw error
   }
+
+  const shraniUrejanje = async (vneseniKm: number, sveziKm: number, userId: string) => {
+    const { error } = await supabase.from('service_logs').update({
+      datum,
+      km: vneseniKm,
+      opis,
+      servis: servis || null,
+      cena: parseDecimalInput(cena),
+      edited_at: new Date().toISOString(),
+    }).eq('id', editId).eq('car_id', carId)
+
+    if (error) {
+      setMessage(tx('Urejanje ni uspelo: ', 'Edit failed: ') + error.message)
+      setLoading(false)
+      return
+    }
+
+    const opozorila: string[] = []
+    const { error: carUpdateError } = await supabase.from('cars').update({ km_trenutni: Math.max(sveziKm, vneseniKm) }).eq('id', carId).eq('user_id', userId)
+    if (carUpdateError) opozorila.push(tx('trenutni km vozila niso bili posodobljeni', 'vehicle current mileage was not updated'))
+
+    if (slike.length > 0) {
+      setUploadProgress(true)
+      const slikeUrls: string[] = []
+      for (let i = 0; i < slike.length; i++) {
+        const file = slike[i]
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${userId}/${editId}_${Date.now()}_${i}.${fileExt}`
+        const { error: uploadError } = await supabase.storage.from('service-documents').upload(fileName, file, { upsert: true })
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from('service-documents').getPublicUrl(fileName)
+          slikeUrls.push(urlData.publicUrl)
+        } else {
+          opozorila.push(tx('ena slika racuna ni bila nalozena', 'one receipt photo was not uploaded'))
+        }
+      }
+      if (slikeUrls.length > 0) {
+        const { error: photoUpdateError } = await supabase.from('service_logs').update({ foto_url: slikeUrls.join(',') }).eq('id', editId).eq('car_id', carId)
+        if (photoUpdateError) opozorila.push(tx('slike racuna niso bile povezane s servisom', 'receipt photos were not linked to the service'))
+      }
+      setUploadProgress(false)
+    }
+
+    clearVehicleDataCaches(carId)
+    trackEvent('service_edited', { carId, serviceId: editId, hasNewReceipt: slike.length > 0 })
+    setMessage(opozorila.length > 0
+      ? `${tx('Servis je posodobljen, vendar:', 'Service is updated, but:')} ${opozorila.join(', ')}.`
+      : tx('✅ Servis uspešno posodobljen!', '✅ Service updated successfully!'))
+    setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1200)
+    setLoading(false)
+  }
+
   const shrani = async () => {
     if (!carId) { setMessage(tx('Najprej izberi vozilo.', 'Choose a vehicle first.')); return }
     if (!kmReady) {
@@ -363,6 +452,11 @@ export default function VnosServisa() {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
+
+    if (editId) {
+      await shraniUrejanje(vneseniKm, sveziKm, user.id)
+      return
+    }
 
     const { data: servisData, error } = await supabase.from('service_logs').insert({
       car_id: carId, datum, km: vneseniKm,
@@ -447,13 +541,17 @@ export default function VnosServisa() {
     setLoading(false)
   }
 
+  const jeUrejanje = Boolean(editId)
+  const predogledNaslednjiKm = km && intervalKm ? parseInt(km) + parseInt(intervalKm) : null
+  const predogledNaslednjiDatum = intervalDni ? datumPlusDni(datum, parseInt(intervalDni)) : null
+
   return (
     <div className="min-h-screen bg-[#080810] px-4 py-6 pb-24">
 
       <div className="mb-8 flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
         <BackButton />
-        <h1 className="truncate text-xl font-bold text-white">🔧 {tx('Vnos servisa', 'Service entry')}</h1>
+        <h1 className="truncate text-xl font-bold text-white">🔧 {jeUrejanje ? tx('Uredi servis', 'Edit service') : tx('Vnos servisa', 'Service entry')}</h1>
         </div>
         <button
           type="button"
@@ -476,8 +574,8 @@ export default function VnosServisa() {
         {avti.length > 0 && (
           <div>
             <label className="text-[#5a5a80] text-xs uppercase tracking-wider mb-2 block">{tx('Avto', 'Car')}</label>
-            <select value={carId} onChange={e => menjavaAvta(e.target.value)}
-              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors">
+            <select value={carId} onChange={e => menjavaAvta(e.target.value)} disabled={jeUrejanje}
+              className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors disabled:cursor-not-allowed disabled:opacity-70">
               <option value="">{tx('Izberi vozilo', 'Choose vehicle')}</option>
               {avti.map((a) => <option key={a.id} value={a.id}>{a.znamka} {a.model}</option>)}
             </select>
@@ -636,6 +734,22 @@ export default function VnosServisa() {
                 className="w-full bg-[#13131f] border border-[#1e1e32] rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-[#f59e0b] transition-colors" />
             </div>
           </div>
+          {(predogledNaslednjiKm || predogledNaslednjiDatum) && (
+            <div className="grid grid-cols-1 gap-3 rounded-xl border border-[#f59e0b44] bg-[#0f0f1a] p-3 sm:grid-cols-2">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#8a8aa8]">{tx('Naslednji km opomnik', 'Next mileage reminder')}</p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {predogledNaslednjiKm ? formatDistance(predogledNaslednjiKm, enotaRazdalje) : tx('Ni nastavljen', 'Not set')}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[#8a8aa8]">{tx('Naslednji datum opomnika', 'Next date reminder')}</p>
+                <p className="mt-1 text-sm font-black text-white">
+                  {predogledNaslednjiDatum ? new Date(predogledNaslednjiDatum).toLocaleDateString('sl-SI') : tx('Ni nastavljen', 'Not set')}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         <div className="rounded-xl border border-[#f59e0b55] bg-[#f59e0b14] p-4">
           <div className="flex items-start gap-3">
@@ -656,7 +770,7 @@ export default function VnosServisa() {
 
         <button onClick={shrani} disabled={loading || uploadProgress}
           className="w-full bg-[#f59e0b] hover:bg-[#d97706] text-white font-semibold py-3 rounded-xl transition-colors disabled:opacity-50 mt-2">
-          {uploadProgress ? tx('Nalaganje slik...', 'Uploading photos...') : loading ? tx('Shranjevanje...', 'Saving...') : tx('Shrani servis', 'Save service') + ' →'}
+          {uploadProgress ? tx('Nalaganje slik...', 'Uploading photos...') : loading ? tx('Shranjevanje...', 'Saving...') : jeUrejanje ? tx('Shrani spremembe', 'Save changes') + ' →' : tx('Shrani servis', 'Save service') + ' →'}
         </button>
       </div>
 

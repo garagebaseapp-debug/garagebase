@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { HomeButton, BackButton } from '@/lib/nav'
 import { type GarageBaseCurrency, formatMoney, getCurrencyFromSettings } from '@/lib/currency'
+import { useLanguage } from '@/lib/i18n'
 
 type ServiceDetailRow = {
   id: string
@@ -27,6 +28,8 @@ export default function ServisDetajl() {
   const [loading, setLoading] = useState(true)
   const [odprtaSlika, setOdprtaSlika] = useState<string | null>(null)
   const [valuta, setValuta] = useState<GarageBaseCurrency>('EUR')
+  const { language } = useLanguage()
+  const tx = (sl: string, en: string) => language === 'en' ? en : sl
 
   useEffect(() => {
     const init = async () => {
@@ -90,12 +93,23 @@ export default function ServisDetajl() {
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
         <BackButton href={`/zgodovina-servisa?car=${avto?.id}`} />
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-white">🔧 Detajli servisa</h1>
-          {avto && <p className="text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
+          {avto && <p className="truncate text-[#5a5a80] text-xs">{avto.znamka} {avto.model}</p>}
         </div>
+        </div>
+        {avto?.id && servis?.id && (
+          <button
+            type="button"
+            onClick={() => window.location.href = `/vnos-servisa?car=${avto.id}&edit=${servis.id}`}
+            className="shrink-0 rounded-2xl border border-[#f59e0b55] bg-[#f59e0b18] px-4 py-3 text-sm font-black text-[#fbbf24]"
+          >
+            {tx('Uredi', 'Edit')}
+          </button>
+        )}
       </div>
 
       {/* Naknadno opozorilo */}

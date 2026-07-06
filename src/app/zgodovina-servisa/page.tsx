@@ -363,13 +363,7 @@ export default function ZgodovinaServisa() {
                     {/* Gumb uredi z odštevalnikom */}
                     {editable(vnos) && !jeUredi && (
                       <button onClick={() => {
-                        setUredi(vnos.id)
-                        setEditData({
-                          datum: vnos.datum,
-                          opis: opisBrezOznake,
-                          servis: vnos.servis || '',
-                          cena: vnos.cena?.toString() || '',
-                        })
+                        window.location.href = `/vnos-servisa?car=${avto?.id}&edit=${vnos.id}`
                       }}
                         className="flex items-center gap-1 bg-[#f59e0b22] border border-[#f59e0b44] text-[#f59e0b] text-sm font-bold px-3 py-2 rounded-xl">
                         ✏️ Uredi · {preostalo}
