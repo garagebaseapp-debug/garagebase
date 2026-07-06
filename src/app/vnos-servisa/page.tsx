@@ -13,6 +13,13 @@ import { parseDecimalInput } from '@/lib/vehicle-costs'
 
 const KM_ANOMALY_THRESHOLD = 2000
 
+const isMissingSchemaColumnError = (error: { code?: string; message?: string } | null | undefined) => {
+  const message = error?.message || ''
+  return error?.code === 'PGRST204'
+    || message.includes('schema cache')
+    || message.includes('Could not find')
+}
+
 type ServiceEntryCar = {
   id: string
   znamka?: string | null
@@ -375,7 +382,6 @@ export default function VnosServisa() {
       opis,
       servis: servis || null,
       cena: parseDecimalInput(cena),
-      edited_at: new Date().toISOString(),
     }).eq('id', editId).eq('car_id', carId)
 
     if (error) {
@@ -531,7 +537,13 @@ export default function VnosServisa() {
       verification_level: verificationLevel,
       locked_at: zaklepPo24h,
     }).eq('id', servisData.id).eq('car_id', carId)
-    if (verificationError) opozorila.push(tx('potrditev servisa ni bila posodobljena', 'service verification was not updated'))
+    if (verificationError) {
+      if (isMissingSchemaColumnError(verificationError)) {
+        console.warn('[GarageBase service entry] service verification columns are not available yet', verificationError)
+      } else {
+        opozorila.push(tx('potrditev servisa ni bila posodobljena', 'service verification was not updated'))
+      }
+    }
     trackEvent('service_verification_set', { carId, verificationLevel, hasOdometerPhoto: !!odometerUrl, hasReceipt: slike.length > 0 })
 
     setMessage(opozorila.length > 0
