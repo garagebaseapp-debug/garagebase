@@ -24,6 +24,14 @@ type UserPlan = Record<string, unknown> & {
   locked?: boolean
 }
 
+type DeletedAccount = {
+  id?: string
+  user_id?: string | null
+  email_preview?: string | null
+  car_count?: number | null
+  deleted_at?: string | null
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request)
   if (auth.error) return auth.error
@@ -88,6 +96,12 @@ export async function GET(request: NextRequest) {
     .limit(8)
   if (recentPlansError) return NextResponse.json({ error: 'plans_failed', details: recentPlansError.message }, { status: 500 })
 
+  const deletedAccountsResult = await admin
+    .from('account_deletions')
+    .select('id,user_id,email_preview,car_count,deleted_at')
+    .order('deleted_at', { ascending: false })
+    .limit(30)
+
   const planByEmail = new Map(userPlans.map((plan) => [String(plan.email).toLowerCase(), plan]))
   const users = visibleUsers.map((user) => ({
     ...user,
@@ -97,6 +111,8 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     users,
     plans: recentPlans || [],
+    deletedAccounts: deletedAccountsResult.error ? [] : ((deletedAccountsResult.data || []) as DeletedAccount[]),
+    deletedAccountsUnavailable: Boolean(deletedAccountsResult.error),
     totalUsers: totalUsers ?? undefined,
     totalUsersCapped: Boolean(totalUsers !== null && countPage > (search ? 5 : 10)),
     page,

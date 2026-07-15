@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
+import { notifyAdmins } from '@/lib/admin-notify'
 
 const frequencyOptions = [
   { value: 'daily', sl: 'Vsak dan', en: 'Every day' },
@@ -141,6 +142,11 @@ export default function FeedbackPage() {
     setUsageFrequency('weekly')
     setUserType('personal')
     setPriority('normal')
+    void notifyAdmins('feedback', {
+      priority,
+      userType,
+      usageFrequency,
+    })
     setMessage(tx('Hvala, predlog je shranjen.', 'Thank you, the suggestion has been saved.'))
     await loadMyFeedback(user.id)
     setSaving(false)

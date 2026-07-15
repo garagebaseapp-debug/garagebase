@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 import { rateLimit } from '@/lib/server-rate-limit'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -19,6 +20,29 @@ type CarRow = {
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
+}
+
+function emailPreview(email: string) {
+  const [name, domain] = email.split('@')
+  if (!name || !domain) return null
+  return `${name.slice(0, 2)}***@${domain}`
+}
+
+async function recordAccountDeletion(admin: unknown, userId: string, email: string, carCount: number) {
+  const emailHash = createHash('sha256').update(email.toLowerCase()).digest('hex')
+  const auditClient = admin as ReturnType<typeof createClient> & {
+    from: (table: 'account_deletions') => {
+      insert: (payload: Record<string, unknown>) => Promise<{ error: { message: string } | null }>
+    }
+  }
+  const { error } = await auditClient.from('account_deletions').insert({
+    user_id: userId,
+    email_hash: emailHash,
+    email_preview: emailPreview(email),
+    car_count: carCount,
+    deleted_at: new Date().toISOString(),
+  })
+  if (error) console.warn('[GarageBase delete account] account_deletions audit skipped:', error.message)
 }
 
 async function removeUserStorageFiles(admin: SupabaseStorageClient, userId: string) {
@@ -77,6 +101,7 @@ export async function POST(request: NextRequest) {
     const userId = userData.user.id
     const { data: cars } = await admin.from('cars').select('id').eq('user_id', userId)
     const carIds = ((cars || []) as CarRow[]).map((car) => car.id).filter((id): id is string => Boolean(id))
+    await recordAccountDeletion(admin, userId, userEmail, carIds.length)
     const storageErrors = await removeUserStorageFiles(admin, userId)
     if (storageErrors.length > 0) {
       return NextResponse.json({

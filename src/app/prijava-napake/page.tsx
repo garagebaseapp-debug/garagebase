@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { BackButton, BottomNav } from '@/lib/nav'
 import { useLanguage } from '@/lib/i18n'
 import { trackEvent } from '@/lib/analytics'
+import { notifyAdmins } from '@/lib/admin-notify'
 
 const areas = [
   { value: 'garage', sl: 'Garaža', en: 'Garage' },
@@ -91,6 +92,11 @@ export default function PrijavaNapakePage() {
     }
 
     trackEvent('bug_report_sent', { area, priority })
+    void notifyAdmins('bug_report', {
+      title: title.trim().slice(0, 160),
+      area,
+      priority,
+    })
     setTitle('')
     setDescription('')
     setSteps('')

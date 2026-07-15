@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { notifyAdmins } from '@/lib/admin-notify'
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION || '0.1.0-beta'
 const RELEASE_CHANNEL = process.env.NEXT_PUBLIC_RELEASE_CHANNEL || 'local'
@@ -174,7 +175,7 @@ export async function trackError(errorName: string, metadata: AnalyticsMetadata 
       recentEvents,
     }
 
-    await supabase.from('app_errors').insert({
+    const { error } = await supabase.from('app_errors').insert({
       user_id: user?.id || null,
       error_name: errorName,
       page_path: pagePath,
@@ -185,6 +186,13 @@ export async function trackError(errorName: string, metadata: AnalyticsMetadata 
       device_info: typeof window !== 'undefined' ? navigator.userAgent : null,
       metadata: finalMetadata,
     })
+    if (!error) {
+      void notifyAdmins('app_error', {
+        errorName,
+        pagePath,
+        message: String(metadata.message || '').slice(0, 240),
+      })
+    }
   } catch (error) {
     console.warn('GarageBase error tracking skipped:', errorName, error)
   }

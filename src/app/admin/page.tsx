@@ -21,6 +21,14 @@ type AdminUser = {
   plan?: AdminRecord | null
 }
 
+type DeletedAccountRow = {
+  id?: string | null
+  user_id?: string | null
+  email_preview?: string | null
+  car_count?: number | null
+  deleted_at?: string | null
+}
+
 type AdminRecord = Record<string, unknown>
 type AdminStats = Record<string, unknown> & {
   activeToday?: number
@@ -458,6 +466,8 @@ export default function AdminPage() {
   const [recentErrors, setRecentErrors] = useState<AdminError[]>([])
   const [plans, setPlans] = useState<AdminPlan[]>([])
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([])
+  const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountRow[]>([])
+  const [deletedAccountsUnavailable, setDeletedAccountsUnavailable] = useState(false)
   const [userSearch, setUserSearch] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
   const [planEmail, setPlanEmail] = useState('')
@@ -549,6 +559,10 @@ export default function AdminPage() {
       }
 
       setIsAdmin(true)
+      const tabParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : ''
+      if (tabParam && ['overview', 'analytics', 'users', 'inbox', 'errors', 'plans', 'settings'].includes(tabParam)) {
+        setActiveAdminTab(tabParam as AdminTab)
+      }
       await loadAdminData()
       setLoading(false)
       loadAdminUsers()
@@ -986,6 +1000,8 @@ export default function AdminPage() {
       const result = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(result.details || result.error || 'users_failed')
       setAdminUsers(result.users || [])
+      setDeletedAccounts(result.deletedAccounts || [])
+      setDeletedAccountsUnavailable(Boolean(result.deletedAccountsUnavailable))
       if (Array.isArray(result.plans)) setPlans(result.plans.slice(0, 8))
       if (typeof result.totalUsers === 'number') {
         setStats((prev) => ({ ...prev, registeredUsers: result.totalUsers }))
@@ -1603,6 +1619,81 @@ export default function AdminPage() {
           </>
         )}
       </div>
+
+      {activeAdminTab === 'users' && (
+        <div className="mb-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#3ecfcf]">{tx('Vsi uporabniki', 'All users')}</p>
+                <h2 className="mt-1 text-xl font-black text-white">{tx('Seznam registriranih računov', 'Registered account list')}</h2>
+                <p className="mt-2 text-sm text-[#8a8aa8]">
+                  {tx('Prikaz iz Supabase Auth: e-mail, zadnja prijava in ročni paket. Osebnih dokumentov tukaj ne prikazujemo.', 'Shown from Supabase Auth: email, last sign-in and manual plan. Personal documents are not shown here.')}
+                </p>
+              </div>
+              <span className="rounded-full bg-[#3ecfcf22] px-3 py-2 text-xs font-black text-[#3ecfcf]">
+                {stats.registeredUsers || adminUsers.length} {tx('računov', 'accounts')}
+              </span>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <input value={userSearch} onChange={(e) => setUserSearch(e.target.value)} placeholder={tx('Poišči e-mail', 'Search email')}
+                className="min-w-0 flex-1 rounded-xl border border-[#1e1e32] bg-[#13131f] px-4 py-3 text-sm text-white outline-none focus:border-[#3ecfcf]" />
+              <button onClick={() => loadAdminUsers(userSearch)} disabled={usersLoading}
+                className="rounded-xl bg-[#3ecfcf] px-4 py-3 text-xs font-black text-[#071112] disabled:opacity-50">
+                {usersLoading ? tx('Nalagam...', 'Loading...') : tx('Prikaži', 'Show')}
+              </button>
+            </div>
+            <div className="mt-4 max-h-[420px] overflow-auto rounded-2xl border border-[#1e1e32]">
+              {adminUsers.length === 0 ? (
+                <p className="bg-[#13131f] p-4 text-sm text-[#8a8aa8]">{tx('Ni naloženih uporabnikov.', 'No users loaded.')}</p>
+              ) : adminUsers.map((user) => (
+                <button key={user.id} onClick={() => { selectAdminUser(user); loadTesterActivity(user) }}
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-[#1e1e32] bg-[#13131f] p-3 text-left last:border-b-0 hover:bg-[#19192a]">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-white">{user.email}</p>
+                    <p className="mt-1 text-[11px] text-[#8a8aa8]">
+                      {tx('Ustvarjen', 'Created')}: {user.created_at ? new Date(user.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
+                      {' · '}
+                      {tx('Zadnja prijava', 'Last sign-in')}: {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString(language === 'en' ? 'en-US' : 'sl-SI') : tx('nikoli', 'never')}
+                    </p>
+                  </div>
+                  <span className="self-center rounded-full bg-[#6c63ff22] px-3 py-1 text-[11px] font-black text-[#c8c4ff]">
+                    {String(user.plan?.plan || 'max')}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-[#1e1e32] bg-[#0f0f1a] p-5">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#fca5a5]">{tx('Izbrisani profili', 'Deleted profiles')}</p>
+            <h2 className="mt-1 text-xl font-black text-white">{tx('Minimalni audit izbrisov', 'Minimal deletion audit')}</h2>
+            <p className="mt-2 text-sm leading-relaxed text-[#8a8aa8]">
+              {tx('Za zasebnost hranimo samo maskiran e-mail, hash in datum izbrisa. Vsebina računa se ne hrani.', 'For privacy, only masked email, hash and deletion date are kept. Account content is not kept.')}
+            </p>
+            {deletedAccountsUnavailable ? (
+              <p className="mt-4 rounded-xl border border-[#f59e0b55] bg-[#f59e0b18] p-3 text-xs font-bold text-[#fbbf24]">
+                {tx('Tabela account_deletions še ni aktivna. Za seznam izbrisanih profilov zaženi SQL migracijo.', 'The account_deletions table is not active yet. Run the SQL migration for deleted profile history.')}
+              </p>
+            ) : (
+              <div className="mt-4 max-h-[420px] space-y-2 overflow-auto">
+                {deletedAccounts.length === 0 ? (
+                  <p className="rounded-xl bg-[#13131f] p-3 text-xs text-[#8a8aa8]">{tx('Ni zabeleženih izbrisov.', 'No deletions recorded.')}</p>
+                ) : deletedAccounts.map((item) => (
+                  <div key={item.id || item.user_id || item.deleted_at} className="rounded-xl border border-[#ef444433] bg-[#ef444411] p-3">
+                    <p className="truncate text-sm font-black text-[#fecaca]">{item.email_preview || tx('Maskiran uporabnik', 'Masked user')}</p>
+                    <p className="mt-1 text-[11px] text-[#fca5a5]">
+                      {item.deleted_at ? new Date(item.deleted_at).toLocaleString(language === 'en' ? 'en-US' : 'sl-SI') : '-'}
+                      {' · '}
+                      {item.car_count || 0} {tx('vozil', 'vehicles')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeAdminTab === 'users' && (
         <div className="mb-5 grid gap-4 xl:grid-cols-[0.9fr_1.4fr]">
