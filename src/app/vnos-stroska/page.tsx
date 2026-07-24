@@ -12,6 +12,7 @@ import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
 import { TireSeasonIcon } from '@/lib/tire-icon'
+import { createOfflineId, enqueueOfflineItem, isOfflineNow, syncOfflineQueue } from '@/lib/offline-queue'
 
 type ExpenseCarOption = {
   id: string
@@ -267,6 +268,45 @@ export default function VnosStroska() {
 
     setLoading(true)
     setMessage('')
+    const finalnaKategorija = kategorija === 'custom' ? kategorijaCustom : kategorija
+    const danesIso = new Date().toISOString().split('T')[0]
+    const jeNaknaden = datum < danesIso
+    const datumVnosa = new Date().toLocaleDateString('sl-SI')
+    const opisZOpombo = jeNaknaden
+      ? `${opis || ''} [${tx('Naknadno vneseno', 'Entered later')}: ${datumVnosa}]`.trim()
+      : (opis || null)
+
+    const offline = isOfflineNow()
+    if (offline && racun) {
+      setMessage(tx('Brez interneta lahko shraniš strošek brez slike računa. Sliko dodaj kasneje po sinhronizaciji.', 'Without internet you can save the expense without a receipt photo. Add the photo later after sync.'))
+      setLoading(false)
+      return
+    }
+
+    if (offline) {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { window.location.href = '/'; return }
+      await enqueueOfflineItem({
+        id: createOfflineId('expense'),
+        type: 'expense',
+        userId: user.id,
+        carId,
+        payload: {
+          datum,
+          kategorija: finalnaKategorija,
+          opis: opisZOpombo,
+          znesek: parseFloat(znesek),
+        },
+      })
+      clearVehicleDataCaches(carId)
+      void syncOfflineQueue()
+      setMessage(tx('Strošek je shranjen lokalno. Ko pride internet, se samodejno sinhronizira.', 'Expense is saved locally. It will sync automatically when internet returns.'))
+      setTimeout(() => window.location.href = `/stroski?car=${carId}`, 1200)
+      setLoading(false)
+      return
+    }
+
     let receiptUrl: string | null = null
     try {
       receiptUrl = await naloziRacun()
@@ -275,14 +315,6 @@ export default function VnosStroska() {
       setLoading(false)
       return
     }
-
-    const finalnaKategorija = kategorija === 'custom' ? kategorijaCustom : kategorija
-    const danesIso = new Date().toISOString().split('T')[0]
-    const jeNaknaden = datum < danesIso
-    const datumVnosa = new Date().toLocaleDateString('sl-SI')
-    const opisZOpombo = jeNaknaden
-      ? `${opis || ''} [${tx('Naknadno vneseno', 'Entered later')}: ${datumVnosa}]`.trim()
-      : (opis || null)
 
     const { error } = await supabase.from('expenses').insert({
       car_id: carId,

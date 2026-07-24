@@ -10,6 +10,7 @@ import { type GarageBaseCurrency, currencySymbol, getCurrencyFromSettings } from
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { parseDecimalInput } from '@/lib/vehicle-costs'
+import { createOfflineId, enqueueOfflineItem, isOfflineNow, syncOfflineQueue } from '@/lib/offline-queue'
 
 const KM_ANOMALY_THRESHOLD = 2000
 
@@ -432,8 +433,17 @@ export default function VnosServisa() {
       return
     }
     if (!km || !opis) { setMessage(tx('Km in opis sta obvezna!', 'Mileage and work description are required!')); return }
+    const offline = isOfflineNow()
+    if (offline && editId) {
+      setMessage(tx('Urejanje servisa potrebuje internet, ker preverimo obstoječi zapis.', 'Editing a service needs internet because we verify the existing record.'))
+      return
+    }
+    if (offline && (slike.length > 0 || stevec)) {
+      setMessage(tx('Brez interneta lahko shraniš servis brez slik. Slike dodaj kasneje po sinhronizaciji.', 'Without internet you can save the service without photos. Add photos later after sync.'))
+      return
+    }
     const vneseniKm = parseInt(km)
-    const sveziKm = await sveziMinimalniKm(carId)
+    const sveziKm = offline ? zadnjiKm : await sveziMinimalniKm(carId)
     const jeKmNaknaden = vneseniKm < sveziKm
     if (vneseniKm < sveziKm) {
       setZadnjiKm(sveziKm)
@@ -456,11 +466,43 @@ export default function VnosServisa() {
     setLoading(true)
     setMessage('')
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = offline ? await supabase.auth.getSession().then(({ data }) => ({ data: { user: data.session?.user || null } })) : await supabase.auth.getUser()
     if (!user) { window.location.href = '/'; return }
 
     if (editId) {
       await shraniUrejanje(vneseniKm, sveziKm, user.id)
+      return
+    }
+
+    const opisZaShranjevanje = jeNaknaden || jeKmNaknaden
+      ? `${opis} [${tx('Naknadno vneseno', 'Entered later')}: ${danes}${jeKmNaknaden ? `, ${tx('km nižji od zadnjega stanja', 'mileage below latest state')}` : ''}]`
+      : opis
+    const kmNaslednji = intervalKm ? vneseniKm + parseInt(intervalKm) : null
+    const datumNaslednji = intervalDni ? datumPlusDni(datum, parseInt(intervalDni)) : null
+
+    if (offline) {
+      await enqueueOfflineItem({
+        id: createOfflineId('service'),
+        type: 'service',
+        userId: user.id,
+        carId,
+        payload: {
+          datum,
+          km: vneseniKm,
+          opis: opisZaShranjevanje,
+          servis: servis || null,
+          cena: parseDecimalInput(cena),
+          currentKm: sveziKm,
+          reminderKm: kmNaslednji,
+          reminderDate: datumNaslednji,
+          reminderDescription: opis ? `${tx('Servis', 'Service')}: ${opis.slice(0, 80)}` : tx('Servisni opomnik', 'Service reminder'),
+        },
+      })
+      clearVehicleDataCaches(carId)
+      void syncOfflineQueue()
+      setMessage(tx('Servis je shranjen lokalno. Ko pride internet, se samodejno sinhronizira.', 'Service is saved locally. It will sync automatically when internet returns.'))
+      setTimeout(() => window.location.href = `/zgodovina-servisa?car=${carId}`, 1200)
+      setLoading(false)
       return
     }
 

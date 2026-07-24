@@ -11,6 +11,7 @@ import { currencySymbol as formatCurrencySymbol } from '@/lib/currency'
 import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '@/lib/units'
 import { clearVehicleDataCaches, readGarageCache } from '@/lib/vehicle-cache'
 import { checkCurrentUserAdmin } from '@/lib/admin-access'
+import { createOfflineId, enqueueOfflineItem, isOfflineNow, syncOfflineQueue } from '@/lib/offline-queue'
 
 type FuelType = {
   value: string
@@ -501,7 +502,8 @@ export default function VnosGoriva() {
     }
 
     const vneseniKm = parseInt(km)
-    const sveziKm = await sveziMinimalniKm(carId)
+    const offline = isOfflineNow()
+    const sveziKm = offline ? zadnjiKm : await sveziMinimalniKm(carId)
     const jeKmNaknaden = vneseniKm < sveziKm
     if (vneseniKm < sveziKm) {
       setZadnjiKm(sveziKm)
@@ -525,19 +527,27 @@ export default function VnosGoriva() {
     setLoading(true)
     setMessage('')
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user } } = offline ? await supabase.auth.getSession().then(({ data }) => ({ data: { user: data.session?.user || null } })) : await supabase.auth.getUser()
     if (!user) {
       window.location.href = '/'
       return
     }
 
-    let receiptUrl: string | null = null
-    try {
-      receiptUrl = await naloziRacun()
-    } catch (error: unknown) {
-      setMessage(tx('Napaka pri nalaganju slike: ', 'Error uploading image: ') + getErrorMessage(error))
+    if (offline && racun) {
+      setMessage(tx('Brez interneta lahko shranis tankanje brez slike racuna. Sliko dodaj kasneje po sinhronizaciji.', 'Without internet you can save the fill-up without a receipt photo. Add the photo later after sync.'))
       setLoading(false)
       return
+    }
+
+    let receiptUrl: string | null = null
+    if (!offline) {
+      try {
+        receiptUrl = await naloziRacun()
+      } catch (error: unknown) {
+        setMessage(tx('Napaka pri nalaganju slike: ', 'Error uploading image: ') + getErrorMessage(error))
+        setLoading(false)
+        return
+      }
     }
 
     const datumVnosa = new Date().toLocaleDateString('sl-SI')
@@ -559,6 +569,29 @@ export default function VnosGoriva() {
       receipt_url: receiptUrl,
       verified_document_url: receiptUrl,
       verification_level: 'basic',
+    }
+
+    if (offline) {
+      await enqueueOfflineItem({
+        id: createOfflineId('fuel'),
+        type: 'fuel',
+        userId: user.id,
+        carId,
+        payload: {
+          ...fuelPayload,
+          receipt_url: null,
+          verified_document_url: null,
+          currentKm: sveziKm,
+        },
+      })
+      clearVehicleDataCaches(carId)
+      void syncOfflineQueue()
+      setMessage(tx('Tankanje je shranjeno lokalno. Ko pride internet, se samodejno sinhronizira.', 'Fill-up is saved locally. It will sync automatically when internet returns.'))
+      setTimeout(() => {
+        window.location.href = `/zgodovina-goriva?car=${carId}`
+      }, 1200)
+      setLoading(false)
+      return
     }
 
     let payloadForInsert: Record<string, unknown> = fuelPayload
