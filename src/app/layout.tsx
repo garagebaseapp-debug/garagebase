@@ -82,6 +82,23 @@ export default function RootLayout({
           // Offline detection
           window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
           window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
+          if ('serviceWorker' in navigator) {
+            const warmOfflineCache = (registration) => {
+              const urls = [
+                window.location.pathname + window.location.search,
+                '/domov',
+                '/garaza',
+                '/gorivo',
+                '/servis',
+                '/stroski-garaza',
+                ...Array.from(document.querySelectorAll('link[rel="stylesheet"][href], script[src], link[rel="preload"][href], link[rel="modulepreload"][href]')).map((node) => node.href || node.src).filter(Boolean),
+              ];
+              const send = () => registration.active?.postMessage({ type: 'GARAGEBASE_CACHE_URLS', urls });
+              if (registration.active) send();
+              else navigator.serviceWorker.ready.then(send).catch(() => {});
+            };
+            navigator.serviceWorker.register('/sw.js').then(warmOfflineCache).catch(() => {});
+          }
           
           try {
             // Theme and language

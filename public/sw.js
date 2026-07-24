@@ -1,6 +1,6 @@
 // GarageBase service worker for push notifications and basic offline support.
 
-const STATIC_CACHE = 'garagebase-static-v11'
+const STATIC_CACHE = 'garagebase-static-v12'
 const OFFLINE_FALLBACK_URL = '/domov'
 const STATIC_ASSETS = [
   '/',
@@ -48,6 +48,18 @@ function shouldPreferNetwork(request) {
   return request.destination && ['style', 'script', 'worker', 'manifest'].includes(request.destination)
 }
 
+async function cacheUrls(urls) {
+  const cache = await caches.open(STATIC_CACHE)
+  const sameOriginUrls = (urls || [])
+    .map((url) => {
+      try { return new URL(url, self.location.origin) } catch { return null }
+    })
+    .filter((url) => url && url.origin === self.location.origin && !url.pathname.startsWith('/api/'))
+    .map((url) => `${url.pathname}${url.search}${url.hash}`)
+
+  await Promise.allSettled([...new Set(sameOriginUrls)].map((url) => cache.add(url)))
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.method !== 'GET') return
@@ -56,9 +68,16 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(async () => {
+      fetch(request).then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone()
+          caches.open(STATIC_CACHE).then((cache) => cache.put(request, clone))
+        }
+        return response
+      }).catch(async () => {
+        const cachedPage = await caches.match(request)
         const cachedDomov = await caches.match(OFFLINE_FALLBACK_URL)
-        return cachedDomov || caches.match('/') || Response.error()
+        return cachedPage || cachedDomov || caches.match('/') || Response.error()
       })
     )
     return
@@ -124,6 +143,11 @@ self.addEventListener('push', (event) => {
 })
 
 self.addEventListener('message', (event) => {
+  if (event.data?.type === 'GARAGEBASE_CACHE_URLS') {
+    event.waitUntil(cacheUrls(event.data.urls || []))
+    return
+  }
+
   if (event.data?.type !== 'GARAGEBASE_TEST_NOTIFICATION') return
 
   const data = event.data
