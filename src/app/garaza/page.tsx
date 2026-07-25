@@ -8,6 +8,7 @@ import { formatDistance, type DistanceUnit } from '@/lib/units'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 import { TireSeasonIcon } from '@/lib/tire-icon'
+import { getSafeAuthUser, isBrowserOffline } from '@/lib/safe-auth'
 
 type Vehicle = Record<string, unknown> & {
   id: string
@@ -399,8 +400,12 @@ export default function Garaza() {
         if (parsedCache.opomniki) setOpomniki(parsedCache.opomniki)
       }
 
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSafeAuthUser()
       if (!user) { router.replace('/'); return }
+      if (isBrowserOffline()) {
+        setLoading(false)
+        return
+      }
 
       const onboardingRaw = localStorage.getItem('garagebase_nastavitve')
       if (!onboardingRaw) {
@@ -466,7 +471,8 @@ export default function Garaza() {
   useEffect(() => {
     const refreshArchive = async () => {
       if (loading) return
-      const { data: { user } } = await supabase.auth.getUser()
+      if (isBrowserOffline()) return
+      const user = await getSafeAuthUser()
       if (!user) return
       setArchiveMessage('')
       let query = supabase

@@ -10,6 +10,7 @@ import { formatDistance, getDistanceUnitFromSettings, type DistanceUnit } from '
 import { GARAGE_CACHE_VERSION, imageUrlWithVersion, readGarageCache } from '@/lib/vehicle-cache'
 import { vehicleDisplayName } from '@/lib/vehicle-display'
 import { fuelCostValue } from '@/lib/vehicle-costs'
+import { getSafeAuthUser, isBrowserOffline } from '@/lib/safe-auth'
 
 type RecentEvent = {
   id: string
@@ -370,15 +371,25 @@ export default function DomovPage() {
       }
 
       const cached = readGarageCache()
+      const cachedCars = cached?.avti?.length
+        ? (cached.avti as HomeCar[]).filter((car) => car?.arhivirano !== true)
+        : []
       if (cached?.avti?.length) {
-        const cachedCars = (cached.avti as HomeCar[]).filter((car) => car?.arhivirano !== true)
         setCars(cachedCars)
         setLoading(false)
       }
 
-      const { data: { user } } = await supabase.auth.getUser()
+      const user = await getSafeAuthUser()
       if (!user) {
+        if (cachedCars.length > 0 && isBrowserOffline()) {
+          setLoading(false)
+          return
+        }
         router.replace('/')
+        return
+      }
+      if (isBrowserOffline()) {
+        setLoading(false)
         return
       }
       const savedDisplayName = (() => {

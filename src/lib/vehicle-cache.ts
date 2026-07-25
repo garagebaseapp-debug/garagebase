@@ -18,7 +18,8 @@ export const readGarageCache = () => {
     const parsed = JSON.parse(raw)
     const savedAt = Number(parsed?.savedAt || 0)
     const age = Date.now() - savedAt
-    const fresh = Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false
+    const fresh = offline || (Number.isFinite(age) && age >= 0 && age <= GARAGE_CACHE_MAX_AGE_MS)
     const activeMode = parsed?.arhiv === false
     const cars = Array.isArray(parsed?.avti) ? parsed.avti : []
     const hasArchivedCars = cars.some((car: { arhivirano?: boolean }) => car?.arhivirano === true)
