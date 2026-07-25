@@ -80,17 +80,20 @@ export default function RootLayout({
         </div>
         <script dangerouslySetInnerHTML={{__html: `
           // Offline detection
-          window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hidden'));
-          window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hidden'));
+          const setOfflineBanner = (hidden) => {
+            const banner = document.getElementById('offline-banner');
+            if (!banner) return;
+            banner.classList.toggle('hidden', hidden);
+          };
+          window.addEventListener('online', () => setOfflineBanner(true));
+          window.addEventListener('offline', () => setOfflineBanner(false));
           if ('serviceWorker' in navigator) {
             const warmOfflineCache = (registration) => {
               const urls = [
-                window.location.pathname + window.location.search,
-                '/domov',
-                '/garaza',
-                '/gorivo',
-                '/servis',
-                '/stroski-garaza',
+                '/manifest.json',
+                '/android-chrome-192x192.png',
+                '/android-chrome-512x512.png',
+                '/notification-badge.png',
                 ...Array.from(document.querySelectorAll('link[rel="stylesheet"][href], script[src], link[rel="preload"][href], link[rel="modulepreload"][href]')).map((node) => node.href || node.src).filter(Boolean),
               ];
               const send = () => registration.active?.postMessage({ type: 'GARAGEBASE_CACHE_URLS', urls });
