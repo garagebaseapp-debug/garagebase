@@ -1,10 +1,18 @@
 // GarageBase service worker for push notifications and basic offline support.
 
-const STATIC_CACHE = 'garagebase-static-v13'
+const STATIC_CACHE = 'garagebase-static-v14'
 const OFFLINE_FALLBACK_URL = '/domov'
-const STATIC_ASSETS = [
+const APP_NAVIGATION_URLS = [
   '/',
   OFFLINE_FALLBACK_URL,
+  '/garaza',
+  '/gorivo',
+  '/servis',
+  '/stroski-garaza',
+  '/opomniki',
+  '/vec',
+]
+const STATIC_ASSETS = [
   '/manifest.json',
   '/android-chrome-192x192.png',
   '/android-chrome-512x512.png',
@@ -14,7 +22,7 @@ const STATIC_ASSETS = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
-      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((asset) => cache.add(asset))))
+      .then((cache) => Promise.allSettled([...STATIC_ASSETS, ...APP_NAVIGATION_URLS].map((asset) => cache.add(asset))))
       .then(() => self.skipWaiting())
   )
 })
@@ -55,6 +63,11 @@ function shouldPreferNetwork(request) {
   return request.destination && ['style', 'script', 'worker', 'manifest'].includes(request.destination)
 }
 
+function navigationCacheKey(requestUrl) {
+  if (requestUrl.origin !== self.location.origin || requestUrl.pathname.startsWith('/api/')) return OFFLINE_FALLBACK_URL
+  return `${requestUrl.pathname}${requestUrl.search}${requestUrl.hash}` || OFFLINE_FALLBACK_URL
+}
+
 async function cacheUrls(urls) {
   const cache = await caches.open(STATIC_CACHE)
   const sameOriginUrls = (urls || [])
@@ -75,9 +88,20 @@ self.addEventListener('fetch', (event) => {
 
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(async () => {
+      fetch(request).then((response) => {
+        if (response && response.ok && response.type === 'basic') {
+          const contentType = response.headers.get('content-type') || ''
+          if (contentType.includes('text/html')) {
+            const clone = response.clone()
+            const cacheKey = navigationCacheKey(requestUrl)
+            caches.open(STATIC_CACHE).then((cache) => cache.put(cacheKey, clone))
+          }
+        }
+        return response
+      }).catch(async () => {
+        const cachedPage = await caches.match(navigationCacheKey(requestUrl))
         const cachedDomov = await caches.match(OFFLINE_FALLBACK_URL)
-        return cachedDomov || caches.match('/') || Response.error()
+        return cachedPage || cachedDomov || caches.match('/') || Response.error()
       })
     )
     return
